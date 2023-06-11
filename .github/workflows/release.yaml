@@ -37,10 +37,9 @@
                                 if: success(),
                                 env:
                                     {
-                                        SH_FILE_INPUT: "${{ github.workspace }}/${{ env.SH_FILE_INPUT_NAME }}.sh",
-                                        SH_FILE_OUTPUT: "${{ github.workspace }}/${{ env.SH_FILE_INPUT_NAME }}-${{steps.tag_version.outputs.tag }}.sh",
+                                        SH_FILE_OUTPUT: "${{ github.workspace }}/${{ env.SH_FILE_INPUT_NAME }}",
                                     },
-                                run: 'mv ${{ env.SH_FILE_INPUT }} ${{ env.SH_FILE_OUTPUT }} && res=$(shasum -a 256 ${{ env.SH_FILE_OUTPUT }} | awk ''{ print $1 }'') && echo "SH_FILE_SHA=$res" >> $GITHUB_OUTPUT && echo "$res" > ${{ env.SH_FILE_OUTPUT }}.sha256',
+                                run: 'tar -czvf ${{ env.SH_FILE_OUTPUT }}.tar.gz ${{ env.SH_FILE_OUTPUT }}.sh && res=$(shasum -a 256 ${{ env.SH_FILE_OUTPUT }}.tar.gz | awk ''{ print $1 }'') && echo "SH_FILE_SHA=$res" >> $GITHUB_OUTPUT && echo "$res" > ${{ env.SH_FILE_OUTPUT }}.sha256',
                             },
                             {
                                 name: Create GitHub Release,
@@ -48,16 +47,16 @@
                                 uses: ncipollo/release-action@v1,
                                 env:
                                     {
-                                        SH_FILE_OUTPUT: "${{ github.workspace }}/${{ env.SH_FILE_INPUT_NAME }}-${{steps.tag_version.outputs.tag }}.sh",
+                                        SH_FILE_OUTPUT: "${{ github.workspace }}/${{ env.SH_FILE_INPUT_NAME }}",
                                         SH_FILE_SHA: "${{ steps.prepare_script.outputs.SH_FILE_SHA }}",
                                         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
                                     },
                                 with:
                                     {
-                                        artifacts: "${{ env.SH_FILE_OUTPUT }}\n${{ env.SH_FILE_OUTPUT }}.sha256",
+                                        artifacts: "${{ env.SH_FILE_OUTPUT }}.tar.gz\n${{ env.SH_FILE_OUTPUT }}.sha256",
                                         tag: "${{ steps.tag_version.outputs.tag }}",
                                         name: "${{ steps.tag_version.outputs.tag }}",
-                                        body: "Auto-generated release for ${{ steps.tag_version.outputs.tag }}\n\nSHA256 (tftab.sh): ${{ env.SH_FILE_SHA }}",
+                                        body: "Auto-generated release for ${{ steps.tag_version.outputs.tag }}\n\nSHA256 (tftab.tar.gz): ${{ env.SH_FILE_SHA }}",
                                         draft: false,
                                         prerelease: false,
                                     },
