@@ -9,9 +9,7 @@ function logic() {
 	exit 0
 }
 
-if command -v tfenv >/dev/null 2>&1; then
-	logic "tfenv exec"
-elif command -v terraform >/dev/null 2>&1; then
+if command -v terraform >/dev/null 2>&1; then
 	logic "terraform"
 else
 	echo "terraform not found"
