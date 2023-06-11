@@ -56,7 +56,7 @@
                                         artifacts: "${{ env.SH_FILE_OUTPUT }}.tar.gz\n${{ env.SH_FILE_OUTPUT }}.sha256",
                                         tag: "v${{ steps.tag_version.outputs.tag }}",
                                         name: "${{ steps.tag_version.outputs.tag }}",
-                                        body: "Auto-generated release for ${{ steps.tag_version.outputs.tag }}\n\nSHA256 (tftab.tar.gz): ${{ env.SH_FILE_SHA }}",
+                                        body: "Auto-generated release for ${{ steps.tag_version.outputs.tag }}\n\nSHA256 (tftab.tar.gz): `${{ env.SH_FILE_SHA }}`",
                                         draft: false,
                                         prerelease: false,
                                     },
