@@ -52,7 +52,7 @@
                                 uses: ncipollo/release-action@v1,
                                 env:
                                     {
-                                        SH_FILE_OUTPUT: "${{ steps.prepare_script.outputs.SH_FILE_OUTPUT }}}}",
+                                        SH_FILE_OUTPUT: "${{ steps.prepare_script.outputs.SH_FILE_OUTPUT }}",
                                         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
                                     },
                                 with:
