@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
 file="$1"
-temp_file=$file-notab
-terraform fmt "$file" && sed -e'':a'' -e's/^\\(\\t*\\)  /\\1\\t/;ta' "$file" >"$temp_file" && mv "$temp_file" "$file"
+temp_file=$(mktemp)
+terraform fmt -write=false -list=false "$file" | sed -e'':a'' -e's/^\(\t*\)  /\1\t/;ta' >"$temp_file" && mv "$temp_file" "$file"
