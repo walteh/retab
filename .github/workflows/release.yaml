@@ -26,7 +26,7 @@
                                 env:
                                     {
                                         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
-                                        WITH_V: true,
+                                        WITH_V: false,
                                         DEFAULT_BUMP: patch,
                                         DRY_RUN: true,
                                     },
@@ -54,7 +54,7 @@
                                 with:
                                     {
                                         artifacts: "${{ env.SH_FILE_OUTPUT }}.tar.gz\n${{ env.SH_FILE_OUTPUT }}.sha256",
-                                        tag: "${{ steps.tag_version.outputs.tag }}",
+                                        tag: "v${{ steps.tag_version.outputs.tag }}",
                                         name: "${{ steps.tag_version.outputs.tag }}",
                                         body: "Auto-generated release for ${{ steps.tag_version.outputs.tag }}\n\nSHA256 (tftab.tar.gz): ${{ env.SH_FILE_SHA }}",
                                         draft: false,
