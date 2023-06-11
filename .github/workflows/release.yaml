@@ -37,8 +37,8 @@
                                 if: success(),
                                 env:
                                     {
-                                        SH_FILE_INPUT: "./${{ env.SH_FILE_INPUT_NAME }}.sh",
-                                        SH_FILE_OUTPUT: "./${{ env.SH_FILE_INPUT_NAME }}-${{steps.tag_version.outputs.tag }}.sh",
+                                        SH_FILE_INPUT: "${{ github.workspace }}/${{ env.SH_FILE_INPUT_NAME }}.sh",
+                                        SH_FILE_OUTPUT: "${{ github.workspace }}/${{ env.SH_FILE_INPUT_NAME }}-${{steps.tag_version.outputs.tag }}.sh",
                                     },
                                 run: "mv ${{ env.SH_FILE_INPUT }} ${{ env.SH_FILE_OUTPUT }} && shasum -a 256 ${{ env.SH_FILE_INPUT }} | awk '{ print $1 }' > ${{ env.SH_FILE_OUTPUT }}.sha256",
                             },
@@ -48,7 +48,7 @@
                                 uses: ncipollo/release-action@v1,
                                 env:
                                     {
-                                        SH_FILE_OUTPUT: "./${{ env.SH_FILE_INPUT_NAME }}-${{steps.tag_version.outputs.tag }}.sh",
+                                        SH_FILE_OUTPUT: "${{ github.workspace }}/${{ env.SH_FILE_INPUT_NAME }}-${{steps.tag_version.outputs.tag }}.sh",
                                         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
                                     },
                                 with:
