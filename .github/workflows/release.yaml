@@ -22,11 +22,11 @@
                             {
                                 name: Bump version and push tag,
                                 id: tag_version,
-                                uses: anothrNick/github-tag-action@1.61.0,
+                                uses: anothrNick/github-tag-action@1,
                                 env:
                                     {
                                         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
-                                        WITH_V: false,
+                                        WITH_V: true,
                                         DEFAULT_BUMP: patch,
                                         DRY_RUN: true,
                                     },
@@ -39,7 +39,7 @@
                                     {
                                         SH_FILE_OUTPUT: "${{ github.workspace }}/${{ env.SH_FILE_INPUT_NAME }}",
                                     },
-                                run: 'tar -czvf ${{ env.SH_FILE_OUTPUT }}.tar.gz ${{ env.SH_FILE_OUTPUT }}.sh && res=$(shasum -a 256 ${{ env.SH_FILE_OUTPUT }}.tar.gz | awk ''{ print $1 }'') && echo "SH_FILE_SHA=$res" >> $GITHUB_OUTPUT && echo "$res" > ${{ env.SH_FILE_OUTPUT }}.sha256',
+                                run: 'tar -czvf ${{ env.SH_FILE_INPUT_NAME }}.tar.gz ${{ env.SH_FILE_OUTPUT }}.sh && res=$(shasum -a 256 ${{ env.SH_FILE_OUTPUT }}.tar.gz | awk ''{ print $1 }'') && echo "SH_FILE_SHA=$res" >> $GITHUB_OUTPUT && echo "$res" > ${{ env.SH_FILE_OUTPUT }}.sha256',
                             },
                             {
                                 name: Create GitHub Release,
