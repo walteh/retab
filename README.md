@@ -12,7 +12,7 @@ Welcome to a new era, where we have broken the Terraform space-time continuum.
 
 ---
 
-`tftab` is the same as `terraform fmt`, but it replaces **preceding** spaces with tabs.
+<!-- `tftab` is the same as `terraform fmt`, but it replaces **preceding** spaces with tabs. -->
 
 
 ```hcl
@@ -39,7 +39,7 @@ resource "aws_instance" "example" {
 
 ## 🏓 use `tftab`
 
-Using `tftab` is as easy as it gets. Just replace `terraform fmt` with `tftab` in your workflow, and you're all set. Here's how you do it:
+<!-- Using `tftab` is as easy as it gets. Just replace `terraform fmt` with `tftab` in your workflow, and you're all set. Here's how you do it: -->
 
 ```bash
 # Before
@@ -53,14 +53,14 @@ tftab my_happy_file.tf
 
 ### 🍺 Homebrew
 
-Installation is a breeze with Homebrew. Just tap into the wisdom of nuggxyz, and install the formula for `tftab`. Here's how you do it:
+<!-- Installation is a breeze with Homebrew. Just tap into the wisdom of nuggxyz, and install the formula for `tftab`. Here's how you do it: -->
 
 ```bash
 brew tap nuggxyz/tap
 brew install tftab
 ```
 
-And just like that, you're ready to embrace the tab life in your Terraform files.
+<!-- And just like that, you're ready to embrace the tab life in your Terraform files. -->
 
 ## 🤯 Why `tftab`?
 
