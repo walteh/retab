@@ -4,7 +4,7 @@ Welcome to a new era, where we have broken the Terraform space-time continuum.
 
 ---
 
-✅ beautiful allignment (using `terraform fmt`)
+✅ `=` sign alignment
 
 **AND**
 
