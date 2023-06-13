@@ -20,17 +20,10 @@
                                 with: { fetch-depth: 0 },
                             },
                             {
-                                name: Bump version and push tag,
-                                id: tag_version,
-                                uses: anothrNick/github-tag-action@1,
-                                env:
-                                    {
-                                        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
-                                        WITH_V: false,
-                                        DEFAULT_BUMP: patch,
-                                        DRY_RUN: true,
-                                    },
+                                name: setup buildrc,
+                                uses: nuggxyz/actions/setup-buildrc@main,
                             },
+                            { name: next tag, run: "buildrc tag next" },
                             {
                                 name: Generate SHA256 and rename script,
                                 id: prepare_script,
@@ -54,9 +47,9 @@
                                 with:
                                     {
                                         artifacts: "${{ env.SH_FILE_OUTPUT }}.tar.gz\n${{ env.SH_FILE_OUTPUT }}.sha256",
-                                        tag: "v${{ steps.tag_version.outputs.tag }}",
-                                        name: "${{ steps.tag_version.outputs.tag }}",
-                                        body: "Auto-generated release for ${{ steps.tag_version.outputs.tag }}\n\nSHA256 (tftab.tar.gz): `${{ env.SH_FILE_SHA }}`",
+                                        tag: "v${{ env.BUILDRC_TAG_NEXT_FULL }}",
+                                        name: "${{ env.BUILDRC_TAG_NEXT_FULL }}",
+                                        body: "Auto-generated release for ${{ env.BUILDRC_TAG_NEXT_FULL }}\n\nSHA256 (tftab.tar.gz): `${{ env.SH_FILE_SHA }}`",
                                         draft: false,
                                         prerelease: false,
                                     },

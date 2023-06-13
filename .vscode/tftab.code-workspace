@@ -14,6 +14,15 @@
 		"search.useIgnoreFiles": true,
 		"debug.console.wordWrap": false,
 		/* //////////////////////////////////////////////
+							FILES
+		////////////////////////////////////////////// */
+		"material-icon-theme.files.associations": {
+			".buildrc": "auto",
+		},
+		"files.associations": {
+			".buildrc": "yaml",
+		},
+		/* //////////////////////////////////////////////
 							YAML
 		////////////////////////////////////////////// */
 		"yaml.format.enable": true,
