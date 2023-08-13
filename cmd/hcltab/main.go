@@ -16,9 +16,10 @@ func init() {
 }
 
 type CLI struct {
-	Handler handler.Handler `kong:"cmd,help='Run a handler',name='handler',aliases='h'"`
-	Quiet   bool            `kong:"short='q',help='Do not print any output',env='QUIET'"`
-	Debug   bool            `kong:"short='d',help='Print debug output',env='DEBUG'"`
+	handler.Handler `kong:"cmd,help='Run a handler',aliases='h'"`
+	Quiet           bool `kong:"short='q',help='Do not print any output',env='QUIET'"`
+	Debug           bool `kong:"short='d',help='Print debug output',env='DEBUG'"`
+	Version         bool `kong:"short='v',help='Print version and exit'"`
 }
 
 func run() error {
@@ -27,10 +28,11 @@ func run() error {
 
 	cli := CLI{}
 
-	k := kong.Parse(&cli, kong.Name("buildrc"))
+	k := kong.Parse(&cli, kong.Name("hcltab"))
 
-	if k.Selected().Name == "version" {
-		return k.Run(ctx)
+	if cli.Version {
+		kong.DefaultHelpPrinter(kong.HelpOptions{}, k)
+		return nil
 	}
 
 	if cli.Quiet {
