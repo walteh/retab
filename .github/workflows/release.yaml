@@ -2,11 +2,7 @@
     name: release,
     on: { push: { branches: [main] } },
     permissions: { contents: write, packages: write },
-    env:
-        {
-            GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
-            SH_FILE_INPUT_NAME: "tftab",
-        },
+    env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" },
     jobs:
         {
             main:
@@ -21,39 +17,18 @@
                             },
                             {
                                 name: setup buildrc,
-                                uses: nuggxyz/actions/setup-buildrc@main,
+                                uses: walteh/actions/setup-buildrc@main,
                             },
-                            { name: next tag, run: "buildrc tag next" },
+                            { name: builrc open, run: "buildrc simple open" },
                             {
-                                name: Generate SHA256 and rename script,
-                                id: prepare_script,
-                                if: success(),
-                                env:
-                                    {
-                                        SH_FILE_OUTPUT: "${{ github.workspace }}/${{ env.SH_FILE_INPUT_NAME }}",
-                                    },
-                                run: 'tar -czvf ${{ env.SH_FILE_INPUT_NAME }}.tar.gz ${{ env.SH_FILE_OUTPUT }}.sh && res=$(shasum -a 256 ${{ env.SH_FILE_OUTPUT }}.tar.gz | awk ''{ print $1 }'') && echo "SH_FILE_SHA=$res" >> $GITHUB_OUTPUT && echo "$res" > ${{ env.SH_FILE_OUTPUT }}.sha256',
+                                name: copy tftab,
+                                run: "cp ./tftab.sh $BUILDRC_TARGZ && cp ./tftab.sh $BUILDRC_SHA256",
                             },
                             {
-                                name: Create GitHub Release,
-                                if: success(),
-                                uses: ncipollo/release-action@v1,
-                                env:
-                                    {
-                                        SH_FILE_OUTPUT: "${{ github.workspace }}/${{ env.SH_FILE_INPUT_NAME }}",
-                                        SH_FILE_SHA: "${{ steps.prepare_script.outputs.SH_FILE_SHA }}",
-                                        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
-                                    },
-                                with:
-                                    {
-                                        artifacts: "${{ env.SH_FILE_OUTPUT }}.tar.gz\n${{ env.SH_FILE_OUTPUT }}.sha256",
-                                        tag: "v${{ env.BUILDRC_TAG_NEXT_FULL }}",
-                                        name: "${{ env.BUILDRC_TAG_NEXT_FULL }}",
-                                        body: "Auto-generated release for ${{ env.BUILDRC_TAG_NEXT_FULL }}\n\nSHA256 (tftab.tar.gz): `${{ env.SH_FILE_SHA }}`",
-                                        draft: false,
-                                        prerelease: false,
-                                    },
+                                name: builrc upload,
+                                run: "buildrc simple upload tftab",
                             },
+                            { name: builrc close, run: "buildrc simple close" },
                         ],
                 },
         },
