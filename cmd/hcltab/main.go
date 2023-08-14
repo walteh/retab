@@ -31,8 +31,7 @@ func run() error {
 	k := kong.Parse(&cli, kong.Name("hcltab"))
 
 	if cli.Version {
-		kong.DefaultHelpPrinter(kong.HelpOptions{}, k)
-		return nil
+		return kong.DefaultHelpPrinter(kong.HelpOptions{}, k)
 	}
 
 	if cli.Quiet {

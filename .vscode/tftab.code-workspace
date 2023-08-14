@@ -36,5 +36,8 @@
 		"yaml.format.proseWrap": "preserve",
 		"yaml.format.singleQuote": false,
 		"yaml.extension.recommendations": true,
+		"files.exclude": {
+			"**/.git": false
+		},
 	}
 }
