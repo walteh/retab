@@ -3,7 +3,7 @@
 FROM alpine:3.14 AS gen
 RUN apk add --no-cache git
 WORKDIR /src
-RUN --mount=type=bind,source=/src/../../.git/modules/tftab,target=. <<EOT
+RUN --mount=type=bind,target=. <<EOT
 #!/usr/bin/env sh
 set -e
 mkdir /out
@@ -21,7 +21,7 @@ FROM scratch AS update
 COPY --from=gen /out /
 
 FROM gen AS validate
-RUN --mount=type=bind,source=/src/../.git/modules/tftab,target=.,rw <<EOT
+RUN --mount=type=bind,target=.,rw <<EOT
 set -e
 git add -A
 cp -rf /out/* .
