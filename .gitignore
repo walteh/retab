@@ -2,4 +2,3 @@ bin
 .DS_Store
 
 generated-files
-vendor
