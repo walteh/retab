@@ -11,7 +11,7 @@ fi
 # checksums
 (
 	cd ${DESTDIR}
-	sha256sum -b buildx-* >./checksums.txt
+	sha256sum -b tftab-* >./checksums.txt
 	sed -i '/darwin/d' ./checksums.txt
 	sha256sum -c --strict checksums.txt
 )

@@ -254,7 +254,7 @@ jobs:
                   name: buildx
                   path: ${{ env.DESTDIR }}
             - name: Create checksums
-              run: ./hack/hash-files
+              run: ./hack/hash
             - name: List artifacts
               run: |
                   tree -nh ${{ env.DESTDIR }}
