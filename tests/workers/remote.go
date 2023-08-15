@@ -2,6 +2,7 @@ package workers
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 
@@ -44,6 +45,12 @@ func (w remoteWorker) New(ctx context.Context, cfg *integration.BackendConfig) (
 		bk.Address(),
 	)
 	cmd.Env = append(os.Environ(), "BUILDX_CONFIG=/tmp/buildx-"+name)
+
+	fmt.Println(cmd.String())
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
 	if err := cmd.Run(); err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to create buildx instance %s", name)
 	}
