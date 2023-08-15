@@ -235,6 +235,7 @@ jobs:
             - name: Set up buildrc
               id: buildrc
               uses: walteh/actions/setup-buildrc@main
+              env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
             - name: Download binaries
               uses: actions/download-artifact@v3
               with:
