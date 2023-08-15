@@ -39,8 +39,18 @@ func withDir(dir string) cmdOpt {
 	}
 }
 
-func buildxCmd(sb integration.Sandbox, opts ...cmdOpt) *exec.Cmd {
+func tftabCmd(sb integration.Sandbox, opts ...cmdOpt) *exec.Cmd {
 	cmd := exec.Command("tftab")
+	cmd.Env = append([]string{}, os.Environ()...)
+	for _, opt := range opts {
+		opt(cmd)
+	}
+
+	return cmd
+}
+
+func buildxCmd(sb integration.Sandbox, opts ...cmdOpt) *exec.Cmd {
+	cmd := exec.Command("buildx")
 	cmd.Env = append([]string{}, os.Environ()...)
 	for _, opt := range opts {
 		opt(cmd)

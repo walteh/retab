@@ -15,7 +15,7 @@ var versionTests = []func(t *testing.T, sb integration.Sandbox){
 }
 
 func testVersion(t *testing.T, sb integration.Sandbox) {
-	cmd := buildxCmd(sb, withArgs("version"))
+	cmd := tftabCmd(sb, withArgs("version"))
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
 

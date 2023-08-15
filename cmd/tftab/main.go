@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
 	"github.com/walteh/tftab/cmd/tftab/handler"
+	"github.com/walteh/tftab/version"
 )
 
 func init() {
@@ -31,7 +33,8 @@ func run() error {
 	k := kong.Parse(&cli, kong.Name("tftab"))
 
 	if cli.Version {
-		return kong.DefaultHelpPrinter(kong.HelpOptions{}, k)
+		_, err := fmt.Println(version.Version)
+		return err
 	}
 
 	if cli.Quiet {
