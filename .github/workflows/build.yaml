@@ -3,7 +3,18 @@ name: build
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: true
-
+permissions:
+    {
+        id-token: write,
+        contents: write,
+        packages: write,
+        actions: write,
+        deployments: write,
+        pull-requests: write,
+        issues: write,
+        statuses: write,
+        checks: write,
+    }
 on:
     workflow_dispatch:
     # push:
@@ -232,6 +243,7 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v3
+              with: { fetch-depth: 0 }
             - name: Set up buildrc
               id: buildrc
               uses: walteh/actions/setup-buildrc@main
@@ -256,6 +268,7 @@ jobs:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               with:
                   draft: true
+                  prerelease: true
                   files: ${{ env.DESTDIR }}/*
                   tag_name: ${{ steps.buildrc.outputs.next_tag }}
 
