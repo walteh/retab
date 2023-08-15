@@ -33,7 +33,7 @@ func run() error {
 	k := kong.Parse(&cli, kong.Name("tftab"))
 
 	if cli.Version {
-		_, err := fmt.Println(version.Version)
+		_, err := fmt.Printf("%s %s %s", version.Package, version.Version, version.Revision)
 		return err
 	}
 
