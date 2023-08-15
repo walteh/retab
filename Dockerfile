@@ -37,7 +37,7 @@ RUN DOCKER_ARCH=$(case ${TARGETPLATFORM:-linux/amd64} in \
 	"linux/s390x")   echo "s390x"   ;; \
 	*)               echo ""        ;; esac) \
 	&& echo "DOCKER_ARCH=$DOCKER_ARCH" \
-	&& wget -qO- "https://download.docker.com/linux/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz" | tar xvz --strip 1
+	&& wget -qO- "https://download.docker.com/linux/static/stable/aarch64/docker-${DOCKER_VERSION}.tgz" | tar xvz --strip 1
 RUN ./dockerd --version && ./containerd --version && ./ctr --version && ./runc --version
 
 FROM gobase AS gotestsum
@@ -47,24 +47,24 @@ RUN --mount=target=/root/.cache,type=cache \
 	GOBIN=/out/ go install "gotest.tools/gotestsum@${GOTESTSUM_VERSION}" && \
 	/out/gotestsum --version
 
-FROM gobase AS buildx-version
+FROM gobase AS tftab-version
 RUN --mount=type=bind,target=. <<EOT
   set -e
-  mkdir /buildx-version
-  echo -n "$(./hack/git-meta version)" | tee /buildx-version/version
-  echo -n "$(./hack/git-meta revision)" | tee /buildx-version/revision
+  mkdir /tftab-version
+  echo -n "$(./hack/git-meta version)" | tee /tftab-version/version
+  echo -n "$(./hack/git-meta revision)" | tee /tftab-version/revision
 EOT
 
-FROM gobase AS buildx-build
+FROM gobase AS tftab-build
 ARG TARGETPLATFORM
 RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod \
-	--mount=type=bind,from=buildx-version,source=/buildx-version,target=/buildx-version <<EOT
+	--mount=type=bind,from=tftab-version,source=/tftab-version,target=/tftab-version <<EOT
   set -e
   xx-go --wrap
-  DESTDIR=/usr/bin VERSION=$(cat /buildx-version/version) REVISION=$(cat /buildx-version/revision) GO_EXTRA_LDFLAGS="-s -w" ./hack/build
-  xx-verify --static /usr/bin/docker-buildx
+  DESTDIR=/usr/bin VERSION=$(cat /tftab-version/version) REVISION=$(cat /tftab-version/revision) GO_EXTRA_LDFLAGS="-s -w" ./hack/build
+  xx-verify --static /usr/bin/tftab
 EOT
 
 FROM gobase AS test
@@ -79,13 +79,13 @@ FROM scratch AS test-coverage
 COPY --from=test /tmp/coverage.txt /coverage.txt
 
 FROM scratch AS binaries-unix
-COPY --link --from=buildx-build /usr/bin/docker-buildx /buildx
+COPY --link --from=tftab-build /usr/bin/tftab /tftab
 
 FROM binaries-unix AS binaries-darwin
 FROM binaries-unix AS binaries-linux
 
 FROM scratch AS binaries-windows
-COPY --link --from=buildx-build /usr/bin/docker-buildx /buildx.exe
+COPY --link --from=tftab-build /usr/bin/tftab /tftab.exe
 
 FROM binaries-$TARGETOS AS binaries
 # enable scanning for this stage
@@ -108,7 +108,7 @@ COPY --link --from=registry /bin/registry /usr/bin/
 COPY --link --from=docker /opt/docker/* /usr/bin/
 COPY --link --from=buildkit /usr/bin/buildkitd /usr/bin/
 COPY --link --from=buildkit /usr/bin/buildctl /usr/bin/
-COPY --link --from=binaries /buildx /usr/bin/
+COPY --link --from=binaries /tftab /usr/bin/
 
 FROM integration-test-base AS integration-test
 COPY . .
@@ -118,10 +118,10 @@ FROM --platform=$BUILDPLATFORM alpine AS releaser
 WORKDIR /work
 ARG TARGETPLATFORM
 RUN --mount=from=binaries \
-	--mount=type=bind,from=buildx-version,source=/buildx-version,target=/buildx-version <<EOT
+	--mount=type=bind,from=tftab-version,source=/tftab-version,target=/tftab-version <<EOT
   set -e
   mkdir -p /out
-  cp buildx* "/out/buildx-$(cat /buildx-version/version).$(echo $TARGETPLATFORM | sed 's/\//-/g')$(ls buildx* | sed -e 's/^buildx//')"
+  cp tftab* "/out/tftab-$(cat /tftab-version/version).$(echo $TARGETPLATFORM | sed 's/\//-/g')$(ls tftab* | sed -e 's/^tftab//')"
 EOT
 
 FROM scratch AS release
@@ -131,7 +131,7 @@ COPY --from=releaser /out/ /
 FROM docker:$DOCKER_VERSION AS dockerd-release
 FROM alpine AS shell
 RUN apk add --no-cache iptables tmux git vim less openssh
-RUN mkdir -p /usr/local/lib/docker/cli-plugins && ln -s /usr/local/bin/buildx /usr/local/lib/docker/cli-plugins/docker-buildx
+RUN mkdir -p /usr/local/lib/docker/cli-plugins && ln -s /usr/local/bin/tftab /usr/local/lib/docker/cli-plugins/docker-tftab
 COPY ./hack/demo-env/entrypoint.sh /usr/local/bin
 COPY ./hack/demo-env/tmux.conf /root/.tmux.conf
 COPY --from=dockerd-release /usr/local/bin /usr/local/bin

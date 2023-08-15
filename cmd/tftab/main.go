@@ -8,7 +8,7 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
-	"github.com/walteh/tftab/cmd/hcltab/handler"
+	"github.com/walteh/tftab/cmd/tftab/handler"
 )
 
 func init() {
@@ -28,7 +28,7 @@ func run() error {
 
 	cli := CLI{}
 
-	k := kong.Parse(&cli, kong.Name("hcltab"))
+	k := kong.Parse(&cli, kong.Name("tftab"))
 
 	if cli.Version {
 		return kong.DefaultHelpPrinter(kong.HelpOptions{}, k)
@@ -42,7 +42,7 @@ func run() error {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
-	ctx = zerolog.New(os.Stderr).With().Timestamp().Logger().With().Str("app", "hcltab").Logger().WithContext(ctx)
+	ctx = zerolog.New(os.Stderr).With().Timestamp().Logger().With().Str("app", "tftab").Logger().WithContext(ctx)
 
 	k.BindTo(ctx, (*context.Context)(nil))
 	k.BindTo(afero.NewOsFs(), (*afero.Fs)(nil))
