@@ -6,6 +6,7 @@ require (
 	github.com/alecthomas/kong v0.8.0
 	github.com/apparentlymart/go-textseg/v13 v13.0.0
 	github.com/containerd/continuity v0.4.1
+	github.com/docker/distribution v2.8.2+incompatible
 	github.com/editorconfig/editorconfig-core-go/v2 v2.5.2
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.3
@@ -30,7 +31,6 @@ require (
 	github.com/containerd/typeurl/v2 v2.1.1 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/docker v24.0.0-rc.2.0.20230718135204-8e51b8b59cb8+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
