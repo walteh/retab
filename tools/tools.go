@@ -14,4 +14,5 @@ import (
 	_ "github.com/gogo/protobuf/protoc-gen-gogoslick"
 	_ "github.com/golang/protobuf/protoc-gen-go"
 	_ "github.com/stretchr/testify/mock"
+	_ "github.com/vektra/mockery/v2"
 )

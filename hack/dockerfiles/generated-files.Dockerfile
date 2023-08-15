@@ -30,7 +30,8 @@ RUN --mount=type=bind,target=.,rw \
 	github.com/gogo/protobuf/protoc-gen-gogo \
 	github.com/gogo/protobuf/protoc-gen-gogofaster \
 	github.com/gogo/protobuf/protoc-gen-gogoslick \
-	github.com/golang/protobuf/protoc-gen-go
+	github.com/golang/protobuf/protoc-gen-go \
+	github.com/vektra/mockery/v2
 
 FROM tools AS generated
 RUN --mount=type=bind,target=.,rw <<EOT
@@ -40,10 +41,13 @@ RUN --mount=type=bind,target=.,rw <<EOT
   git ls-files -m --others -- ':!vendor' '**/*.pb.go' | tar -cf - --files-from - | tar -C /out -xf -
 EOT
 
-FROM vektra/mockery as mockery
+FROM tools as mockery
+WORKDIR /wrk
 RUN --mount=type=bind,target=.,rw <<EOT
 	set -ex
-	mockery --log-level TRACE
+	mockery --dir ./generated-files
+	mkdir /out
+	git ls-files -m --others -- ':!vendor' '**/*.mockery.go' | tar -cf - --files-from - | tar -C /out -xf -
 EOT
 
 FROM scratch AS update
@@ -54,10 +58,12 @@ FROM base AS validate
 RUN --mount=type=bind,target=.,rw \
 	--mount=type=bind,from=generated,source=/out,target=/generated-files <<EOT
   set -e
+
   git add -A
   if [ "$(ls -A /generated-files)" ]; then
     cp -rf /generated-files/* .
   fi
+
   diff=$(git status --porcelain -- ':!vendor' '**/*.pb.go')
   if [ -n "$diff" ]; then
     echo >&2 'ERROR: The result of "go generate" differs. Please update with "make generated-files"'
@@ -65,7 +71,7 @@ RUN --mount=type=bind,target=.,rw \
     exit 1
   fi
 
-  diff=$(git diff -- ':!vendor' '**/*.mockery.go')
+  diff=$(git status --porcelain -- ':!vendor' '**/*.mockery.go')
   if [ -n "$diff" ]; then
 	echo >&2 'ERROR: The result of "mockery" differs. Please update with "make generated-files"'
 	echo "$diff"
