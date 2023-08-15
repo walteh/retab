@@ -45,7 +45,7 @@ func (w *containerWorker) New(ctx context.Context, cfg *integration.BackendConfi
 	}
 
 	name := "integration-container-" + identity.NewID()
-	cmd := exec.Command("buildx", "create",
+	cmd := exec.Command("docker", "buildx", "create",
 		"--bootstrap",
 		"--name="+name,
 		"--config="+cfg.ConfigFile,

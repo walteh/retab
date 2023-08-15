@@ -37,7 +37,7 @@ func (w remoteWorker) New(ctx context.Context, cfg *integration.BackendConfig) (
 	}
 
 	name := "integration-remote-" + identity.NewID()
-	cmd := exec.Command("buildx", "create",
+	cmd := exec.Command("docker", "buildx", "create",
 		"--bootstrap",
 		"--name="+name,
 		"--driver=remote",
