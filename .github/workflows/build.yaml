@@ -6,11 +6,11 @@ concurrency:
 
 on:
     workflow_dispatch:
-    push:
-        branches:
-            - "*"
-        # tags:
-        #     - "v*"
+    # push:
+    #     branches:
+    #         - "*"
+    # tags:
+    #     - "v*"
     pull_request:
         paths-ignore:
             - ".github/releases.json"
