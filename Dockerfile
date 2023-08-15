@@ -24,6 +24,8 @@ FROM registry:$REGISTRY_VERSION AS registry
 
 FROM moby/buildkit:$BUILDKIT_VERSION AS buildkit
 
+FROM docker/buildx-bin:latest AS buildx-bin
+
 FROM gobase AS docker
 ARG TARGETPLATFORM
 ARG DOCKER_VERSION
@@ -117,6 +119,8 @@ COPY --link --from=docker /opt/docker/* /usr/bin/
 COPY --link --from=buildkit /usr/bin/buildkitd /usr/bin/
 COPY --link --from=buildkit /usr/bin/buildctl /usr/bin/
 COPY --link --from=binaries /tftab /usr/bin/
+# COPY --link --from=buildx-bin /buildx /usr/bin
+COPY --link --from=buildx-bin /buildx /usr/libexec/docker/cli-plugins/docker-buildx
 
 FROM integration-test-base AS integration-test
 COPY . .

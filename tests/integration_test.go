@@ -42,7 +42,6 @@ func testIntegration(t *testing.T, funcs ...func(t *testing.T, sb integration.Sa
 	}
 	mirroredImages["moby/buildkit:buildx-stable-1"] = buildkitImage
 	mirrors := integration.WithMirroredImages(mirroredImages)
-
 	tests := integration.TestFuncs(funcs...)
 	integration.Run(t, tests, mirrors)
 }
