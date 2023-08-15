@@ -39,5 +39,11 @@
 		"files.exclude": {
 			"**/.git": false
 		},
+		/* //////////////////////////////////////////////
+							DOCKER
+		////////////////////////////////////////////// */
+		"[dockerfile]": {
+			"editor.defaultFormatter": "foxundermoon.shell-format"
+		},
 	}
 }

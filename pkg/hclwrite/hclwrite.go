@@ -10,15 +10,15 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
+	"github.com/walteh/tftab/pkg/configuration"
 )
 
 const NUM_SPACES_PER_INDENT = 1
-const INDENT_CHAR = '\t'
 
 // WriteTo takes an io.Writer and writes the bytes for each token to it,
 // along with the spacing that separates each token. In other words, this
 // allows serializing the tokens to a file or other such byte stream.
-func (ts Tokens) WriteTo(wr io.Writer) (int64, error) {
+func (ts Tokens) WriteTo(wr io.Writer, cfg configuration.Provider) (int64, error) {
 	// We know we're going to be writing a lot of small chunks of repeated
 	// space characters, so we'll prepare a buffer of these that we can
 	// easily pass to wr.Write without any further allocation.
@@ -29,7 +29,7 @@ func (ts Tokens) WriteTo(wr io.Writer) (int64, error) {
 
 	tabs := make([]byte, 40)
 	for i := range tabs {
-		tabs[i] = INDENT_CHAR
+		tabs[i] = '\t'
 	}
 
 	var n int64
@@ -46,7 +46,12 @@ func (ts Tokens) WriteTo(wr io.Writer) (int64, error) {
 				thisChunk = len(tabs)
 			}
 			var thisN int
-			thisN, err = wr.Write(tabs[:thisChunk])
+			if cfg.UseTabs() {
+				thisN, err = wr.Write(tabs[:thisChunk])
+
+			} else {
+				thisN, err = wr.Write(spaces[:thisChunk*cfg.IndentSize()])
+			}
 			n += int64(thisN)
 			if err != nil {
 				return n, err

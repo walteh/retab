@@ -13,7 +13,7 @@ FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS golatest
 
-FROM golatest AS gobase
+FROM golatest:latest AS gobase
 COPY --from=xx / /
 RUN apk add --no-cache file git
 ENV GOFLAGS=-mod=vendor
@@ -28,24 +28,29 @@ FROM gobase AS docker
 ARG TARGETPLATFORM
 ARG DOCKER_VERSION
 WORKDIR /opt/docker
-RUN DOCKER_ARCH=$(case ${TARGETPLATFORM:-linux/amd64} in \
-	"linux/amd64")   echo "x86_64"  ;; \
-	"linux/arm/v6")  echo "armel"   ;; \
-	"linux/arm/v7")  echo "armhf"   ;; \
-	"linux/arm64")   echo "aarch64" ;; \
-	"linux/ppc64le") echo "ppc64le" ;; \
-	"linux/s390x")   echo "s390x"   ;; \
-	*)               echo ""        ;; esac) \
-	&& echo "DOCKER_ARCH=$DOCKER_ARCH" \
-	&& wget -qO- "https://download.docker.com/linux/static/stable/aarch64/docker-${DOCKER_VERSION}.tgz" | tar xvz --strip 1
+RUN <<EOT
+DOCKER_ARCH=$(
+	case ${TARGETPLATFORM:-linux/amd64} in
+	"linux/amd64") echo "x86_64" ;;
+	"linux/arm/v6") echo "armel" ;;
+	"linux/arm/v7") echo "armhf" ;;
+	"linux/arm64") echo "aarch64" ;;
+	"linux/ppc64le") echo "ppc64le" ;;
+	"linux/s390x") echo "s390x" ;;
+	*) echo "" ;; esac
+)
+echo "DOCKER_ARCH=$DOCKER_ARCH" &&
+wget -qO- "https://download.docker.com/linux/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz" | tar xvz --strip 1
+EOT
 RUN ./dockerd --version && ./containerd --version && ./ctr --version && ./runc --version
 
 FROM gobase AS gotestsum
 ARG GOTESTSUM_VERSION
 ENV GOFLAGS=
-RUN --mount=target=/root/.cache,type=cache \
-	GOBIN=/out/ go install "gotest.tools/gotestsum@${GOTESTSUM_VERSION}" && \
+RUN --mount=target=/root/.cache,type=cache <<EOT
+	GOBIN=/out/ go install "gotest.tools/gotestsum@${GOTESTSUM_VERSION}" &&
 	/out/gotestsum --version
+EOT
 
 FROM gobase AS tftab-version
 RUN --mount=type=bind,target=. <<EOT
@@ -71,9 +76,10 @@ FROM gobase AS test
 ENV SKIP_INTEGRATION_TESTS=1
 RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/root/.cache \
-	--mount=type=cache,target=/go/pkg/mod \
-	go test -v -coverprofile=/tmp/coverage.txt -covermode=atomic ./... && \
+	--mount=type=cache,target=/go/pkg/mod <<EOT
+	go test -v -coverprofile=/tmp/coverage.txt -covermode=atomic ./... &&
 	go tool cover -func=/tmp/coverage.txt
+EOT
 
 FROM scratch AS test-coverage
 COPY --from=test /tmp/coverage.txt /coverage.txt

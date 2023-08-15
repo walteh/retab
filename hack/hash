@@ -5,13 +5,13 @@ set -eu -o pipefail
 : "${DESTDIR=./bin/release}"
 
 if [ ! -d "$DESTDIR" ]; then
-  exit 0
+	exit 0
 fi
 
 # checksums
 (
-  cd ${DESTDIR}
-  sha256sum -b buildx-* > ./checksums.txt
-  sed -i '/darwin/d' ./checksums.txt
-  sha256sum -c --strict checksums.txt
+	cd ${DESTDIR}
+	sha256sum -b buildx-* >./checksums.txt
+	sed -i '/darwin/d' ./checksums.txt
+	sha256sum -c --strict checksums.txt
 )

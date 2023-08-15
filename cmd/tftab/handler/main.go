@@ -11,6 +11,7 @@ import (
 	"github.com/mattn/go-zglob"
 	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
+	"github.com/walteh/tftab/pkg/configuration/editorconfig"
 	"github.com/walteh/tftab/pkg/hclwrite"
 )
 
@@ -23,11 +24,16 @@ func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
 
 	// handle when option specifies a particular file
 	if me.File != "" {
+		cfg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, me.File)
+		if err != nil {
+			return err
+		}
+
 		if !filepath.IsAbs(me.File) {
 			me.File = filepath.Join(me.WorkingDir, me.File)
 		}
 		zerolog.Ctx(ctx).Debug().Msgf("Formatting hcl file at: %s.", me.File)
-		return hclwrite.Process(ctx, fs, me.File)
+		return hclwrite.Process(ctx, cfg, fs, me.File)
 	}
 
 	zerolog.Ctx(ctx).Debug().Msgf("Formatting hcl files from the directory tree %s.", me.WorkingDir)
@@ -46,8 +52,12 @@ func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
 	}
 
 	var formatErrors *multierror.Error
-	for _, tgHclFile := range files {
-		err := hclwrite.Process(ctx, fs, tgHclFile)
+	for _, filename := range files {
+		cfg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, filename)
+		if err != nil {
+			return err
+		}
+		err = hclwrite.Process(ctx, cfg, fs, filename)
 		if err != nil {
 			formatErrors = multierror.Append(formatErrors, err)
 		}

@@ -20,7 +20,7 @@ RUN <<EOT
   wget -q https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-${TARGETOS}-${arch}.zip
   unzip protoc-${PROTOC_VERSION}-${TARGETOS}-${arch}.zip -d /usr/local
 EOT
-WORKDIR /go/src/github.com/docker/buildx
+WORKDIR /go/src/github.com/walteh/tftab
 
 FROM base AS tools
 RUN --mount=type=bind,target=.,rw \
@@ -40,8 +40,15 @@ RUN --mount=type=bind,target=.,rw <<EOT
   git ls-files -m --others -- ':!vendor' '**/*.pb.go' | tar -cf - --files-from - | tar -C /out -xf -
 EOT
 
+FROM vektra/mockery as mockery
+RUN --mount=type=bind,target=.,rw <<EOT
+	set -ex
+	mockery --log-level TRACE
+EOT
+
 FROM scratch AS update
 COPY --from=generated /out /
+COPY --from=mockery /out /
 
 FROM base AS validate
 RUN --mount=type=bind,target=.,rw \
@@ -56,5 +63,12 @@ RUN --mount=type=bind,target=.,rw \
     echo >&2 'ERROR: The result of "go generate" differs. Please update with "make generated-files"'
     echo "$diff"
     exit 1
+  fi
+
+  diff=$(git diff -- ':!vendor' '**/*.mockery.go')
+  if [ -n "$diff" ]; then
+	echo >&2 'ERROR: The result of "mockery" differs. Please update with "make generated-files"'
+	echo "$diff"
+	exit 1
   fi
 EOT

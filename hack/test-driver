@@ -12,14 +12,17 @@ set -eu -o pipefail
 : "${PLATFORMS=linux/amd64,linux/arm64}"
 
 function buildxCmd {
-  (set -x ; $BUILDX_CMD "$@")
+	(
+		set -x
+		$BUILDX_CMD "$@"
+	)
 }
 
 function clean {
-  rm -rf "$context"
-  if [ "$builderName" != "default" ]; then
-    buildxCmd rm "$builderName"
-  fi
+	rm -rf "$context"
+	if [ "$builderName" != "default" ]; then
+		buildxCmd rm "$builderName"
+	fi
 }
 
 context=$(mktemp -d -t buildx-output.XXXXXXXXXX)
@@ -30,85 +33,85 @@ trap clean EXIT
 builderName=buildx-test-$(openssl rand -hex 16)
 buildPlatformFlag=
 if [ "$DRIVER" = "docker" ]; then
-  builderName=default
+	builderName=default
 else
-  buildPlatformFlag=--platform="${PLATFORMS}"
+	buildPlatformFlag=--platform="${PLATFORMS}"
 fi
 
 if [ "$DRIVER" != "remote" ]; then
-  driverOpt=${driverOpt:+"${driverOpt},"}image=${BUILDKIT_IMAGE}
+	driverOpt=${driverOpt:+"${driverOpt},"}image=${BUILDKIT_IMAGE}
 fi
 if [ -n "$DRIVER_OPT" ]; then
-  driverOpt=${driverOpt:+"${driverOpt},"}$DRIVER_OPT
+	driverOpt=${driverOpt:+"${driverOpt},"}$DRIVER_OPT
 fi
 
 # create builder except for docker driver
 if [ "$DRIVER" != "docker" ]; then
-  if [ "${MULTI_NODE}" = "1" ]; then
-    firstNode=1
-    for platform in ${PLATFORMS//,/ }; do
-      createFlags=""
-      if [ -f "$BUILDKIT_CFG" ]; then
-        createFlags="$createFlags --config=${BUILDKIT_CFG}"
-      fi
-      if [ "$firstNode" = "0" ]; then
-        createFlags="$createFlags --append"
-      fi
-      nodeName=""
-      if [ "$DRIVER" != "kubernetes" ]; then
-        nodeName="${builderName}-${platform/\//-}"
-      fi
-      buildxCmd create ${createFlags} \
-        --bootstrap \
-        --name="${builderName}" \
-        --node="${nodeName}" \
-        --platform="${platform}" \
-        --driver="${DRIVER}" \
-        ${driverOpt:+"--driver-opt=${driverOpt}"} \
-        ${ENDPOINT}
-      firstNode=0
-    done
-  else
-    createFlags=""
-    if [ -f "$BUILDKIT_CFG" ]; then
-      createFlags="$createFlags --config=${BUILDKIT_CFG}"
-    fi
-    buildxCmd create ${createFlags} \
-      --bootstrap \
-      --name="${builderName}" \
-      --platform="${PLATFORMS}" \
-      --driver="${DRIVER}" \
-      ${driverOpt:+"--driver-opt=${driverOpt}"} \
-      ${ENDPOINT}
-  fi
+	if [ "${MULTI_NODE}" = "1" ]; then
+		firstNode=1
+		for platform in ${PLATFORMS//,/ }; do
+			createFlags=""
+			if [ -f "$BUILDKIT_CFG" ]; then
+				createFlags="$createFlags --config=${BUILDKIT_CFG}"
+			fi
+			if [ "$firstNode" = "0" ]; then
+				createFlags="$createFlags --append"
+			fi
+			nodeName=""
+			if [ "$DRIVER" != "kubernetes" ]; then
+				nodeName="${builderName}-${platform/\//-}"
+			fi
+			buildxCmd create ${createFlags} \
+				--bootstrap \
+				--name="${builderName}" \
+				--node="${nodeName}" \
+				--platform="${platform}" \
+				--driver="${DRIVER}" \
+				${driverOpt:+"--driver-opt=${driverOpt}"} \
+				${ENDPOINT}
+			firstNode=0
+		done
+	else
+		createFlags=""
+		if [ -f "$BUILDKIT_CFG" ]; then
+			createFlags="$createFlags --config=${BUILDKIT_CFG}"
+		fi
+		buildxCmd create ${createFlags} \
+			--bootstrap \
+			--name="${builderName}" \
+			--platform="${PLATFORMS}" \
+			--driver="${DRIVER}" \
+			${driverOpt:+"--driver-opt=${driverOpt}"} \
+			${ENDPOINT}
+	fi
 fi
 
 function buildOutput {
-  local name=$1
-  if [ "$DRIVER" != "docker" ]; then
-    if [ "${MULTI_NODE}" = "1" ]; then
-      echo "type=cacheonly"
-    else
-      echo "type=oci,dest=${context}/${name}.tar"
-    fi
-  else
-    echo "type=docker,name=${name}"
-  fi
+	local name=$1
+	if [ "$DRIVER" != "docker" ]; then
+		if [ "${MULTI_NODE}" = "1" ]; then
+			echo "type=cacheonly"
+		else
+			echo "type=oci,dest=${context}/${name}.tar"
+		fi
+	else
+		echo "type=docker,name=${name}"
+	fi
 }
 
 # multi-platform not supported by docker driver
 buildPlatformFlag=
 bakePlatformFlag=
 if [ "$DRIVER" != "docker" ]; then
-  buildPlatformFlag=--platform="${PLATFORMS}"
-  bakePlatformFlag=--set="*.platform=${PLATFORMS}"
+	buildPlatformFlag=--platform="${PLATFORMS}"
+	bakePlatformFlag=--set="*.platform=${PLATFORMS}"
 fi
 
 # inspect and bootstrap
 buildxCmd inspect --bootstrap --builder="${builderName}"
 
 # create dockerfile
-cat > "${dockerfile}" <<EOL
+cat >"${dockerfile}" <<EOL
 FROM busybox as build
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
@@ -129,22 +132,22 @@ EOL
 
 # build
 buildxCmd build ${buildPlatformFlag} \
-  --output="$(buildOutput buildx-test-build)" \
-  --builder="${builderName}" \
-  --metadata-file="${context}/metadata-build.json" \
-  "${context}"
+	--output="$(buildOutput buildx-test-build)" \
+	--builder="${builderName}" \
+	--metadata-file="${context}/metadata-build.json" \
+	"${context}"
 cat "${context}/metadata-build.json"
 
 # load to docker store
 if [ "$DRIVER" != "docker" ]; then
-  buildxCmd build \
-    --output="type=docker,name=buildx-test-load" \
-    --builder="${builderName}" \
-    "${context}"
+	buildxCmd build \
+		--output="type=docker,name=buildx-test-load" \
+		--builder="${builderName}" \
+		"${context}"
 fi
 
 # create bake def
-cat > "${bakedef}" <<EOL
+cat >"${bakedef}" <<EOL
 group "default" {
   targets = ["release"]
 }
@@ -164,17 +167,17 @@ EOL
 
 # bake default target
 buildxCmd bake ${bakePlatformFlag} \
-  --file="${bakedef}" \
-  --builder="${builderName}" \
-  --set "*.context=${context}" \
-  --metadata-file="${context}/metadata-bake-def.json"
+	--file="${bakedef}" \
+	--builder="${builderName}" \
+	--set "*.context=${context}" \
+	--metadata-file="${context}/metadata-bake-def.json"
 cat "${context}/metadata-bake-def.json"
 
 # bake all target
 buildxCmd bake ${bakePlatformFlag} \
-  --file="${bakedef}" \
-  --builder="${builderName}" \
-  --set "*.context=${context}" \
-  --metadata-file="${context}/metadata-bake-all.json" \
-  all
+	--file="${bakedef}" \
+	--builder="${builderName}" \
+	--set "*.context=${context}" \
+	--metadata-file="${context}/metadata-bake-all.json" \
+	all
 cat "${context}/metadata-bake-all.json"

@@ -9,14 +9,15 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
+	"github.com/walteh/tftab/pkg/configuration"
 )
 
-func Format(src []byte) (io.Reader, error) {
+func Format(cfg configuration.Provider, src []byte) (io.Reader, error) {
 	tokens := lexConfig(src)
 	tokens.format()
 	r, w := io.Pipe()
 	go func() {
-		_, err := tokens.WriteTo(w)
+		_, err := tokens.WriteTo(w, cfg)
 		if err != nil {
 			w.CloseWithError(err)
 			return
@@ -27,54 +28,43 @@ func Format(src []byte) (io.Reader, error) {
 	return r, nil
 }
 
-// formatTgHCL uses the hcl2 library to format the hcl file. This will attempt to parse the HCL file first to
+// Process uses the hcl2 library to format the hcl file. This will attempt to parse the HCL file first to
 // ensure that there are no syntax errors, before attempting to format it.
-func Process(ctx context.Context, fs afero.Fs, tgHclFile string) error {
-	zerolog.Ctx(ctx).Debug().Msgf("Formatting %s", tgHclFile)
+func Process(ctx context.Context, cfg configuration.Provider, fs afero.Fs, fle string) error {
+	zerolog.Ctx(ctx).Debug().Msgf("Formatting %s", fle)
 
-	// info, err := fs.Stat(tgHclFile)
-	// if err != nil {
-	// 	zerolog.Ctx(ctx).Error().Err(err).Msgf("Error retrieving file info of %s", tgHclFile)
-	// 	return err
-	// }
-
-	contents, err := afero.ReadFile(fs, tgHclFile)
+	contents, err := afero.ReadFile(fs, fle)
 	if err != nil {
-		zerolog.Ctx(ctx).Error().Err(err).Msgf("Error reading %s", tgHclFile)
+		zerolog.Ctx(ctx).Error().Err(err).Msgf("Error reading %s", fle)
 		return err
 	}
 
-	err = checkErrors(ctx, contents, tgHclFile)
+	err = checkErrors(ctx, contents, fle)
 	if err != nil {
-		zerolog.Ctx(ctx).Error().Err(err).Msgf("Error parsing %s", tgHclFile)
+		zerolog.Ctx(ctx).Error().Err(err).Msgf("Error parsing %s", fle)
 		return err
 	}
 
-	newContents, err := Format(contents)
+	newContents, err := Format(cfg, contents)
 	if err != nil {
-		zerolog.Ctx(ctx).Error().Err(err).Msgf("Error formatting %s", tgHclFile)
+		zerolog.Ctx(ctx).Error().Err(err).Msgf("Error formatting %s", fle)
 		return err
 	}
 
-	// fileUpdated := !bytes.Equal(newContents, contents)
+	zerolog.Ctx(ctx).Info().Msgf("%s was updated", fle)
 
-	// if fileUpdated {
-
-	// }
-	zerolog.Ctx(ctx).Info().Msgf("%s was updated", tgHclFile)
-
-	return afero.WriteReader(fs, tgHclFile, newContents)
+	return afero.WriteReader(fs, fle, newContents)
 }
 
 // checkErrors takes in the contents of a hcl file and looks for syntax errors.
-func checkErrors(ctx context.Context, contents []byte, tgHclFile string) error {
+func checkErrors(ctx context.Context, contents []byte, fle string) error {
 	parser := hclparse.NewParser()
-	_, diags := parser.ParseHCL(contents, tgHclFile)
+	_, diags := parser.ParseHCL(contents, fle)
 	diagWriter := hcl.NewDiagnosticTextWriter(os.Stdout, parser.Files(), 0, true)
 	defer func() {
 		err := diagWriter.WriteDiagnostics(diags)
 		if err != nil {
-			zerolog.Ctx(ctx).Error().Err(err).Msgf("Error writing diagnostics for %s", tgHclFile)
+			zerolog.Ctx(ctx).Error().Err(err).Msgf("Error writing diagnostics for %s", fle)
 		}
 	}()
 	if diags.HasErrors() {
