@@ -13,7 +13,7 @@ FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS golatest
 
-FROM golatest:latest AS gobase
+FROM golatest AS gobase
 COPY --from=xx / /
 RUN apk add --no-cache file git
 ENV GOFLAGS=-mod=vendor
@@ -29,11 +29,13 @@ ARG TARGETPLATFORM
 ARG DOCKER_VERSION
 WORKDIR /opt/docker
 RUN <<EOT
+CASE=${TARGETPLATFORM:-linux/amd64}
 DOCKER_ARCH=$(
-	case ${TARGETPLATFORM:-linux/amd64} in
+	case ${CASE} in
 	"linux/amd64") echo "x86_64" ;;
 	"linux/arm/v6") echo "armel" ;;
 	"linux/arm/v7") echo "armhf" ;;
+	"linux/arm64/v8") echo "aarch64" ;;
 	"linux/arm64") echo "aarch64" ;;
 	"linux/ppc64le") echo "ppc64le" ;;
 	"linux/s390x") echo "s390x" ;;

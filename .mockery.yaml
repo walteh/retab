@@ -4,12 +4,20 @@ testonly: False
 # keeptree: True
 exported: True
 dir: "generated-files/mockery"
-mockname: "Mock{{.PackageName}}{{.InterfaceName}}"
 outpkg: "mockery"
 filename: "{{.InterfaceName}}.{{.PackageName}}.mockery.go"
 packages:
     {
         github.com/walteh/tftab/pkg/configuration:
-            { interfaces: { Provider: {} } },
+            {
+                interfaces:
+                    {
+                        Provider:
+                            {
+                                config:
+                                    { mockname: "MockConfigurationProvider" },
+                            },
+                    },
+            },
     }
 # case: underscore

@@ -33,7 +33,7 @@ func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
 			me.File = filepath.Join(me.WorkingDir, me.File)
 		}
 		zerolog.Ctx(ctx).Debug().Msgf("Formatting hcl file at: %s.", me.File)
-		return hclwrite.Process(ctx, cfg, fs, me.File)
+		return hclwrite.Format(ctx, cfg, fs, me.File)
 	}
 
 	zerolog.Ctx(ctx).Debug().Msgf("Formatting hcl files from the directory tree %s.", me.WorkingDir)
@@ -57,7 +57,7 @@ func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
 		if err != nil {
 			return err
 		}
-		err = hclwrite.Process(ctx, cfg, fs, filename)
+		err = hclwrite.Format(ctx, cfg, fs, filename)
 		if err != nil {
 			formatErrors = multierror.Append(formatErrors, err)
 		}

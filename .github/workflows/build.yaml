@@ -1,0 +1,281 @@
+name: build
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+on:
+    workflow_dispatch:
+    push:
+        branches:
+            - "*"
+        # tags:
+        #     - "v*"
+    pull_request:
+        paths-ignore:
+            - ".github/releases.json"
+            - "README.md"
+            - "docs/**"
+
+env:
+    BUILDX_VERSION: "latest"
+    BUILDKIT_IMAGE: "moby/buildkit:latest"
+    REPO_SLUG: "walteh/tftab"
+    DESTDIR: "./bin"
+    TEST_CACHE_SCOPE: "test"
+
+jobs:
+    prepare-test:
+        runs-on: ubuntu-22.04
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v3
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v2
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+              with:
+                  version: ${{ env.BUILDX_VERSION }}
+                  driver-opts: image=${{ env.BUILDKIT_IMAGE }}
+                  buildkitd-flags: --debug
+            - name: Build
+              uses: docker/bake-action@v3
+              with:
+                  files: |
+                      ./docker-bake.hcl
+                  targets: integration-test-base
+                  set: |
+                      *.cache-from=type=gha,scope=${{ env.TEST_CACHE_SCOPE }}
+                      *.cache-to=type=gha,scope=${{ env.TEST_CACHE_SCOPE }}
+    test:
+        runs-on: ubuntu-22.04
+        needs:
+            - prepare-test
+        env:
+            TESTFLAGS: "-v --parallel=6 --timeout=30m"
+            TESTFLAGS_DOCKER: "-v --parallel=1 --timeout=30m"
+            GOTESTSUM_FORMAT: "standard-verbose"
+            TEST_IMAGE_BUILD: "0"
+            TEST_IMAGE_ID: "buildx-tests"
+        strategy:
+            fail-fast: false
+            matrix:
+                worker:
+                    - docker
+                    - docker\+containerd # same as docker, but with containerd snapshotter
+                    - docker-container
+                    - remote
+                pkg:
+                    - ./tests
+                include:
+                    - pkg: ./...
+                      skip-integration-tests: 1
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v3
+              with:
+                  fetch-depth: 0
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v2
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+              with:
+                  version: ${{ env.BUILDX_VERSION }}
+                  driver-opts: image=${{ env.BUILDKIT_IMAGE }}
+                  buildkitd-flags: --debug
+            - name: Build test image
+              uses: docker/bake-action@v3
+              with:
+                  files: |
+                      ./docker-bake.hcl
+                  targets: integration-test
+                  set: |
+                      *.cache-from=type=gha,scope=${{ env.TEST_CACHE_SCOPE }}
+                      *.output=type=docker,name=${{ env.TEST_IMAGE_ID }}
+            - name: Test
+              run: |
+                  export TEST_REPORT_SUFFIX=-${{ github.job }}-$(echo "${{ matrix.pkg }}-${{ matrix.skip-integration-tests }}-${{ matrix.worker }}" | tr -dc '[:alnum:]-\n\r' | tr '[:upper:]' '[:lower:]')
+                  ./hack/test
+              env:
+                  TEST_DOCKERD: "${{ startsWith(matrix.worker, 'docker') && '1' || '0' }}"
+                  TESTFLAGS: "${{ (matrix.worker == 'docker' || matrix.worker == 'docker\\+containerd') && env.TESTFLAGS_DOCKER || env.TESTFLAGS }} --run=//worker=${{ matrix.worker }}$"
+                  TESTPKGS: "${{ matrix.pkg }}"
+                  SKIP_INTEGRATION_TESTS: "${{ matrix.skip-integration-tests }}"
+            - name: Send to Codecov
+              if: always()
+              uses: codecov/codecov-action@v3
+              with:
+                  directory: ./bin/testreports
+            - name: Generate annotations
+              if: always()
+              uses: crazy-max/.github/.github/actions/gotest-annotations@1a64ea6d01db9a48aa61954cb20e265782c167d9
+              with:
+                  directory: ./bin/testreports
+            - name: Upload test reports
+              if: always()
+              uses: actions/upload-artifact@v3
+              with:
+                  name: test-reports
+                  path: ./bin/testreports
+
+    prepare-binaries:
+        runs-on: ubuntu-22.04
+        outputs:
+            matrix: ${{ steps.platforms.outputs.matrix }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v3
+            - name: Create matrix
+              id: platforms
+              run: |
+                  echo "matrix=$(docker buildx bake binaries-cross --print | jq -cr '.target."binaries-cross".platforms')" >>${GITHUB_OUTPUT}
+            - name: Show matrix
+              run: |
+                  echo ${{ steps.platforms.outputs.matrix }}
+
+    binaries:
+        runs-on: ubuntu-22.04
+        needs:
+            - prepare-binaries
+        strategy:
+            fail-fast: false
+            matrix:
+                platform: ${{ fromJson(needs.prepare-binaries.outputs.matrix) }}
+        steps:
+            - name: Prepare
+              run: |
+                  platform=${{ matrix.platform }}
+                  echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+            - name: Checkout
+              uses: actions/checkout@v3
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v2
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+              with:
+                  version: ${{ env.BUILDX_VERSION }}
+                  driver-opts: image=${{ env.BUILDKIT_IMAGE }}
+                  buildkitd-flags: --debug
+            - name: Build
+              run: |
+                  make release
+              env:
+                  PLATFORMS: ${{ matrix.platform }}
+                  CACHE_FROM: type=gha,scope=binaries-${{ env.PLATFORM_PAIR }}
+                  CACHE_TO: type=gha,scope=binaries-${{ env.PLATFORM_PAIR }},mode=max
+            - name: Upload artifacts
+              uses: actions/upload-artifact@v3
+              with:
+                  name: buildx
+                  path: ${{ env.DESTDIR }}/*
+                  if-no-files-found: error
+
+    bin-image:
+        runs-on: ubuntu-22.04
+        needs:
+            - test
+        if: ${{ github.event_name != 'pull_request' && github.repository == 'docker/buildx' }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v3
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v2
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+              with:
+                  version: ${{ env.BUILDX_VERSION }}
+                  driver-opts: image=${{ env.BUILDKIT_IMAGE }}
+                  buildkitd-flags: --debug
+            - name: Docker meta
+              id: meta
+              uses: docker/metadata-action@v4
+              with:
+                  images: |
+                      ${{ env.REPO_SLUG }}
+                      ghcr.io/${{ env.REPO_SLUG }}
+                  tags: |
+                      type=ref,event=branch
+                      type=ref,event=pr
+                      type=semver,pattern={{version}}
+                  bake-target: meta-helper
+            - name: Login to DockerHub
+              if: github.event_name != 'pull_request'
+              uses: docker/login-action@v2
+              with:
+                  username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  password: ${{ secrets.DOCKERHUB_PASSWORD }}
+            - name: Login to GHCR
+              if: github.event_name != 'pull_request'
+              uses: docker/login-action@v2
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+            - name: Build and push image
+              uses: docker/bake-action@v3
+              with:
+                  files: |
+                      ./docker-bake.hcl
+                      ${{ steps.meta.outputs.bake-file }}
+                  targets: image-cross
+                  push: ${{ github.event_name != 'pull_request' }}
+                  sbom: true
+                  set: |
+                      *.cache-from=type=gha,scope=bin-image
+                      *.cache-to=type=gha,scope=bin-image,mode=max
+
+    release:
+        runs-on: ubuntu-22.04
+        needs:
+            - test
+            - binaries
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v3
+            - name: Set up buildrc
+              id: buildrc
+              uses: walteh/actions/setup-buildrc@main
+            - name: Download binaries
+              uses: actions/download-artifact@v3
+              with:
+                  name: buildx
+                  path: ${{ env.DESTDIR }}
+            - name: Create checksums
+              run: ./hack/hash-files
+            - name: List artifacts
+              run: |
+                  tree -nh ${{ env.DESTDIR }}
+            - name: Check artifacts
+              run: |
+                  find ${{ env.DESTDIR }} -type f -exec file -e ascii -- {} +
+            - name: GitHub Release
+              #   if: startsWith(github.ref, 'refs/tags/v')
+              uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v0.1.15
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  draft: true
+                  files: ${{ env.DESTDIR }}/*
+                  tag_name: ${{ steps.buildrc.outputs.next_tag }}
+
+    buildkit-edge:
+        runs-on: ubuntu-22.04
+        continue-on-error: true
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v3
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v2
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+              with:
+                  version: ${{ env.BUILDX_VERSION }}
+                  driver-opts: image=moby/buildkit:master
+                  buildkitd-flags: --debug
+            - # Just run a bake target to check eveything runs fine
+              name: Build
+              uses: docker/bake-action@v3
+              with:
+                  files: |
+                      ./docker-bake.hcl
+                  targets: binaries
