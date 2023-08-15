@@ -37,7 +37,7 @@
 		"yaml.format.singleQuote": false,
 		"yaml.extension.recommendations": true,
 		"files.exclude": {
-			"**/.git": false
+			"**/.git": true
 		},
 		/* //////////////////////////////////////////////
 							DOCKER
