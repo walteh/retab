@@ -59,9 +59,9 @@ target "validate-authors" {
   output     = ["type=cacheonly"]
 }
 
-target "validate-gend" {
+target "validate-gen" {
   inherits   = ["_common"]
-  dockerfile = "./hack/dockerfiles/gend.Dockerfile"
+  dockerfile = "./hack/dockerfiles/gen.Dockerfile"
   target     = "validate"
   output     = ["type=cacheonly"]
 }
@@ -91,9 +91,9 @@ target "update-authors" {
   output     = ["."]
 }
 
-target "update-gend" {
+target "update-gen" {
   inherits   = ["_common"]
-  dockerfile = "./hack/dockerfiles/gend.Dockerfile"
+  dockerfile = "./hack/dockerfiles/gen.Dockerfile"
   target     = "update"
   output     = ["."]
 }

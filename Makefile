@@ -28,7 +28,7 @@ release:
 	./hack/release
 
 .PHONY: validate-all
-validate-all: lint test validate-vendor validate-docs validate-gend
+validate-all: lint test validate-vendor validate-docs validate-gen
 
 .PHONY: lint
 lint:
@@ -58,9 +58,9 @@ validate-docs:
 validate-authors:
 	docker buildx bake validate-authors
 
-.PHONY: validate-gend
-validate-gend:
-	docker buildx bake validate-gend
+.PHONY: validate-gen
+validate-gen:
+	docker buildx bake validate-gen
 
 .PHONY: test-driver
 test-driver:
@@ -82,6 +82,6 @@ authors:
 mod-outdated:
 	docker buildx bake mod-outdated
 
-.PHONY: gend
-gend:
-	docker buildx bake update-gend
+.PHONY: gen
+gen:
+	docker buildx bake update-gen

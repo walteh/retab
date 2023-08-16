@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/walteh/tftab/gend/mockery"
+	"github.com/walteh/tftab/gen/mockery"
 	"github.com/walteh/tftab/pkg/hclwrite"
 )
 
