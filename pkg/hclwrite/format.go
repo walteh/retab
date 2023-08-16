@@ -95,7 +95,7 @@ func FormatBytes(cfg configuration.Provider, src []byte) (io.Reader, error) {
 // Process uses the hcl2 library to format the hcl file. This will attempt to parse the HCL file first to
 // ensure that there are no syntax errors, before attempting to format it.
 func Format(ctx context.Context, cfg configuration.Provider, fs afero.Fs, fle string) error {
-	zerolog.Ctx(ctx).Debug().Msgf("Formatting %s", fle)
+	zerolog.Ctx(ctx).Debug().Any("config", cfg).Msgf("Formatting %s", fle)
 
 	contents, err := afero.ReadFile(fs, fle)
 	if err != nil {

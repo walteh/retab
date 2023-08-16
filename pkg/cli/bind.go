@@ -2,8 +2,11 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
+
+	"github.com/rs/zerolog"
 )
 
 type bindings map[reflect.Type]func() (reflect.Value, error)
@@ -41,7 +44,8 @@ func callFunction(ctx context.Context, f reflect.Value) error {
 		} else {
 			b, ok := ctx.Value(&bindingsKeyT{}).(bindings)
 			if !ok {
-				return fmt.Errorf("context does not contain bindings")
+				zerolog.Ctx(ctx).Debug().Msgf("no bindings for %s", pt)
+				return errors.New("no bindings")
 			}
 			bv, ok := b[pt]
 			if !ok {

@@ -20,7 +20,7 @@ func RegisterRoot(ctx context.Context, cbrafc Cobraface) *cobra.Command {
 		if err := cmd.ParseFlags(args); err != nil {
 			return err
 		}
-		err := cbrafc.Inject(ctx, ccc, args)
+		err := cbrafc.Inject(ccc.Context(), ccc, args)
 		if err != nil {
 			return err
 		}
@@ -28,6 +28,13 @@ func RegisterRoot(ctx context.Context, cbrafc Cobraface) *cobra.Command {
 		return nil
 	}
 
+	cmd.RunE = func(ccc *cobra.Command, args []string) error {
+		err := cbrafc.Inject(ccc.Context(), ccc, args)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
 	cmd.SetContext(ctx)
 
 	return cmd

@@ -13,7 +13,7 @@ set -eu -o pipefail
 : "${TEST_BUILDKIT_IMAGE=}"
 
 if [ "$TEST_IMAGE_BUILD" = "1" ]; then
-	${BUILDX_CMD} bake integration-test --set "*.output=type=docker,name=$TEST_IMAGE_ID" --progress=plain
+	${BUILDX_CMD} bake integration-test --set "*.output=type=docker,name=$TEST_IMAGE_ID"
 fi
 
 testReportsDir="$(pwd)/bin/testreports"

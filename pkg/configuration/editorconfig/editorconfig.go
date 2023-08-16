@@ -39,5 +39,5 @@ func (x *EditorConfigConfigurationProvider) IndentSize() int {
 }
 
 func (x *EditorConfigConfigurationProvider) UseTabs() bool {
-	return strings.Contains(x.Definition.IndentStyle, "space")
+	return !strings.Contains(x.Definition.IndentStyle, "space")
 }
