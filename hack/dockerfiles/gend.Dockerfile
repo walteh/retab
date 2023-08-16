@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# Forked from https://github.com/moby/buildkit/blob/e1b3b6c4abf7684f13e6391e5f7bc9210752687a/hack/dockerfiles/generated-files.Dockerfile
+# Forked from https://github.com/moby/buildkit/blob/e1b3b6c4abf7684f13e6391e5f7bc9210752687a/hack/dockerfiles/gend.Dockerfile
 # Copyright The BuildKit Authors.
 # Copyright The Buildx Authors.
 # Licensed under the Apache License, Version 2.0
@@ -25,7 +25,7 @@ FROM tools as mockerygen
 COPY --from=vektra/mockery:latest /usr/local/bin/mockery /usr/bin/
 RUN --mount=type=bind,target=.,rw <<EOT
 	set -ex
-	mockery --dir ./generated-files
+	mockery --dir ./gend
 	mkdir /out
 	git ls-files -m --others -- ':!vendor' '**/*.mockery.go' | tar -cf - --files-from - | tar -C /out -xf -
 EOT
@@ -35,7 +35,7 @@ FROM tools AS bufgen
 COPY --from=bufbuild/buf:latest /usr/local/bin/buf /usr/bin/
 RUN --mount=type=bind,target=.,rw <<EOT
   set -ex
-  buf generate --exclude-path ./vendor --output ./generated-files --include-imports --include-wkt || echo "buf generate failed - ignoring"
+  buf generate --exclude-path ./vendor --output ./gend --include-imports --include-wkt || echo "buf generate failed - ignoring"
   mkdir /out
   git ls-files -m --others -- ':!vendor' '**/*.pb.go' | tar -cf - --files-from - | tar -C /out -xf -
 EOT
@@ -47,24 +47,24 @@ COPY --from=mockerygen /out /
 
 FROM base AS validate
 RUN --mount=type=bind,target=.,rw \
-	--mount=type=bind,from=generated,source=/out,target=/generated-files <<EOT
+	--mount=type=bind,from=generated,source=/out,target=/gend <<EOT
   set -e
 
   git add -A
-  if [ "$(ls -A /generated-files)" ]; then
-    cp -rf /generated-files/* .
+  if [ "$(ls -A /gend)" ]; then
+    cp -rf /gend/* .
   fi
 
   diff=$(git status --porcelain -- ':!vendor' '**/*.pb.go')
   if [ -n "$diff" ]; then
-    echo >&2 'ERROR: The result of "buf generate" differs. Please update with "make generated-files"'
+    echo >&2 'ERROR: The result of "buf generate" differs. Please update with "make gend"'
     echo "$diff"
     exit 1
   fi
 
   diff=$(git status --porcelain -- ':!vendor' '**/*.mockery.go')
   if [ -n "$diff" ]; then
-	echo >&2 'ERROR: The result of "mockery" differs. Please update with "make generated-files"'
+	echo >&2 'ERROR: The result of "mockery" differs. Please update with "make gend"'
 	echo "$diff"
 	exit 1
   fi
