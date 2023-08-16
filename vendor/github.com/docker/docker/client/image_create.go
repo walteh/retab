@@ -3,7 +3,6 @@ package client // import "github.com/docker/docker/client"
 import (
 	"context"
 	"io"
-	"net/http"
 	"net/url"
 	"strings"
 
@@ -34,7 +33,6 @@ func (cli *Client) ImageCreate(ctx context.Context, parentReference string, opti
 }
 
 func (cli *Client) tryImageCreate(ctx context.Context, query url.Values, registryAuth string) (serverResponse, error) {
-	return cli.post(ctx, "/images/create", query, nil, http.Header{
-		registry.AuthHeader: {registryAuth},
-	})
+	headers := map[string][]string{registry.AuthHeader: {registryAuth}}
+	return cli.post(ctx, "/images/create", query, nil, headers)
 }

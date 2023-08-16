@@ -2,7 +2,7 @@ package version
 
 var (
 	// Package is filled at linking time
-	Package = "github.com/walteh/tftab"
+	Package = "local"
 
 	// Version holds the complete version number. Filled in at linking time.
 	Version = "v0.0.0+unknown"

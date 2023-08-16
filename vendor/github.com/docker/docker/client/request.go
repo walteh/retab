@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"reflect"
 	"strings"
 
 	"github.com/docker/docker/api/types"
@@ -28,17 +27,17 @@ type serverResponse struct {
 }
 
 // head sends an http request to the docker API using the method HEAD.
-func (cli *Client) head(ctx context.Context, path string, query url.Values, headers http.Header) (serverResponse, error) {
+func (cli *Client) head(ctx context.Context, path string, query url.Values, headers map[string][]string) (serverResponse, error) {
 	return cli.sendRequest(ctx, http.MethodHead, path, query, nil, headers)
 }
 
 // get sends an http request to the docker API using the method GET with a specific Go context.
-func (cli *Client) get(ctx context.Context, path string, query url.Values, headers http.Header) (serverResponse, error) {
+func (cli *Client) get(ctx context.Context, path string, query url.Values, headers map[string][]string) (serverResponse, error) {
 	return cli.sendRequest(ctx, http.MethodGet, path, query, nil, headers)
 }
 
 // post sends an http request to the docker API using the method POST with a specific Go context.
-func (cli *Client) post(ctx context.Context, path string, query url.Values, obj interface{}, headers http.Header) (serverResponse, error) {
+func (cli *Client) post(ctx context.Context, path string, query url.Values, obj interface{}, headers map[string][]string) (serverResponse, error) {
 	body, headers, err := encodeBody(obj, headers)
 	if err != nil {
 		return serverResponse{}, err
@@ -46,42 +45,32 @@ func (cli *Client) post(ctx context.Context, path string, query url.Values, obj 
 	return cli.sendRequest(ctx, http.MethodPost, path, query, body, headers)
 }
 
-func (cli *Client) postRaw(ctx context.Context, path string, query url.Values, body io.Reader, headers http.Header) (serverResponse, error) {
+func (cli *Client) postRaw(ctx context.Context, path string, query url.Values, body io.Reader, headers map[string][]string) (serverResponse, error) {
 	return cli.sendRequest(ctx, http.MethodPost, path, query, body, headers)
 }
 
-func (cli *Client) put(ctx context.Context, path string, query url.Values, obj interface{}, headers http.Header) (serverResponse, error) {
+func (cli *Client) put(ctx context.Context, path string, query url.Values, obj interface{}, headers map[string][]string) (serverResponse, error) {
 	body, headers, err := encodeBody(obj, headers)
 	if err != nil {
 		return serverResponse{}, err
-	}
-	return cli.putRaw(ctx, path, query, body, headers)
-}
-
-// putRaw sends an http request to the docker API using the method PUT.
-func (cli *Client) putRaw(ctx context.Context, path string, query url.Values, body io.Reader, headers http.Header) (serverResponse, error) {
-	// PUT requests are expected to always have a body (apparently)
-	// so explicitly pass an empty body to sendRequest to signal that
-	// it should set the Content-Type header if not already present.
-	if body == nil {
-		body = http.NoBody
 	}
 	return cli.sendRequest(ctx, http.MethodPut, path, query, body, headers)
 }
 
+// putRaw sends an http request to the docker API using the method PUT.
+func (cli *Client) putRaw(ctx context.Context, path string, query url.Values, body io.Reader, headers map[string][]string) (serverResponse, error) {
+	return cli.sendRequest(ctx, http.MethodPut, path, query, body, headers)
+}
+
 // delete sends an http request to the docker API using the method DELETE.
-func (cli *Client) delete(ctx context.Context, path string, query url.Values, headers http.Header) (serverResponse, error) {
+func (cli *Client) delete(ctx context.Context, path string, query url.Values, headers map[string][]string) (serverResponse, error) {
 	return cli.sendRequest(ctx, http.MethodDelete, path, query, nil, headers)
 }
 
-func encodeBody(obj interface{}, headers http.Header) (io.Reader, http.Header, error) {
+type headers map[string][]string
+
+func encodeBody(obj interface{}, headers headers) (io.Reader, headers, error) {
 	if obj == nil {
-		return nil, headers, nil
-	}
-	// encoding/json encodes a nil pointer as the JSON document `null`,
-	// irrespective of whether the type implements json.Marshaler or encoding.TextMarshaler.
-	// That is almost certainly not what the caller intended as the request body.
-	if reflect.TypeOf(obj).Kind() == reflect.Ptr && reflect.ValueOf(obj).IsNil() {
 		return nil, headers, nil
 	}
 
@@ -96,7 +85,12 @@ func encodeBody(obj interface{}, headers http.Header) (io.Reader, http.Header, e
 	return body, headers, nil
 }
 
-func (cli *Client) buildRequest(method, path string, body io.Reader, headers http.Header) (*http.Request, error) {
+func (cli *Client) buildRequest(method, path string, body io.Reader, headers headers) (*http.Request, error) {
+	expectedPayload := (method == http.MethodPost || method == http.MethodPut)
+	if expectedPayload && body == nil {
+		body = bytes.NewReader([]byte{})
+	}
+
 	req, err := http.NewRequest(method, path, body)
 	if err != nil {
 		return nil, err
@@ -110,13 +104,13 @@ func (cli *Client) buildRequest(method, path string, body io.Reader, headers htt
 		req.Host = DummyHost
 	}
 
-	if body != nil && req.Header.Get("Content-Type") == "" {
+	if expectedPayload && req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", "text/plain")
 	}
 	return req, nil
 }
 
-func (cli *Client) sendRequest(ctx context.Context, method, path string, query url.Values, body io.Reader, headers http.Header) (serverResponse, error) {
+func (cli *Client) sendRequest(ctx context.Context, method, path string, query url.Values, body io.Reader, headers headers) (serverResponse, error) {
 	req, err := cli.buildRequest(method, cli.getAPIPath(ctx, path, query), body, headers)
 	if err != nil {
 		return serverResponse{}, err
@@ -154,19 +148,19 @@ func (cli *Client) doRequest(ctx context.Context, req *http.Request) (serverResp
 			return serverResp, err
 		}
 
-		if uErr, ok := err.(*url.Error); ok {
-			if nErr, ok := uErr.Err.(*net.OpError); ok {
+		if nErr, ok := err.(*url.Error); ok {
+			if nErr, ok := nErr.Err.(*net.OpError); ok {
 				if os.IsPermission(nErr.Err) {
 					return serverResp, errors.Wrapf(err, "permission denied while trying to connect to the Docker daemon socket at %v", cli.host)
 				}
 			}
 		}
 
-		if nErr, ok := err.(net.Error); ok {
-			if nErr.Timeout() {
+		if err, ok := err.(net.Error); ok {
+			if err.Timeout() {
 				return serverResp, ErrorConnectionFailed(cli.host)
 			}
-			if strings.Contains(nErr.Error(), "connection refused") || strings.Contains(nErr.Error(), "dial unix") {
+			if strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "dial unix") {
 				return serverResp, ErrorConnectionFailed(cli.host)
 			}
 		}
@@ -246,7 +240,7 @@ func (cli *Client) checkResponseErr(serverResp serverResponse) error {
 	return errors.Wrap(errors.New(errorMessage), "Error response from daemon")
 }
 
-func (cli *Client) addHeaders(req *http.Request, headers http.Header) *http.Request {
+func (cli *Client) addHeaders(req *http.Request, headers headers) *http.Request {
 	// Add CLI Config's HTTP Headers BEFORE we set the Docker headers
 	// then the user can't change OUR headers
 	for k, v := range cli.customHTTPHeaders {
@@ -258,14 +252,6 @@ func (cli *Client) addHeaders(req *http.Request, headers http.Header) *http.Requ
 
 	for k, v := range headers {
 		req.Header[http.CanonicalHeaderKey(k)] = v
-	}
-
-	if cli.userAgent != nil {
-		if *cli.userAgent == "" {
-			req.Header.Del("User-Agent")
-		} else {
-			req.Header.Set("User-Agent", *cli.userAgent)
-		}
 	}
 	return req
 }

@@ -11,9 +11,6 @@ github.com/Microsoft/go-winio/pkg/guid
 # github.com/agext/levenshtein v1.2.3
 ## explicit
 github.com/agext/levenshtein
-# github.com/alecthomas/kong v0.8.0
-## explicit; go 1.18
-github.com/alecthomas/kong
 # github.com/apparentlymart/go-textseg/v13 v13.0.0
 ## explicit; go 1.16
 github.com/apparentlymart/go-textseg/v13/textseg
@@ -51,6 +48,9 @@ github.com/containerd/continuity/sysx
 # github.com/containerd/typeurl/v2 v2.1.1
 ## explicit; go 1.13
 github.com/containerd/typeurl/v2
+# github.com/cpuguy83/go-md2man/v2 v2.0.2
+## explicit; go 1.11
+github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/cyphar/filepath-securejoin v0.2.3
 ## explicit; go 1.13
 github.com/cyphar/filepath-securejoin
@@ -61,7 +61,7 @@ github.com/davecgh/go-spew/spew
 ## explicit
 github.com/docker/distribution/digestset
 github.com/docker/distribution/reference
-# github.com/docker/docker v24.0.0-rc.2.0.20230718135204-8e51b8b59cb8+incompatible
+# github.com/docker/docker v24.0.5-0.20230714235725-36e9e796c6fc+incompatible
 ## explicit
 github.com/docker/docker/api
 github.com/docker/docker/api/types
@@ -76,7 +76,6 @@ github.com/docker/docker/api/types/registry
 github.com/docker/docker/api/types/strslice
 github.com/docker/docker/api/types/swarm
 github.com/docker/docker/api/types/swarm/runtime
-github.com/docker/docker/api/types/system
 github.com/docker/docker/api/types/time
 github.com/docker/docker/api/types/versions
 github.com/docker/docker/api/types/volume
@@ -152,6 +151,9 @@ github.com/in-toto/in-toto-golang/in_toto
 github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/common
 github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/v0.1
 github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/v0.2
+# github.com/inconshreveable/mousetrap v1.1.0
+## explicit; go 1.18
+github.com/inconshreveable/mousetrap
 # github.com/klauspost/compress v1.16.3
 ## explicit; go 1.18
 github.com/klauspost/compress
@@ -197,8 +199,6 @@ github.com/moby/buildkit/version
 github.com/moby/locker
 # github.com/moby/term v0.5.0
 ## explicit; go 1.18
-# github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e
-## explicit; go 1.12
 # github.com/opencontainers/go-digest v1.0.0
 ## explicit; go 1.13
 github.com/opencontainers/go-digest
@@ -220,10 +220,15 @@ github.com/pmezard/go-difflib/difflib
 github.com/rs/zerolog
 github.com/rs/zerolog/internal/cbor
 github.com/rs/zerolog/internal/json
+# github.com/russross/blackfriday/v2 v2.1.0
+## explicit
+github.com/russross/blackfriday/v2
 # github.com/secure-systems-lab/go-securesystemslib v0.4.0
 ## explicit; go 1.17
 github.com/secure-systems-lab/go-securesystemslib/cjson
 github.com/secure-systems-lab/go-securesystemslib/dsse
+# github.com/sergi/go-diff v1.2.0
+## explicit; go 1.12
 # github.com/shibumi/go-pathspec v1.3.0
 ## explicit; go 1.17
 github.com/shibumi/go-pathspec
@@ -235,10 +240,17 @@ github.com/sirupsen/logrus
 github.com/spf13/afero
 github.com/spf13/afero/internal/common
 github.com/spf13/afero/mem
+# github.com/spf13/cobra v1.7.0
+## explicit; go 1.15
+github.com/spf13/cobra
+github.com/spf13/cobra/doc
+# github.com/spf13/pflag v1.0.5
+## explicit; go 1.12
+github.com/spf13/pflag
 # github.com/stretchr/objx v0.5.0
 ## explicit; go 1.12
 github.com/stretchr/objx
-# github.com/stretchr/testify v1.8.3
+# github.com/stretchr/testify v1.8.4
 ## explicit; go 1.20
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
@@ -306,7 +318,9 @@ golang.org/x/net/internal/socks
 golang.org/x/net/internal/timeseries
 golang.org/x/net/proxy
 golang.org/x/net/trace
-# golang.org/x/sync v0.1.0
+# golang.org/x/oauth2 v0.5.0
+## explicit; go 1.17
+# golang.org/x/sync v0.2.0
 ## explicit
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
@@ -317,7 +331,7 @@ golang.org/x/sys/execabs
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/text v0.8.0
+# golang.org/x/text v0.12.0
 ## explicit; go 1.17
 golang.org/x/text/runes
 golang.org/x/text/secure/bidirule
@@ -431,8 +445,8 @@ google.golang.org/protobuf/types/descriptorpb
 google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/timestamppb
-# gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f
-## explicit
+# gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
+## explicit; go 1.11
 # gopkg.in/ini.v1 v1.67.0
 ## explicit
 gopkg.in/ini.v1
