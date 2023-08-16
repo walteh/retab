@@ -66,11 +66,13 @@ EOT
 
 FROM gobase AS tftab-build
 ARG TARGETPLATFORM
+ARG GO_PKG
 RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod \
 	--mount=type=bind,from=tftab-version,source=/tftab-version,target=/tftab-version <<EOT
   set -e
+  echo "Building for ${TARGETPLATFORM}"
   xx-go --wrap
   DESTDIR=/usr/bin VERSION=$(cat /tftab-version/version) REVISION=$(cat /tftab-version/revision) GO_EXTRA_LDFLAGS="-s -w" ./hack/build
   xx-verify --static /usr/bin/tftab
