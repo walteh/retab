@@ -271,7 +271,7 @@ jobs:
                   draft: false
                   prerelease: true
                   files: ${{ env.DESTDIR }}/*
-                  tag_name: ${{ steps.buildrc.outputs.next_tag }}
+                  tag_name: ${{ env.BUILDRC_TAG }}
 
     buildkit-edge:
         runs-on: ubuntu-22.04
