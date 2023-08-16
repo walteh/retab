@@ -41,30 +41,46 @@ EOT
 
 # Final update stage
 FROM scratch AS update
-COPY --from=bufgen /out /
-COPY --from=mockerygen /out /
+COPY --from=bufgen /out /buf/
+COPY --from=mockerygen /out /mockery/
 
 FROM tools AS validate
+ENV GIT_DISCOVERY_ACROSS_FILESYSTEM=true
 RUN --mount=type=bind,target=.,rw \
-	--mount=type=bind,from=update,source=/out,target=. <<EOT
+	--mount=type=bind,from=update,source=/buf,target=./buf \
+	--mount=type=bind,from=update,source=/mockery,target=./mockery <<EOT
   set -e
+  ls -la
 
-  git add -A
-  if [ "$(ls -A .)" ]; then
-    cp -rf ./* .
-  fi
+	pwd
 
-  diff=$(git status --porcelain -- ':!vendor' '**/*.pb.go')
-  if [ -n "$diff" ]; then
-    echo >&2 'ERROR: The result of "buf generate" differs. Please update with "make gen"'
-    echo "$diff"
-    exit 1
-  fi
+	(
+		cd ./buf
+		git add -A
+		if [ "$(ls -A)" ]; then
+			cp -rf ./* .
+		fi
 
-  diff=$(git status --porcelain -- ':!vendor' '**/*.mockery.go')
-  if [ -n "$diff" ]; then
-	echo >&2 'ERROR: The result of "mockery" differs. Please update with "make gen"'
-	echo "$diff"
-	exit 1
-  fi
+		diff=$(git status --porcelain -- ':!vendor' '**/*.pb.go')
+		if [ -n "$diff" ]; then
+			echo >&2 'ERROR: The result of "buf generate" differs. Please update with "make gen"'
+			echo "$diff"
+			exit 1
+		fi
+	)
+
+	(
+		cd ./mockery
+		git add -A
+		if [ "$(ls -A)" ]; then
+			cp -rf ./* .
+		fi
+
+		diff=$(git status --porcelain -- ':!vendor' '**/*.mockery.go')
+		if [ -n "$diff" ]; then
+			echo >&2 'ERROR: The result of "mockery" differs. Please update with "make gen"'
+			echo "$diff"
+			exit 1
+		fi
+	)
 EOT

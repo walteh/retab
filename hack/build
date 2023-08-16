@@ -14,4 +14,4 @@ set -e
 : "${GO_EXTRA_LDFLAGS=}"
 
 set -x
-CGO_ENABLED=$CGO_ENABLED go build -mod vendor -trimpath "${GO_EXTRA_FLAGS}" -ldflags "${GO_LDFLAGS} ${GO_EXTRA_LDFLAGS}" -o "${DESTDIR}/tftab" ./cmd/tftab
+CGO_ENABLED=$CGO_ENABLED go build -mod vendor -trimpath ${GO_EXTRA_FLAGS} -ldflags "${GO_LDFLAGS} ${GO_EXTRA_LDFLAGS}" -o "${DESTDIR}/tftab" ./cmd/root
