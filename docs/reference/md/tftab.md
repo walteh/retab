@@ -2,6 +2,10 @@
 
 tftab brings tabs to terraform
 
+```
+tftab [flags]
+```
+
 ### Options
 
 ```

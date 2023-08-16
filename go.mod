@@ -4,7 +4,6 @@ go 1.20
 
 require (
 	github.com/apparentlymart/go-textseg/v13 v13.0.0
-	github.com/containerd/continuity v0.4.1
 	github.com/docker/distribution v2.8.2+incompatible
 	github.com/editorconfig/editorconfig-core-go/v2 v2.5.2
 	github.com/hashicorp/go-multierror v1.1.1
@@ -24,6 +23,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/containerd/containerd v1.7.2 // indirect
+	github.com/containerd/continuity v0.4.1 // indirect
 	github.com/containerd/typeurl/v2 v2.1.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.3 // indirect
