@@ -119,7 +119,6 @@ COPY --link --from=docker /opt/docker/* /usr/bin/
 COPY --link --from=buildkit /usr/bin/buildkitd /usr/bin/
 COPY --link --from=buildkit /usr/bin/buildctl /usr/bin/
 COPY --link --from=binaries /tftab /usr/bin/
-# COPY --link --from=buildx-bin /buildx /usr/bin
 COPY --link --from=buildx-bin /buildx /usr/libexec/docker/cli-plugins/docker-buildx
 
 FROM integration-test-base AS integration-test

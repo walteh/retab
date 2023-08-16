@@ -1,23 +1,25 @@
-inpackage: False
-with-expecter: True
-testonly: False
-# keeptree: True
-exported: True
-dir: "generated-files/mockery"
-outpkg: "mockery"
-filename: "{{.InterfaceName}}.{{.PackageName}}.mockery.go"
-packages:
-    {
-        github.com/walteh/tftab/pkg/configuration:
-            {
-                interfaces:
-                    {
-                        Provider:
-                            {
-                                config:
-                                    { mockname: "MockConfigurationProvider" },
-                            },
-                    },
-            },
-    }
-# case: underscore
+{
+    inpackage: false,
+    with-expecter: true,
+    testonly: false,
+    exported: true,
+    dir: generated-files/mockery,
+    outpkg: mockery,
+    filename: "{{.InterfaceName}}.{{.PackageName}}.mockery.go",
+    packages:
+        {
+            github.com/walteh/tftab/pkg/configuration:
+                {
+                    interfaces:
+                        {
+                            Provider:
+                                {
+                                    config:
+                                        {
+                                            mockname: "MockConfigurationProvider",
+                                        },
+                                },
+                        },
+                },
+        },
+}

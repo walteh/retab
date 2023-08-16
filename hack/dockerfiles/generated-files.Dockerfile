@@ -27,21 +27,10 @@ RUN --mount=type=bind,target=.,rw \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod \
 	go install \
-	github.com/gogo/protobuf/protoc-gen-gogo \
-	github.com/gogo/protobuf/protoc-gen-gogofaster \
-	github.com/gogo/protobuf/protoc-gen-gogoslick \
-	github.com/golang/protobuf/protoc-gen-go \
-	github.com/vektra/mockery/v2
+	github.com/vektra/mockery/v2 \
+	github.com/bufbuild/buf/cmd/buf
 
-FROM tools AS generated
-RUN --mount=type=bind,target=.,rw <<EOT
-  set -ex
-  go generate -mod=vendor -v ./...
-  mkdir /out
-  git ls-files -m --others -- ':!vendor' '**/*.pb.go' | tar -cf - --files-from - | tar -C /out -xf -
-EOT
-
-FROM tools as mockery
+FROM vektra/mockery:latest as mockery
 WORKDIR /wrk
 RUN --mount=type=bind,target=.,rw <<EOT
 	set -ex
@@ -50,8 +39,16 @@ RUN --mount=type=bind,target=.,rw <<EOT
 	git ls-files -m --others -- ':!vendor' '**/*.mockery.go' | tar -cf - --files-from - | tar -C /out -xf -
 EOT
 
+FROM bufbuild/buf:latest AS buf
+RUN --mount=type=bind,target=.,rw <<EOT
+  set -ex
+  buf generate
+  mkdir /out
+  git ls-files -m --others -- ':!vendor' '**/*.pb.go' | tar -cf - --files-from - | tar -C /out -xf -
+EOT
+
 FROM scratch AS update
-COPY --from=generated /out /
+COPY --from=buf /out /
 COPY --from=mockery /out /
 
 FROM base AS validate
@@ -66,7 +63,7 @@ RUN --mount=type=bind,target=.,rw \
 
   diff=$(git status --porcelain -- ':!vendor' '**/*.pb.go')
   if [ -n "$diff" ]; then
-    echo >&2 'ERROR: The result of "go generate" differs. Please update with "make generated-files"'
+    echo >&2 'ERROR: The result of "buf generate" differs. Please update with "make generated-files"'
     echo "$diff"
     exit 1
   fi
