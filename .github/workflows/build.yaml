@@ -185,6 +185,7 @@ jobs:
         runs-on: ubuntu-22.04
         needs:
             - test
+            - release
         # if: ${{ github.event_name != 'pull_request' && github.repository == 'docker/buildx' }}
         steps:
             - name: Checkout
@@ -229,6 +230,7 @@ jobs:
                       ./docker-bake.hcl
                       ${{ steps.meta.outputs.bake-file }}
                   targets: image-cross
+                  push: true
                   #   push: ${{ github.event_name != 'pull_request' }}
                   sbom: true
                   set: |
@@ -267,7 +269,7 @@ jobs:
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               with:
-                  draft: true
+                  draft: false
                   prerelease: true
                   files: ${{ env.DESTDIR }}/*
                   tag_name: ${{ steps.buildrc.outputs.next_tag }}
