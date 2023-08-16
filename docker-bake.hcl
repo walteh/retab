@@ -1,22 +1,37 @@
 variable "GO_VERSION" {
-  default = null
+  default = "1.20.7"
 }
 variable "DOCS_FORMATS" {
   default = "md"
 }
-variable "DESTDIR" {
+
+variable "DEST_DIR" {
   default = "./bin"
+}
+
+variable "GEN_DIR" {
+  default = "./gen"
+}
+
+variable "GO_PACKAGE" {
+  default = "github.com/walteh/tftab"
+}
+
+variable "DOCKER_IMAGE" {
+  default = "walteh/tftab"
 }
 
 # Special target: https://github.com/docker/metadata-action#bake-definition
 target "meta-helper" {
-  tags = ["docker/buildx-bin:local"]
+  tags = ["${DOCKER_IMAGE}:local"]
 }
 
 target "_common" {
   args = {
     GO_VERSION                    = GO_VERSION
     BUILDKIT_CONTEXT_KEEP_GIT_DIR = 1
+    DOCKER_IMAGE                  = DOCKER_IMAGE
+    GO_PACKAGE                    = GO_PACKAGE
   }
 }
 
@@ -95,7 +110,7 @@ target "update-gen" {
   inherits   = ["_common"]
   dockerfile = "./hack/dockerfiles/gen.Dockerfile"
   target     = "update"
-  output     = ["."]
+  output     = ["${GEN_DIR}"]
 }
 
 target "mod-outdated" {
@@ -109,13 +124,13 @@ target "mod-outdated" {
 target "test" {
   inherits = ["_common"]
   target   = "test-coverage"
-  output   = ["${DESTDIR}/coverage"]
+  output   = ["${DEST_DIR}/coverage"]
 }
 
 target "binaries" {
   inherits  = ["_common"]
   target    = "binaries"
-  output    = ["${DESTDIR}/build"]
+  output    = ["${DEST_DIR}/build"]
   platforms = ["local"]
 }
 
@@ -139,7 +154,7 @@ target "binaries-cross" {
 target "release" {
   inherits = ["binaries-cross"]
   target   = "release"
-  output   = ["${DESTDIR}/release"]
+  output   = ["${DEST_DIR}/release"]
 }
 
 target "image" {

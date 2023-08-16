@@ -5,8 +5,7 @@
 # Copyright The Buildx Authors.
 # Licensed under the Apache License, Version 2.0
 
-ARG GO_VERSION="1.20.7"
-ARG PROTOC_VERSION="3.11.4"
+ARG GO_VERSION
 
 # Base tools image with required packages
 FROM golang:${GO_VERSION}-bookworm AS tools
@@ -25,7 +24,7 @@ FROM tools as mockerygen
 COPY --from=vektra/mockery:latest /usr/local/bin/mockery /usr/bin/
 RUN --mount=type=bind,target=.,rw <<EOT
 	set -ex
-	mockery --dir ./gen
+	mockery --dir .
 	mkdir /out
 	git ls-files -m --others -- ':!vendor' '**/*.mockery.go' | tar -cf - --files-from - | tar -C /out -xf -
 EOT
@@ -35,7 +34,7 @@ FROM tools AS bufgen
 COPY --from=bufbuild/buf:latest /usr/local/bin/buf /usr/bin/
 RUN --mount=type=bind,target=.,rw <<EOT
   set -ex
-  buf generate --exclude-path ./vendor --output ./gen --include-imports --include-wkt || echo "buf generate failed - ignoring"
+  buf generate --exclude-path ./vendor --output . --include-imports --include-wkt || echo "buf generate failed - ignoring"
   mkdir /out
   git ls-files -m --others -- ':!vendor' '**/*.pb.go' | tar -cf - --files-from - | tar -C /out -xf -
 EOT
@@ -47,12 +46,12 @@ COPY --from=mockerygen /out /
 
 FROM base AS validate
 RUN --mount=type=bind,target=.,rw \
-	--mount=type=bind,from=generated,source=/out,target=/gen <<EOT
+	--mount=type=bind,from=update,source=/out,target=. <<EOT
   set -e
 
   git add -A
-  if [ "$(ls -A /gen)" ]; then
-    cp -rf /gen/* .
+  if [ "$(ls -A .)" ]; then
+    cp -rf ./* .
   fi
 
   diff=$(git status --porcelain -- ':!vendor' '**/*.pb.go')

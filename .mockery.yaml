@@ -3,7 +3,7 @@
     with-expecter: true,
     testonly: false,
     exported: true,
-    dir: gen/mockery,
+    dir: mockery,
     outpkg: mockery,
     filename: "{{.InterfaceName}}.{{.PackageName}}.mockery.go",
     packages:

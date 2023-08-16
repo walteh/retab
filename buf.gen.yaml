@@ -4,12 +4,12 @@
         [
             {
                 plugin: buf.build/connectrpc/go,
-                out: ./gen/buf/go,
+                out: ./buf/go,
                 opt: [paths=source_relative],
             },
             {
                 plugin: buf.build/protocolbuffers/go,
-                out: ./gen/buf/go,
+                out: ./buf/go,
                 opt: [paths=source_relative],
             },
         ],
