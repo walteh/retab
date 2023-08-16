@@ -44,7 +44,7 @@ FROM scratch AS update
 COPY --from=bufgen /out /
 COPY --from=mockerygen /out /
 
-FROM base AS validate
+FROM tools AS validate
 RUN --mount=type=bind,target=.,rw \
 	--mount=type=bind,from=update,source=/out,target=. <<EOT
   set -e
