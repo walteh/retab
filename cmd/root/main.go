@@ -6,8 +6,9 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
-	"github.com/walteh/tftab/cmd/root/tftab"
+	"github.com/walteh/tftab/cmd/root/fmt"
 	"github.com/walteh/tftab/pkg/cli"
+	"github.com/walteh/tftab/version"
 )
 
 type Root struct {
@@ -26,12 +27,12 @@ func (me *Root) Define(ctx context.Context) *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(&me.Debug, "debug", "d", false, "Print debug output")
 	cmd.PersistentFlags().BoolVarP(&me.Version, "version", "v", false, "Print version and exit")
 
-	cli.RegisterCommand(ctx, cmd, &tftab.Handler{})
+	cli.RegisterCommand(ctx, cmd, &fmt.Handler{})
 
 	return cmd
 }
 
-func (me *Root) InjectContext(cmd *cobra.Command) (context.Context, error) {
+func (me *Root) Inject(ctx context.Context, cmd *cobra.Command, args []string) error {
 
 	var level zerolog.Level
 	if me.Debug {
@@ -42,12 +43,14 @@ func (me *Root) InjectContext(cmd *cobra.Command) (context.Context, error) {
 		level = zerolog.InfoLevel
 	}
 
-	ctx := zerolog.New(zerolog.NewConsoleWriter()).With().Timestamp().Logger().Level(level).WithContext(cmd.Context())
+	ctx = zerolog.New(zerolog.NewConsoleWriter()).With().Timestamp().Logger().Level(level).WithContext(ctx)
 
 	if me.Version {
-		cmd.Println("tftab version 0.0.1")
+		cmd.Printf("%s %s %s\n", version.Package, version.Version, version.Revision)
 		os.Exit(0)
 	}
 
-	return ctx, nil
+	cmd.SetContext(ctx)
+
+	return nil
 }

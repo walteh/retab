@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 ARG GO_VERSION=
-ARG FORMATS=md,yaml
+# ARG FORMATS=md,yaml
 
 FROM golang:${GO_VERSION}-alpine AS docsgen
 WORKDIR /src
@@ -19,10 +19,9 @@ RUN --mount=target=/context \
 	--mount=target=.,type=tmpfs <<EOT
 set -e
 rsync -a /context/. .
-docsgen --formats "$FORMATS" --source "docs/reference"
+docsgen "docs/reference"
 mkdir /out
 cp -r docs/reference /out
-rm -f /out/reference/*__INTERNAL_SERVE.yaml /out/reference/*__INTERNAL_SERVE.md
 EOT
 
 FROM scratch AS update

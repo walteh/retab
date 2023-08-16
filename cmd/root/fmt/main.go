@@ -1,4 +1,4 @@
-package tftab
+package fmt
 
 // `hclFmt` commmand recursively looks for hcl files in the directory tree starting at workingDir, and formats them
 // based on the language style guides provided by Hashicorp. This is done using the official hcl2 library.
@@ -26,9 +26,8 @@ type Handler struct {
 
 func (me *Handler) Define(ctx context.Context) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "fmt",
-		Short:   "My command description",
-		Aliases: []string{""},
+		Use:   "fmt",
+		Short: "format hcl files with the official hcl2 library, but with tabs",
 	}
 	cmd.Args = cobra.ExactArgs(1)
 
