@@ -84,4 +84,4 @@ mod-outdated:
 
 .PHONY: generated-files
 generated-files:
-	docker buildx bake update-generated-files -v
+	docker buildx bake update-generated-files
