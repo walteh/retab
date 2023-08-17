@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG GO_VERSION=1.20.7
+ARG GO_VERSION=
 ARG XX_VERSION=1.2.1
 
 ARG DOCKER_VERSION=24.0.2
@@ -29,6 +29,8 @@ FROM docker/buildx-bin:latest AS buildx-bin
 FROM gobase AS docker
 ARG TARGETPLATFORM
 ARG DOCKER_VERSION
+ARG VERSION
+ARG BIN_NAME
 WORKDIR /opt/docker
 RUN <<EOT
 CASE=${TARGETPLATFORM:-linux/amd64}
@@ -56,26 +58,26 @@ RUN --mount=target=/root/.cache,type=cache <<EOT
 	/out/gotestsum --version
 EOT
 
-FROM gobase AS tftab-version
+FROM gobase AS meta
 RUN --mount=type=bind,target=. <<EOT
   set -e
-  mkdir /tftab-version
-  echo -n "$(./hack/git-meta version)" | tee /tftab-version/version
-  echo -n "$(./hack/git-meta revision)" | tee /tftab-version/revision
+  mkdir /meta
+  echo -n "$(./hack/git-meta version)" | tee /meta/version
+  echo -n "$(./hack/git-meta revision)" | tee /meta/revision
 EOT
 
-FROM gobase AS tftab-build
+FROM gobase AS builder
 ARG TARGETPLATFORM
 ARG GO_PKG
 RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod \
-	--mount=type=bind,from=tftab-version,source=/tftab-version,target=/tftab-version <<EOT
+	--mount=type=bind,from=meta,source=/meta,target=/meta <<EOT
   set -e
   echo "Building for ${TARGETPLATFORM}"
   xx-go --wrap
-  DESTDIR=/usr/bin VERSION=$(cat /tftab-version/version) REVISION=$(cat /tftab-version/revision) GO_EXTRA_LDFLAGS="-s -w" ./hack/build
-  xx-verify --static /usr/bin/tftab
+  DESTDIR=/usr/bin VERSION=$(cat /meta/version) REVISION=$(cat /meta/revision) GO_EXTRA_LDFLAGS="-s -w" ./hack/build
+  xx-verify --static /usr/bin/${BIN_NAME}
 EOT
 
 FROM gobase AS test
@@ -91,13 +93,15 @@ FROM scratch AS test-coverage
 COPY --from=test /tmp/coverage.txt /coverage.txt
 
 FROM scratch AS binaries-unix
-COPY --link --from=tftab-build /usr/bin/tftab /tftab
+ARG BIN_NAME
+COPY --link --from=builder /usr/bin/${BIN_NAME} /${BIN_NAME}
 
 FROM binaries-unix AS binaries-darwin
 FROM binaries-unix AS binaries-linux
 
 FROM scratch AS binaries-windows
-COPY --link --from=tftab-build /usr/bin/tftab /tftab.exe
+ARG BIN_NAME
+COPY --link --from=builder /usr/bin/${BIN_NAME} /${BIN_NAME}.exe
 
 FROM binaries-$TARGETOS AS binaries
 # enable scanning for this stage
@@ -120,7 +124,7 @@ COPY --link --from=registry /bin/registry /usr/bin/
 COPY --link --from=docker /opt/docker/* /usr/bin/
 COPY --link --from=buildkit /usr/bin/buildkitd /usr/bin/
 COPY --link --from=buildkit /usr/bin/buildctl /usr/bin/
-COPY --link --from=binaries /tftab /usr/bin/
+COPY --link --from=binaries /${BIN_NAME} /usr/bin/
 COPY --link --from=buildx-bin /buildx /usr/libexec/docker/cli-plugins/docker-buildx
 
 FROM integration-test-base AS integration-test
@@ -131,10 +135,10 @@ FROM --platform=$BUILDPLATFORM alpine AS releaser
 WORKDIR /work
 ARG TARGETPLATFORM
 RUN --mount=from=binaries \
-	--mount=type=bind,from=tftab-version,source=/tftab-version,target=/tftab-version <<EOT
+	--mount=type=bind,from=meta,source=/meta,target=/meta <<EOT
   set -e
   mkdir -p /out
-  cp tftab* "/out/tftab-$(cat /tftab-version/version).$(echo $TARGETPLATFORM | sed 's/\//-/g')$(ls tftab* | sed -e 's/^tftab//')"
+  cp ${BIN_NAME}* "/out/${BIN_NAME}-$(cat /meta/version).$(echo $TARGETPLATFORM | sed 's/\//-/g')$(ls ${BIN_NAME}* | sed -e 's/^${BIN_NAME}//')"
 EOT
 
 FROM scratch AS release
@@ -143,8 +147,9 @@ COPY --from=releaser /out/ /
 # Shell
 FROM docker:$DOCKER_VERSION AS dockerd-release
 FROM alpine AS shell
+ARG BIN_NAME
 RUN apk add --no-cache iptables tmux git vim less openssh
-RUN mkdir -p /usr/local/lib/docker/cli-plugins && ln -s /usr/local/bin/tftab /usr/local/lib/docker/cli-plugins/docker-tftab
+RUN mkdir -p /usr/local/lib/docker/cli-plugins && ln -s /usr/local/bin/${BIN_NAME} /usr/local/lib/docker/cli-plugins/docker-${BIN_NAME}
 COPY ./hack/demo-env/entrypoint.sh /usr/local/bin
 COPY ./hack/demo-env/tmux.conf /root/.tmux.conf
 COPY --from=dockerd-release /usr/local/bin /usr/local/bin
