@@ -4,7 +4,11 @@ set -e
 
 case $1 in
 "version")
-	git describe --match 'v[0-9]*' --dirty='.m' --always --tags
+	if [ -n "$BUILDRC_TAG" ]; then
+		echo "$BUILDRC_TAG"
+	else
+		git describe --match 'v[0-9]*' --dirty='.m' --always --tags
+	fi
 	;;
 "revision")
 	echo "$(git rev-parse HEAD)$(if ! git diff --no-ext-diff --quiet --exit-code; then echo .m; fi)"

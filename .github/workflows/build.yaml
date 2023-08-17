@@ -61,8 +61,10 @@ jobs:
     test:
         runs-on: ubuntu-22.04
         needs:
+            - buildrc
             - prepare-test
         env:
+            VERSION: "${{ needs.buildrc.outputs.tag }}"
             TESTFLAGS: "-v --parallel=6 --timeout=30m"
             TESTFLAGS_DOCKER: "-v --parallel=1 --timeout=30m"
             GOTESTSUM_FORMAT: "standard-verbose"
@@ -143,10 +145,19 @@ jobs:
             - name: Show matrix
               run: |
                   echo ${{ steps.platforms.outputs.matrix }}
-
+    buildrc:
+        runs-on: ubuntu-22.04
+        outputs:
+            tag: ${{ env.BUILDRC_TAG }}
+        steps:
+            - name: Set up buildrc
+              id: buildrc
+              uses: walteh/actions/setup-buildrc@main
     binaries:
         runs-on: ubuntu-22.04
+        env: { VERSION: "${{ needs.buildrc.outputs.tag }}" }
         needs:
+            - buildrc
             - prepare-binaries
         strategy:
             fail-fast: false
@@ -183,9 +194,11 @@ jobs:
 
     bin-image:
         runs-on: ubuntu-22.04
+        env: { VERSION: "${{ needs.buildrc.outputs.tag }}" }
         needs:
+            - buildrc
             - release
-        # if: ${{ github.event_name != 'pull_request' && github.repository == 'docker/buildx' }}
+        if: ${{ github.repository == 'walteh/tftab' }}
         steps:
             - name: Checkout
               uses: actions/checkout@v3
@@ -207,10 +220,10 @@ jobs:
                   tags: |
                       type=ref,event=branch
                       type=ref,event=pr
-                      type=semver,pattern={{version}}
+                      type=semver,pattern={{version}}},value=${{ env.VERSION }}
+                      type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
                   bake-target: meta-helper
             - name: Login to DockerHub
-              #   if: github.event_name != 'pull_request'
               uses: docker/login-action@v2
               with:
                   username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -230,7 +243,6 @@ jobs:
                       ${{ steps.meta.outputs.bake-file }}
                   targets: image-cross
                   push: true
-                  #   push: ${{ github.event_name != 'pull_request' }}
                   sbom: true
                   set: |
                       *.cache-from=type=gha,scope=bin-image
@@ -238,16 +250,16 @@ jobs:
 
     release:
         runs-on: ubuntu-22.04
+        env: { VERSION: "${{ needs.buildrc.outputs.tag }}" }
         needs:
+            - buildrc
             - test
             - binaries
         steps:
             - name: Checkout
               uses: actions/checkout@v3
               with: { fetch-depth: 0 }
-            - name: Set up buildrc
-              id: buildrc
-              uses: walteh/actions/setup-buildrc@main
+
               env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
             - name: Download binaries
               uses: actions/download-artifact@v3
