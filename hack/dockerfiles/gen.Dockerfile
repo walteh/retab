@@ -26,7 +26,7 @@ RUN --mount=type=bind,target=.,rw <<EOT
 	set -ex
 	mockery --dir .
 	mkdir /out
-	git ls-files -m --others -- ':!vendor' '**/*.mockery.go' | tar -cf - --files-from - | tar -C /out -xf -
+	git ls-files -m --others -- ':!vendor' '*.mockery.go' | tar -cf - --files-from - | tar -C /out -xf -
 EOT
 
 # Buf stage
@@ -57,9 +57,6 @@ RUN --mount=type=bind,target=.,rw \
 	(
 		cd ./buf
 		git add -A
-		if [ "$(ls -A)" ]; then
-			cp -rf ./* .
-		fi
 
 		diff=$(git status --porcelain -- ':!vendor' '**/*.pb.go')
 		if [ -n "$diff" ]; then
@@ -72,9 +69,6 @@ RUN --mount=type=bind,target=.,rw \
 	(
 		cd ./mockery
 		git add -A
-		if [ "$(ls -A)" ]; then
-			cp -rf ./* .
-		fi
 
 		diff=$(git status --porcelain -- ':!vendor' '**/*.mockery.go')
 		if [ -n "$diff" ]; then

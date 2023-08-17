@@ -5,6 +5,7 @@ set -eu -o pipefail
 : "${GITHUB_ACTIONS=}"
 : "${GITHUB_REPOSITORY=}"
 : "${GITHUB_RUN_ID=}"
+: "${BIN_NAME=}"
 
 : "${BUILDX_CMD=docker buildx}"
 : "${DESTDIR=./bin/release}"
@@ -34,7 +35,7 @@ if ${BUILDX_CMD} build --help 2>&1 | grep -- '--attest' >/dev/null; then
 	setFlags+=(--set "*.attest=type=provenance,$prvattrs")
 fi
 
-output=$(mktemp -d -t buildx-output.XXXXXXXXXX)
+output=$(mktemp -d -t "buildx-output.XXXXXXXXXX")
 
 (
 	set -x
@@ -44,7 +45,8 @@ output=$(mktemp -d -t buildx-output.XXXXXXXXXX)
 for pdir in "${output}"/*/; do
 	(
 		cd "$pdir"
-		binname=$(find . -name 'buildx-*')
+		# find the name of the first file that does not end with .json
+		binname=$(find . -type f ! -name "*.json" -print | head -n 1 | xargs basename)
 		filename=$(basename "${binname%.exe}")
 		mv "provenance.json" "${filename}.provenance.json"
 		mv "sbom-binaries.spdx.json" "${filename}.sbom.json"

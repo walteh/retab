@@ -6,6 +6,7 @@ set -e
 # : "${PACKAGE=}"
 : "${VERSION=$(./hack/git-meta version)}"
 : "${REVISION=$(./hack/git-meta revision)}"
+: "${BIN_NAME=DEFAULT}"
 
 : "${CGO_ENABLED=0}"
 : "${GO_PKG=}"
@@ -14,4 +15,4 @@ set -e
 : "${GO_EXTRA_LDFLAGS=}"
 
 set -x
-CGO_ENABLED=$CGO_ENABLED go build -mod vendor -trimpath ${GO_EXTRA_FLAGS} -ldflags "${GO_LDFLAGS} ${GO_EXTRA_LDFLAGS}" -o "${DESTDIR}/tftab" ./cmd
+CGO_ENABLED=$CGO_ENABLED go build -mod vendor -trimpath ${GO_EXTRA_FLAGS} -ldflags "${GO_LDFLAGS} ${GO_EXTRA_LDFLAGS}" -o "${DESTDIR}/$BIN_NAME" ./cmd

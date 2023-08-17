@@ -12,19 +12,19 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	"github.com/walteh/tftab/pkg/cli"
+	"github.com/walteh/snake"
 	"github.com/walteh/tftab/pkg/configuration/editorconfig"
 	"github.com/walteh/tftab/pkg/hclwrite"
 )
 
-var _ cli.Cobraface = (*Handler)(nil)
+var _ snake.Snakeable = (*Handler)(nil)
 
 type Handler struct {
 	File       string `arg:"" default:"" name:"file" help:"The hcl file to format."`
 	WorkingDir string `name:"working-dir" help:"The working directory to use. Defaults to the current directory."`
 }
 
-func (me *Handler) Define(ctx context.Context) *cobra.Command {
+func (me *Handler) BuildCommand(ctx context.Context) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "fmt",
 		Short: "format hcl files with the official hcl2 library, but with tabs",
@@ -36,7 +36,7 @@ func (me *Handler) Define(ctx context.Context) *cobra.Command {
 	return cmd
 }
 
-func (me *Handler) Inject(ctx context.Context, cmd *cobra.Command, file []string) error {
+func (me *Handler) ParseArguments(ctx context.Context, cmd *cobra.Command, file []string) error {
 
 	me.File = file[0]
 

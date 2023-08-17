@@ -36,6 +36,8 @@ target "_common" {
     BUILDKIT_CONTEXT_KEEP_GIT_DIR = 1
     DOCKER_IMAGE                  = DOCKER_IMAGE
     GO_PKG                        = GO_PKG
+    BIN_NAME                      = BIN_NAME
+    DESTDIR                       = DESTDIR
   }
 }
 

@@ -69,6 +69,7 @@ EOT
 FROM gobase AS builder
 ARG TARGETPLATFORM
 ARG GO_PKG
+ARG BIN_NAME
 RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod \
@@ -134,11 +135,14 @@ COPY . .
 FROM --platform=$BUILDPLATFORM alpine AS releaser
 WORKDIR /work
 ARG TARGETPLATFORM
+ARG BIN_NAME
 RUN --mount=from=binaries \
 	--mount=type=bind,from=meta,source=/meta,target=/meta <<EOT
   set -e
   mkdir -p /out
-  cp ${BIN_NAME}* "/out/${BIN_NAME}-$(cat /meta/version).$(echo $TARGETPLATFORM | sed 's/\//-/g')$(ls ${BIN_NAME}* | sed -e 's/^${BIN_NAME}//')"
+  end=""; [[ $TARGETPLATFORM == *"windows"* ]] && end=".exe" || true
+  cp "${BIN_NAME}"* "/out/${BIN_NAME}-$(cat /meta/version).$(echo $TARGETPLATFORM | sed 's/\//-/g')$end"
+  ls -la /out
 EOT
 
 FROM scratch AS release

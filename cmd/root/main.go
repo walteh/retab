@@ -6,8 +6,8 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
+	"github.com/walteh/snake"
 	"github.com/walteh/tftab/cmd/root/fmt"
-	"github.com/walteh/tftab/pkg/cli"
 	"github.com/walteh/tftab/version"
 )
 
@@ -17,7 +17,9 @@ type Root struct {
 	Version bool
 }
 
-func (me *Root) Define(ctx context.Context) *cobra.Command {
+var _ snake.Snakeable = (*Root)(nil)
+
+func (me *Root) BuildCommand(ctx context.Context) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tftab",
 		Short: "tftab brings tabs to terraform",
@@ -27,12 +29,12 @@ func (me *Root) Define(ctx context.Context) *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(&me.Debug, "debug", "d", false, "Print debug output")
 	cmd.PersistentFlags().BoolVarP(&me.Version, "version", "v", false, "Print version and exit")
 
-	cli.RegisterCommand(ctx, cmd, &fmt.Handler{})
+	snake.MustNewCommand(ctx, cmd, &fmt.Handler{})
 
 	return cmd
 }
 
-func (me *Root) Inject(ctx context.Context, cmd *cobra.Command, args []string) error {
+func (me *Root) ParseArguments(ctx context.Context, cmd *cobra.Command, args []string) error {
 
 	var level zerolog.Level
 	if me.Debug {

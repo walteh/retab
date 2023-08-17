@@ -1,6 +1,6 @@
 module github.com/walteh/tftab
 
-go 1.20
+go 1.21.0
 
 require (
 	github.com/apparentlymart/go-textseg/v13 v13.0.0
@@ -15,6 +15,7 @@ require (
 	github.com/spf13/afero v1.9.5
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
+	github.com/walteh/snake v0.2.0
 	golang.org/x/mod v0.10.0
 )
 

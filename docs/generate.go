@@ -7,14 +7,14 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra/doc"
+	"github.com/walteh/snake"
 	"github.com/walteh/tftab/cmd/root"
-	"github.com/walteh/tftab/pkg/cli"
 )
 
 func run(ctx context.Context, ref string) error {
 	log.SetFlags(0)
 
-	cmd := cli.RegisterRoot(ctx, &root.Root{})
+	cmd := snake.NewRootCommand(ctx, &root.Root{})
 
 	mdpath := filepath.Join(ref, "md")
 
