@@ -4,8 +4,8 @@ set -e
 
 case $1 in
 "version")
-	if [ -n "$BUILDRC_TAG" ]; then
-		echo "$BUILDRC_TAG"
+	if [ -n "$VERSION" ]; then
+		echo "$VERSION"
 	else
 		git describe --match 'v[0-9]*' --dirty='.m' --always --tags
 	fi
