@@ -149,6 +149,8 @@ jobs:
         runs-on: ubuntu-22.04
         outputs:
             tag: ${{ env.BUILDRC_TAG }}
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         steps:
             - name: Set up buildrc
               id: buildrc
