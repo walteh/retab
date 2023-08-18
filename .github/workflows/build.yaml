@@ -282,7 +282,7 @@ jobs:
                   draft: false
                   prerelease: true
                   files: ${{ env.DESTDIR }}/*
-                  tag_name: ${{ env.BUILDRC_TAG }}
+                  tag_name: ${{ env.VERSION }}
 
     buildkit-edge:
         runs-on: ubuntu-22.04
