@@ -16,6 +16,8 @@ func run(ctx context.Context, ref string) error {
 
 	cmd := snake.NewRootCommand(ctx, &root.Root{})
 
+	cmd.DisableAutoGenTag = true
+
 	mdpath := filepath.Join(ref, "md")
 
 	if err := os.MkdirAll(mdpath, 0755); err != nil {
