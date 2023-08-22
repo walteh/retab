@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG GO_VERSION=
+ARG GO_VERSION=1.21.0
 ARG XX_VERSION=1.2.1
 
 ARG DOCKER_VERSION=24.0.2
@@ -13,9 +13,11 @@ FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS golatest
 
+FROM --platform=$BUILDPLATFORM walteh/buildrc:3.1.1 as buildrc
+
 FROM golatest AS gobase
 COPY --from=xx / /
-RUN apk add --no-cache file git
+RUN apk add --no-cache file git bash
 ENV GOFLAGS=-mod=vendor
 ENV CGO_ENABLED=0
 WORKDIR /src
@@ -29,8 +31,6 @@ FROM docker/buildx-bin:latest AS buildx-bin
 FROM gobase AS docker
 ARG TARGETPLATFORM
 ARG DOCKER_VERSION
-ARG VERSION
-ARG BIN_NAME
 WORKDIR /opt/docker
 RUN <<EOT
 CASE=${TARGETPLATFORM:-linux/amd64}
@@ -59,26 +59,32 @@ RUN --mount=target=/root/.cache,type=cache <<EOT
 EOT
 
 FROM gobase AS meta
-RUN --mount=type=bind,target=. <<EOT
-  set -e
-  mkdir /meta
-  echo -n "$(./hack/git-meta version)" | tee /meta/version
-  echo -n "$(./hack/git-meta revision)" | tee /meta/revision
-EOT
-
-FROM gobase AS builder
-ARG TARGETPLATFORM
 ARG GO_PKG
 ARG BIN_NAME
+COPY --from=buildrc /usr/bin/exec /usr/bin/buildrc
+RUN --mount=type=bind,target=/src \
+	--mount=type=cache,target=/go/pkg/mod \
+	--mount=target=/root/.cache,type=cache <<EOT
+set -e
+mkdir -p /meta
+ echo -n "$(buildrc version --auto --git-dir=/src)" | tee /meta/version
+ echo -n "$(buildrc revision --git-dir=/src)" | tee /meta/revision
+ echo -n "${BIN_NAME}" | tee /meta/name
+ echo -n "${GO_PKG}" | tee /meta/go-pkg
+EOT
+
+FROM scratch AS meta-out
+COPY --from=meta /meta /
+
+FROM gobase AS builder
 RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod \
-	--mount=type=bind,from=meta,source=/meta,target=/meta <<EOT
+	--mount=type=bind,from=meta,source=/meta,target=/meta,readonly <<EOT
   set -e
-  echo "Building for ${TARGETPLATFORM}"
   xx-go --wrap
-  DESTDIR=/usr/bin VERSION=$(cat /meta/version) REVISION=$(cat /meta/revision) GO_EXTRA_LDFLAGS="-s -w" ./hack/build
-  xx-verify --static /usr/bin/${BIN_NAME}
+  DESTDIR=/usr/bin GO_PKG=$(cat /meta/go-pkg) BIN_NAME=$(cat /meta/name) BIN_VERSION=$(cat /meta/version) BIN_REVISION=$(cat /meta/revision) GO_EXTRA_LDFLAGS="-s -w" ./hack/build
+  xx-verify --static /usr/bin/$(cat /meta/name)
 EOT
 
 FROM gobase AS test
@@ -108,7 +114,13 @@ FROM binaries-$TARGETOS AS binaries
 # enable scanning for this stage
 ARG BUILDKIT_SBOM_SCAN_STAGE=true
 
+FROM binaries AS entry
+ARG BIN_NAME
+COPY --link --from=builder /usr/bin/${BIN_NAME} /usr/bin/exec
+ENTRYPOINT [ "/usr/bin/exec" ]
+
 FROM gobase AS integration-test-base
+ARG BIN_NAME
 # https://github.com/docker/docker/blob/master/project/PACKAGERS.md#runtime-dependencies
 RUN apk add --no-cache \
 	btrfs-progs \
@@ -135,14 +147,12 @@ COPY . .
 FROM --platform=$BUILDPLATFORM alpine AS releaser
 WORKDIR /work
 ARG TARGETPLATFORM
-ARG BIN_NAME
 RUN --mount=from=binaries \
 	--mount=type=bind,from=meta,source=/meta,target=/meta <<EOT
   set -e
   mkdir -p /out
   end=""; [[ $TARGETPLATFORM == *"windows"* ]] && end=".exe" || true
-  cp "${BIN_NAME}"* "/out/${BIN_NAME}-$(cat /meta/version).$(echo $TARGETPLATFORM | sed 's/\//-/g')$end"
-  ls -la /out
+  cp "$(cat /meta/name)"* "/out/$(cat /meta/name)-$(cat /meta/version).$(echo $TARGETPLATFORM | sed 's/\//-/g')$end"
 EOT
 
 FROM scratch AS release

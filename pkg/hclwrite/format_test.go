@@ -52,7 +52,7 @@ variable "DESTDIR" {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := &mockery.MockConfigurationProvider{}
+			cfg := &mockery.MockProvider_configuration{}
 			cfg.EXPECT().UseTabs().Return(tt.useTabs)
 			cfg.EXPECT().IndentSize().Return(tt.indentSize)
 

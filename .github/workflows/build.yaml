@@ -23,6 +23,9 @@ on:
             - "README.md"
             - "docs/**"
 
+    push:
+        branches: [main]
+
 env:
     BUILDX_VERSION: "latest"
     BUILDKIT_IMAGE: "moby/buildkit:latest"
@@ -38,28 +41,28 @@ jobs:
               uses: actions/checkout@v3
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v2
+            - name: Install just
+              uses: taiki-e/install-action@just
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v2
               with:
                   version: ${{ env.BUILDX_VERSION }}
                   driver-opts: image=${{ env.BUILDKIT_IMAGE }}
                   buildkitd-flags: --debug
-            - name: Build
-              uses: docker/bake-action@v3
-              with:
-                  files: |
-                      ./docker-bake.hcl
-                  targets: integration-test-base
-                  set: |
-                      *.cache-from=type=gha,scope=${{ env.TEST_CACHE_SCOPE }}
-                      *.cache-to=type=gha,scope=${{ env.TEST_CACHE_SCOPE }}
+            # - name: Build
+            #   uses: docker/bake-action@v3
+            #   with:
+            #       files: |
+            #           ./docker-bake.hcl
+            #       targets: integration-test-base
+            #       set: |
+            #           *.cache-from=type
+            #           *.cache-to=type=local,dest=/tmp/.buildx-cache-new
     test:
         runs-on: ubuntu-22.04
         needs:
-            - buildrc
             - prepare-test
         env:
-            VERSION: "${{ needs.buildrc.outputs.tag }}"
             TESTFLAGS: "-v --parallel=6 --timeout=30m"
             TESTFLAGS_DOCKER: "-v --parallel=1 --timeout=30m"
             GOTESTSUM_FORMAT: "standard-verbose"
@@ -85,6 +88,8 @@ jobs:
                   fetch-depth: 0
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v2
+            - name: Install just
+              uses: taiki-e/install-action@just
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v2
               with:
@@ -98,8 +103,16 @@ jobs:
                       ./docker-bake.hcl
                   targets: integration-test
                   set: |
-                      *.cache-from=type=gha,scope=${{ env.TEST_CACHE_SCOPE }}
+                      *.cache-from=type=local,src=/tmp/.buildx-cache
                       *.output=type=docker,name=${{ env.TEST_IMAGE_ID }}
+            # - name: build
+            #   uses: docker/build-push-action@v2
+            #   with:
+            #       target: integration-test
+            #       context: .
+            #       cache-from: type=local,src=/tmp/.buildx-cache
+            #       outputs: type=docker,name=${{ env.TEST_IMAGE_ID }}
+            #       push: false
             - name: Test
               run: |
                   export TEST_REPORT_SUFFIX=-${{ github.job }}-$(echo "${{ matrix.pkg }}-${{ matrix.skip-integration-tests }}-${{ matrix.worker }}" | tr -dc '[:alnum:]-\n\r' | tr '[:upper:]' '[:lower:]')
@@ -140,10 +153,11 @@ jobs:
             - name: Show matrix
               run: |
                   echo ${{ steps.platforms.outputs.matrix }}
-    buildrc:
+    meta:
         runs-on: ubuntu-22.04
         outputs:
-            tag: ${{ env.BUILDRC_TAG }}
+            version: ${{ steps.bake.outputs.version }}
+            revision: ${{ steps.bake.outputs.revision }}
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         steps:
@@ -151,14 +165,34 @@ jobs:
               uses: actions/checkout@v3
               with:
                   fetch-depth: 0
-            - name: Set up buildrc
-              id: buildrc
-              uses: walteh/actions/setup-buildrc@main
+            # - name: run
+            #   id: run
+            #   shell: bash
+            #   working-directory: ${{ github.workspace }}
+            #   run: |
+            #       tftab_version=$(docker run -v "$(pwd):/over/here" walteh/tftab:pr-25 version --git-dir=/over/here  --auto)
+            #       echo "tftab_TAG=${tftab_version}" >>${GITHUB_OUTPUT}
+            #       - name: Checkout
+            #       uses: actions/checkout@v3
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v2
+            - name: Install just
+              uses: taiki-e/install-action@just
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+              with:
+                  version: ${{ env.BUILDX_VERSION }}
+                  driver-opts: image=${{ env.BUILDKIT_IMAGE }}
+                  buildkitd-flags: --debug
+            - name: Build
+              id: bake
+              run: |
+                  just meta
+                  echo "version=$(cat ./meta/version)" >> $GITHUB_OUTPUT
+                  echo "revision=$(cat ./meta/revision)" >> $GITHUB_OUTPUT
     binaries:
         runs-on: ubuntu-22.04
-        env: { VERSION: "${{ needs.buildrc.outputs.tag }}" }
         needs:
-            - buildrc
             - prepare-binaries
         strategy:
             fail-fast: false
@@ -166,13 +200,18 @@ jobs:
                 platform: ${{ fromJson(needs.prepare-binaries.outputs.matrix) }}
         steps:
             - name: Prepare
+              id: prepare
               run: |
                   platform=${{ matrix.platform }}
-                  echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+                  echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_OUTPUT
             - name: Checkout
               uses: actions/checkout@v3
+              with:
+                  fetch-depth: 0
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v2
+            - name: Install just
+              uses: taiki-e/install-action@just
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v2
               with:
@@ -181,11 +220,11 @@ jobs:
                   buildkitd-flags: --debug
             - name: Build
               run: |
-                  make release
+                  just release
               env:
                   PLATFORMS: ${{ matrix.platform }}
-                  CACHE_FROM: type=gha,scope=binaries-${{ env.PLATFORM_PAIR }}
-                  CACHE_TO: type=gha,scope=binaries-${{ env.PLATFORM_PAIR }},mode=max
+                  CACHE_FROM: type=gha,scope=binaries-${{ steps.prepare.outputs.PLATFORM_PAIR }}
+                  CACHE_TO: type=gha,scope=binaries-${{ steps.prepare.outputs.PLATFORM_PAIR }},mode=max
             - name: Upload artifacts
               uses: actions/upload-artifact@v3
               with:
@@ -195,16 +234,18 @@ jobs:
 
     bin-image:
         runs-on: ubuntu-22.04
-        env: { VERSION: "${{ needs.buildrc.outputs.tag }}" }
         needs:
-            - buildrc
+            - meta
             - release
         if: ${{ github.repository == 'walteh/tftab' }}
         steps:
             - name: Checkout
               uses: actions/checkout@v3
+              with: { fetch-depth: 0 }
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v2
+            - name: Install just
+              uses: taiki-e/install-action@just
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v2
               with:
@@ -221,7 +262,7 @@ jobs:
                   tags: |
                       type=ref,event=branch
                       type=ref,event=pr
-                      type=semver,pattern={{version}}},value=${{ env.VERSION }}
+                      type=semver,pattern={{version}},value=${{ needs.meta.outputs.version }},enable=${{ github.ref == 'refs/heads/main' }}
                       type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
                   bake-target: meta-helper
             - name: Login to DockerHub
@@ -251,11 +292,11 @@ jobs:
 
     release:
         runs-on: ubuntu-22.04
-        env: { VERSION: "${{ needs.buildrc.outputs.tag }}" }
         needs:
-            - buildrc
+            - meta
             - test
             - binaries
+            - validate
         steps:
             - name: Checkout
               uses: actions/checkout@v3
@@ -282,7 +323,9 @@ jobs:
                   draft: false
                   prerelease: true
                   files: ${{ env.DESTDIR }}/*
-                  tag_name: ${{ env.VERSION }}
+                  tag_name: ${{ needs.meta.outputs.version }}
+                  target_commitish: ${{ github.sha }}
+                  name: ${{ needs.meta.outputs.version }}
 
     buildkit-edge:
         runs-on: ubuntu-22.04
@@ -290,8 +333,11 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v3
+              with: { fetch-depth: 0 }
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v2
+            - name: Install just
+              uses: taiki-e/install-action@just
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v2
               with:
@@ -305,3 +351,27 @@ jobs:
                   files: |
                       ./docker-bake.hcl
                   targets: binaries
+    validate:
+        runs-on: ubuntu-22.04
+        needs: [prepare-binaries]
+        strategy:
+            fail-fast: false
+            matrix:
+                target:
+                    - lint
+                    - validate-vendor
+                    - validate-docs
+                    - validate-gen
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v3
+              with: { fetch-depth: 0 }
+            - name: Install just
+              uses: taiki-e/install-action@just
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+              with:
+                  version: latest
+            - name: Run
+              run: |
+                  just ${{ matrix.target }}

@@ -15,7 +15,7 @@ var versionTests = []func(t *testing.T, sb integration.Sandbox){
 }
 
 func testVersion(t *testing.T, sb integration.Sandbox) {
-	cmd := tftabCmd(sb, withArgs("--version"))
+	cmd := mainCmd(sb, withArgs("--version"))
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
 
@@ -29,7 +29,7 @@ func testVersion(t *testing.T, sb integration.Sandbox) {
 
 	// Split by spaces into at least 2 fields.
 	fields := strings.Fields(firstLine)
-	require.GreaterOrEqual(t, len(fields), 2, "Expected at least 2 fields in the first line")
+	require.GreaterOrEqual(t, len(fields), 2, "Expected at least 2 fields in the first line, '%+v'", firstLine)
 
 	// First field should be an import path.
 	// This can be any valid import path for Go

@@ -25,11 +25,6 @@ variable "BIN_NAME" {
   default = "tftab"
 }
 
-# Special target: https://github.com/docker/metadata-action#bake-definition
-target "meta-helper" {
-  tags = ["${DOCKER_IMAGE}:local"]
-}
-
 target "_common" {
   args = {
     GO_VERSION                    = GO_VERSION
@@ -37,9 +32,10 @@ target "_common" {
     DOCKER_IMAGE                  = DOCKER_IMAGE
     GO_PKG                        = GO_PKG
     BIN_NAME                      = BIN_NAME
-    DESTDIR                       = DESTDIR
   }
 }
+
+
 
 group "default" {
   targets = ["binaries"]
@@ -73,12 +69,6 @@ target "validate-docs" {
   output     = ["type=cacheonly"]
 }
 
-target "validate-authors" {
-  inherits   = ["_common"]
-  dockerfile = "./hack/dockerfiles/authors.Dockerfile"
-  target     = "validate"
-  output     = ["type=cacheonly"]
-}
 
 target "validate-gen" {
   inherits   = ["_common"]
@@ -103,13 +93,6 @@ target "update-docs" {
   dockerfile = "./hack/dockerfiles/docs.Dockerfile"
   target     = "update"
   output     = ["./docs/reference"]
-}
-
-target "update-authors" {
-  inherits   = ["_common"]
-  dockerfile = "./hack/dockerfiles/authors.Dockerfile"
-  target     = "update"
-  output     = ["."]
 }
 
 target "update-gen" {
@@ -168,8 +151,17 @@ target "image" {
   output   = ["type=image"]
 }
 
+target "image-default" {
+  inherits  = ["meta-helper", "binaries"]
+  target    = "entry"
+  output    = ["type=image"]
+  platforms = ["linux/arm64"]
+}
+
+
 target "image-cross" {
   inherits = ["meta-helper", "binaries-cross"]
+  target   = "entry"
   output   = ["type=image"]
 }
 
@@ -202,4 +194,24 @@ target "integration-test-base" {
 target "integration-test" {
   inherits = ["integration-test-base"]
   target   = "integration-test"
+}
+
+
+target "test" {
+  inherits = ["_common"]
+  target   = "test-starter"
+  output   = ["type=cacheonly"]
+}
+
+
+target "meta" {
+  inherits = ["_common"]
+  target   = "meta-out"
+  output   = ["meta"]
+}
+
+
+# Special target: https://github.com/docker/metadata-action#bake-definition
+target "meta-helper" {
+  tags = ["${DOCKER_IMAGE}:local"]
 }

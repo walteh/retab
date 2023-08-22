@@ -15,7 +15,7 @@ func withArgs(args ...string) cmdOpt {
 	}
 }
 
-func tftabCmd(sb integration.Sandbox, opts ...cmdOpt) *exec.Cmd {
+func mainCmd(sb integration.Sandbox, opts ...cmdOpt) *exec.Cmd {
 	cmd := exec.Command("tftab")
 	cmd.Env = append([]string{}, os.Environ()...)
 	for _, opt := range opts {

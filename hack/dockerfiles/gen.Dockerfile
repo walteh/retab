@@ -24,8 +24,9 @@ FROM tools as mockerygen
 COPY --from=vektra/mockery:latest /usr/local/bin/mockery /usr/bin/
 RUN --mount=type=bind,target=.,rw <<EOT
 	set -ex
-	mockery --dir .
+	mockery --dir ./tmp
 	mkdir /out
+	cd ./tmp
 	git ls-files -m --others -- ':!vendor' '*.mockery.go' | tar -cf - --files-from - | tar -C /out -xf -
 EOT
 

@@ -5,20 +5,10 @@
     exported: true,
     outpkg: mockery,
     filename: "{{.InterfaceName}}.{{.PackageName}}.mockery.go",
+    mockname: "Mock{{.InterfaceName}}_{{.PackageName}}",
     packages:
         {
             github.com/walteh/tftab/pkg/configuration:
-                {
-                    interfaces:
-                        {
-                            Provider:
-                                {
-                                    config:
-                                        {
-                                            mockname: "MockConfigurationProvider",
-                                        },
-                                },
-                        },
-                },
+                { interfaces: { Provider: {} } },
         },
 }

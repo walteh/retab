@@ -3,9 +3,10 @@
 set -eu -o pipefail
 
 : "${BUILDX_CMD=docker buildx}"
+: "${BIN_NAME=$(grep -o '^module \S*' go.mod | awk '{print $2}' | uniq | sed 's/\.//g; s/\//_/g')}"
 
 : "${TEST_IMAGE_BUILD=1}"
-: "${TEST_IMAGE_ID=tftab-tests}"
+: "${TEST_IMAGE_ID=${BIN_NAME}-tests}"
 
 : "${TEST_REPORT_SUFFIX=}"
 : "${TEST_KEEP_CACHE=}"
@@ -24,7 +25,7 @@ gotestArgs="-mod=vendor -coverprofile=/testreports/coverage-report$TEST_REPORT_S
 
 echo "Running tests with $TEST_IMAGE_ID"
 
-cacheVolume="tftab-test-cache"
+cacheVolume="${BIN_NAME}-test-cache"
 volumeArgs="--volumes-from=$cacheVolume"
 
 if ! docker container inspect "$cacheVolume" >/dev/null 2>/dev/null; then
