@@ -5,7 +5,7 @@ set -eu -o pipefail
 : "${GITHUB_ACTIONS=}"
 : "${GITHUB_REPOSITORY=}"
 : "${GITHUB_RUN_ID=}"
-: "${BIN_NAME=}"
+: "${BIN_VERSION=local}"
 
 : "${BUILDX_CMD=docker buildx}"
 : "${DESTDIR=./bin/release}"
@@ -35,11 +35,11 @@ if ${BUILDX_CMD} build --help 2>&1 | grep -- '--attest' >/dev/null; then
 	setFlags+=(--set "*.attest=type=provenance,$prvattrs")
 fi
 
-output=$(mktemp -d -t "buildx-output.XXXXXXXXXX")
+output=$(mktemp -d -t buildx-output.XXXXXXXXXX)
 
 (
 	set -x
-	${BUILDX_CMD} bake "${setFlags[@]}" --set "*.args.BUILDKIT_MULTI_PLATFORM=true" --set "*.output=$output" release
+	${BUILDX_CMD} bake "${setFlags[@]}" --set "*.args.BUILDKIT_MULTI_PLATFORM=true" --set "*.output=$output" release --progress=plain
 )
 
 for pdir in "${output}"/*/; do

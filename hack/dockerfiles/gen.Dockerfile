@@ -48,34 +48,17 @@ COPY --from=mockerygen /out /mockery/
 FROM tools AS validate
 ENV GIT_DISCOVERY_ACROSS_FILESYSTEM=true
 RUN --mount=type=bind,target=.,rw \
-	--mount=type=bind,from=update,source=/buf,target=./buf \
-	--mount=type=bind,from=update,source=/mockery,target=./mockery <<EOT
+	--mount=type=bind,from=update,target=/gen <<EOT
   set -e
   ls -la
-
-	pwd
-
-	(
-		cd ./buf
-		git add -A
-
-		diff=$(git status --porcelain -- ':!vendor' '**/*.pb.go')
-		if [ -n "$diff" ]; then
-			echo >&2 'ERROR: The result of "buf generate" differs. Please update with "make gen"'
-			echo "$diff"
-			exit 1
-		fi
-	)
-
-	(
-		cd ./mockery
-		git add -A
-
-		diff=$(git status --porcelain -- ':!vendor' '**/*.mockery.go')
-		if [ -n "$diff" ]; then
-			echo >&2 'ERROR: The result of "mockery" differs. Please update with "make gen"'
-			echo "$diff"
-			exit 1
-		fi
-	)
+  git add -A
+  if [ "$(ls -A /gen)" ]; then
+    cp -rf /gen/* .
+  fi
+  diff=$(git status --porcelain -- ':!vendor' 'gen/*')
+  if [ -n "$diff" ]; then
+    echo >&2 'ERROR: The result of "go generate" differs. Please update with "make gen"'
+    echo "$diff"
+    exit 1
+  fi
 EOT

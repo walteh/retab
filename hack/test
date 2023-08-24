@@ -20,7 +20,7 @@ fi
 testReportsDir="$(pwd)/bin/testreports"
 mkdir -p "$testReportsDir"
 testReportsVol="-v $testReportsDir:/testreports"
-gotestsumArgs="--format=standard-verbose --jsonfile=/testreports/go-test-report$TEST_REPORT_SUFFIX.json --junitfile=/testreports/junit-report$TEST_REPORT_SUFFIX.xml"
+gotestsumArgs="--format=pkgname --jsonfile=/testreports/go-test-report$TEST_REPORT_SUFFIX.json --junitfile=/testreports/junit-report$TEST_REPORT_SUFFIX.xml"
 gotestArgs="-mod=vendor -coverprofile=/testreports/coverage-report$TEST_REPORT_SUFFIX.txt -covermode=atomic"
 
 echo "Running tests with $TEST_IMAGE_ID"
@@ -32,15 +32,14 @@ if ! docker container inspect "$cacheVolume" >/dev/null 2>/dev/null; then
 	echo "Attempting to create cache volume $cacheVolume"
 	if docker create -v /root/.cache -v /root/.cache/registry -v /go/pkg/mod --name "$cacheVolume" alpine:latest; then
 		echo "Cache volume created successfully."
+		if [ "$TEST_KEEP_CACHE" != "1" ]; then
+			echo "Cleaning up cache volume $cacheVolume"
+			trap 'docker rm -v $cacheVolume || echo "problem ro"' EXIT
+		fi
 	else
 		echo "Warning: Failed to create cache volume. Proceeding without cache."
 		volumeArgs="-v /root/.cache -v /root/.cache/registry -v /go/pkg/mod"
 	fi
-fi
-
-if [ "$TEST_KEEP_CACHE" != "1" ]; then
-	echo "Cleaning up cache volume $cacheVolume"
-	trap 'docker rm -v $cacheVolume' EXIT
 fi
 
 echo "Starting tests with $TEST_IMAGE_ID"
