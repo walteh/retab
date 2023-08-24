@@ -36,5 +36,14 @@
 		"yaml.format.proseWrap": "preserve",
 		"yaml.format.singleQuote": false,
 		"yaml.extension.recommendations": true,
+		"files.exclude": {
+			"**/.git": true
+		},
+		/* //////////////////////////////////////////////
+							DOCKER
+		////////////////////////////////////////////// */
+		"[dockerfile]": {
+			"editor.defaultFormatter": "foxundermoon.shell-format"
+		},
 	}
 }

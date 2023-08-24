@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+set -eu -o pipefail
+
+: "${BUILDX_CMD=docker buildx}"
+: "${BIN_NAME=$(grep -o '^module \S*' go.mod | awk '{print $2}' | uniq | sed 's/\.//g; s/\//_/g')}"
+
+: "${TEST_IMAGE_BUILD=1}"
+: "${TEST_IMAGE_ID=${BIN_NAME}-tests}"
+
+: "${TEST_REPORT_SUFFIX=}"
+: "${TEST_KEEP_CACHE=}"
+: "${TEST_DOCKERD=}"
+: "${TEST_BUILDKIT_IMAGE=}"
+
+if [ "$TEST_IMAGE_BUILD" = "1" ]; then
+	${BUILDX_CMD} bake integration-test --set "*.output=type=docker,name=$TEST_IMAGE_ID"
+fi
+
+testReportsDir="$(pwd)/bin/testreports"
+mkdir -p "$testReportsDir"
+testReportsVol="-v $testReportsDir:/testreports"
+gotestsumArgs="--format=pkgname --jsonfile=/testreports/go-test-report$TEST_REPORT_SUFFIX.json --junitfile=/testreports/junit-report$TEST_REPORT_SUFFIX.xml"
+gotestArgs="-mod=vendor -coverprofile=/testreports/coverage-report$TEST_REPORT_SUFFIX.txt -covermode=atomic"
+
+echo "Running tests with $TEST_IMAGE_ID"
+
+cacheVolume="${BIN_NAME}-test-cache"
+volumeArgs="--volumes-from=$cacheVolume"
+
+if ! docker container inspect "$cacheVolume" >/dev/null 2>/dev/null; then
+	echo "Attempting to create cache volume $cacheVolume"
+	if docker create -v /root/.cache -v /root/.cache/registry -v /go/pkg/mod --name "$cacheVolume" alpine:latest; then
+		echo "Cache volume created successfully."
+		if [ "$TEST_KEEP_CACHE" != "1" ]; then
+			echo "Cleaning up cache volume $cacheVolume"
+			trap 'docker rm -v $cacheVolume || echo "problem ro"' EXIT
+		fi
+	else
+		echo "Warning: Failed to create cache volume. Proceeding without cache."
+		volumeArgs="-v /root/.cache -v /root/.cache/registry -v /go/pkg/mod"
+	fi
+fi
+
+echo "Starting tests with $TEST_IMAGE_ID"
+
+cid=$(docker create --rm -v /tmp $testReportsVol $volumeArgs -e GITHUB_REF -e TEST_DOCKERD -e TEST_BUILDKIT_IMAGE -e SKIP_INTEGRATION_TESTS -e GOTESTSUM_FORMAT ${BUILDKIT_INTEGRATION_SNAPSHOTTER:+"-eBUILDKIT_INTEGRATION_SNAPSHOTTER"} -e BUILDKIT_REGISTRY_MIRROR_DIR=/root/.cache/registry --privileged $TEST_IMAGE_ID gotestsum $gotestsumArgs --packages="${TESTPKGS:-./...}" -- $gotestArgs ${TESTFLAGS:--v})
+docker start -a -i $cid
