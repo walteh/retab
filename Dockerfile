@@ -61,7 +61,7 @@ EOT
 FROM gobase AS meta
 ARG GO_PKG
 ARG BIN_NAME
-COPY --from=buildrc /usr/bin/buildrc /usr/bin
+COPY --from=buildrc /usr/bin/buildrc /usr/bin/buildrc
 
 RUN --mount=type=bind,target=/src \
 	--mount=type=cache,target=/go/pkg/mod \
@@ -78,11 +78,13 @@ FROM scratch AS meta-out
 COPY --from=meta /meta /
 
 FROM gobase AS builder
+ARG TARGETPLATFORM
 RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod \
 	--mount=type=bind,from=meta,source=/meta,target=/meta,readonly <<EOT
   set -e
+  if [ -z "${TARGETPLATFORM}" ]; then echo "TARGETPLATFORM is not set" && exit 1; fi
   xx-go --wrap
   DESTDIR=/usr/bin GO_PKG=$(cat /meta/go-pkg) BIN_NAME=$(cat /meta/name) BIN_VERSION=$(cat /meta/version) BIN_REVISION=$(cat /meta/revision) GO_EXTRA_LDFLAGS="-s -w" ./hack/build
   xx-verify --static /usr/bin/$(cat /meta/name)
