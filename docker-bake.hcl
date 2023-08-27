@@ -212,7 +212,7 @@ target "test" {
 
 target "meta" {
   inherits = ["_common"]
-  target   = "meta-out"
+  target   = "meta"
   output   = ["meta"]
 }
 
