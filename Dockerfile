@@ -173,6 +173,9 @@ RUN --mount=from=binaries \
 	cp "$(cat /meta/name)"* "/out/$(cat /meta/executable)"
 EOT
 
+FROM scratch AS meta-out
+COPY --from=meta /meta/ /
+
 FROM scratch AS release
 COPY --from=releaser /out/ /
 COPY --from=meta /meta/buildrc.json /buildrc.json
