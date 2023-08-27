@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/walteh/snake"
+	"github.com/walteh/tftab/cmd/root/buf"
 	"github.com/walteh/tftab/cmd/root/fmt"
 	"github.com/walteh/tftab/version"
 )
@@ -30,6 +31,7 @@ func (me *Root) BuildCommand(ctx context.Context) *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(&me.Version, "version", "v", false, "Print version and exit")
 
 	snake.MustNewCommand(ctx, cmd, "fmt", &fmt.Handler{})
+	snake.MustNewCommand(ctx, cmd, "buf", &buf.Handler{})
 
 	return cmd
 }
