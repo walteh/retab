@@ -1,47 +1,44 @@
-package bufwrite
+package hclwrite
 
 import (
 	"context"
 	"io"
 
-	"github.com/spf13/afero"
 	"github.com/walteh/tftab/pkg/configuration"
-
-	"github.com/bufbuild/protocompile/parser"
-	"github.com/bufbuild/protocompile/reporter"
+	"github.com/walteh/tftab/pkg/format"
 )
 
-func Format(ctx context.Context, fls afero.Fs, path string, cfg configuration.Provider) (io.Reader, error) {
-	fle, err := fls.Open(path)
+type Formatter struct {
+}
+
+var _ format.Provider = (*Formatter)(nil)
+
+func NewHclFormatter() *Formatter {
+	return &Formatter{}
+}
+
+func (me *Formatter) Targets() []string {
+	return []string{"*.hcl", "*.tf", "*.tfvars", "*.hcl2"}
+}
+
+func (me *Formatter) Format(ctx context.Context, cfg configuration.Provider, read io.Reader) (io.Reader, error) {
+
+	reads, err := io.ReadAll(read)
 	if err != nil {
 		return nil, err
 	}
-	defer fle.Close()
-	fileNode, err := parser.Parse(fle.Name(), fle, reporter.NewHandler(nil))
+
+	err = checkErrors(ctx, reads, "")
 	if err != nil {
 		return nil, err
 	}
 
-	read, write := io.Pipe()
+	newContents, err := FormatBytes(cfg, reads)
+	if err != nil {
+		return nil, err
+	}
 
-	fmtr := newFormatter(write, fileNode, cfg)
-
-	go func() {
-		if err := fmtr.Run(); err != nil {
-			err := write.CloseWithError(err)
-			if err != nil {
-				panic(err)
-			}
-			return
-		} else {
-			err := write.Close()
-			if err != nil {
-				panic(err)
-			}
-		}
-	}()
-
-	return read, nil
+	return newContents, nil
 }
 
 // // Format formats and writes the target module files into a read bucket.

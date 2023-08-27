@@ -1,4 +1,4 @@
-package buf
+package hcl
 
 // `hclFmt` commmand recursively looks for hcl files in the directory tree starting at workingDir, and formats them
 // based on the language style guides provided by Hashicorp. This is done using the official hcl2 library.
@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/walteh/snake"
-	"github.com/walteh/tftab/pkg/bufwrite"
 	"github.com/walteh/tftab/pkg/format"
+	"github.com/walteh/tftab/pkg/hclwrite"
 )
 
 var _ snake.Snakeable = (*Handler)(nil)
@@ -22,8 +22,8 @@ type Handler struct {
 
 func (me *Handler) BuildCommand(ctx context.Context) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "buf",
-		Short: "format proto files with the official buf library, but with tabs",
+		Use:   "fmt",
+		Short: "format hcl files with the official hcl2 library, but with tabs",
 	}
 	cmd.Args = cobra.ExactArgs(1)
 
@@ -42,7 +42,7 @@ func (me *Handler) ParseArguments(ctx context.Context, cmd *cobra.Command, file 
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
 
-	fmtr := bufwrite.NewBufFormatter()
+	fmtr := hclwrite.NewHclFormatter()
 
 	return format.Format(ctx, fmtr, fs, me.File, me.WorkingDir)
 }

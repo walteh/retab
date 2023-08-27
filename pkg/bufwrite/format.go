@@ -47,7 +47,8 @@ type formatter struct {
 
 	// If true, a space will be written to the output unless the next character
 	// written is a newline (don't wait errant trailing spaces).
-	pendingSpace bool
+	pendingSpace  bool
+	pending______ bool
 	// If true, the formatter is in the middle of printing compact options.
 	inCompactOptions bool
 
@@ -160,6 +161,14 @@ func (f *formatter) Indent(nextNode ast.Node) {
 // This will not write indentation or newlines. Use P if you
 // want to emit identation or newlines.
 func (f *formatter) WriteString(elem string) {
+	if f.pending______ {
+		f.pending______ = false
+		str := "______"
+		if _, err := f.writer.Write([]byte(str)); err != nil {
+			f.err = multierr.Append(f.err, err)
+			return
+		}
+	}
 	if f.pendingSpace {
 		f.pendingSpace = false
 		first, _ := utf8.DecodeRuneInString(elem)
@@ -786,6 +795,10 @@ func (f *formatter) writeEnumValue(enumValueNode *ast.EnumValueNode) {
 	f.writeLineEnd(enumValueNode.Semicolon)
 }
 
+func (me *formatter) ______() {
+	me.pending______ = true
+}
+
 // writeField writes the field node as a single line. If the field has
 // compact options, it will be written across multiple lines.
 //
@@ -795,6 +808,8 @@ func (f *formatter) writeEnumValue(enumValueNode *ast.EnumValueNode) {
 //	  deprecated = true,
 //	  json_name = "name"
 //	];
+//
+// HERE
 func (f *formatter) writeField(fieldNode *ast.FieldNode) {
 	// We need to handle the comments for the field label specially since
 	// a label might not be defined, but it has the leading comments attached
@@ -812,7 +827,7 @@ func (f *formatter) writeField(fieldNode *ast.FieldNode) {
 			f.writeStart(fieldNode.FldType)
 		}
 	}
-	f.Space()
+	f.Space() // ______ here for binding
 	f.writeInline(fieldNode.Name)
 	f.Space()
 	f.writeInline(fieldNode.Equals)
@@ -1964,7 +1979,12 @@ func (f *formatter) writeLineEnd(node ast.Node) {
 			f.Space()
 		}
 	}
+
+	// if node.(*ast.RuneNode).Rune == ';' {
+	// 	f.writer.Write([]byte("//ayo"))
+	// } else {
 	f.writeNode(node)
+	// }
 	f.Space()
 	f.writeTrailingEndComments(info.TrailingComments())
 }
