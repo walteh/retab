@@ -209,7 +209,6 @@ target "test" {
   output   = ["type=cacheonly"]
 }
 
-
 target "meta" {
   inherits = ["_common"]
   target   = "meta-out"
