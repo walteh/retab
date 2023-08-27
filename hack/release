@@ -5,7 +5,6 @@ set -eu -o pipefail
 : "${GITHUB_ACTIONS=}"
 : "${GITHUB_REPOSITORY=}"
 : "${GITHUB_RUN_ID=}"
-: "${BIN_VERSION=local}"
 
 : "${BUILDX_CMD=docker buildx}"
 : "${DESTDIR=./bin/release}"
@@ -42,18 +41,15 @@ output=$(mktemp -d -t buildx-output.XXXXXXXXXX)
 	${BUILDX_CMD} bake "${setFlags[@]}" --set "*.args.BUILDKIT_MULTI_PLATFORM=true" --set "*.output=$output" release --progress=plain
 )
 
+mkdir -p "$DESTDIR"
+
+DESTDIR_ABSOLUTE="$(pwd)/$DESTDIR"
+
 for pdir in "${output}"/*/; do
 	(
 		cd "$pdir"
-		# find the name of the first file that does not end with .json
-		binname=$(find . -type f ! -name "*.json" -print | head -n 1 | xargs basename)
-		filename=$(basename "${binname%.exe}")
-		mv "provenance.json" "${filename}.provenance.json"
-		mv "sbom-binaries.spdx.json" "${filename}.sbom.json"
-		find . -name 'sbom*.json' -exec rm {} \;
+		tar -czf "$DESTDIR_ABSOLUTE/$(jq -r '.artifact' buildrc.json).tar.gz" .
 	)
 done
 
-mkdir -p "$DESTDIR"
-mv "$output"/**/* "$DESTDIR/"
 rm -rf "$output"

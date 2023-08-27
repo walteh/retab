@@ -146,6 +146,12 @@ target "release" {
   output   = ["${DESTDIR}/release"]
 }
 
+target "bundle" {
+  inherits = ["_common"]
+  target   = "bundle"
+  output   = ["${DESTDIR}/bundle"]
+}
+
 target "image" {
   inherits = ["meta-helper", "binaries"]
   output   = ["type=image"]

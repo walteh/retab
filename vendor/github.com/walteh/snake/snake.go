@@ -15,21 +15,22 @@ type Snakeable interface {
 }
 
 var (
-	ErrMissingBinding = fmt.Errorf("snake.ErrMissingBinding")
-	ErrMissingRun     = fmt.Errorf("snake.ErrMissingRun")
-	ErrInvalidRun     = fmt.Errorf("snake.ErrInvalidRun")
+	ErrMissingBinding   = fmt.Errorf("snake.ErrMissingBinding")
+	ErrMissingRun       = fmt.Errorf("snake.ErrMissingRun")
+	ErrInvalidRun       = fmt.Errorf("snake.ErrInvalidRun")
+	ErrInvalidArguments = fmt.Errorf("snake.ErrInvalidArguments")
 )
 
 func NewRootCommand(ctx context.Context, snk Snakeable) *cobra.Command {
 
 	cmd := snk.BuildCommand(ctx)
 
-	cmd.PersistentPreRunE = func(ccc *cobra.Command, args []string) error {
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		if err := cmd.ParseFlags(args); err != nil {
 			return err
 		}
 
-		err := snk.ParseArguments(ccc.Context(), ccc, args)
+		err := snk.ParseArguments(cmd.Context(), cmd, args)
 		if err != nil {
 			return err
 		}
@@ -37,8 +38,8 @@ func NewRootCommand(ctx context.Context, snk Snakeable) *cobra.Command {
 		return nil
 	}
 
-	cmd.RunE = func(ccc *cobra.Command, args []string) error {
-		err := snk.ParseArguments(ccc.Context(), ccc, args)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		err := snk.ParseArguments(cmd.Context(), cmd, args)
 		if err != nil {
 			return err
 		}
@@ -51,14 +52,27 @@ func NewRootCommand(ctx context.Context, snk Snakeable) *cobra.Command {
 
 }
 
-func MustNewCommand(ctx context.Context, cbra *cobra.Command, snk Snakeable) {
-	err := NewCommand(ctx, cbra, snk)
+func NewGroup(ctx context.Context, cmd *cobra.Command, name string, description string) *cobra.Command {
+
+	grp := &cobra.Command{
+		Use:   name,
+		Short: description,
+		Long:  description,
+	}
+
+	cmd.AddCommand(grp)
+
+	return cmd
+}
+
+func MustNewCommand(ctx context.Context, cbra *cobra.Command, name string, snk Snakeable) {
+	err := NewCommand(ctx, cbra, name, snk)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func NewCommand(ctx context.Context, cbra *cobra.Command, snk Snakeable) error {
+func NewCommand(ctx context.Context, cbra *cobra.Command, name string, snk Snakeable) error {
 
 	cmd := snk.BuildCommand(ctx)
 
@@ -82,7 +96,11 @@ func NewCommand(ctx context.Context, cbra *cobra.Command, snk Snakeable) error {
 	}
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		return callRunMethod(cmd.Context(), method, tpe)
+		return callRunMethod(cmd, method, tpe)
+	}
+
+	if name != "" {
+		cmd.Use = name
 	}
 
 	cbra.AddCommand(cmd)
@@ -97,7 +115,7 @@ func Bind(ctx context.Context, key any, value any) context.Context {
 	}
 
 	tk := reflect.TypeOf(key)
-	if tk.Kind() == reflect.Ptr {
+	if tk.Kind() == reflect.Ptr && tk.Elem().Kind() != reflect.Struct {
 		tk = tk.Elem()
 	}
 
@@ -113,27 +131,46 @@ type bindingsKeyT struct {
 
 var callbackReturnSignature = reflect.TypeOf((*error)(nil)).Elem()
 
-func callRunMethod(ctx context.Context, f reflect.Value, t reflect.Type) error {
+func callRunMethod(cmd *cobra.Command, f reflect.Value, t reflect.Type) error {
 
 	in := []reflect.Value{}
 
+	// we do not check for the existence of the bindings key here
+	// because it might not be needed
+	b, bindingsExist := cmd.Context().Value(&bindingsKeyT{}).(bindings)
+
+	contextOverrideExists := false
+	if bindingsExist {
+		_, ok := b[reflect.TypeOf((*context.Context)(nil)).Elem()]
+		if ok {
+			contextOverrideExists = true
+		}
+	}
+
 	for i := 0; i < t.NumIn(); i++ {
 		pt := t.In(i)
-		if pt.Implements(reflect.TypeOf((*context.Context)(nil)).Elem()) {
-			in = append(in, reflect.ValueOf(ctx))
+		if !contextOverrideExists && pt.Implements(reflect.TypeOf((*context.Context)(nil)).Elem()) {
+			in = append(in, reflect.ValueOf(cmd.Context()))
+		} else if pt == reflect.TypeOf((*cobra.Command)(nil)) {
+			in = append(in, reflect.ValueOf(cmd))
+		} else if pt == reflect.TypeOf(cobra.Command{}) {
+			in = append(in, reflect.ValueOf(*cmd))
 		} else {
-			b, ok := ctx.Value(&bindingsKeyT{}).(bindings)
-			if !ok {
+			// if we end up here, we need to validate the bindings exist
+			if !bindingsExist {
 				return errors.WithMessage(ErrMissingBinding, "no snake bindings in context")
 			}
+
 			bv, ok := b[pt]
 			if !ok {
-				return errors.WithMessage(ErrMissingBinding, fmt.Sprintf("no binding for %s", pt))
+				return errors.WithMessagef(ErrMissingBinding, "no snake binding for type %s", pt)
 			}
+
 			v, err := bv()
 			if err != nil {
 				return err
 			}
+
 			in = append(in, v)
 		}
 	}
@@ -175,11 +212,6 @@ func validateRunMethod(inter any, method reflect.Value) (reflect.Type, error) {
 
 	// only here we know it is safe to call Type()
 	t := method.Type()
-
-	// either no arguments or first argument must be context.Context
-	if t.NumIn() != 0 && !t.In(0).Implements(reflect.TypeOf((*context.Context)(nil)).Elem()) {
-		return nil, errors.WithMessagef(ErrInvalidRun, "first argument of (%s).Run must be of type \"context.Context\"", parentName)
-	}
 
 	// must return only an error to comply with cobra.Command.RunE
 	if t.NumOut() != 1 || !t.Out(0).Implements(callbackReturnSignature) {

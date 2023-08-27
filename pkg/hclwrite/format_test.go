@@ -72,7 +72,7 @@ variable "DESTDIR" {
 			}
 
 			// Compare the result with the expected outcome
-			assert.Equal(t, tt.expected, buf.Bytes(), "HCL source does not match expected output")
+			assert.Equal(t, string(tt.expected), buf.String(), "HCL source does not match expected output")
 		})
 	}
 }

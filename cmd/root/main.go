@@ -7,7 +7,11 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/walteh/snake"
+	"github.com/walteh/tftab/cmd/root/buf"
 	"github.com/walteh/tftab/cmd/root/fmt"
+	"github.com/walteh/tftab/cmd/root/hcl"
+	"github.com/walteh/tftab/cmd/root/install"
+
 	"github.com/walteh/tftab/version"
 )
 
@@ -29,7 +33,10 @@ func (me *Root) BuildCommand(ctx context.Context) *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(&me.Debug, "debug", "d", false, "Print debug output")
 	cmd.PersistentFlags().BoolVarP(&me.Version, "version", "v", false, "Print version and exit")
 
-	snake.MustNewCommand(ctx, cmd, &fmt.Handler{})
+	snake.MustNewCommand(ctx, cmd, "fmt", &fmt.Handler{})
+	snake.MustNewCommand(ctx, cmd, "buf", &buf.Handler{})
+	snake.MustNewCommand(ctx, cmd, "hcl", &hcl.Handler{})
+	snake.MustNewCommand(ctx, cmd, "install", &install.Handler{})
 
 	return cmd
 }
