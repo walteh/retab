@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	"github.com/walteh/buildrc/pkg/git"
 	"github.com/walteh/buildrc/pkg/install"
 	"github.com/walteh/snake"
 )
@@ -34,7 +33,7 @@ func (me *Handler) ParseArguments(ctx context.Context, cmd *cobra.Command, file 
 
 }
 
-func (me *Handler) Run(ctx context.Context, cmd *cobra.Command, gitp git.GitProvider) error {
+func (me *Handler) Run(ctx context.Context, cmd *cobra.Command) error {
 	if me.Latest {
 		return install.InstallLatestGithubRelease(ctx, afero.NewOsFs(), afero.NewOsFs(), "walteh", "buildrc", "")
 	}
