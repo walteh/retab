@@ -20,7 +20,7 @@ import (
 var _ snake.Snakeable = (*Handler)(nil)
 
 type Handler struct {
-	File       string `arg:"" default:"" name:"file" help:"The hcl file to format."`
+	File       string `arg:"" default:" " name:"file" help:"The hcl file to format."`
 	WorkingDir string `name:"working-dir" help:"The working directory to use. Defaults to the current directory."`
 }
 

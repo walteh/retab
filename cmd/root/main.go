@@ -29,7 +29,7 @@ func (me *Root) BuildCommand(ctx context.Context) *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(&me.Debug, "debug", "d", false, "Print debug output")
 	cmd.PersistentFlags().BoolVarP(&me.Version, "version", "v", false, "Print version and exit")
 
-	snake.MustNewCommand(ctx, cmd, &fmt.Handler{})
+	snake.MustNewCommand(ctx, cmd, "fmt", &fmt.Handler{})
 
 	return cmd
 }
