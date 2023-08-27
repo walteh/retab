@@ -795,9 +795,9 @@ func (f *formatter) writeEnumValue(enumValueNode *ast.EnumValueNode) {
 	f.writeLineEnd(enumValueNode.Semicolon)
 }
 
-func (me *formatter) ______() {
-	me.pending______ = true
-}
+// func (me *formatter) ______() {
+// 	me.pending______ = true
+// }
 
 // writeField writes the field node as a single line. If the field has
 // compact options, it will be written across multiple lines.

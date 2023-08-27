@@ -173,7 +173,7 @@ service OgWebServerService {
 			}
 
 			// Compare the result with the expected outcome
-			assert.Equal(t, string(tt.expected), string(buf.Bytes()), " source does not match expected output")
+			assert.Equal(t, string(tt.expected), buf.String(), " source does not match expected output")
 		})
 	}
 }
