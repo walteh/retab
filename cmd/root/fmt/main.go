@@ -5,22 +5,21 @@ package fmt
 
 import (
 	"context"
-	"path/filepath"
+	"errors"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/mattn/go-zglob"
-	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/walteh/snake"
-	"github.com/walteh/tftab/pkg/configuration/editorconfig"
+	"github.com/walteh/tftab/pkg/bufwrite"
+	"github.com/walteh/tftab/pkg/format"
 	"github.com/walteh/tftab/pkg/hclwrite"
 )
 
 var _ snake.Snakeable = (*Handler)(nil)
 
 type Handler struct {
-	File       string `arg:"" default:"" name:"file" help:"The hcl file to format."`
+	File       string `arg:"" default:" " name:"file" help:"The hcl file to format."`
 	WorkingDir string `name:"working-dir" help:"The working directory to use. Defaults to the current directory."`
 }
 
@@ -46,53 +45,36 @@ func (me *Handler) ParseArguments(ctx context.Context, cmd *cobra.Command, file 
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
 
-	isDir, err := afero.IsDir(fs, me.File)
-	if err != nil {
-		return err
-	}
+	fmtr := hclwrite.NewHclFormatter()
+	bufr := bufwrite.NewBufFormatter()
 
-	zerolog.Ctx(ctx).Trace().Any("handler", me).Msg("Running fmt command.")
-
-	// handle when option specifies a particular file
-	if !isDir {
-		cfg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, me.File)
+	for _, target := range bufr.Targets() {
+		// targets are glob patterns
+		matches, err := zglob.Glob(target)
 		if err != nil {
 			return err
 		}
 
-		if !filepath.IsAbs(me.File) {
-			me.File = filepath.Join(me.WorkingDir, me.File)
+		if len(matches) == 0 {
+			continue
+		} else {
+			return format.Format(ctx, bufr, fs, me.File, me.WorkingDir)
 		}
-		zerolog.Ctx(ctx).Debug().Msgf("Formatting hcl file at: %s.", me.File)
-		return hclwrite.Format(ctx, cfg, fs, me.File)
 	}
 
-	zerolog.Ctx(ctx).Debug().Msgf("Formatting hcl files from the directory tree %s %s", me.WorkingDir, me.File)
-
-	// zglob normalizes paths to "/"
-	extensions := []string{"*.hcl", "*.tf", "*.tfvars", "*.hcl2"}
-	var files []string
-
-	for _, ext := range extensions {
-		pattern := filepath.Join(me.WorkingDir, me.File, "**", ext)
-		matches, err := zglob.Glob(pattern)
+	for _, target := range fmtr.Targets() {
+		// targets are glob patterns
+		matches, err := zglob.Glob(target)
 		if err != nil {
 			return err
 		}
-		files = append(files, matches...)
-	}
 
-	var formatErrors *multierror.Error
-	for _, filename := range files {
-		cfg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, filename)
-		if err != nil {
-			return err
-		}
-		err = hclwrite.Format(ctx, cfg, fs, filename)
-		if err != nil {
-			formatErrors = multierror.Append(formatErrors, err)
+		if len(matches) == 0 {
+			continue
+		} else {
+			return format.Format(ctx, fmtr, fs, me.File, me.WorkingDir)
 		}
 	}
 
-	return formatErrors.ErrorOrNil()
+	return errors.New("no targets found")
 }
