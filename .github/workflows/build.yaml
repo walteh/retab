@@ -226,6 +226,13 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v3
               with: { fetch-depth: 0 }
+            - name: Download binaries
+              uses: actions/download-artifact@v3
+              with:
+                  name: buildx
+                  path: rebin
+            - name: check
+              run: ls -la rebin
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v2
             - name: Install just

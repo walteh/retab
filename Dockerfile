@@ -13,7 +13,7 @@ FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS golatest
 
-FROM --platform=$BUILDPLATFORM walteh/buildrc:4.0.1 as buildrc
+FROM --platform=$BUILDPLATFORM walteh/buildrc:0.12.1 as buildrc
 
 FROM golatest AS gobase
 COPY --from=xx / /
@@ -36,16 +36,35 @@ RUN --mount=type=bind,target=/src,rw <<EOT
 	buildrc full --git-dir=/src --files-dir=/meta
 EOT
 
+FROM gobase AS binary-cache
+ARG DESTDIR
+RUN --mount=type=bind,target=/src \
+	--mount=type=bind,from=meta,source=/meta,target=/meta,readonly <<EOT
+	mkdir -p /binary-cache
+	echo "checking for binary cache in /src/rebin/$(cat /meta/artifact).tar.gz"
+	if [ -f "/src/rebin/$(cat /meta/artifact).tar.gz" ]; then
+		 echo "found binary cache in /src/rebin/$(cat /meta/artifact).tar.gz";
+		tar xzf "/src/rebin/$(cat /meta/artifact).tar.gz" -C /binary-cache;
+	fi
+EOT
+
 FROM gobase AS builder
 ARG TARGETPLATFORM
 RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod \
+	--mount=type=bind,from=binary-cache,source=/binary-cache,target=/binary-cache,readonly \
 	--mount=type=bind,from=meta,source=/meta,target=/meta,readonly <<EOT
   set -e
   if [ -z "${TARGETPLATFORM}" ]; then echo "TARGETPLATFORM is not set" && exit 1; fi
-  xx-go --wrap
-  DESTDIR=/usr/bin GO_PKG=$(cat /meta/go-pkg) BIN_NAME=$(cat /meta/name) BIN_VERSION=$(cat /meta/version) BIN_REVISION=$(cat /meta/revision) GO_EXTRA_LDFLAGS="-s -w" ./hack/build
+	if [ -f /binary-cache/$(cat /meta/executable) ];
+	then cp /binary-cache/$(cat /meta/executable) /usr/bin/$(cat /meta/name);
+	echo "FOUND BINARY CACHE"
+	else
+echo "no binary cache found in /binary-cache/$(cat /meta/name) - building from source";
+  xx-go --wrap;
+  DESTDIR=/usr/bin GO_PKG=$(cat /meta/go-pkg) BIN_NAME=$(cat /meta/name) BIN_VERSION=$(cat /meta/version) BIN_REVISION=$(cat /meta/revision) GO_EXTRA_LDFLAGS="-s -w" ./hack/build;
+  fi;
   xx-verify --static /usr/bin/$(cat /meta/name)
 EOT
 
