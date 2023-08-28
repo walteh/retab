@@ -55,17 +55,17 @@ RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/go/pkg/mod \
 	--mount=type=bind,from=binary-cache,source=/binary-cache,target=/binary-cache,readonly \
 	--mount=type=bind,from=meta,source=/meta,target=/meta,readonly <<EOT
-  set -e
-  if [ -z "${TARGETPLATFORM}" ]; then echo "TARGETPLATFORM is not set" && exit 1; fi
+  	set -e
+  	if [ -z "${TARGETPLATFORM}" ]; then echo "TARGETPLATFORM is not set" && exit 1; fi
 	if [ -f /binary-cache/$(cat /meta/executable) ];
-	then cp /binary-cache/$(cat /meta/executable) /usr/bin/$(cat /meta/name);
-	echo "FOUND BINARY CACHE"
+		then cp /binary-cache/$(cat /meta/executable) /usr/bin/$(cat /meta/name);
+		echo "FOUND BINARY CACHE"
 	else
-echo "no binary cache found in /binary-cache/$(cat /meta/name) - building from source";
-  xx-go --wrap;
-  DESTDIR=/usr/bin GO_PKG=$(cat /meta/go-pkg) BIN_NAME=$(cat /meta/name) BIN_VERSION=$(cat /meta/version) BIN_REVISION=$(cat /meta/revision) GO_EXTRA_LDFLAGS="-s -w" ./hack/build;
-  fi;
-  xx-verify --static /usr/bin/$(cat /meta/name)
+		echo "no binary cache found in /binary-cache/$(cat /meta/name) - building from source";
+  		xx-go --wrap;
+  		DESTDIR=/usr/bin GO_PKG=$(cat /meta/go-pkg) BIN_NAME=$(cat /meta/name) BIN_VERSION=$(cat /meta/version) BIN_REVISION=$(cat /meta/revision) GO_EXTRA_LDFLAGS="-s -w" ./hack/build;
+  	fi;
+  	xx-verify --static /usr/bin/$(cat /meta/name)
 EOT
 
 FROM scratch AS binaries-unix

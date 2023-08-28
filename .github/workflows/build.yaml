@@ -34,36 +34,36 @@ env:
     TEST_CACHE_SCOPE: "test"
 
 jobs:
-    prepare-test:
-        runs-on: ubuntu-22.04
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v3
-              with:
-                  fetch-depth: 0
-            - name: Set up QEMU
-              uses: docker/setup-qemu-action@v2
-            - name: Install just
-              uses: taiki-e/install-action@just
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v2
-              with:
-                  version: ${{ env.BUILDX_VERSION }}
-                  driver-opts: image=${{ env.BUILDKIT_IMAGE }}
-                  buildkitd-flags: --debug
-            - name: Build
-              uses: docker/bake-action@v3
-              with:
-                  files: |
-                      ./docker-bake.hcl
-                  targets: integration-test-base
-                  set: |
-                      *.cache-from=type=gha,scope=${{ env.TEST_CACHE_SCOPE }}
-                      *.cache-to=type=gha,scope=${{ env.TEST_CACHE_SCOPE }}
+    # prepare-test:
+    #     runs-on: ubuntu-22.04
+    #     steps:
+    #         - name: Checkout
+    #           uses: actions/checkout@v3
+    #           with:
+    #               fetch-depth: 0
+    #         - name: Set up QEMU
+    #           uses: docker/setup-qemu-action@v2
+    #         - name: Install just
+    #           uses: taiki-e/install-action@just
+    #         - name: Set up Docker Buildx
+    #           uses: docker/setup-buildx-action@v2
+    #           with:
+    #               version: ${{ env.BUILDX_VERSION }}
+    #               driver-opts: image=${{ env.BUILDKIT_IMAGE }}
+    #               buildkitd-flags: --debug
+    #         - name: Build
+    #           uses: docker/bake-action@v3
+    #           with:
+    #               files: |
+    #                   ./docker-bake.hcl
+    #               targets: integration-test-base
+    #               set: |
+    #                   *.cache-from=type=gha,scope=${{ env.TEST_CACHE_SCOPE }}
+    #                   *.cache-to=type=gha,scope=${{ env.TEST_CACHE_SCOPE }}
     test:
         runs-on: ubuntu-22.04
         needs:
-            - prepare-test
+            - binaries
         env:
             TESTFLAGS: "-v --parallel=6 --timeout=30m"
             TESTFLAGS_DOCKER: "-v --parallel=1 --timeout=30m"
@@ -88,6 +88,11 @@ jobs:
               uses: actions/checkout@v3
               with:
                   fetch-depth: 0
+            - name: Download binaries
+              uses: actions/download-artifact@v3
+              with:
+                  name: buildx
+                  path: rebin
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v2
             - name: Install just
@@ -147,6 +152,7 @@ jobs:
             - name: Show matrix
               run: |
                   echo ${{ steps.platforms.outputs.matrix }}
+
     meta:
         runs-on: ubuntu-22.04
         outputs:
@@ -175,6 +181,7 @@ jobs:
                   just meta
                   echo "version=$(cat ./meta/version)" >> $GITHUB_OUTPUT
                   echo "revision=$(cat ./meta/revision)" >> $GITHUB_OUTPUT
+
     binaries:
         runs-on: ubuntu-22.04
         needs:
