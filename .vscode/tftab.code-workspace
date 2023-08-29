@@ -46,5 +46,20 @@
 			"editor.defaultFormatter": "ms-azuretools.vscode-docker",
 			"editor.formatOnSave": true,
 		},
+		"[proto3]": {
+			"editor.formatOnSave": false,
+		},
+		"emeraldwalk.runonsave": {
+			"commands": [
+				{
+					"match": "\\.tf$|\\.tfvars$|\\.hcl$|\\.hclvars$|\\.hcl2$",
+					"cmd": "~/.tftab/tftab hcl \"${file}\""
+				},
+				{
+					"match": "\\.proto$|\\.proto3$",
+					"cmd": "~/.tftab/tftab buf \"${file}\""
+				},
+			]
+		},
 	}
 }
