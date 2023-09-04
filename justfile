@@ -20,7 +20,7 @@ docs:
 # VALIDATE
 ##################################################################
 
-validate: lint outdated validate-vendor validate-docs validate-gen
+validate: lint validate-vendor validate-docs validate-gen
 
 lint:
     docker buildx bake lint
