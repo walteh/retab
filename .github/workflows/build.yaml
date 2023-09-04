@@ -50,7 +50,7 @@ jobs:
             TEST_IMAGE_ID: "buildx-tests"
         steps:
             - name: Checkout
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
               with:
                   fetch-depth: 0
             - name: Download binaries
@@ -98,7 +98,7 @@ jobs:
             validate_matrix: ${{ steps.platforms.outputs.validate_matrix }}
         steps:
             - name: Checkout
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
             - name: Create matrix
               id: platforms
               run: |
@@ -120,7 +120,7 @@ jobs:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         steps:
             - name: Checkout
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
               with:
                   fetch-depth: 0
             - name: Set up QEMU
@@ -158,7 +158,7 @@ jobs:
                   platform=${{ matrix.platform }}
                   echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_OUTPUT
             - name: Checkout
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
               with:
                   fetch-depth: 0
             - name: Set up QEMU
@@ -190,7 +190,7 @@ jobs:
             - release
         steps:
             - name: Checkout
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
               with: { fetch-depth: 0 }
             - name: Download build
               uses: actions/download-artifact@v3
@@ -250,7 +250,7 @@ jobs:
             - validate
         steps:
             - name: Checkout
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
               with: { fetch-depth: 0 }
             - name: Download build
               uses: actions/download-artifact@v3
@@ -288,7 +288,7 @@ jobs:
         continue-on-error: true
         steps:
             - name: Checkout
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
               with: { fetch-depth: 0 }
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v2
@@ -316,7 +316,7 @@ jobs:
                 target: ${{ fromJson(needs.prepare-build.outputs.validate_matrix) }}
         steps:
             - name: Checkout
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
               with: { fetch-depth: 0 }
             - name: Install just
               uses: taiki-e/install-action@just
