@@ -1,23 +1,26 @@
-all: binaries
+##################################################################
+# GENERATE
+##################################################################
 
-build:
-    ./hack/build
+generate: vendor docs gen meta
 
-shell:
-    ./hack/shell
+gen:
+    docker buildx bake update-gen
 
-binaries:
-    docker buildx bake binaries
+meta:
+    docker buildx bake meta
 
-binaries-cross:
-    docker buildx bake binaries-cross
+vendor:
+    ./hack/update-vendor
 
+docs:
+    ./hack/update-docs
 
+##################################################################
+# VALIDATE
+##################################################################
 
-release BIN_VERSION="local":
-    BIN_VERSION={{BIN_VERSION}} ./hack/release
-
-validate-all: lint test validate-vendor validate-docs validate-gen
+validate: lint outdated validate-vendor validate-docs validate-gen
 
 lint:
     docker buildx bake lint
@@ -31,42 +34,40 @@ validate-docs:
 validate-gen:
     docker buildx bake validate-gen
 
-update-all: vendor docs gen mod-outdated
+outdated:
+	docker buildx bake outdated
+	cat ./bin/outdated/outdated.txt
 
-vendor:
-    ./hack/update-vendor
+##################################################################
+# TEST
+##################################################################
 
-docs:
-    ./hack/update-docs
+test: unit-test integration-test
 
-mod-outdated:
-    docker buildx bake mod-outdated
+unit-test:
+	docker buildx bake unit-test --set "*.args.DESTDIR=/out"
+	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin:/out unit-test
 
-gen:
-    docker buildx bake update-gen --progress plain
+integration-test:
+	docker buildx bake integration-test --set "*.args.DESTDIR=/out"
+	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin:/out integration-test
 
+##################################################################
+# BUILD
+##################################################################
 
-test-driver:
-    ./hack/test-driver
-test:
-    ./hack/test
+binaries:
+    docker buildx bake binaries
 
-test-unit:
-    TESTPKGS=./... SKIP_INTEGRATION_TESTS=1 ./hack/test
+binaries-cross:
+    docker buildx bake binaries-cross
 
-test-integration:
-    TESTPKGS=./tests ./hack/test
-
+release:
+    ./hack/release $(PLATFORM) $(TARGET)
 
 local:
-	docker buildx bake image-default --progress plain
-
-
-meta:
-    docker buildx bake meta  --progress plain
-
-
-
+	docker buildx bake image-default
 
 install: binaries
-	./bin/build/tftab install && tftab --version
+	binname=$(docker buildx bake _common --print | jq -cr '.target._common.args.BIN_NAME') && \
+	./bin/build/${binname} install && ${binname} --version

@@ -13,16 +13,13 @@ variable "GENDIR" {
 	default = "./gen"
 }
 
-variable "GO_PKG" {
-	default = "github.com/walteh/tftab"
-}
 
 variable "DOCKER_IMAGE" {
-	default = "walteh/tftab"
+	default = "walteh/testrc"
 }
 
 variable "BIN_NAME" {
-	default = "tftab"
+	default = "testrc"
 }
 
 target "_common" {
@@ -30,12 +27,9 @@ target "_common" {
 		GO_VERSION                    = GO_VERSION
 		BUILDKIT_CONTEXT_KEEP_GIT_DIR = 1
 		DOCKER_IMAGE                  = DOCKER_IMAGE
-		GO_PKG                        = GO_PKG
 		BIN_NAME                      = BIN_NAME
 	}
 }
-
-
 
 group "default" {
 	targets = ["binaries"]
@@ -102,18 +96,11 @@ target "update-gen" {
 	output     = ["${GENDIR}"]
 }
 
-target "mod-outdated" {
-	inherits        = ["_common"]
-	dockerfile      = "./hack/dockerfiles/vendor.Dockerfile"
-	target          = "outdated"
-	no-cache-filter = ["outdated"]
-	output          = ["type=cacheonly"]
-}
-
-target "test" {
-	inherits = ["_common"]
-	target   = "test-coverage"
-	output   = ["${DESTDIR}/coverage"]
+target "outdated" {
+	inherits   = ["_common"]
+	dockerfile = "./hack/dockerfiles/vendor.Dockerfile"
+	target     = "outdated-output"
+	output     = ["${DESTDIR}/outdated"]
 }
 
 target "binaries" {
@@ -146,12 +133,6 @@ target "release" {
 	output   = ["${DESTDIR}/release"]
 }
 
-target "bundle" {
-	inherits = ["_common"]
-	target   = "bundle"
-	output   = ["${DESTDIR}/bundle"]
-}
-
 target "image" {
 	inherits = ["meta-helper", "binaries"]
 	output   = ["type=image"]
@@ -164,49 +145,19 @@ target "image-default" {
 	platforms = ["linux/arm64"]
 }
 
-
 target "image-cross" {
 	inherits = ["meta-helper", "binaries-cross"]
 	target   = "entry"
 	output   = ["type=image"]
+	attest = [
+		"type=provenance",
+		"type=sbom"
+	]
 }
 
 target "image-local" {
 	inherits = ["image"]
 	output   = ["type=docker"]
-}
-
-variable "HTTP_PROXY" {
-	default = ""
-}
-variable "HTTPS_PROXY" {
-	default = ""
-}
-variable "NO_PROXY" {
-	default = ""
-}
-
-target "integration-test-base" {
-	inherits = ["_common"]
-	args = {
-		HTTP_PROXY  = HTTP_PROXY
-		HTTPS_PROXY = HTTPS_PROXY
-		NO_PROXY    = NO_PROXY
-	}
-	target = "integration-test-base"
-	output = ["type=cacheonly"]
-}
-
-target "integration-test" {
-	inherits = ["integration-test-base"]
-	target   = "integration-test"
-}
-
-
-target "test" {
-	inherits = ["_common"]
-	target   = "test-starter"
-	output   = ["type=cacheonly"]
 }
 
 target "meta" {
@@ -215,8 +166,30 @@ target "meta" {
 	output   = ["meta"]
 }
 
-
 # Special target: https://github.com/docker/metadata-action#bake-definition
 target "meta-helper" {
 	tags = ["${DOCKER_IMAGE}:local"]
+}
+
+target "tester" {
+	inherits = ["_common"]
+	target   = "test-runner"
+}
+
+target "integration-test" {
+	inherits = ["_common", "tester"]
+	args = {
+		TEST_RUN = "TestIntegration*"
+		DESTDIR  = "${DESTDIR}/testreports/integration"
+	}
+	output = ["type=docker,name=integration-test"]
+}
+
+target "unit-test" {
+	inherits = ["_common", "tester"]
+	args = {
+		TEST_RUN = "TestUnit*"
+		DESTDIR  = "${DESTDIR}/testreports/unit"
+	}
+	output = ["type=docker,name=unit-test"]
 }

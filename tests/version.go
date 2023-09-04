@@ -4,18 +4,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/moby/buildkit/util/testutil/integration"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 )
 
-var versionTests = []func(t *testing.T, sb integration.Sandbox){
-	testVersion,
-}
-
-func testVersion(t *testing.T, sb integration.Sandbox) {
-	cmd := mainCmd(sb, withArgs("--version"))
+func TestUnitVersion(t *testing.T) {
+	cmd := mainCmd(nil, withArgs("--version"))
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
 

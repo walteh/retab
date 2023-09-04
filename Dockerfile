@@ -1,19 +1,23 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:experimental
+
+##################################################################
+# SETUP
+##################################################################
 
 ARG GO_VERSION=1.21.0
 ARG XX_VERSION=1.2.1
 
-ARG DOCKER_VERSION=24.0.2
-ARG GOTESTSUM_VERSION=v1.9.0
-ARG REGISTRY_VERSION=2.8.0
-ARG BUILDKIT_VERSION=v0.11.6
+ARG DOCKER_VERSION=24.0.5
+ARG GOTESTSUM_VERSION=v1.10.1
+ARG REGISTRY_VERSION=latest
+ARG BUILDKIT_VERSION=nightly
 
 # xx is a helper for cross-compilation
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS golatest
 
-FROM --platform=$BUILDPLATFORM walteh/buildrc:0.12.1 as buildrc
+FROM --platform=$BUILDPLATFORM walteh/buildrc:0.12.7 as buildrc
 
 FROM golatest AS gobase
 COPY --from=xx / /
@@ -23,11 +27,17 @@ ENV GOFLAGS=-mod=vendor
 ENV CGO_ENABLED=0
 WORKDIR /src
 
-FROM registry:$REGISTRY_VERSION AS registry
+FROM --platform=$BUILDPLATFORM registry:$REGISTRY_VERSION AS registry
 
-FROM moby/buildkit:$BUILDKIT_VERSION AS buildkit
+FROM --platform=$BUILDPLATFORM moby/buildkit:$BUILDKIT_VERSION AS buildkit
 
-FROM docker/buildx-bin:latest AS buildx-bin
+FROM --platform=$BUILDPLATFORM docker/buildx-bin:latest AS buildx-bin
+
+FROM --platform=$BUILDPLATFORM docker/compose-bin:latest AS compose-bin
+
+##################################################################
+# BINARIES
+##################################################################
 
 FROM gobase AS meta
 ARG TARGETPLATFORM
@@ -43,7 +53,7 @@ RUN --mount=type=bind,target=/src \
 	mkdir -p /binary-cache
 	echo "checking for binary cache in /src/rebin/$(cat /meta/artifact).tar.gz"
 	if [ -f "/src/rebin/$(cat /meta/artifact).tar.gz" ]; then
-		 echo "found binary cache in /src/rebin/$(cat /meta/artifact).tar.gz";
+		echo "found binary cache in /src/rebin/$(cat /meta/artifact).tar.gz";
 		tar xzf "/src/rebin/$(cat /meta/artifact).tar.gz" -C /binary-cache;
 	fi
 EOT
@@ -83,11 +93,6 @@ FROM binaries-$TARGETOS AS binaries
 # enable scanning for this stage
 ARG BUILDKIT_SBOM_SCAN_STAGE=true
 
-FROM binaries AS entry
-ARG BIN_NAME
-ENV BIN_NAME=${BIN_NAME}
-COPY --link --from=builder /usr/bin/${BIN_NAME} /usr/bin/${BIN_NAME}
-ENTRYPOINT [ "/usr/bin/${BIN_NAME}" ]
 
 ##################################################################
 # TESTING
@@ -101,63 +106,21 @@ RUN --mount=target=/root/.cache,type=cache <<EOT
 	/out/gotestsum --version
 EOT
 
-FROM gobase AS test
-ENV SKIP_INTEGRATION_TESTS=1
-RUN --mount=type=bind,target=. \
-	--mount=type=cache,target=/root/.cache \
-	--mount=type=cache,target=/go/pkg/mod <<EOT
-	go test -v -coverprofile=/tmp/coverage.txt -covermode=atomic ./... &&
-	go tool cover -func=/tmp/coverage.txt
-EOT
-
-FROM scratch AS test-coverage
-COPY --from=test /tmp/coverage.txt /coverage.txt
-
-FROM gobase AS docker
-ARG TARGETPLATFORM
-ARG DOCKER_VERSION
-WORKDIR /opt/docker
-RUN <<EOT
-CASE=${TARGETPLATFORM:-linux/amd64}
-DOCKER_ARCH=$(
-	case ${CASE} in
-	"linux/amd64") echo "x86_64" ;;
-	"linux/arm/v6") echo "armel" ;;
-	"linux/arm/v7") echo "armhf" ;;
-	"linux/arm64/v8") echo "aarch64" ;;
-	"linux/arm64") echo "aarch64" ;;
-	"linux/ppc64le") echo "ppc64le" ;;
-	"linux/s390x") echo "s390x" ;;
-	*) echo "" ;; esac
-)
-echo "DOCKER_ARCH=$DOCKER_ARCH" &&
-wget -qO- "https://download.docker.com/linux/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz" | tar xvz --strip 1
-EOT
-RUN ./dockerd --version && ./containerd --version && ./ctr --version && ./runc --version
-
-FROM gobase AS integration-test-base
-ARG BIN_NAME
-# https://github.com/docker/docker/blob/master/project/PACKAGERS.md#runtime-dependencies
-RUN apk add --no-cache \
-	btrfs-progs \
-	e2fsprogs \
-	e2fsprogs-extra \
-	ip6tables \
-	iptables \
-	openssl \
-	shadow-uidmap \
-	xfsprogs \
-	xz
-COPY --link --from=gotestsum /out/gotestsum /usr/bin/
-COPY --link --from=registry /bin/registry /usr/bin/
-COPY --link --from=docker /opt/docker/* /usr/bin/
-COPY --link --from=buildkit /usr/bin/buildkitd /usr/bin/
-COPY --link --from=buildkit /usr/bin/buildctl /usr/bin/
+FROM gobase AS test-runner
 COPY --link --from=binaries /${BIN_NAME} /usr/bin/
-COPY --link --from=buildx-bin /buildx /usr/libexec/docker/cli-plugins/docker-buildx
-
-FROM integration-test-base AS integration-test
+COPY --link --from=gotestsum /out/gotestsum /usr/bin/
+COPY --link --from=meta /meta /meta
 COPY . .
+ARG TEST_RUN
+ENV TEST_RUN=${TEST_RUN}
+ARG DESTDIR
+ENV DESTDIR=${DESTDIR}
+ENTRYPOINT gotestsum \
+	--format=standard-verbose \
+	--jsonfile=${DESTDIR}/go-test-report.json \
+	--junitfile=${DESTDIR}/junit-report.xml \
+	-- -v -mod=vendor -coverprofile=${DESTDIR}/coverage-report.txt -covermode=atomic \
+	./... -run ${TEST_RUN}
 
 ##################################################################
 # RELEASE
@@ -181,3 +144,12 @@ COPY --from=releaser /out/ /
 COPY --from=meta /meta/buildrc.json /buildrc.json
 
 FROM binaries
+
+##################################################################
+# IMAGE
+##################################################################
+
+FROM scratch AS entry
+COPY --link --from=meta /meta /meta
+COPY --link --from=builder /usr/bin/$(cat meta/name) /usr/bin/
+ENTRYPOINT [ "/usr/bin/$(cat meta/name)" ]

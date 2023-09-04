@@ -49,6 +49,9 @@
 		"[proto3]": {
 			"editor.formatOnSave": false,
 		},
+		"[terraform]": {
+			"editor.formatOnSave": false,
+		},
 		"emeraldwalk.runonsave": {
 			"commands": [
 				{
@@ -58,7 +61,7 @@
 				{
 					"match": "\\.proto$|\\.proto3$",
 					"cmd": "~/.tftab/tftab buf \"${file}\""
-				},
+				}
 			]
 		},
 	}
