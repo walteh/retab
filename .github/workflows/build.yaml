@@ -183,7 +183,7 @@ jobs:
                   files: ./docker-bake.hcl
                   targets: package
                   set: |
-                      *.contexts.released=type=local,src=./rebin/
+                      *.contexts.released=./rebin/
                       *.cache-from=type=gha,scope=build-${{ steps.prepare.outputs.PLATFORM_PAIR }}
                       *.cache-to=type=gha,scope=build-${{ steps.prepare.outputs.PLATFORM_PAIR }},mode=max
 
