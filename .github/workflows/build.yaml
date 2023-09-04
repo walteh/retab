@@ -173,7 +173,7 @@ jobs:
                   files: ./docker-bake.hcl
                   targets: package
                   set: |
-                      *.platforms=${{ matrix.platform }}
+                      *.platform=${{ matrix.platform }}
                       *.cache-from=type=gha,scope=build-${{ steps.prepare.outputs.PLATFORM_PAIR }}
                       *.cache-to=type=gha,scope=build-${{ steps.prepare.outputs.PLATFORM_PAIR }},mode=max
             - name: Upload artifacts
