@@ -19,7 +19,6 @@ on:
     workflow_dispatch:
     pull_request:
         paths-ignore:
-            - ".github/releases.json"
             - "README.md"
             - "docs/**"
 
@@ -32,57 +31,22 @@ env:
     REPO_SLUG: ${{ github.repository }}
     DESTDIR: "./bin"
     TEST_CACHE_SCOPE: "test"
+    DOCKERHUB_USERNAME: walteh
 
 jobs:
-    # prepare-test:
-    #     runs-on: ubuntu-22.04
-    #     steps:
-    #         - name: Checkout
-    #           uses: actions/checkout@v3
-    #           with:
-    #               fetch-depth: 0
-    #         - name: Set up QEMU
-    #           uses: docker/setup-qemu-action@v2
-    #         - name: Install just
-    #           uses: taiki-e/install-action@just
-    #         - name: Set up Docker Buildx
-    #           uses: docker/setup-buildx-action@v2
-    #           with:
-    #               version: ${{ env.BUILDX_VERSION }}
-    #               driver-opts: image=${{ env.BUILDKIT_IMAGE }}
-    #               buildkitd-flags: --debug
-    #         - name: Build
-    #           uses: docker/bake-action@v3
-    #           with:
-    #               files: |
-    #                   ./docker-bake.hcl
-    #               targets: integration-test-base
-    #               set: |
-    #                   *.cache-from=type=gha,scope=${{ env.TEST_CACHE_SCOPE }}
-    #                   *.cache-to=type=gha,scope=${{ env.TEST_CACHE_SCOPE }}
     test:
         runs-on: ubuntu-22.04
         needs:
             - binaries
+        strategy:
+            matrix:
+                level: [unit, integration]
         env:
             TESTFLAGS: "-v --parallel=6 --timeout=30m"
             TESTFLAGS_DOCKER: "-v --parallel=1 --timeout=30m"
             GOTESTSUM_FORMAT: "standard-verbose"
             TEST_IMAGE_BUILD: "0"
             TEST_IMAGE_ID: "buildx-tests"
-        strategy:
-            fail-fast: false
-            matrix:
-                worker:
-                    - docker
-                    - docker\+containerd # same as docker, but with containerd snapshotter
-                    - docker-container
-                    - remote
-                pkg:
-                    - ./tests
-                include:
-                    - pkg: ./...
-                      skip-integration-tests: 1
         steps:
             - name: Checkout
               uses: actions/checkout@v3
@@ -103,34 +67,19 @@ jobs:
                   version: ${{ env.BUILDX_VERSION }}
                   driver-opts: image=${{ env.BUILDKIT_IMAGE }}
                   buildkitd-flags: --debug
-            - name: Build test image
-              uses: docker/bake-action@v3
-              with:
-                  files: |
-                      ./docker-bake.hcl
-                  targets: integration-test
-                  set: |
-                      *.cache-from=type=gha,scope=${{ env.TEST_CACHE_SCOPE }}
-                      *.output=type=docker,name=${{ env.TEST_IMAGE_ID }}
             - name: Test
               run: |
-                  export TEST_REPORT_SUFFIX=-${{ github.job }}-$(echo "${{ matrix.pkg }}-${{ matrix.skip-integration-tests }}-${{ matrix.worker }}" | tr -dc '[:alnum:]-\n\r' | tr '[:upper:]' '[:lower:]')
-                  ./hack/test
-              env:
-                  TEST_DOCKERD: "${{ startsWith(matrix.worker, 'docker') && '1' || '0' }}"
-                  TESTFLAGS: "${{ (matrix.worker == 'docker' || matrix.worker == 'docker\\+containerd') && env.TESTFLAGS_DOCKER || env.TESTFLAGS }} --run=//worker=${{ matrix.worker }}$"
-                  TESTPKGS: "${{ matrix.pkg }}"
-                  SKIP_INTEGRATION_TESTS: "${{ matrix.skip-integration-tests }}"
+                  just ${{ matrix.level }}-test
             - name: Send to Codecov
               if: always()
               uses: codecov/codecov-action@v3
               with:
-                  directory: ./bin/testreports
+                  directory: ./bin/testreports/${{ matrix.level }}
             - name: Generate annotations
               if: always()
               uses: crazy-max/.github/.github/actions/gotest-annotations@1a64ea6d01db9a48aa61954cb20e265782c167d9
               with:
-                  directory: ./bin/testreports
+                  directory: ./bin/testreports/${{ matrix.level }}
             - name: Upload test reports
               if: always()
               uses: actions/upload-artifact@v3
@@ -266,7 +215,7 @@ jobs:
             - name: Login to DockerHub
               uses: docker/login-action@v2
               with:
-                  username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  username: ${{ env.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_PASSWORD }}
             - name: Login to GHCR
               uses: docker/login-action@v2
@@ -348,6 +297,7 @@ jobs:
                   files: |
                       ./docker-bake.hcl
                   targets: binaries
+
     validate:
         runs-on: ubuntu-22.04
         needs: [prepare-binaries]
