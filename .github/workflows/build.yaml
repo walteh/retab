@@ -107,9 +107,9 @@ jobs:
                   echo "validate_matrix=$(docker buildx bake validate --print | jq -cr '.group.validate.targets')" >>${GITHUB_OUTPUT}
             - name: Show matrix
               run: |
-                  echo "build_matrix = ${{ steps.platforms.outputs.build_matrix }}
-                  echo "test_matrix = ${{ steps.platforms.outputs.test_matrix }}
-                  echo "validate_matrix = ${{ steps.platforms.outputs.validate_matrix }}
+                  echo "build_matrix = ${{ steps.platforms.outputs.build_matrix }}"
+                  echo "test_matrix = ${{ steps.platforms.outputs.test_matrix }}"
+                  echo "validate_matrix = ${{ steps.platforms.outputs.validate_matrix }}"
 
     meta:
         runs-on: ubuntu-22.04
