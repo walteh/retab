@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
-	"github.com/walteh/tftab/pkg/configuration"
+	"github.com/walteh/retab/pkg/configuration"
 )
 
 // WriteTo takes an io.Writer and writes the bytes for each token to it,

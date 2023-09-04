@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:experimental
+# syntax=docker/dockerfile:labs
 
 ##################################################################
 # SETUP
@@ -42,7 +42,6 @@ FROM --platform=$BUILDPLATFORM docker/compose-bin:latest AS compose-bin
 FROM gobase AS meta
 ARG TARGETPLATFORM
 RUN --mount=type=bind,target=/src,rw <<EOT
-    set -e
 	buildrc full --git-dir=/src --files-dir=/meta
 EOT
 

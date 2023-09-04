@@ -6,13 +6,13 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
+	"github.com/walteh/retab/cmd/root/buf"
+	"github.com/walteh/retab/cmd/root/fmt"
+	"github.com/walteh/retab/cmd/root/hcl"
+	"github.com/walteh/retab/cmd/root/install"
 	"github.com/walteh/snake"
-	"github.com/walteh/tftab/cmd/root/buf"
-	"github.com/walteh/tftab/cmd/root/fmt"
-	"github.com/walteh/tftab/cmd/root/hcl"
-	"github.com/walteh/tftab/cmd/root/install"
 
-	"github.com/walteh/tftab/version"
+	"github.com/walteh/retab/version"
 )
 
 type Root struct {
@@ -25,8 +25,8 @@ var _ snake.Snakeable = (*Root)(nil)
 
 func (me *Root) BuildCommand(ctx context.Context) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "tftab",
-		Short: "tftab brings tabs to terraform",
+		Use:   "retab",
+		Short: "retab brings tabs to terraform",
 	}
 
 	cmd.PersistentFlags().BoolVarP(&me.Quiet, "quiet", "q", false, "Do not print any output")

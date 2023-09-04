@@ -14,7 +14,7 @@ func withArgs(args ...string) cmdOpt {
 }
 
 func mainCmd(opts ...cmdOpt) *exec.Cmd {
-	cmd := exec.Command("tftab")
+	cmd := exec.Command("retab")
 	cmd.Env = append([]string{}, os.Environ()...)
 	for _, opt := range opts {
 		opt(cmd)

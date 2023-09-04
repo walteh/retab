@@ -8,7 +8,7 @@
     mockname: "Mock{{.InterfaceName}}_{{.PackageName}}",
     packages:
         {
-            github.com/walteh/tftab/pkg/configuration:
+            github.com/walteh/retab/pkg/configuration:
                 { interfaces: { Provider: {} } },
         },
 }

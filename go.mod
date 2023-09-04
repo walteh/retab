@@ -1,4 +1,4 @@
-module github.com/walteh/tftab
+module github.com/walteh/retab
 
 go 1.21.0
 

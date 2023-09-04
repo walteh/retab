@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"github.com/walteh/retab/pkg/format"
+	"github.com/walteh/retab/pkg/hclwrite"
 	"github.com/walteh/snake"
-	"github.com/walteh/tftab/pkg/format"
-	"github.com/walteh/tftab/pkg/hclwrite"
 )
 
 var _ snake.Snakeable = (*Handler)(nil)

@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra/doc"
+	"github.com/walteh/retab/cmd/root"
 	"github.com/walteh/snake"
-	"github.com/walteh/tftab/cmd/root"
 )
 
 func run(ctx context.Context, ref string) error {

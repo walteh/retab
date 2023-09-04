@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
-	"github.com/walteh/tftab/pkg/configuration"
-	"github.com/walteh/tftab/pkg/format"
+	"github.com/walteh/retab/pkg/configuration"
+	"github.com/walteh/retab/pkg/format"
 )
 
 type Formatter struct {

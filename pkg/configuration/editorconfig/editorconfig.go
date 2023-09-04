@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/editorconfig/editorconfig-core-go/v2"
-	"github.com/walteh/tftab/pkg/configuration"
+	"github.com/walteh/retab/pkg/configuration"
 )
 
 type EditorConfigConfigurationProvider struct {

@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/walteh/tftab/gen/mockery"
-	"github.com/walteh/tftab/pkg/bufwrite"
+	"github.com/walteh/retab/gen/mockery"
+	"github.com/walteh/retab/pkg/bufwrite"
 )
 
 func TestFormat(t *testing.T) {

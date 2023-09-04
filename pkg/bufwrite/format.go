@@ -25,7 +25,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/bufbuild/protocompile/ast"
-	"github.com/walteh/tftab/pkg/configuration"
+	"github.com/walteh/retab/pkg/configuration"
 	"go.uber.org/multierr"
 )
 

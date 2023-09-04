@@ -9,8 +9,8 @@ import (
 	"github.com/mattn/go-zglob"
 	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
-	"github.com/walteh/tftab/pkg/configuration"
-	"github.com/walteh/tftab/pkg/configuration/editorconfig"
+	"github.com/walteh/retab/pkg/configuration"
+	"github.com/walteh/retab/pkg/configuration/editorconfig"
 )
 
 type Provider interface {

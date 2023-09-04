@@ -35,7 +35,7 @@ func (me *Handler) ParseArguments(ctx context.Context, cmd *cobra.Command, file 
 
 func (me *Handler) Run(ctx context.Context, cmd *cobra.Command) error {
 	if me.Latest {
-		return install.InstallLatestGithubRelease(ctx, afero.NewOsFs(), afero.NewOsFs(), "walteh", "tftab", "")
+		return install.InstallLatestGithubRelease(ctx, afero.NewOsFs(), afero.NewOsFs(), "walteh", "retab", "")
 	}
-	return install.InstallSelfAs(ctx, afero.NewOsFs(), "tftab")
+	return install.InstallSelfAs(ctx, afero.NewOsFs(), "retab")
 }

@@ -5,8 +5,8 @@ import (
 	"log"
 
 	"github.com/spf13/afero"
+	"github.com/walteh/retab/cmd/root"
 	"github.com/walteh/snake"
-	"github.com/walteh/tftab/cmd/root"
 )
 
 func main() {
