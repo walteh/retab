@@ -66,6 +66,10 @@ variable "GITHUB_REPOSITORY" {
 	default = ""
 }
 
+variable "GITHUB_RUN_ID" {
+	default = ""
+}
+
 
 target "_common" {
 	args = {
