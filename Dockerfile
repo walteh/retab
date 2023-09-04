@@ -142,13 +142,14 @@ FROM scratch AS release
 COPY --from=releaser /out/ /
 COPY --from=meta /meta/buildrc.json /buildrc.json
 
-FROM binaries
 
 ##################################################################
 # IMAGE
 ##################################################################
 
 FROM scratch AS entry
-COPY --link --from=meta /meta /meta
-COPY --link --from=builder /usr/bin/$(cat meta/name) /usr/bin/
-ENTRYPOINT [ "/usr/bin/$(cat meta/name)" ]
+ARG BIN_NAME
+ENV BIN_NAME=${BIN_NAME}
+COPY --link --from=meta /meta/buildrc.json /usr/bin/${BIN_NAME}/buildrc.json
+COPY --link --from=builder /usr/bin/${BIN_NAME} /usr/bin/
+ENTRYPOINT /usr/bin/${BIN_NAME}
