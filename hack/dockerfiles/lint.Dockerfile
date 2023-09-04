@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:labs
 
 ARG GO_VERSION=
 ARG GO_PACKAGE=

@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:labs
 
 ARG GO_VERSION=
 ARG MODOUTDATED_VERSION=v0.8.0
@@ -7,16 +7,18 @@ FROM golang:${GO_VERSION}-alpine AS base
 RUN apk add --no-cache git rsync
 WORKDIR /src
 
+FROM psampaz/go-mod-outdated:${MODOUTDATED_VERSION} AS go-mod-outdated
+
 FROM base AS vendored
 RUN --mount=target=/context \
 	--mount=target=.,type=tmpfs \
 	--mount=target=/go/pkg/mod,type=cache <<EOT
-set -e
-rsync -a /context/. .
-go mod tidy
-go mod vendor
-mkdir /out
-cp -r go.mod go.sum vendor /out
+	set -e
+	rsync -a /context/. .
+	go mod tidy
+	go mod vendor
+	mkdir /out
+	cp -r go.mod go.sum vendor /out
 EOT
 
 FROM scratch AS update
@@ -25,21 +27,27 @@ COPY --from=vendored /out /out
 FROM vendored AS validate
 RUN --mount=target=/context \
 	--mount=target=.,type=tmpfs <<EOT
-set -e
-rsync -a /context/. .
-git add -A
-rm -rf vendor
-cp -rf /out/* .
-if [ -n "$(git status --porcelain -- go.mod go.sum vendor)" ]; then
-  echo >&2 'ERROR: Vendor result differs. Please vendor your package with "make vendor"'
-  git status --porcelain -- go.mod go.sum vendor
-  exit 1
-fi
+	set -e
+	rsync -a /context/. .
+	git add -A
+	rm -rf vendor
+	cp -rf /out/* .
+	if [ -n "$(git status --porcelain -- go.mod go.sum vendor)" ]; then
+		echo >&2 'ERROR: Vendor result differs. Please vendor your package with "make vendor"'
+		git status --porcelain -- go.mod go.sum vendor
+		exit 1
+	fi
 EOT
 
-FROM psampaz/go-mod-outdated:${MODOUTDATED_VERSION} AS go-mod-outdated
-FROM base AS outdated
-RUN --mount=target=.,ro \
-	--mount=target=/go/pkg/mod,type=cache \
-	--mount=from=go-mod-outdated,source=/home/go-mod-outdated,target=/usr/bin/go-mod-outdated \
-	go list -mod=readonly -u -m -json all | go-mod-outdated -update -direct
+FROM vendored AS outdated
+COPY --from=go-mod-outdated /home/go-mod-outdated /usr/bin/go-mod-outdated
+RUN --mount=target=/context \
+	--mount=target=.,type=tmpfs \
+	--mount=target=/go/pkg/mod,type=cache <<EOT
+	set -e
+	cd /out
+	go list -mod=readonly -u -m -json all | go-mod-outdated -update -direct >/outdated.txt
+EOT
+
+FROM scratch AS outdated-output
+COPY --from=outdated /outdated.txt /outdated.txt

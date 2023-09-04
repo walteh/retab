@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:labs
 
 # Forked from https://github.com/moby/buildkit/blob/e1b3b6c4abf7684f13e6391e5f7bc9210752687a/hack/dockerfiles/generated-files.Dockerfile
 # Copyright The BuildKit Authors.
@@ -13,8 +13,8 @@ RUN apt-get update && apt-get --no-install-recommends install -y git unzip
 
 # Mounting common volumes
 RUN --mount=type=bind,target=.,rw \
-	--mount=type=cache,target=/root/.cache \
-	--mount=type=cache,target=/go/pkg/mod
+  --mount=type=cache,target=/root/.cache \
+  --mount=type=cache,target=/go/pkg/mod
 
 # Set common working directory
 WORKDIR /wrk
@@ -48,7 +48,7 @@ COPY --from=mockerygen /out /mockery/
 FROM tools AS validate
 ENV GIT_DISCOVERY_ACROSS_FILESYSTEM=true
 RUN --mount=type=bind,target=.,rw \
-	--mount=type=bind,from=update,target=/gen <<EOT
+  --mount=type=bind,from=update,target=/gen <<EOT
   set -e
   ls -la
   git add -A
