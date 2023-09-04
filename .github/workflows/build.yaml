@@ -68,7 +68,7 @@ jobs:
               uses: docker/bake-action@v3
               with:
                   files: ./docker-bake.hcl
-                  targets: ${{ matrix.level }}-test
+                  targets: ${{ matrix.level }}
                   set: |
                       *.output=type=local,dest=./testout
                       *.cache-from=type=gha
@@ -320,7 +320,7 @@ jobs:
 
     validate:
         runs-on: ubuntu-22.04
-        needs: [prepare-build]
+        needs: [prepare-build, meta]
         strategy:
             fail-fast: false
             matrix:
