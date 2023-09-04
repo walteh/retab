@@ -1,6 +1,11 @@
 variable "GO_VERSION" {
 	default = "1.21.0"
 }
+
+variable "BUILDRC_VERSION" {
+	default = "0.12.9"
+}
+
 variable "DOCS_FORMATS" {
 	default = "md"
 }
@@ -13,7 +18,6 @@ variable "GENDIR" {
 	default = "./gen"
 }
 
-
 variable "DOCKER_IMAGE" {
 	default = "walteh/retab"
 }
@@ -22,96 +26,65 @@ variable "BIN_NAME" {
 	default = "retab"
 }
 
+variable "VENDOR_OUTPUT" {
+	default = "."
+}
+
+variable "DOCS_OUTPUT" {
+	default = "./docs/reference"
+}
+
+variable "GEN_OUTPUT" {
+	default = "./gen"
+}
+
+variable "MOCKERY_OUTPUT" {
+	default = "${GEN_OUTPUT}/mockery"
+}
+
+variable "BUF_OUTPUT" {
+	default = "${GEN_OUTPUT}/buf"
+}
+
+variable "BUILD_OUTPUT" {
+	default = "${DESTDIR}/build"
+}
+
+variable "RELEASE_OUTPUT" {
+	default = "${DESTDIR}/release"
+}
+
+variable "PACKAGE_OUTPUT" {
+	default = "${DESTDIR}/package"
+}
+
+variable "TEST_OUTPUT" {
+	default = "${DESTDIR}/testreports"
+}
+
+variable "GITHUB_REPOSITORY" {
+	default = ""
+}
+
+
 target "_common" {
 	args = {
 		GO_VERSION                    = GO_VERSION
 		BUILDKIT_CONTEXT_KEEP_GIT_DIR = 1
 		DOCKER_IMAGE                  = DOCKER_IMAGE
 		BIN_NAME                      = BIN_NAME
+		VENDOR_OUTPUT                 = VENDOR_OUTPUT
+		DOCS_OUTPUT                   = DOCS_OUTPUT
+		GEN_OUTPUT                    = GEN_OUTPUT
+		BUILD_OUTPUT                  = BUILD_OUTPUT
+		RELEASE_OUTPUT                = RELEASE_OUTPUT
+		TEST_OUTPUT                   = TEST_OUTPUT
+		BUILDRC_VERSION               = BUILDRC_VERSION
+		PACKAGE_OUTPUT                = PACKAGE_OUTPUT
 	}
 }
 
-group "default" {
-	targets = ["binaries"]
-}
-
-group "validate" {
-	targets = ["lint", "validate-vendor", "validate-docs"]
-}
-
-target "lint" {
-	inherits   = ["_common"]
-	dockerfile = "./hack/dockerfiles/lint.Dockerfile"
-	output     = ["type=cacheonly"]
-}
-
-target "validate-vendor" {
-	inherits   = ["_common"]
-	dockerfile = "./hack/dockerfiles/vendor.Dockerfile"
-	target     = "validate"
-	output     = ["type=cacheonly"]
-}
-
-target "validate-docs" {
-	inherits = ["_common"]
-	args = {
-		FORMATS             = DOCS_FORMATS
-		BUILDX_EXPERIMENTAL = 1 // enables experimental cmds/flags for docs generation
-	}
-	dockerfile = "./hack/dockerfiles/docs.Dockerfile"
-	target     = "validate"
-	output     = ["type=cacheonly"]
-}
-
-
-target "validate-gen" {
-	inherits   = ["_common"]
-	dockerfile = "./hack/dockerfiles/gen.Dockerfile"
-	target     = "validate"
-	output     = ["type=cacheonly"]
-}
-
-target "update-vendor" {
-	inherits   = ["_common"]
-	dockerfile = "./hack/dockerfiles/vendor.Dockerfile"
-	target     = "update"
-	output     = ["."]
-}
-
-target "update-docs" {
-	inherits = ["_common"]
-	args = {
-		FORMATS             = DOCS_FORMATS
-		BUILDX_EXPERIMENTAL = 1 // enables experimental cmds/flags for docs generation
-	}
-	dockerfile = "./hack/dockerfiles/docs.Dockerfile"
-	target     = "update"
-	output     = ["./docs/reference"]
-}
-
-target "update-gen" {
-	inherits   = ["_common"]
-	dockerfile = "./hack/dockerfiles/gen.Dockerfile"
-	target     = "update"
-	output     = ["${GENDIR}"]
-}
-
-target "outdated" {
-	inherits   = ["_common"]
-	dockerfile = "./hack/dockerfiles/vendor.Dockerfile"
-	target     = "outdated-output"
-	output     = ["${DESTDIR}/outdated"]
-}
-
-target "binaries" {
-	inherits  = ["_common"]
-	target    = "binaries"
-	output    = ["${DESTDIR}/build"]
-	platforms = ["local"]
-}
-
-target "binaries-cross" {
-	inherits = ["binaries"]
+target "_cross" {
 	platforms = [
 		"darwin/amd64",
 		"darwin/arm64",
@@ -125,50 +98,193 @@ target "binaries-cross" {
 		"windows/amd64",
 		"windows/arm64"
 	]
+	args = {
+		BUILDKIT_MULTI_PLATFORM = true
+	}
 }
 
-target "release" {
-	inherits = ["binaries-cross"]
-	target   = "release"
-	output   = ["${DESTDIR}/release"]
-}
-
-target "image" {
-	inherits = ["meta-helper", "binaries"]
-	output   = ["type=image"]
-}
-
-target "image-default" {
-	inherits  = ["meta-helper", "binaries"]
-	target    = "entry"
-	output    = ["type=image"]
-	platforms = ["linux/arm64"]
-}
-
-target "image-cross" {
-	inherits = ["meta-helper", "binaries-cross"]
-	target   = "entry"
-	output   = ["type=image"]
-	attest = [
-		"type=provenance",
+target "_attest" {
+	attest = GITHUB_REPOSITORY != "" ? [
+		"type=provenance,mode=max,builder-id=https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}",
+		"type=sbom"
+		] : [
+		"type=provenance,mode=max",
 		"type=sbom"
 	]
 }
 
-target "image-local" {
-	inherits = ["image"]
-	output   = ["type=docker"]
+group "default" {
+	targets = ["binaries"]
 }
+
+target "_vendor" {
+	inherits   = ["_common"]
+	dockerfile = "./hack/dockerfiles/vendor.Dockerfile"
+	output     = ["type=local,dest=${VENDOR_OUTPUT}"]
+	args = {
+		BUILDX_EXPERIMENTAL = 1 // enables experimental cmds/flags for docs generation
+		DESTDIR             = VENDOR_OUTPUT
+	}
+}
+
+target "_docs" {
+	inherits   = ["_common"]
+	dockerfile = "./hack/dockerfiles/docs.Dockerfile"
+	output     = [DOCS_OUTPUT]
+	args = {
+		FORMATS             = DOCS_FORMATS
+		BUILDX_EXPERIMENTAL = 1 // enables experimental cmds/flags for docs generation
+		DESTDIR             = DOCS_OUTPUT
+	}
+}
+
+target "_mockery" {
+	inherits   = ["_common"]
+	dockerfile = "./hack/dockerfiles/mockery.Dockerfile"
+	output     = [MOCKERY_OUTPUT]
+	args = {
+		DESTDIR = MOCKERY_OUTPUT
+	}
+}
+
+target "_buf" {
+	inherits   = ["_common"]
+	dockerfile = "./hack/dockerfiles/buf.Dockerfile"
+	output     = [BUF_OUTPUT]
+	args = {
+		DESTDIR = BUF_OUTPUT
+	}
+}
+
+##################################################################
+# VALIDATE
+##################################################################
+
+group "validate" {
+	targets = ["lint", "validate-vendor", "validate-docs", "validate-mockery", "validate-buf", "outdated"]
+}
+
+target "lint" {
+	inherits   = ["_common"]
+	dockerfile = "./hack/dockerfiles/lint.Dockerfile"
+	output     = ["type=cacheonly"]
+}
+
+target "validate-vendor" {
+	inherits = ["_vendor"]
+	target   = "validate"
+	output   = ["type=cacheonly"]
+}
+
+target "validate-docs" {
+	inherits = ["_docs"]
+	target   = "validate"
+	output   = ["type=cacheonly"]
+}
+
+target "validate-mockery" {
+	inherits = ["_mockery"]
+	target   = "validate"
+	output   = ["type=cacheonly"]
+}
+
+target "validate-buf" {
+	inherits = ["_buf"]
+	target   = "validate"
+	output   = ["type=cacheonly"]
+}
+
+target "outdated" {
+	inherits   = ["_common"]
+	dockerfile = "./hack/dockerfiles/vendor.Dockerfile"
+	target     = "outdated-output"
+	output     = ["${DESTDIR}/outdated"]
+}
+
+##################################################################
+# GENERATE
+##################################################################
+
+group "generate" {
+	targets = ["generate-vendor", "generate-docs", "generate-mockery", "generate-buf"]
+}
+
+target "generate-vendor" {
+	inherits = ["_vendor"]
+	target   = "update"
+}
+
+target "generate-docs" {
+	inherits = ["_docs"]
+	target   = "update"
+}
+
+target "generate-mockery" {
+	inherits = ["_mockery"]
+	target   = "update"
+}
+
+target "generate-buf" {
+	inherits = ["_buf"]
+	target   = "update"
+}
+
+##################################################################
+# METADATA
+##################################################################
 
 target "meta" {
 	inherits = ["_common"]
-	target   = "meta-out"
-	output   = ["meta"]
+	target   = "meta"
+	output   = ["${DESTDIR}"]
 }
 
 # Special target: https://github.com/docker/metadata-action#bake-definition
 target "meta-helper" {
 	tags = ["${DOCKER_IMAGE}:local"]
+}
+
+##################################################################
+# BUILD
+##################################################################
+
+target "build" {
+	inherits  = ["_common"]
+	target    = "build"
+	output    = [BUILD_OUTPUT]
+	platforms = ["local"]
+}
+
+target "release" {
+	inherits = ["_common", "_cross", "_attest"]
+	target   = "release"
+	output   = [RELEASE_OUTPUT]
+}
+
+target "package" {
+	inherits = ["_common"]
+	target   = "package"
+	output   = [PACKAGE_OUTPUT]
+	contexts = {
+		"released" = RELEASE_OUTPUT
+	}
+}
+
+target "checksum" {
+	inherits = ["_common"]
+	target   = "checksum"
+	output   = [PACKAGE_OUTPUT]
+	contexts = {
+		"packaged" = PACKAGE_OUTPUT
+	}
+}
+
+##################################################################
+# TESTING
+##################################################################
+
+group "test" {
+	targets = ["unit-test", "integration-test"]
 }
 
 target "tester" {
@@ -178,18 +294,35 @@ target "tester" {
 
 target "integration-test" {
 	inherits = ["_common", "tester"]
+	output   = ["type=docker,name=integration-test"]
 	args = {
 		TEST_ARGS = "-run=Integration"
-		DESTDIR   = "${DESTDIR}/testreports/integration"
+		TEST_NAME = "integration"
 	}
-	output = ["type=docker,name=integration-test"]
 }
 
 target "unit-test" {
 	inherits = ["_common", "tester"]
+	output   = ["type=docker,name=unit-test"]
 	args = {
 		TEST_ARGS = "-skip=Integration"
-		DESTDIR   = "${DESTDIR}/testreports/unit"
+		TEST_NAME = "unit"
 	}
-	output = ["type=docker,name=unit-test"]
+}
+
+##################################################################
+# IMAGE
+##################################################################
+
+target "image" {
+	inherits  = ["meta-helper", "build"]
+	target    = "entry"
+	output    = ["type=image"]
+	platforms = ["local"]
+}
+
+target "registry" {
+	inherits = ["meta-helper", "_cross", "_attest"]
+	target   = "entry"
+	output   = ["type=image"]
 }

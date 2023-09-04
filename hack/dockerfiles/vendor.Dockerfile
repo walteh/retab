@@ -3,13 +3,18 @@
 ARG GO_VERSION=
 ARG MODOUTDATED_VERSION=v0.8.0
 
-FROM golang:${GO_VERSION}-alpine AS base
+ARG BUILDRC_VERSION=
+FROM walteh/buildrc:${BUILDRC_VERSION} AS buildrc
+
+
+FROM golang:${GO_VERSION}-alpine AS tools
+COPY --from=buildrc /usr/bin/buildrc /usr/bin/buildrc
 RUN apk add --no-cache git rsync
 WORKDIR /src
 
 FROM psampaz/go-mod-outdated:${MODOUTDATED_VERSION} AS go-mod-outdated
 
-FROM base AS vendored
+FROM tools AS vendored
 RUN --mount=target=/context \
 	--mount=target=.,type=tmpfs \
 	--mount=target=/go/pkg/mod,type=cache <<EOT
@@ -22,21 +27,14 @@ RUN --mount=target=/context \
 EOT
 
 FROM scratch AS update
-COPY --from=vendored /out /out
+COPY --from=vendored /out /
 
-FROM vendored AS validate
+FROM tools AS validate
+ARG DESTDIR
 RUN --mount=target=/context \
-	--mount=target=.,type=tmpfs <<EOT
+	--mount=from=vendored,target=/out,source=/out,type=bind <<EOT
 	set -e
-	rsync -a /context/. .
-	git add -A
-	rm -rf vendor
-	cp -rf /out/* .
-	if [ -n "$(git status --porcelain -- go.mod go.sum vendor)" ]; then
-		echo >&2 'ERROR: Vendor result differs. Please vendor your package with "make vendor"'
-		git status --porcelain -- go.mod go.sum vendor
-		exit 1
-	fi
+	buildrc diff --current="/context/${DESTDIR}" --correct="/out" --glob="**/vendor/**" --glob="**/go.sum" --glob="**/go.mod"
 EOT
 
 FROM vendored AS outdated

@@ -2,25 +2,30 @@
 # GENERATE
 ##################################################################
 
-generate: vendor docs gen meta
+generate:
+	docker buildx bake generate
 
-gen:
-    docker buildx bake update-gen
+generate-buf:
+	docker buildx bake generate-buf
 
-meta:
+generate-mockery:
+    docker buildx bake generate-mockery
+
+generate-meta:
     docker buildx bake meta
 
-vendor:
-    ./hack/update-vendor
+generate-vendor:
+    docker buildx bake generate-vendor
 
-docs:
-    ./hack/update-docs
+generate-docs:
+    docker buildx bake generate-docs
 
 ##################################################################
 # VALIDATE
 ##################################################################
 
-validate: lint validate-vendor validate-docs validate-gen
+validate:
+	docker buildx bake validate
 
 lint:
     docker buildx bake lint
@@ -42,32 +47,38 @@ outdated:
 # TEST
 ##################################################################
 
-test: unit-test integration-test
+test:
+	docker buildx bake test
+	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out unit-test
+	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out integration-test
 
 unit-test:
-	docker buildx bake unit-test --set "*.args.DESTDIR=/out"
-	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin:/out unit-test
+	docker buildx bake unit-test
+	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out unit-test
 
 integration-test:
-	docker buildx bake integration-test --set "*.args.DESTDIR=/out"
-	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin:/out integration-test
+	docker buildx bake integration-test
+	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out integration-test
 
 ##################################################################
 # BUILD
 ##################################################################
 
-binaries:
-    docker buildx bake binaries
-
-binaries-cross:
-    docker buildx bake binaries-cross
+build:
+    docker buildx bake build
 
 release:
-    ./hack/release $(PLATFORM) $(TARGET)
+    docker buildx bake release
+
+package:
+	RELEASE_OUTPUT=$(mktemp -d -t release-XXXXXXXXXX) && \
+	docker buildx bake release --set "*.output=${RELEASE_OUTPUT}" && \
+	docker buildx bake package --set "*.contexts.released=${RELEASE_OUTPUT}" && \
+	rm -rf ${RELEASE_OUTPUT}
 
 local:
 	docker buildx bake image-default
 
-install: binaries
+install: build
 	binname=$(docker buildx bake _common --print | jq -cr '.target._common.args.BIN_NAME') && \
 	./bin/build/${binname} install && ${binname} --version
