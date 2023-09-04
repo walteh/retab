@@ -10,7 +10,7 @@ import (
 	"github.com/walteh/retab/pkg/bufwrite"
 )
 
-func TestFormat(t *testing.T) {
+func TestFormatUnit(t *testing.T) {
 	tests := []struct {
 		name       string
 		useTabs    bool

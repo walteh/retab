@@ -110,8 +110,8 @@ COPY --link --from=binaries /${BIN_NAME} /usr/bin/
 COPY --link --from=gotestsum /out/gotestsum /usr/bin/
 COPY --link --from=meta /meta /meta
 COPY . .
-ARG TEST_RUN
-ENV TEST_RUN=${TEST_RUN}
+ARG TEST_ARGS
+ENV TEST_ARGS=${TEST_ARGS}
 ARG DESTDIR
 ENV DESTDIR=${DESTDIR}
 ENTRYPOINT gotestsum \
@@ -119,7 +119,7 @@ ENTRYPOINT gotestsum \
 	--jsonfile=${DESTDIR}/go-test-report.json \
 	--junitfile=${DESTDIR}/junit-report.xml \
 	-- -v -mod=vendor -coverprofile=${DESTDIR}/coverage-report.txt -covermode=atomic \
-	./... -run ${TEST_RUN}
+	./... ${TEST_ARGS}
 
 ##################################################################
 # RELEASE

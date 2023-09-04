@@ -179,8 +179,8 @@ target "tester" {
 target "integration-test" {
 	inherits = ["_common", "tester"]
 	args = {
-		TEST_RUN = "TestIntegration*"
-		DESTDIR  = "${DESTDIR}/testreports/integration"
+		TEST_ARGS = "-run=Integration"
+		DESTDIR   = "${DESTDIR}/testreports/integration"
 	}
 	output = ["type=docker,name=integration-test"]
 }
@@ -188,8 +188,8 @@ target "integration-test" {
 target "unit-test" {
 	inherits = ["_common", "tester"]
 	args = {
-		TEST_RUN = "TestUnit*"
-		DESTDIR  = "${DESTDIR}/testreports/unit"
+		TEST_ARGS = "-skip=Integration"
+		DESTDIR   = "${DESTDIR}/testreports/unit"
 	}
 	output = ["type=docker,name=unit-test"]
 }
