@@ -164,7 +164,6 @@ jobs:
         runs-on: ubuntu-22.04
         outputs:
             build_matrix: ${{ steps.platforms.outputs.build_matrix }}
-            test_matrix: ${{ steps.platforms.outputs.test_matrix }}
             validate_matrix: ${{ steps.platforms.outputs.validate_matrix }}
             package_matrix: ${{ steps.platforms.outputs.package_matrix }}
         steps:
@@ -187,13 +186,11 @@ jobs:
               id: platforms
               run: |
                   echo "build_matrix=$(docker buildx bake build --print | jq -cr '.target.build.platforms')" >>${GITHUB_OUTPUT}
-                  echo "test_matrix=$(docker buildx bake test --print | jq -cr '.group.test.targets')" >>${GITHUB_OUTPUT}
                   echo "validate_matrix=$(docker buildx bake validate --print | jq -cr '.group.validate.targets')" >>${GITHUB_OUTPUT}
                   echo "package_matrix=$(cat ./meta-output/meta/${{ env.MAIN_PLATFORM_UNDER }}/go-testable-packages | jq -cr 'map(split("/")[-1])')" >>${GITHUB_OUTPUT}
             - name: show matrix
               run: |
                   echo "build_matrix = ${{ fromJson(steps.platforms.outputs.build_matrix) }}"
-                  echo "test_matrix = ${{ fromJson(steps.platforms.outputs.test_matrix) }}"
                   echo "validate_matrix = ${{ fromJson(steps.platforms.outputs.validate_matrix) }}"
                   echo "package_matrix = ${{ fromJson(steps.platforms.outputs.package_matrix) }}"
             - id: upload-meta

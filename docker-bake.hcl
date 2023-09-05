@@ -278,11 +278,6 @@ target "package" {
 # TESTING
 ##################################################################
 
-group "test" {
-	targets = ["unit-test", "integration-test"]
-}
-
-
 target "tester" {
 	inherits = ["_common"]
 	target   = "tester"
