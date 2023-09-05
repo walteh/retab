@@ -59,17 +59,17 @@ jobs:
                   targets: tester
                   set: |
                       *.contexts.meta=./meta-output/${{ env.MAIN_PLATFORM_UNDER }}
-                      *.output=type=tar,name=tester,dest=./test-build/tester.tar
+                      *.output=type=tar,name=tester,dest=./tester.tar
                       *.platform=${{ env.MAIN_PLATFORM }}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
             - name: gzip testing tar
-              run: gzip -9 ./test-build/tester.tar
+              run: gzip -9 ./tester.tar
             - name: upload artifacts
               uses: actions/upload-artifact@v3
               with:
                   name: tester
-                  path: ./test-build/tester.tar.gz
+                  path: ./tester.tar.gz
                   if-no-files-found: error
 
     unit-test:
@@ -190,9 +190,9 @@ jobs:
                   echo "package_matrix=$(cat ./meta-output/${{ env.MAIN_PLATFORM_UNDER }}/meta/go-testable-packages | jq -cr 'map(split("/")[-1])')" >>${GITHUB_OUTPUT}
             - name: show matrix
               run: |
-                  echo "build_matrix = ${{ fromJson(steps.platforms.outputs.build_matrix) }}"
-                  echo "validate_matrix = ${{ fromJson(steps.platforms.outputs.validate_matrix) }}"
-                  echo "package_matrix = ${{ fromJson(steps.platforms.outputs.package_matrix) }}"
+                  echo "build_matrix = ${{ steps.platforms.outputs.build_matrix }}"
+                  echo "validate_matrix = ${{ steps.platforms.outputs.validate_matrix }}"
+                  echo "package_matrix = ${{ steps.platforms.outputs.package_matrix }}"
             - id: upload-meta
               uses: actions/upload-artifact@v3
               with:
