@@ -159,20 +159,13 @@ jobs:
               with:
                   name: meta
                   path: meta-cache
-            - name: bake meta
-              uses: docker/bake-action@v3
-              with:
-                  files: ./docker-bake.hcl
-                  targets: meta
-                  set: |
-                      *.output=./meta-output
-                      *.cache-from=type=local,src=./meta-cache
             - name: bake release
               uses: docker/bake-action@v3
               with:
                   files: ./docker-bake.hcl
                   targets: release
                   set: |
+                      *.cache-from=type=local,src=./meta-cache
                       *.output=./rebin/
                       *.platform=${{ matrix.platform }}
                       *.cache-from=type=gha
