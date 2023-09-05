@@ -55,7 +55,7 @@ jobs:
                   name: tester
                   path: ./tester-output
             - name: load tester
-              run: docker load -i ./tester-output/tester.tar
+              run: docker image load -i ./tester-output/tester.tar
             - name: run tests
               run: |
                   docker run --network host \
