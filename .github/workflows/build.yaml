@@ -97,6 +97,11 @@ jobs:
         steps:
             - name: checkout
               uses: actions/checkout@v4
+            - name: set up buildx
+              uses: docker/setup-buildx-action@v2
+            - name: download meta
+              uses: actions/download-artifact@v3
+
             - name: create matrix
               id: platforms
               run: |
