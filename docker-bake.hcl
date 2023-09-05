@@ -238,7 +238,7 @@ target "generate-buf" {
 ##################################################################
 
 target "meta" {
-	inherits = ["_common"]
+	inherits = ["_common", "_cross"]
 	target   = "meta"
 	output   = ["${DESTDIR}"]
 }
