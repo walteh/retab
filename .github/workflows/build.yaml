@@ -42,12 +42,6 @@ jobs:
         strategy:
             matrix:
                 level: ${{ fromJson(needs.prepare-build.outputs.test_matrix) }}
-        env:
-            TESTFLAGS: "-v --parallel=6 --timeout=30m"
-            TESTFLAGS_DOCKER: "-v --parallel=1 --timeout=30m"
-            GOTESTSUM_FORMAT: "standard-verbose"
-            TEST_IMAGE_BUILD: "0"
-            TEST_IMAGE_ID: "buildx-tests"
         steps:
             - name: checkout
               uses: actions/checkout@v4
@@ -58,6 +52,8 @@ jobs:
               with:
                   name: buildx
                   path: rebin
+            - name: list artifacts
+              run: tree -nh rebin
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
             - name: set up just
@@ -143,10 +139,10 @@ jobs:
                   files: ./docker-bake.hcl
                   targets: release
                   set: |
-                      *.output=type=local,dest=./rebin/
+                      *.output=./rebin/
                       *.platform=${{ matrix.platform }}
-                      *.cache-from=type=gha,scope=build-${{ steps.prepare.outputs.PLATFORM_PAIR }}
-                      *.cache-to=type=gha,scope=build-${{ steps.prepare.outputs.PLATFORM_PAIR }},mode=max
+                      *.cache-from=type=gha
+                      *.cache-to=type=gha,mode=max
             - name: bake package
               uses: docker/bake-action@v3
               with:
@@ -154,9 +150,7 @@ jobs:
                   targets: package
                   set: |
                       *.contexts.released=./rebin/
-                      *.cache-from=type=gha,scope=build-${{ steps.prepare.outputs.PLATFORM_PAIR }}
-                      *.cache-to=type=gha,scope=build-${{ steps.prepare.outputs.PLATFORM_PAIR }},mode=max
-
+                      *.output=${{ env.DESTDIR }}
             - name: upload artifacts
               uses: actions/upload-artifact@v3
               with:
@@ -191,7 +185,7 @@ jobs:
                   files: ./docker-bake.hcl
                   targets: meta
                   set: |
-                      *.output=type=local,dest=./meta-output
+                      *.output=./meta-output
             - id: meta
               run: |
                   echo "version=$(cat ./meta-output/meta/version)" >> $GITHUB_OUTPUT
@@ -229,8 +223,8 @@ jobs:
                   push: true
                   sbom: true
                   set: |
-                      *.cache-from=type=gha,scope=bin-image
-                      *.cache-to=type=gha,scope=bin-image,mode=max
+                      *.cache-from=type=gha
+                      *.cache-to=type=gha,mode=max
 
     release:
         runs-on: ubuntu-22.04
@@ -255,7 +249,7 @@ jobs:
                   files: ./docker-bake.hcl
                   targets: meta
                   set: |
-                      *.output=type=local,dest=./meta-output
+                      *.output=./meta-output
             - id: meta
               run: |
                   echo "version=$(cat ./meta-output/meta/version)" >> $GITHUB_OUTPUT
@@ -266,13 +260,12 @@ jobs:
                   files: ./docker-bake.hcl
                   targets: checksum
                   set: |
-                      *.output=type=local,dest=${{ env.DESTDIR }}
+                      *.output=${{ env.DESTDIR }}
             - name: list artifacts
               run: tree -nh ${{ env.DESTDIR }}
             - name: check artifacts
               run: find ${{ env.DESTDIR }} -type f -exec file -e ascii -- {} +
             - name: github release
-              #   if: startsWith(github.ref, 'refs/tags/v')
               uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v0.1.15
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
