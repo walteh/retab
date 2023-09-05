@@ -198,14 +198,14 @@ jobs:
                       *.platform=${{ matrix.platform }}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
-            - name: upload artifacts
+            - name: upload build artifacts
               uses: actions/upload-artifact@v3
               with:
                   name: build
                   path: ./build-output/*
                   if-no-files-found: error
 
-            - name: bake build
+            - name: bake tester
               if: ${{ matrix.platform == env.MAIN_PLATFORM }}
               uses: docker/bake-action@v3
               with:
@@ -218,7 +218,7 @@ jobs:
                       *.platform=${{ env.MAIN_PLATFORM }}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
-            - name: upload artifacts
+            - name: upload tester artifacts
               if: ${{ matrix.platform == env.MAIN_PLATFORM }}
               uses: actions/upload-artifact@v3
               with:
