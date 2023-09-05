@@ -16,7 +16,7 @@ FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS golatest
 
-FROM --platform=$BUILDPLATFORM walteh/buildrc:0.12.13 as buildrc
+FROM --platform=$BUILDPLATFORM walteh/buildrc:0.13.0 as buildrc
 
 FROM golatest AS gobase
 COPY --from=xx / /
@@ -120,20 +120,6 @@ ENTRYPOINT gotestsum \
 # RELEASE
 ##################################################################
 
-# FROM --platform=$BUILDPLATFORM alpine:latest AS releaser
-# WORKDIR /work
-# ARG TARGETPLATFORM
-# RUN --mount=from=build \
-# 	--mount=type=bind,from=meta,source=/meta,target=/meta <<EOT
-# 	set -e
-# 	mkdir -p /out
-# 	cp "$(cat /meta/name)"* "/out/$(cat /meta/executable)"
-# EOT
-
-# FROM scratch AS release
-# COPY --from=releaser /out/ /
-# COPY --from=meta /meta/buildrc.json /buildrc.json
-
 FROM alpine:latest AS packager
 ARG BUILDKIT_MULTI_PLATFORM
 RUN apk add --no-cache file tar jq
@@ -162,21 +148,6 @@ EOT
 
 FROM scratch AS package
 COPY --from=packager /out/ /
-
-# FROM alpine:latest AS checksumer
-# COPY --from=build . /src/
-# RUN <<EOT
-# 	cd /src/
-# 	find . -type f \( -name '*.tar.gz' \) -exec sha256sum -b {} \; >./checksums.txt
-# 	sha256sum -c checksums.txt
-# EOT
-
-# FROM scratch AS checksum
-# COPY --from=checksumer /src/checksums.txt /checksums.txt
-
-# FROM scratch AS bundle
-# COPY --from=package /out/ /
-# COPY --from=checksum /checksums.txt /checksums.txt
 
 ##################################################################
 # IMAGE
