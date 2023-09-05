@@ -122,13 +122,13 @@ jobs:
                   files: ./docker-bake.hcl
                   targets: meta
                   set: |
-                      *.output=type=cacheonly
+                      *.output=./meta-output
                       *.cache-to=type=local,dest=./meta-cache
             - id: upload-meta
               uses: actions/upload-artifact@v3
               with:
                   name: meta
-                  path: ./meta-cache
+                  path: ./meta-output
 
     build:
         runs-on: ubuntu-22.04
@@ -165,7 +165,7 @@ jobs:
                   files: ./docker-bake.hcl
                   targets: release
                   set: |
-                      *.cache-from=type=local,src=./meta-cache
+                      *.contexts.meta=./meta-cache
                       *.output=./rebin/
                       *.platform=${{ matrix.platform }}
                       *.cache-from=type=gha
@@ -288,7 +288,7 @@ jobs:
                   targets: meta
                   set: |
                       *.output=./meta-output
-                      *.cache-from=type=local,src=./meta-cache
+                      *.contexts.meta=./meta-cache
             - id: meta
               run: |
                   echo "version=$(cat ./meta-output/meta/version)" >> $GITHUB_OUTPUT
