@@ -166,7 +166,7 @@ jobs:
                   targets: meta
                   set: |
                       *.output=./meta-output
-                      *.cache-from=type=local,dest=./meta-cache
+                      *.cache-from=type=local,src=./meta-cache
             - name: bake release
               uses: docker/bake-action@v3
               with:
@@ -225,7 +225,7 @@ jobs:
                   targets: meta
                   set: |
                       *.output=./meta-output
-                      *.cache-from=type=local,dest=./meta-cache
+                      *.cache-from=type=local,src=./meta-cache
             - id: meta
               run: |
                   echo "version=$(cat ./meta-output/meta/version)" >> $GITHUB_OUTPUT
@@ -295,7 +295,7 @@ jobs:
                   targets: meta
                   set: |
                       *.output=./meta-output
-                      *.cache-from=type=local,dest=./meta-cache
+                      *.cache-from=type=local,src=./meta-cache
             - id: meta
               run: |
                   echo "version=$(cat ./meta-output/meta/version)" >> $GITHUB_OUTPUT
