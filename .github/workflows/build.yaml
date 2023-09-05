@@ -55,7 +55,7 @@ jobs:
                   name: tester
                   path: ./tester-output
             - name: load tester
-              run: docker image load -i ./tester-output/tester.tar
+              run: docker load < ./tester-output/tester.tar
             - name: run tests
               run: |
                   docker run --network host \
@@ -97,9 +97,7 @@ jobs:
                   name: tester
                   path: ./tester-output
             - name: load tester
-              run: |
-                  gzip -d ./tester-output/tester.tar.gz
-                  docker load -i ./tester-output/tester.tar
+              run: docker load -i ./tester-output/tester.tar
             - name: run tests
               run: |
                   docker run --network host \
@@ -218,7 +216,7 @@ jobs:
                   set: |
                       *.contexts.meta=./meta-output/${{ env.MAIN_PLATFORM_UNDER }}
                       *.contexts.build=./build-output
-                      *.output=type=tar,name=tester,dest=./tester.tar
+                      *.output=type=docker,name=tester,dest=./tester.tar
                       *.platform=${{ env.MAIN_PLATFORM }}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max

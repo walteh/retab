@@ -53,9 +53,9 @@ test:
 	# docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out integration-test
 
 unit-test:
-	docker buildx bake tester --set "*.output=type=docker,name=runner,dest=./bin/runner.tar" && \
-	docker image load -i ./bin/runner.tar && \
-	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out -e PKG=tests runner
+	docker buildx bake tester --set "*.output=type=docker,name=runners,dest=./bin/runner.tar" && \
+	docker load < ./bin/runner.tar && \
+	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out -e PKG=tests runners
 
 integration-test:
 	docker buildx bake integration-test
