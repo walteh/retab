@@ -55,7 +55,7 @@ jobs:
                   name: build
                   path: build-output
             - name: list artifacts
-              run: tree -nh rebin
+              run: tree -nh build-output
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
