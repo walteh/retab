@@ -109,7 +109,7 @@ jobs:
             - name: create matrix
               id: platforms
               run: |
-                  echo "build_matrix=$(docker buildx bake release --print | jq -cr '.target.release.platforms')" >>${GITHUB_OUTPUT}
+                  echo "build_matrix=$(docker buildx bake build --print | jq -cr '.target.build.platforms')" >>${GITHUB_OUTPUT}
                   echo "test_matrix=$(docker buildx bake test --print | jq -cr '.group.test.targets')" >>${GITHUB_OUTPUT}
                   echo "validate_matrix=$(docker buildx bake validate --print | jq -cr '.group.validate.targets')" >>${GITHUB_OUTPUT}
 
@@ -159,7 +159,7 @@ jobs:
               with:
                   name: meta
                   path: meta-output
-            - name: bake release
+            - name: bake build
               uses: docker/bake-action@v3
               with:
                   files: ./docker-bake.hcl
