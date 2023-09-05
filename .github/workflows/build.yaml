@@ -70,7 +70,7 @@ jobs:
                   files: ./docker-bake.hcl
                   targets: ${{ matrix.level }}
                   set: |
-                      *.output=type=local,dest=./testout
+                      *.output=type=docker,name=${{matrix.level}}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
             - name: Run tests
