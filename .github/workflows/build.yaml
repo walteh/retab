@@ -38,10 +38,10 @@ jobs:
         runs-on: ubuntu-22.04
         needs:
             - build
-            - prepare-build
+            - prepare
         strategy:
             matrix:
-                level: ${{ fromJson(needs.prepare-build.outputs.test_matrix) }}
+                level: ${{ fromJson(needs.prepare.outputs.test_matrix) }}
         steps:
             - name: checkout
               uses: actions/checkout@v4
@@ -88,7 +88,7 @@ jobs:
                   name: test-reports
                   path: ./testout
 
-    prepare-build:
+    prepare:
         runs-on: ubuntu-22.04
         outputs:
             build_matrix: ${{ steps.platforms.outputs.build_matrix }}
@@ -103,20 +103,34 @@ jobs:
                   echo "build_matrix=$(docker buildx bake release --print | jq -cr '.target.release.platforms')" >>${GITHUB_OUTPUT}
                   echo "test_matrix=$(docker buildx bake test --print | jq -cr '.group.test.targets')" >>${GITHUB_OUTPUT}
                   echo "validate_matrix=$(docker buildx bake validate --print | jq -cr '.group.validate.targets')" >>${GITHUB_OUTPUT}
+
             - name: show matrix
               run: |
                   echo "build_matrix = ${{ steps.platforms.outputs.build_matrix }}"
                   echo "test_matrix = ${{ steps.platforms.outputs.test_matrix }}"
                   echo "validate_matrix = ${{ steps.platforms.outputs.validate_matrix }}"
+            - name: bake meta
+              uses: docker/bake-action@v3
+              with:
+                  files: ./docker-bake.hcl
+                  targets: meta
+                  set: |
+                      *.output=type=cacheonly
+                      *.cache-to=type=local,dest=./meta-cache
+            - id: upload-meta
+              uses: actions/upload-artifact@v3
+              with:
+                  name: meta
+                  path: ./meta-cache
 
     build:
         runs-on: ubuntu-22.04
         needs:
-            - prepare-build
+            - prepare
         strategy:
             fail-fast: false
             matrix:
-                platform: ${{ fromJson(needs.prepare-build.outputs.build_matrix) }}
+                platform: ${{ fromJson(needs.prepare.outputs.build_matrix) }}
         steps:
             - name: prepare
               id: prepare
@@ -133,6 +147,19 @@ jobs:
               uses: taiki-e/install-action@just
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
+            - name: download meta
+              uses: actions/download-artifact@v3
+              with:
+                  name: meta
+                  path: meta-cache
+            - name: bake meta
+              uses: docker/bake-action@v3
+              with:
+                  files: ./docker-bake.hcl
+                  targets: meta
+                  set: |
+                      *.output=./meta-output
+                      *.cache-from=type=local,dest=./meta-cache
             - name: bake release
               uses: docker/bake-action@v3
               with:
@@ -179,6 +206,11 @@ jobs:
               uses: taiki-e/install-action@just
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
+            - name: download meta
+              uses: actions/download-artifact@v3
+              with:
+                  name: meta
+                  path: meta-cache
             - name: bake meta
               uses: docker/bake-action@v3
               with:
@@ -186,6 +218,7 @@ jobs:
                   targets: meta
                   set: |
                       *.output=./meta-output
+                      *.cache-from=type=local,dest=./meta-cache
             - id: meta
               run: |
                   echo "version=$(cat ./meta-output/meta/version)" >> $GITHUB_OUTPUT
@@ -243,6 +276,11 @@ jobs:
                   path: ${{ env.DESTDIR }}
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
+            - name: download meta
+              uses: actions/download-artifact@v3
+              with:
+                  name: meta
+                  path: meta-cache
             - name: bake meta
               uses: docker/bake-action@v3
               with:
@@ -250,6 +288,7 @@ jobs:
                   targets: meta
                   set: |
                       *.output=./meta-output
+                      *.cache-from=type=local,dest=./meta-cache
             - id: meta
               run: |
                   echo "version=$(cat ./meta-output/meta/version)" >> $GITHUB_OUTPUT
@@ -260,7 +299,7 @@ jobs:
                   files: ./docker-bake.hcl
                   targets: checksum
                   set: |
-                      *.contexts.packaged=${{ env.DESTDIR }}
+                      *.contexts.packaged=./bin/
                       *.output=${{ env.DESTDIR }}
             - name: list artifacts
               run: tree -nh ${{ env.DESTDIR }}
@@ -304,11 +343,11 @@ jobs:
 
     validate:
         runs-on: ubuntu-22.04
-        needs: [prepare-build]
+        needs: [prepare]
         strategy:
             fail-fast: false
             matrix:
-                target: ${{ fromJson(needs.prepare-build.outputs.validate_matrix) }}
+                target: ${{ fromJson(needs.prepare.outputs.validate_matrix) }}
         steps:
             - name: checkout
               uses: actions/checkout@v4
