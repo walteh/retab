@@ -70,7 +70,6 @@ variable "GITHUB_RUN_ID" {
 	default = ""
 }
 
-
 target "_common" {
 	args = {
 		GO_VERSION                    = GO_VERSION
@@ -283,13 +282,15 @@ group "test" {
 	targets = ["unit-test", "integration-test"]
 }
 
+
 target "tester" {
 	inherits = ["_common"]
-	target   = "test-runner"
+	target   = "tester"
 }
 
-target "integration-test" {
-	inherits = ["_common", "tester"]
+/* target "integration-test" {
+	inherits = ["_common"]
+	target   = "tester"
 	output   = ["type=docker,name=integration-test"]
 	args = {
 		TEST_ARGS = "-run=Integration"
@@ -298,13 +299,13 @@ target "integration-test" {
 }
 
 target "unit-test" {
-	inherits = ["_common", "tester"]
+	inherits = ["_common"]
 	output   = ["type=docker,name=unit-test"]
 	args = {
 		TEST_ARGS = "-skip=Integration"
 		TEST_NAME = "unit"
 	}
-}
+} */
 
 ##################################################################
 # IMAGE

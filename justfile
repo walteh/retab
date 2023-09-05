@@ -48,13 +48,14 @@ outdated:
 ##################################################################
 
 test:
-	docker buildx bake test
-	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out unit-test
-	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out integration-test
+	docker buildx bake test --set "*.platform=linux/arm64" --set "*.output=type=docker,dest=./bin/testbuild.tar,context=tester"
+	# docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out unit-test
+	# docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out integration-test
 
 unit-test:
-	docker buildx bake unit-test
-	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out unit-test
+	docker buildx bake test-runner --set "*.output=type=docker,name=runner,dest=./bin/runner.tar" --set "*.platform=linux/arm64"
+	docker load --input ./bin/runner.tar
+	docker run --network host --platform linux/arm64 -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out -e PKG=tests runner
 
 integration-test:
 	docker buildx bake integration-test

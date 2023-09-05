@@ -12,12 +12,11 @@ ARG GOTESTSUM_VERSION=v1.10.1
 ARG REGISTRY_VERSION=latest
 ARG BUILDKIT_VERSION=nightly
 
-# xx is a helper for cross-compilation
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS golatest
 
-FROM --platform=$BUILDPLATFORM walteh/buildrc:0.12.7 as buildrc
+FROM --platform=$BUILDPLATFORM walteh/buildrc:0.12.11 as buildrc
 
 FROM golatest AS gobase
 COPY --from=xx / /
@@ -39,18 +38,6 @@ RUN --mount=type=bind,target=/src,readonly \
 FROM scratch AS meta
 COPY --from=metarc /meta /meta
 
-# FROM gobase AS binary-cache
-# ARG DESTDIR
-# RUN --mount=type=bind,target=/src \
-# 	--mount=type=bind,from=meta,source=/meta,target=/meta,readonly <<EOT
-# 	mkdir -p /binary-cache
-# 	echo "checking for binary cache in /src/rebin/$(cat /meta/artifact).tar.gz"
-# 	if [ -f "/src/rebin/$(cat /meta/artifact).tar.gz" ]; then
-# 		echo "found binary cache in /src/rebin/$(cat /meta/artifact).tar.gz";
-# 		tar xzf "/src/rebin/$(cat /meta/artifact).tar.gz" -C /binary-cache;
-# 	fi
-# EOT
-
 FROM gobase AS builder
 ARG TARGETPLATFORM
 RUN --mount=type=bind,target=. \
@@ -58,7 +45,6 @@ RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/go/pkg/mod \
 	--mount=type=bind,from=meta,source=/meta,target=/meta,readonly <<EOT
   	set -e
-  	if [ -z "${TARGETPLATFORM}" ]; then echo "TARGETPLATFORM is not set" && exit 1; fi
  	xx-go --wrap;
 	LDFLAGS="-s -w -X $(cat /meta/go-pkg)/version.Version=$(cat /meta/version) -X $(cat /meta/go-pkg)/version.Revision=$(cat /meta/revision) -X $(cat /meta/go-pkg)/version.Package=$(cat /meta/go-pkg)";
 	CGO_ENABLED=0 go build -mod vendor -trimpath -ldflags "$LDFLAGS" -o /out/$(cat /meta/executable) ./cmd;
@@ -94,24 +80,41 @@ RUN --mount=target=/root/.cache,type=cache <<EOT
 	/out/gotestsum --version
 EOT
 
-FROM gobase AS test-runner
+FROM gobase AS test2json
+ARG GOTESTSUM_VERSION
+ENV GOFLAGS=
+RUN --mount=target=/root/.cache,type=cache <<EOT
+	CGO_ENABLED=0 go build -o /out/test2json -ldflags="-s -w" cmd/test2json
+EOT
+
+FROM gobase AS test-builder
 ARG BIN_NAME
 ENV CGO_ENABLED=1
 RUN apk add --no-cache gcc musl-dev libc6-compat
-COPY --link --from=build . /usr/bin/
-COPY --link --from=gotestsum /out/gotestsum /usr/bin/
-COPY . .
 ARG TEST_ARGS
 ENV TEST_ARGS=${TEST_ARGS}
 ARG TEST_NAME
 ENV TEST_NAME=${TEST_NAME}
+RUN mkdir -p /out
+RUN --mount=type=bind,target=. \
+	--mount=type=cache,target=/root/.cache \
+	--mount=type=cache,target=/go/pkg/mod \
+	go test -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out
+
+FROM alpine:latest AS tester
+COPY --from=builder /out /usr/bin/
+COPY --from=test-builder /out /usr/bin/
+COPY --from=gotestsum /out /usr/bin/
+COPY --from=test2json /out /usr/bin/
+ARG GO_VERSION
+ENV PKG= NAME= ARGS= GOVERSION=${GO_VERSION}
 ENTRYPOINT gotestsum \
 	--format=standard-verbose \
-	--jsonfile=/out/go-test-report-${TEST_NAME}.json \
-	--junitfile=/out/junit-report-${TEST_NAME}.xml \
-	-- -v -mod=vendor -coverprofile=/out/coverage-report-${TEST_NAME}.txt \
-	-race -covermode=atomic --timeout=10m -vet='' -parallel=100 -bench=. -benchmem -fuzzminimizetime=100x -fullpath  \
-	./... ${TEST_ARGS} -tags=${TEST_NAME}
+	--jsonfile=/out/go-test-report-${PKG##*/}-${NAME}.json \
+	--junitfile=/out/junit-report-${PKG##*/}-${NAME}.xml \
+	--raw-command -- test2json -t -p pkgname ${PKG##*/}.test  -test.bench=.  -test.timeout=10m \
+	-test.v -test.coverprofile=/out/coverage-report-${PKG##*/}-${NAME}.txt ${ARGS} \
+	-test.outputdir=/out
 
 ##################################################################
 # RELEASE

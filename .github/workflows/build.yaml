@@ -36,43 +36,111 @@ env:
     MAIN_PLATFORM_UNDER: linux_amd64
 
 jobs:
-    test:
+    test-build:
         runs-on: ubuntu-22.04
         needs:
-            - build
             - prepare
-        strategy:
-            matrix:
-                level: ${{ fromJson(needs.prepare.outputs.test_matrix) }}
         steps:
             - name: checkout
               uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
-            - name: download binaries
-              uses: actions/download-artifact@v3
-              with:
-                  name: build
-                  path: build-output
-            - name: list artifacts
-              run: tree -nh build-output
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
-            - name: bake ${{ matrix.level }}
+            - name: download meta
+              uses: actions/download-artifact@v3
+              with:
+                  name: meta
+                  path: meta-output
+            - name: bake build
               uses: docker/bake-action@v3
               with:
                   files: ./docker-bake.hcl
-                  targets: ${{ matrix.level }}
+                  targets: tester
                   set: |
+                      *.contexts.meta=./meta-output/${{ env.MAIN_PLATFORM_UNDER }}
+                      *.output=type=tar,name=tester,dest=./test-build/tester.tar
                       *.platform=${{ env.MAIN_PLATFORM }}
-                      *.contexts.build=./build-output
-                      *.output=type=docker,name=${{matrix.level}}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
+            - name: gzip testing tar
+              run: gzip -9 ./test-build/tester.tar
+            - name: upload artifacts
+              uses: actions/upload-artifact@v3
+              with:
+                  name: tester
+                  path: ./test-build/tester.tar.gz
+                  if-no-files-found: error
+
+    unit-test:
+        runs-on: ubuntu-22.04
+        needs:
+            - build
+            - test-build
+            - prepare
+        strategy:
+            matrix:
+                package: ${{ fromJson(needs.prepare.outputs.package_matrix) }}
+        steps:
+            - name: download tester
+              uses: actions/download-artifact@v3
+              with:
+                  name: tester
+                  path: tester.tar.gz
+            - name: load tester
+              run: docker load -i tester.tar.gz
             - name: run tests
-              run: docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./testout:/out ${{matrix.level}}
+              run: |
+                  docker run --network host \
+                    -e PKG=${{ matrix.package }} \
+                    -e ARGS="-skip=Integration" \
+                    -e NAME="unit" \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    -v ./testout:/out \
+                    tester:latest
+            - name: send to codecov
+              if: always()
+              uses: codecov/codecov-action@v3
+              with:
+                  directory: ./testout
+            - name: generate annotations
+              if: always()
+              uses: crazy-max/.github/.github/actions/gotest-annotations@1a64ea6d01db9a48aa61954cb20e265782c167d9
+              with:
+                  directory: ./testout
+            - name: upload test reports
+              if: always()
+              uses: actions/upload-artifact@v3
+              with:
+                  name: test-reports
+                  path: ./testout/*
+
+    integration-test:
+        runs-on: ubuntu-22.04
+        needs:
+            - build
+            - test-build
+            - prepare
+        strategy:
+            matrix:
+                package: ${{ fromJson(needs.prepare.outputs.package_matrix) }}
+        steps:
+            - name: download tester
+              uses: actions/download-artifact@v3
+              with:
+                  name: tester
+                  path: tester.tar.gz
+            - name: load tester
+              run: docker load -i tester.tar.gz
+            - name: run tests
+              run: |
+                  docker run --network host \
+                    -e PKG=${{ matrix.package }} \
+                    -e ARGS="-run=Integration" \
+                    -e NAME="integration" \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    -v ./testout:/out \
+                    tester:latest
             - name: send to codecov
               if: always()
               uses: codecov/codecov-action@v3
@@ -96,6 +164,7 @@ jobs:
             build_matrix: ${{ steps.platforms.outputs.build_matrix }}
             test_matrix: ${{ steps.platforms.outputs.test_matrix }}
             validate_matrix: ${{ steps.platforms.outputs.validate_matrix }}
+            package_matrix: ${{ steps.platforms.outputs.package_matrix }}
         steps:
             - name: checkout
               uses: actions/checkout@v4
@@ -105,19 +174,6 @@ jobs:
               uses: docker/setup-buildx-action@v2
             - name: download meta
               uses: actions/download-artifact@v3
-
-            - name: create matrix
-              id: platforms
-              run: |
-                  echo "build_matrix=$(docker buildx bake build --print | jq -cr '.target.build.platforms')" >>${GITHUB_OUTPUT}
-                  echo "test_matrix=$(docker buildx bake test --print | jq -cr '.group.test.targets')" >>${GITHUB_OUTPUT}
-                  echo "validate_matrix=$(docker buildx bake validate --print | jq -cr '.group.validate.targets')" >>${GITHUB_OUTPUT}
-
-            - name: show matrix
-              run: |
-                  echo "build_matrix = ${{ steps.platforms.outputs.build_matrix }}"
-                  echo "test_matrix = ${{ steps.platforms.outputs.test_matrix }}"
-                  echo "validate_matrix = ${{ steps.platforms.outputs.validate_matrix }}"
             - name: bake meta
               uses: docker/bake-action@v3
               with:
@@ -125,6 +181,19 @@ jobs:
                   targets: meta
                   set: |
                       *.output=./meta-output
+            - name: create matrix
+              id: platforms
+              run: |
+                  echo "build_matrix=$(docker buildx bake build --print | jq -cr '.target.build.platforms')" >>${GITHUB_OUTPUT}
+                  echo "test_matrix=$(docker buildx bake test --print | jq -cr '.group.test.targets')" >>${GITHUB_OUTPUT}
+                  echo "validate_matrix=$(docker buildx bake validate --print | jq -cr '.group.validate.targets')" >>${GITHUB_OUTPUT}
+                  echo "package_matrix=$(cat ./meta-output/meta/go-testable-packages | jq -cr 'map(split("/")[-1])')" >>${GITHUB_OUTPUT}
+            - name: show matrix
+              run: |
+                  echo "build_matrix = ${{ fromJson(steps.platforms.outputs.build_matrix) }}"
+                  echo "test_matrix = ${{ fromJson(steps.platforms.outputs.test_matrix) }}"
+                  echo "validate_matrix = ${{ fromJson(steps.platforms.outputs.validate_matrix) }}"
+                  echo "package_matrix = ${{ fromJson(steps.platforms.outputs.package_matrix) }}"
             - id: upload-meta
               uses: actions/upload-artifact@v3
               with:
@@ -148,8 +217,6 @@ jobs:
                   echo "PLATFORM_PAIR_UNDERSCORE=${platform//\//_}" >> $GITHUB_OUTPUT
             - name: checkout
               uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
@@ -184,7 +251,6 @@ jobs:
         steps:
             - name: checkout
               uses: actions/checkout@v4
-              with: { fetch-depth: 0 }
             - name: download build
               uses: actions/download-artifact@v3
               with:
@@ -250,24 +316,20 @@ jobs:
         steps:
             - name: checkout
               uses: actions/checkout@v4
-              with: { fetch-depth: 0 }
+            - name: set up qemu
+              uses: docker/setup-qemu-action@v2
+            - name: set up buildx
+              uses: docker/setup-buildx-action@v2
             - name: download build
               uses: actions/download-artifact@v3
               with:
                   name: build
                   path: build-output
-            - name: set up buildx
-              uses: docker/setup-buildx-action@v2
             - name: download meta
               uses: actions/download-artifact@v3
               with:
                   name: meta
                   path: meta-output
-            - name: download build
-              uses: actions/download-artifact@v3
-              with:
-                  name: build
-                  path: build-output
             - id: meta
               run: |
                   echo "version=$(cat ./meta-output/${{env.MAIN_PLATFORM_UNDER}}/meta/version)" >> $GITHUB_OUTPUT
