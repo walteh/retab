@@ -88,7 +88,9 @@ jobs:
                   name: tester
                   path: tester.tar.gz
             - name: load tester
-              run: docker load -i tester.tar.gz
+              run: |
+                  gzip -d tester.tar.gz
+                  docker load -i tester.tar
             - name: run tests
               run: |
                   docker run --network host \
@@ -310,7 +312,8 @@ jobs:
     release:
         runs-on: ubuntu-22.04
         needs:
-            - test
+            - unit-test
+            - integration-test
             - build
             - validate
         steps:

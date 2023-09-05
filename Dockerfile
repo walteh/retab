@@ -16,7 +16,7 @@ FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS golatest
 
-FROM --platform=$BUILDPLATFORM walteh/buildrc:0.12.11 as buildrc
+FROM --platform=$BUILDPLATFORM walteh/buildrc:0.12.13 as buildrc
 
 FROM golatest AS gobase
 COPY --from=xx / /
