@@ -123,7 +123,6 @@ jobs:
                   targets: meta
                   set: |
                       *.output=./meta-output
-                      *.cache-to=type=local,dest=./meta-cache
             - id: upload-meta
               uses: actions/upload-artifact@v3
               with:
@@ -144,6 +143,7 @@ jobs:
               run: |
                   platform=${{ matrix.platform }}
                   echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_OUTPUT
+                  echo "PLATFORM_PAIR_UNDERSCORE=${platform//\//_}" >> $GITHUB_OUTPUT
             - name: checkout
               uses: actions/checkout@v4
               with:
@@ -165,7 +165,7 @@ jobs:
                   files: ./docker-bake.hcl
                   targets: release
                   set: |
-                      *.contexts.meta=./meta-cache
+                      *.contexts.meta=./meta-cache/${{ steps.prepare.outputs.PLATFORM_PAIR_UNDERSCORE }}
                       *.output=./rebin/
                       *.platform=${{ matrix.platform }}
                       *.cache-from=type=gha
@@ -281,18 +281,10 @@ jobs:
               with:
                   name: meta
                   path: meta-cache
-            - name: bake meta
-              uses: docker/bake-action@v3
-              with:
-                  files: ./docker-bake.hcl
-                  targets: meta
-                  set: |
-                      *.output=./meta-output
-                      *.contexts.meta=./meta-cache
             - id: meta
               run: |
-                  echo "version=$(cat ./meta-output/meta/version)" >> $GITHUB_OUTPUT
-                  echo "revision=$(cat ./meta-output/meta/revision)" >> $GITHUB_OUTPUT
+                  echo "version=$(cat ./meta-cache/linux_amd64/meta/version)" >> $GITHUB_OUTPUT
+                  echo "revision=$(cat ./meta-cache/linux_amd64/meta/revision)" >> $GITHUB_OUTPUT
             - name: bake
               uses: docker/bake-action@v3
               with:
