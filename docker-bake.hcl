@@ -252,34 +252,26 @@ target "meta-helper" {
 # BUILD
 ##################################################################
 
-target "build" {
+target "local" {
 	inherits  = ["_common"]
 	target    = "build"
 	output    = [BUILD_OUTPUT]
 	platforms = ["local"]
 }
 
-target "release" {
+target "build" {
 	inherits = ["_common", "_cross", "_attest"]
-	target   = "release"
-	output   = [RELEASE_OUTPUT]
+	target   = "build"
+	output   = [BUILD_OUTPUT]
 }
 
 target "package" {
-	inherits = ["_common"]
-	target   = "package"
-	output   = [PACKAGE_OUTPUT]
+	inherits  = ["_common"]
+	target    = "package"
+	output    = [PACKAGE_OUTPUT]
+	platforms = ["local"]
 	contexts = {
-		"released" = RELEASE_OUTPUT
-	}
-}
-
-target "checksum" {
-	inherits = ["_common"]
-	target   = "checksum"
-	output   = [PACKAGE_OUTPUT]
-	contexts = {
-		"packaged" = PACKAGE_OUTPUT
+		build = BUILD_OUTPUT
 	}
 }
 

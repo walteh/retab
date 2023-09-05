@@ -32,6 +32,8 @@ env:
     DESTDIR: "./bin"
     TEST_CACHE_SCOPE: "test"
     DOCKERHUB_USERNAME: walteh
+    MAIN_PLATFORM: linux/amd64
+    MAIN_PLATFORM_UNDER: linux_amd64
 
 jobs:
     test:
@@ -50,14 +52,12 @@ jobs:
             - name: download binaries
               uses: actions/download-artifact@v3
               with:
-                  name: buildx
-                  path: rebin
+                  name: build
+                  path: build-output
             - name: list artifacts
               run: tree -nh rebin
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
-            - name: set up just
-              uses: taiki-e/install-action@just
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
             - name: bake ${{ matrix.level }}
@@ -66,6 +66,8 @@ jobs:
                   files: ./docker-bake.hcl
                   targets: ${{ matrix.level }}
                   set: |
+                      *.platform=${{ env.MAIN_PLATFORM }}
+                      *.contexts.build=./build-output/${{ env.MAIN_PLATFORM_UNDER }}
                       *.output=type=docker,name=${{matrix.level}}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
@@ -86,7 +88,7 @@ jobs:
               uses: actions/upload-artifact@v3
               with:
                   name: test-reports
-                  path: ./testout
+                  path: ./testout/*
 
     prepare:
         runs-on: ubuntu-22.04
@@ -150,39 +152,29 @@ jobs:
                   fetch-depth: 0
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
-            - name: set up just
-              uses: taiki-e/install-action@just
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
             - name: download meta
               uses: actions/download-artifact@v3
               with:
                   name: meta
-                  path: meta-cache
+                  path: meta-output
             - name: bake release
               uses: docker/bake-action@v3
               with:
                   files: ./docker-bake.hcl
-                  targets: release
+                  targets: build
                   set: |
-                      *.contexts.meta=./meta-cache/${{ steps.prepare.outputs.PLATFORM_PAIR_UNDERSCORE }}
-                      *.output=./rebin/
+                      *.contexts.meta=./meta-output/${{ steps.prepare.outputs.PLATFORM_PAIR_UNDERSCORE }}
+                      *.output=./build-output/${{ steps.prepare.outputs.PLATFORM_PAIR_UNDERSCORE }}
                       *.platform=${{ matrix.platform }}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
-            - name: bake package
-              uses: docker/bake-action@v3
-              with:
-                  files: ./docker-bake.hcl
-                  targets: package
-                  set: |
-                      *.contexts.released=./rebin/
-                      *.output=${{ env.DESTDIR }}
             - name: upload artifacts
               uses: actions/upload-artifact@v3
               with:
-                  name: buildx
-                  path: ${{ env.DESTDIR }}/*
+                  name: build
+                  path: ./build-output/*
                   if-no-files-found: error
 
     registry:
@@ -196,29 +188,17 @@ jobs:
             - name: download build
               uses: actions/download-artifact@v3
               with:
-                  name: buildx
-                  path: rebin
-            - name: check
-              run: ls -la rebin
+                  name: build
+                  path: build-output
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
-            - name: set up just
-              uses: taiki-e/install-action@just
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
             - name: download meta
               uses: actions/download-artifact@v3
               with:
                   name: meta
-                  path: meta-cache
-            - name: bake meta
-              uses: docker/bake-action@v3
-              with:
-                  files: ./docker-bake.hcl
-                  targets: meta
-                  set: |
-                      *.output=./meta-output
-                      *.cache-from=type=local,src=./meta-cache
+                  path: meta-output
             - id: meta
               run: |
                   echo "version=$(cat ./meta-output/meta/version)" >> $GITHUB_OUTPUT
@@ -256,6 +236,8 @@ jobs:
                   push: true
                   sbom: true
                   set: |
+                      *.contexts.meta=./meta-output
+                      *.contexts.build=./build-output
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
 
@@ -272,31 +254,37 @@ jobs:
             - name: download build
               uses: actions/download-artifact@v3
               with:
-                  name: buildx
-                  path: ${{ env.DESTDIR }}
+                  name: build
+                  path: build-output
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
             - name: download meta
               uses: actions/download-artifact@v3
               with:
                   name: meta
-                  path: meta-cache
+                  path: meta-output
+            - name: download build
+              uses: actions/download-artifact@v3
+              with:
+                  name: build
+                  path: build-output
             - id: meta
               run: |
-                  echo "version=$(cat ./meta-cache/linux_amd64/meta/version)" >> $GITHUB_OUTPUT
-                  echo "revision=$(cat ./meta-cache/linux_amd64/meta/revision)" >> $GITHUB_OUTPUT
-            - name: bake
+                  echo "version=$(cat ./meta-output/${{env.MAIN_PLATFORM_UNDER}}/meta/version)" >> $GITHUB_OUTPUT
+                  echo "revision=$(cat ./meta-output/${{env.MAIN_PLATFORM_UNDER}}/meta/revision)" >> $GITHUB_OUTPUT
+            - name: bake package
               uses: docker/bake-action@v3
               with:
                   files: ./docker-bake.hcl
-                  targets: checksum
+                  targets: package
                   set: |
-                      *.contexts.packaged=./bin/
-                      *.output=${{ env.DESTDIR }}
+                      *.contexts.meta=./meta-output
+                      *.contexts.build=./build-output
+                      *.output=./package-output
             - name: list artifacts
-              run: tree -nh ${{ env.DESTDIR }}
+              run: tree -nh ./package-output
             - name: check artifacts
-              run: find ${{ env.DESTDIR }} -type f -exec file -e ascii -- {} +
+              run: find ./package-output -type f -exec file -e ascii -- {} +
             - name: github release
               uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v0.1.15
               env:
@@ -304,7 +292,7 @@ jobs:
               with:
                   draft: false
                   prerelease: true
-                  files: ${{ env.DESTDIR }}/*
+                  files: ./package-output/*
                   tag_name: ${{ steps.meta.outputs.version }}
                   target_commitish: ${{ github.sha }}
                   name: ${{ steps.meta.outputs.version }}
@@ -318,8 +306,6 @@ jobs:
               with: { fetch-depth: 0 }
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
-            - name: set up just
-              uses: taiki-e/install-action@just
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
               with:
@@ -344,14 +330,21 @@ jobs:
             - name: checkout
               uses: actions/checkout@v4
               with: { fetch-depth: 0 }
-            - name: set up just
-              uses: taiki-e/install-action@just
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
               with:
                   version: latest
+            - name: download meta
+              uses: actions/download-artifact@v3
+              with:
+                  name: meta
+                  path: meta-output
             - name: build
               uses: docker/bake-action@v3
               with:
                   files: ./docker-bake.hcl
                   targets: ${{ matrix.target }}
+                  set: |
+                      *.contexts.meta=./meta-output
+                      *.cache-from=type=gha
+                      *.cache-to=type=gha,mode=max
