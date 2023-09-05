@@ -36,47 +36,10 @@ env:
     MAIN_PLATFORM_UNDER: linux_amd64
 
 jobs:
-    test-build:
-        runs-on: ubuntu-22.04
-        needs:
-            - prepare
-        steps:
-            - name: checkout
-              uses: actions/checkout@v4
-            - name: set up qemu
-              uses: docker/setup-qemu-action@v2
-            - name: set up buildx
-              uses: docker/setup-buildx-action@v2
-            - name: download meta
-              uses: actions/download-artifact@v3
-              with:
-                  name: meta
-                  path: meta-output
-            - name: bake build
-              uses: docker/bake-action@v3
-              with:
-                  files: ./docker-bake.hcl
-                  targets: tester
-                  set: |
-                      *.contexts.meta=./meta-output/${{ env.MAIN_PLATFORM_UNDER }}
-                      *.output=type=tar,name=tester,dest=./tester.tar
-                      *.platform=${{ env.MAIN_PLATFORM }}
-                      *.cache-from=type=gha
-                      *.cache-to=type=gha,mode=max
-            - name: gzip testing tar
-              run: gzip -9 ./tester.tar
-            - name: upload artifacts
-              uses: actions/upload-artifact@v3
-              with:
-                  name: tester
-                  path: ./tester.tar.gz
-                  if-no-files-found: error
-
     unit-test:
         runs-on: ubuntu-22.04
         needs:
             - build
-            - test-build
             - prepare
         strategy:
             matrix:
@@ -86,11 +49,9 @@ jobs:
               uses: actions/download-artifact@v3
               with:
                   name: tester
-                  path: tester.tar.gz
+                  path: ./tester-output
             - name: load tester
-              run: |
-                  gzip -d tester.tar.gz
-                  docker load -i tester.tar
+              run: docker load -i ./tester-output/tester.tar
             - name: run tests
               run: |
                   docker run --network host \
@@ -121,7 +82,6 @@ jobs:
         runs-on: ubuntu-22.04
         needs:
             - build
-            - test-build
             - prepare
         strategy:
             matrix:
@@ -131,9 +91,11 @@ jobs:
               uses: actions/download-artifact@v3
               with:
                   name: tester
-                  path: tester.tar.gz
+                  path: ./tester-output
             - name: load tester
-              run: docker load -i tester.tar.gz
+              run: |
+                  gzip -d ./tester-output/tester.tar.gz
+                  docker load -i ./tester-output/tester.tar
             - name: run tests
               run: |
                   docker run --network host \
@@ -241,6 +203,26 @@ jobs:
               with:
                   name: build
                   path: ./build-output/*
+                  if-no-files-found: error
+
+            - name: bake build
+              if: matrix.platform == ${{ env.MAIN_PLATFORM }}
+              uses: docker/bake-action@v3
+              with:
+                  files: ./docker-bake.hcl
+                  targets: tester
+                  set: |
+                      *.contexts.meta=./meta-output/${{ env.MAIN_PLATFORM_UNDER }}
+                      *.output=type=tar,name=tester,dest=./tester.tar
+                      *.platform=${{ env.MAIN_PLATFORM }}
+                      *.cache-from=type=gha
+                      *.cache-to=type=gha,mode=max
+            - name: upload artifacts
+              if: matrix.platform == ${{ env.MAIN_PLATFORM }}
+              uses: actions/upload-artifact@v3
+              with:
+                  name: tester
+                  path: ./tester.tar
                   if-no-files-found: error
 
     registry:
