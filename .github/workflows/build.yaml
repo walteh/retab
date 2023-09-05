@@ -260,6 +260,7 @@ jobs:
                   files: ./docker-bake.hcl
                   targets: checksum
                   set: |
+                      *.contexts.packaged=${{ env.DESTDIR }}
                       *.output=${{ env.DESTDIR }}
             - name: list artifacts
               run: tree -nh ${{ env.DESTDIR }}
