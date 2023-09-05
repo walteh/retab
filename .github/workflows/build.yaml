@@ -67,7 +67,7 @@ jobs:
                   targets: ${{ matrix.level }}
                   set: |
                       *.platform=${{ env.MAIN_PLATFORM }}
-                      *.contexts.build=./build-output/${{ env.MAIN_PLATFORM_UNDER }}
+                      *.contexts.build=./build-output
                       *.output=type=docker,name=${{matrix.level}}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
