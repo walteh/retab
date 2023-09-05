@@ -206,19 +206,20 @@ jobs:
                   if-no-files-found: error
 
             - name: bake build
-              if: matrix.platform == ${{ env.MAIN_PLATFORM }}
+              if: ${{ matrix.platform == env.MAIN_PLATFORM }}
               uses: docker/bake-action@v3
               with:
                   files: ./docker-bake.hcl
                   targets: tester
                   set: |
                       *.contexts.meta=./meta-output/${{ env.MAIN_PLATFORM_UNDER }}
+                      *.contexts.build=./build-output
                       *.output=type=tar,name=tester,dest=./tester.tar
                       *.platform=${{ env.MAIN_PLATFORM }}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
             - name: upload artifacts
-              if: matrix.platform == ${{ env.MAIN_PLATFORM }}
+              if: ${{ matrix.platform == env.MAIN_PLATFORM }}
               uses: actions/upload-artifact@v3
               with:
                   name: tester
