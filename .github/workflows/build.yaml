@@ -166,7 +166,7 @@ jobs:
                   targets: build
                   set: |
                       *.contexts.meta=./meta-output/${{ steps.prepare.outputs.PLATFORM_PAIR_UNDERSCORE }}
-                      *.output=./build-output/${{ steps.prepare.outputs.PLATFORM_PAIR_UNDERSCORE }}
+                      *.output=./build-output
                       *.platform=${{ matrix.platform }}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
@@ -297,9 +297,11 @@ jobs:
                   target_commitish: ${{ github.sha }}
                   name: ${{ steps.meta.outputs.version }}
 
-    buildkit-edge:
+    edge:
         runs-on: ubuntu-22.04
         continue-on-error: true
+        env:
+            DEBUG: "true"
         steps:
             - name: checkout
               uses: actions/checkout@v4
@@ -309,15 +311,18 @@ jobs:
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
               with:
-                  version: ${{ env.BUILDX_VERSION }}
+                  version: latest
                   driver-opts: image=moby/buildkit:master
                   buildkitd-flags: --debug
-            - # Just run a bake target to check eveything runs fine
-              name: Build
+            - name: bake build
               uses: docker/bake-action@v3
               with:
                   files: ./docker-bake.hcl
                   targets: build
+                  set: |
+                      *.platform=${{ env.MAIN_PLATFORM }}
+                      *.cache-from=type=gha
+                      *.cache-to=type=gha,mode=max
 
     validate:
         runs-on: ubuntu-22.04
