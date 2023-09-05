@@ -91,21 +91,26 @@ FROM gobase AS test-builder
 ARG BIN_NAME
 ENV CGO_ENABLED=1
 RUN apk add --no-cache gcc musl-dev libc6-compat
-ARG TEST_ARGS
-ENV TEST_ARGS=${TEST_ARGS}
-ARG TEST_NAME
-ENV TEST_NAME=${TEST_NAME}
 RUN mkdir -p /out
+COPY --from=gotestsum /out /usr/bin/
 RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod \
-	go test -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out
+	gotestsum \
+	--format=standard-verbose \
+	--jsonfile=/reports/go-test-report.json \
+	--junitfile=/reports/junit-report.xml \
+	- -- -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out -coverprofile=/reports/coverage-report.txt
+
+FROM scratch AS test
+COPY --link --from=test-builder /reports /reports
+COPY --link --from=test-builder /out /
+COPY --link --from=gotestsum /out /
+COPY --link --from=test2json /out /
+COPY --link --from=build . /
 
 FROM alpine:latest AS tester
-COPY --from=builder /out /usr/bin/
-COPY --from=test-builder /out /usr/bin/
-COPY --from=gotestsum /out /usr/bin/
-COPY --from=test2json /out /usr/bin/
+COPY --from=test . /usr/bin/
 ARG GO_VERSION
 ENV PKG= NAME= ARGS= GOVERSION=${GO_VERSION}
 ENTRYPOINT gotestsum \

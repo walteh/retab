@@ -36,7 +36,68 @@ env:
     MAIN_PLATFORM_UNDER: linux_amd64
 
 jobs:
-    unit-test:
+    tester:
+        runs-on: ubuntu-22.04
+        needs:
+            - prepare
+        steps:
+            - name: checkout
+              uses: actions/checkout@v4
+            - name: set up qemu
+              uses: docker/setup-qemu-action@v2
+            - name: set up buildx
+              uses: docker/setup-buildx-action@v2
+            - name: download build
+              uses: actions/download-artifact@v3
+              with:
+                  name: build
+                  path: build-output
+            - name: bake test
+              uses: docker/bake-action@v3
+              with:
+                  files: ./docker-bake.hcl
+                  targets: test
+                  set: |
+                      *.contexts.build=./build-output
+                      *.output=./test-output
+                      *.platform=${{ env.MAIN_PLATFORM }}
+                      *.cache-from=type=gha
+                      *.cache-to=type=gha,mode=max
+            - name: bake tester
+              uses: docker/bake-action@v3
+              with:
+                  files: ./docker-bake.hcl
+                  targets: tester
+                  set: |
+                      *.contexts.test=./test-output
+                      *.output=type=docker,name=tester,dest=./test-output/tester.tar
+                      *.platform=${{ env.MAIN_PLATFORM }}
+                      *.cache-from=type=gha
+                      *.cache-to=type=gha,mode=max
+            - name: upload test artifacts
+              uses: actions/upload-artifact@v3
+              with:
+                  name: test
+                  path: ./test-output/*
+                  if-no-files-found: error
+            - name: send to codecov
+              if: always()
+              uses: codecov/codecov-action@v3
+              with:
+                  directory: ./test-output/reports
+            - name: generate annotations
+              if: always()
+              uses: crazy-max/.github/.github/actions/gotest-annotations@1a64ea6d01db9a48aa61954cb20e265782c167d9
+              with:
+                  directory: ./test-output/reports
+            - name: upload test reports
+              if: always()
+              uses: actions/upload-artifact@v3
+              with:
+                  name: test-reports
+                  path: ./test-output/reports/*
+
+    unit:
         runs-on: ubuntu-22.04
         needs:
             - build
@@ -49,10 +110,10 @@ jobs:
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
-            - name: download tester
+            - name: download test artifacts
               uses: actions/download-artifact@v3
               with:
-                  name: tester
+                  name: test
                   path: ./tester-output
             - name: load tester
               run: docker load < ./tester-output/tester.tar
@@ -60,7 +121,7 @@ jobs:
               run: |
                   docker run --network host \
                     -e PKG=${{ matrix.package }} \
-                    -e ARGS="-skip=Integration" \
+                    -e ARGS="-test.skip=Integration" \
                     -e NAME="unit" \
                     -v /var/run/docker.sock:/var/run/docker.sock \
                     -v ./testout:/out \
@@ -82,7 +143,7 @@ jobs:
                   name: test-reports
                   path: ./testout/*
 
-    integration-test:
+    integration:
         runs-on: ubuntu-22.04
         needs:
             - build
@@ -91,10 +152,10 @@ jobs:
             matrix:
                 package: ${{ fromJson(needs.prepare.outputs.package_matrix) }}
         steps:
-            - name: download tester
+            - name: download test artifacts
               uses: actions/download-artifact@v3
               with:
-                  name: tester
+                  name: test
                   path: ./tester-output
             - name: load tester
               run: docker load -i ./tester-output/tester.tar
@@ -102,7 +163,7 @@ jobs:
               run: |
                   docker run --network host \
                     -e PKG=${{ matrix.package }} \
-                    -e ARGS="-run=Integration" \
+                    -e ARGS="-test.run=Integration" \
                     -e NAME="integration" \
                     -v /var/run/docker.sock:/var/run/docker.sock \
                     -v ./testout:/out \
@@ -207,27 +268,6 @@ jobs:
                   path: ./build-output/*
                   if-no-files-found: error
 
-            - name: bake tester
-              if: ${{ matrix.platform == env.MAIN_PLATFORM }}
-              uses: docker/bake-action@v3
-              with:
-                  files: ./docker-bake.hcl
-                  targets: tester
-                  set: |
-                      *.contexts.meta=./meta-output/${{ env.MAIN_PLATFORM_UNDER }}
-                      *.contexts.build=./build-output
-                      *.output=type=docker,name=tester,dest=./tester.tar
-                      *.platform=${{ env.MAIN_PLATFORM }}
-                      *.cache-from=type=gha
-                      *.cache-to=type=gha,mode=max
-            - name: upload tester artifacts
-              if: ${{ matrix.platform == env.MAIN_PLATFORM }}
-              uses: actions/upload-artifact@v3
-              with:
-                  name: tester
-                  path: ./tester.tar
-                  if-no-files-found: error
-
     registry:
         runs-on: ubuntu-22.04
         needs:
@@ -294,9 +334,8 @@ jobs:
     release:
         runs-on: ubuntu-22.04
         needs:
-            - unit-test
-            - integration-test
-            - build
+            - unit
+            - integration
             - validate
         steps:
             - name: checkout
