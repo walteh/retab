@@ -97,6 +97,8 @@ jobs:
         steps:
             - name: checkout
               uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
             - name: download meta
