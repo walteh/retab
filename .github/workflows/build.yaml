@@ -36,14 +36,14 @@ env:
     MAIN_PLATFORM_UNDER: linux_amd64
 
 jobs:
-    tester:
+    test-prep:
         runs-on: ubuntu-22.04
         needs:
             - build
-            - prepare
+            - build-prep
             - validate
         outputs:
-            package_matrix: ${{ needs.prepare.outputs.package_matrix }}
+            package_matrix: ${{ needs.build-prep.outputs.package_matrix }}
         steps:
             - name: checkout
               uses: actions/checkout@v4
@@ -104,10 +104,10 @@ jobs:
     unit:
         runs-on: ubuntu-22.04
         needs:
-            - tester
+            - test-prep
         strategy:
             matrix:
-                package: ${{ fromJson(needs.tester.outputs.package_matrix) }}
+                package: ${{ fromJson(needs.test-prep.outputs.package_matrix) }}
         steps:
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
@@ -149,10 +149,10 @@ jobs:
     integration:
         runs-on: ubuntu-22.04
         needs:
-            - tester
+            - test-prep
         strategy:
             matrix:
-                package: ${{ fromJson(needs.tester.outputs.package_matrix) }}
+                package: ${{ fromJson(needs.test-prep.outputs.package_matrix) }}
         steps:
             - name: download test artifacts
               uses: actions/download-artifact@v3
@@ -187,7 +187,7 @@ jobs:
                   name: test-reports
                   path: ./testout/*
 
-    prepare:
+    build-prep:
         runs-on: ubuntu-22.04
         outputs:
             build_matrix: ${{ steps.platforms.outputs.build_matrix }}
@@ -229,11 +229,11 @@ jobs:
     build:
         runs-on: ubuntu-22.04
         needs:
-            - prepare
+            - build-prep
         strategy:
             fail-fast: false
             matrix:
-                platform: ${{ fromJson(needs.prepare.outputs.build_matrix) }}
+                platform: ${{ fromJson(needs.build-prep.outputs.build_matrix) }}
         steps:
             - name: prepare
               id: prepare
@@ -413,11 +413,11 @@ jobs:
 
     validate:
         runs-on: ubuntu-22.04
-        needs: [prepare]
+        needs: [build-prep]
         strategy:
             fail-fast: false
             matrix:
-                target: ${{ fromJson(needs.prepare.outputs.validate_matrix) }}
+                target: ${{ fromJson(needs.build-prep.outputs.validate_matrix) }}
         steps:
             - name: checkout
               uses: actions/checkout@v4
@@ -431,7 +431,7 @@ jobs:
               with:
                   name: meta
                   path: meta-output
-            - name: build
+            - name: bake ${{ matrix.target }}
               uses: docker/bake-action@v3
               with:
                   files: ./docker-bake.hcl

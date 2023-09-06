@@ -100,7 +100,7 @@ RUN --mount=type=bind,target=. \
 	--format=standard-verbose \
 	--jsonfile=/reports/go-test-report.json \
 	--junitfile=/reports/junit-report.xml \
-	- -- -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out -coverprofile=/reports/coverage-report.txt
+	-- -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out -coverprofile=/reports/coverage-report.txt
 
 FROM scratch AS test
 COPY --link --from=test-builder /reports /reports
