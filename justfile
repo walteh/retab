@@ -69,14 +69,12 @@ integration-test:
 build:
     docker buildx bake build
 
-release:
-    docker buildx bake release
 
 package:
-	RELEASE_OUTPUT=$(mktemp -d -t release-XXXXXXXXXX) && \
-	docker buildx bake release --set "*.output=${RELEASE_OUTPUT}" && \
-	docker buildx bake package --set "*.contexts.released=${RELEASE_OUTPUT}" && \
-	rm -rf ${RELEASE_OUTPUT}
+	BUILD_OUTPUT=$(mktemp -d -t release-XXXXXXXXXX) && \
+	docker buildx bake build --set "*.output=${BUILD_OUTPUT}" && \
+	docker buildx bake package --set "*.contexts.build=${BUILD_OUTPUT}" && \
+	rm -rf ${BUILD_OUTPUT}
 
 local:
 	docker buildx bake image-default

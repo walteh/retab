@@ -20,8 +20,8 @@ FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bookworm AS cgolatest
 
 FROM --platform=$BUILDPLATFORM walteh/buildrc:0.14.1 as buildrc
 
-FROM --platform=$BUILDPLATFORM alpine:latest AS alpinelatest
-
+FROM --platform=$BUILDPLATFORM alpine:latest AS alpine
+FROM --platform=$BUILDPLATFORM busybox:glibc AS glibc
 
 FROM golatest AS gobase
 COPY --link --from=xx / /
@@ -57,7 +57,7 @@ COPY --from=metarc /meta /meta
 
 FROM gobase AS builder
 ARG TARGETPLATFORM
-RUN --mount=type=bind,target=. \
+RUN --mount=type=bind,target=.,readonly \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod \
 	--mount=type=bind,from=meta,source=/meta,target=/meta,readonly <<EOT
@@ -138,7 +138,7 @@ COPY --link --from=gotestsum /out /
 COPY --link --from=test2json /out /
 COPY --link --from=build . /
 
-FROM  busybox:latest AS tester
+FROM  glibc AS tester
 COPY --link --from=test . /usr/bin/
 ARG GO_VERSION
 ENV PKG= NAME= ARGS= GOVERSION=${GO_VERSION}
@@ -154,7 +154,7 @@ ENTRYPOINT gotestsum \
 # RELEASE
 ##################################################################
 
-FROM alpinelatest AS packager
+FROM alpine AS packager
 ARG BUILDKIT_MULTI_PLATFORM
 RUN apk add --no-cache file tar jq
 COPY --link  --from=build . /src/
