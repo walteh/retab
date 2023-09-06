@@ -53,10 +53,10 @@ test:
 	# docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out integration-test
 
 unit-test:
-	docker buildx bake test --set "*.output=type=local,dest=./bin/test-reporting" && \
-	docker buildx bake tester --set "*.contexts.test=./bin/test-reporting" --set "*.output=type=docker,name=runners,dest=./bin/runner.tar" && \
+	docker buildx bake test --set "*.output=type=local,dest=./bin/test-reporting" --set "*.platform=linux/amd64" && \
+	docker buildx bake tester --set "*.contexts.test=./bin/test-reporting" --set "*.output=type=docker,name=runners,dest=./bin/runner.tar" --set "*.platform=linux/amd64" --progress plain && \
 	docker load < ./bin/runner.tar && \
-	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out -e PKG=tests -e ARGS="-test.run=Integration" runners
+	docker run --platform "linux/amd64" --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out -e PKG=tests -e ARGS="-test.run=Integration" -e NAME="integration" runners
 
 integration-test:
 	docker buildx bake integration-test

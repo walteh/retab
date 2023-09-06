@@ -15,15 +15,33 @@ ARG BUILDKIT_VERSION=nightly
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS golatest
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bookworm AS cgolatest
 
-FROM --platform=$BUILDPLATFORM walteh/buildrc:0.13.0 as buildrc
+
+FROM --platform=$BUILDPLATFORM walteh/buildrc:0.14.1 as buildrc
+
+FROM --platform=$BUILDPLATFORM alpine:latest AS alpinelatest
+
 
 FROM golatest AS gobase
-COPY --from=xx / /
-COPY --from=buildrc /usr/bin/buildrc /usr/bin/buildrc
+COPY --link --from=xx / /
+COPY --link --from=buildrc /usr/bin/buildrc /usr/bin/buildrc
 RUN apk add --no-cache file git bash
 ENV GOFLAGS=-mod=vendor
 ENV CGO_ENABLED=0
+WORKDIR /src
+
+FROM cgolatest AS cgobase
+COPY --link --from=xx / /
+COPY --link --from=buildrc /usr/bin/buildrc /usr/bin/buildrc
+# RUN apk add --no-cache file git bash gcc musl-dev libc6-compat
+RUN apt-get update && apt-get install -y --no-install-recommends \
+	gcc \
+	musl-dev \
+	g++-x86-64-linux-gnu libc6-dev-amd64-cross \
+	&& rm -rf /var/lib/apt/lists/*
+ENV GOFLAGS=-mod=vendor
+ENV CGO_ENABLED=1
 WORKDIR /src
 
 ##################################################################
@@ -72,35 +90,53 @@ COPY --link --from=meta /meta/buildrc.json /
 # TESTING
 ##################################################################
 
-FROM gobase AS gotestsum
+FROM cgobase AS gotestsum
 ARG GOTESTSUM_VERSION
+ARG TARGETPLATFORM
 ENV GOFLAGS=
+# RUN <<EOT
+# 	set -e
+# 	xx-go --wrap;
+# 	buildrc binary --repository=gotestsum --organization=gotestyourself --outfile=/out/gotestsum --version=${GOTESTSUM_VERSION}
+# 	xx-verify --static /out/gotestsum
+# 	/out/gotestsum --version
+# EOT
+
 RUN --mount=target=/root/.cache,type=cache <<EOT
-	GOBIN=/out/ go install "gotest.tools/gotestsum@${GOTESTSUM_VERSION}" &&
-	/out/gotestsum --version
+	set -e
+	xx-go --wrap;
+	CGO_ENABLED=0 go install "gotest.tools/gotestsum@${GOTESTSUM_VERSION}"
+	plat="$(echo ${TARGETPLATFORM} | sed 's|/|_|g')"
+	xx-verify --static /go/bin/$plat/gotestsum
+	mkdir -p /out
+	mv /go/bin/$plat/gotestsum /out/gotestsum
 EOT
 
-FROM gobase AS test2json
+FROM cgobase AS test2json
+ARG TARGETPLATFORM
 ARG GOTESTSUM_VERSION
 ENV GOFLAGS=
 RUN --mount=target=/root/.cache,type=cache <<EOT
+	xx-go --wrap;
 	CGO_ENABLED=0 go build -o /out/test2json -ldflags="-s -w" cmd/test2json
+	xx-verify --static /out/test2json
 EOT
 
-FROM gobase AS test-builder
-ARG BIN_NAME
-ENV CGO_ENABLED=1
-RUN apk add --no-cache gcc musl-dev libc6-compat
+FROM cgobase AS test-builder
+ARG TARGETPLATFORM
 RUN mkdir -p /out
 COPY --link --from=gotestsum /out /usr/bin/
 RUN --mount=type=bind,target=. \
-	--mount=type=cache,target=/root/.cache \
-	--mount=type=cache,target=/go/pkg/mod \
-	gotestsum \
-	--format=standard-verbose \
-	--jsonfile=/reports/go-test-report.json \
-	--junitfile=/reports/junit-report.xml \
-	-- -coverprofile=/reports/coverage-report.txt -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out
+	--mount=type=cache,target=/root/.cache  <<EOT
+	set -e
+ 	xx-go --wrap;
+	/usr/bin/gotestsum \
+		--format=standard-verbose \
+		--jsonfile=/reports/go-test-report.json \
+		--junitfile=/reports/junit-report.xml \
+		-- -coverprofile=/reports/coverage-report.txt -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out;
+	find /out -type f -name '*.test' -exec xx-verify --static {} \;
+EOT
 
 FROM scratch AS test
 COPY --link --from=test-builder /reports /reports
@@ -109,9 +145,8 @@ COPY --link --from=gotestsum /out /
 COPY --link --from=test2json /out /
 COPY --link --from=build . /
 
-FROM alpine:latest AS tester
+FROM debian:bookworm-slim AS tester
 COPY --link --from=test . /usr/bin/
-ENV PATH=/usr/bin:$PATH
 ARG GO_VERSION
 ENV PKG= NAME= ARGS= GOVERSION=${GO_VERSION}
 ENTRYPOINT gotestsum \
@@ -126,7 +161,7 @@ ENTRYPOINT gotestsum \
 # RELEASE
 ##################################################################
 
-FROM alpine:latest AS packager
+FROM alpinelatest AS packager
 ARG BUILDKIT_MULTI_PLATFORM
 RUN apk add --no-cache file tar jq
 COPY --link  --from=build . /src/
