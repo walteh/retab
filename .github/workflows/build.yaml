@@ -39,7 +39,10 @@ jobs:
     tester:
         runs-on: ubuntu-22.04
         needs:
+            - build
             - prepare
+        outputs:
+            package_matrix: ${{ needs.prepare.outputs.package_matrix }}
         steps:
             - name: checkout
               uses: actions/checkout@v4
@@ -100,11 +103,10 @@ jobs:
     unit:
         runs-on: ubuntu-22.04
         needs:
-            - build
-            - prepare
+            - tester
         strategy:
             matrix:
-                package: ${{ fromJson(needs.prepare.outputs.package_matrix) }}
+                package: ${{ fromJson(needs.tester.outputs.package_matrix) }}
         steps:
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
@@ -146,11 +148,10 @@ jobs:
     integration:
         runs-on: ubuntu-22.04
         needs:
-            - build
-            - prepare
+            - tester
         strategy:
             matrix:
-                package: ${{ fromJson(needs.prepare.outputs.package_matrix) }}
+                package: ${{ fromJson(needs.tester.outputs.package_matrix) }}
         steps:
             - name: download test artifacts
               uses: actions/download-artifact@v3
