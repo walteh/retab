@@ -1,0 +1,11 @@
+codecov:
+    require_ci_to_pass: true
+github_checks:
+    annotations: true
+parsers:
+    go:
+        partials_as_hits: true
+coverage:
+    range: 60..80
+    round: down
+    precision: 2

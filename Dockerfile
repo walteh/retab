@@ -65,7 +65,7 @@ COPY --link --from=builder /out/${BIN_NAME} /${BIN_NAME}.exe
 FROM build-$TARGETOS AS build
 # enable scanning for this stage
 ARG BUILDKIT_SBOM_SCAN_STAGE=true
-COPY --from=meta /meta/buildrc.json /
+COPY --link --from=meta /meta/buildrc.json /
 
 
 ##################################################################
@@ -92,7 +92,7 @@ ARG BIN_NAME
 ENV CGO_ENABLED=1
 RUN apk add --no-cache gcc musl-dev libc6-compat
 RUN mkdir -p /out
-COPY --from=gotestsum /out /usr/bin/
+COPY --link --from=gotestsum /out /usr/bin/
 RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod \
@@ -100,7 +100,7 @@ RUN --mount=type=bind,target=. \
 	--format=standard-verbose \
 	--jsonfile=/reports/go-test-report.json \
 	--junitfile=/reports/junit-report.xml \
-	-- -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out -coverprofile=/reports/coverage-report.txt
+	-- -coverprofile=/reports/coverage-report.txt -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out
 
 FROM scratch AS test
 COPY --link --from=test-builder /reports /reports
@@ -110,7 +110,8 @@ COPY --link --from=test2json /out /
 COPY --link --from=build . /
 
 FROM alpine:latest AS tester
-COPY --from=test . /usr/bin/
+COPY --link --from=test . /usr/bin/
+ENV PATH=/usr/bin:$PATH
 ARG GO_VERSION
 ENV PKG= NAME= ARGS= GOVERSION=${GO_VERSION}
 ENTRYPOINT gotestsum \
@@ -128,7 +129,7 @@ ENTRYPOINT gotestsum \
 FROM alpine:latest AS packager
 ARG BUILDKIT_MULTI_PLATFORM
 RUN apk add --no-cache file tar jq
-COPY --from=build . /src/
+COPY --link  --from=build . /src/
 RUN <<EOT
 	set -e
 	if [ "$BUILDKIT_MULTI_PLATFORM" != true ] ; then
