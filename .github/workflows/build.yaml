@@ -61,7 +61,7 @@ jobs:
                       *.cache-to=type=gha,mode=max
             - name: make test matrix
               id: matrix
-              run: echo "test_matrix=$(go list -test ./... | grep "\.test$" | jq -R -s -c 'split("\n") | map(select(. != ""))')" >>${GITHUB_OUTPUT}
+              run: echo "test_matrix=$(ls ./test-output | grep '\.test$' | jq -R -s -c 'split("\n") | map(select(. != ""))')" >>${GITHUB_OUTPUT}
             - name: show test matrix
               run: echo "test_matrix = ${{ steps.matrix.outputs.test_matrix }}"
             - name: bake tester
