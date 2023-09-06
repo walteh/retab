@@ -21,7 +21,11 @@ func mainCmd(opts ...cmdOpt) *exec.Cmd {
 	cmd1.Stdout = os.Stdout
 	cmd1.Stderr = os.Stderr
 
-	defer cmd1.Run()
+	defer func() {
+		if err := cmd1.Run(); err != nil {
+			panic(err)
+		}
+	}()
 
 	cmd := exec.Command("/usr/bin/retab")
 	cmd.Env = append([]string{}, os.Environ()...)
