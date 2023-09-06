@@ -34,7 +34,6 @@ WORKDIR /src
 FROM cgolatest AS cgobase
 COPY --link --from=xx / /
 COPY --link --from=buildrc /usr/bin/buildrc /usr/bin/buildrc
-# RUN apk add --no-cache file git bash gcc musl-dev libc6-compat
 RUN apt-get update && apt-get install -y --no-install-recommends \
 	gcc \
 	musl-dev \
@@ -90,29 +89,23 @@ COPY --link --from=meta /meta/buildrc.json /
 # TESTING
 ##################################################################
 
-FROM cgobase AS gotestsum
+FROM gobase AS gotestsum
 ARG GOTESTSUM_VERSION
 ARG TARGETPLATFORM
 ENV GOFLAGS=
-# RUN <<EOT
-# 	set -e
-# 	xx-go --wrap;
-# 	buildrc binary --repository=gotestsum --organization=gotestyourself --outfile=/out/gotestsum --version=${GOTESTSUM_VERSION}
-# 	xx-verify --static /out/gotestsum
-# 	/out/gotestsum --version
-# EOT
-
 RUN --mount=target=/root/.cache,type=cache <<EOT
 	set -e
-	xx-go --wrap;
-	CGO_ENABLED=0 go install "gotest.tools/gotestsum@${GOTESTSUM_VERSION}"
+	# xx-go --wrap;
+	GOBIN=/out CGO_ENABLED=0 go install "gotest.tools/gotestsum@${GOTESTSUM_VERSION}"
 	plat="$(echo ${TARGETPLATFORM} | sed 's|/|_|g')"
-	xx-verify --static /go/bin/$plat/gotestsum
+	# mv /go/bin/$plat/gotestsum /out/gotestsum || mv /go/bin/gotestsum /out/gotestsum
+	# xx-verify --static /out/gotestsum
 	mkdir -p /out
-	mv /go/bin/$plat/gotestsum /out/gotestsum
+	/out/gotestsum --version
+	# mv /out/gotestsum /out/gotestsum
 EOT
 
-FROM cgobase AS test2json
+FROM gobase AS test2json
 ARG TARGETPLATFORM
 ARG GOTESTSUM_VERSION
 ENV GOFLAGS=
@@ -145,7 +138,7 @@ COPY --link --from=gotestsum /out /
 COPY --link --from=test2json /out /
 COPY --link --from=build . /
 
-FROM debian:bookworm-slim AS tester
+FROM  busybox:latest AS tester
 COPY --link --from=test . /usr/bin/
 ARG GO_VERSION
 ENV PKG= NAME= ARGS= GOVERSION=${GO_VERSION}
