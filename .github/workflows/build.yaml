@@ -38,10 +38,8 @@ env:
 jobs:
     test-prep:
         runs-on: ubuntu-22.04
-        needs:
-            - build-prep
         outputs:
-            package_matrix: ${{ needs.build-prep.outputs.package_matrix }}
+            test_matrix: ${{ steps.matrix.outputs.test_matrix }}
         steps:
             - name: checkout
               uses: actions/checkout@v4
@@ -61,6 +59,11 @@ jobs:
                       *.platform=${{ env.MAIN_PLATFORM }}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
+            - name: make test matrix
+              id: matrix
+              run: echo "test_matrix=$(go list -test ./... | grep "\.test$" | jq -R -s -c 'split("\n") | map(select(. != ""))')" >>${GITHUB_OUTPUT}
+            - name: show test matrix
+              run: echo "test_matrix = ${{ steps.matrix.outputs.test_matrix }}"
             - name: bake tester
               uses: docker/bake-action@v3
               with:
@@ -103,7 +106,7 @@ jobs:
             - test-prep
         strategy:
             matrix:
-                package: ${{ fromJson(needs.test-prep.outputs.package_matrix) }}
+                package: ${{ fromJson(needs.test-prep.outputs.test_matrix) }}
         steps:
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
@@ -115,7 +118,7 @@ jobs:
                   name: tester
                   path: ./tester-output
             - name: load tester
-              run: docker load < gzip -d ./tester-output/tester.tar.gz -c
+              run: gzip -d ./tester-output/tester.tar.gz -c | docker load
             - name: run tests
               run: |
                   docker run --network host \
@@ -148,7 +151,7 @@ jobs:
             - test-prep
         strategy:
             matrix:
-                package: ${{ fromJson(needs.test-prep.outputs.package_matrix) }}
+                package: ${{ fromJson(needs.test-prep.outputs.test_matrix) }}
         steps:
             - name: download test artifacts
               uses: actions/download-artifact@v3
@@ -156,7 +159,7 @@ jobs:
                   name: tester
                   path: ./tester-output
             - name: load tester
-              run: docker load < gzip -d ./tester-output/tester.tar.gz -c
+              run: gzip -d ./tester-output/tester.tar.gz -c | docker load
             - name: run tests
               run: |
                   docker run --network host \
