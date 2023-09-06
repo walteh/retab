@@ -278,6 +278,11 @@ target "package" {
 # TESTING
 ##################################################################
 
+target "test" {
+	inherits = ["_common"]
+	target   = "test"
+}
+
 target "tester" {
 	inherits = ["_common"]
 	target   = "tester"

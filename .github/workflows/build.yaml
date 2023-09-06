@@ -41,6 +41,7 @@ jobs:
         needs:
             - build
             - prepare
+            - validate
         outputs:
             package_matrix: ${{ needs.prepare.outputs.package_matrix }}
         steps:
@@ -337,7 +338,6 @@ jobs:
         needs:
             - unit
             - integration
-            - validate
         steps:
             - name: checkout
               uses: actions/checkout@v4
