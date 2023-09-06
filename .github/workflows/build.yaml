@@ -401,10 +401,6 @@ jobs:
                   version: latest
                   driver-opts: image=moby/buildkit:master
                   buildkitd-flags: --debug
-            - name: initialize codeql
-              uses: github/codeql-action/init@v2
-              with:
-                  languages: go
             - name: bake build
               uses: docker/bake-action@v3
               with:
@@ -415,8 +411,6 @@ jobs:
                       *.output=./bin
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
-            - name: codeql analyze
-              uses: github/codeql-action/analyze@v2
 
     validate:
         runs-on: ubuntu-22.04
