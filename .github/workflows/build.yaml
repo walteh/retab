@@ -39,9 +39,7 @@ jobs:
     test-prep:
         runs-on: ubuntu-22.04
         needs:
-            - build
             - build-prep
-            - validate
         outputs:
             package_matrix: ${{ needs.build-prep.outputs.package_matrix }}
         steps:
@@ -51,18 +49,12 @@ jobs:
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
-            - name: download build
-              uses: actions/download-artifact@v3
-              with:
-                  name: build
-                  path: build-output
             - name: bake test
               uses: docker/bake-action@v3
               with:
                   files: ./docker-bake.hcl
                   targets: test
                   set: |
-                      *.contexts.build=./build-output
                       *.output=type=local,dest=./test-output
                       *.platform=${{ env.MAIN_PLATFORM }}
                       *.cache-from=type=gha

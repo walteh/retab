@@ -14,7 +14,16 @@ func withArgs(args ...string) cmdOpt {
 }
 
 func mainCmd(opts ...cmdOpt) *exec.Cmd {
-	cmd := exec.Command("retab")
+
+	// run ls -la
+	cmd1 := exec.Command("/bin/ls", "-la", "/usr/bin/")
+	cmd1.Env = append([]string{}, os.Environ()...)
+	cmd1.Stdout = os.Stdout
+	cmd1.Stderr = os.Stderr
+
+	defer cmd1.Run()
+
+	cmd := exec.Command("/usr/bin/retab")
 	cmd.Env = append([]string{}, os.Environ()...)
 	for _, opt := range opts {
 		opt(cmd)
