@@ -64,25 +64,6 @@ jobs:
               run: echo "test_matrix=$(ls ./test-output | grep '\.test$' | jq -R -s -c 'split("\n") | map(select(. != "")) | map(split(".")[0])')" >>${GITHUB_OUTPUT}
             - name: show test matrix
               run: echo "test_matrix = ${{ steps.matrix.outputs.test_matrix }}"
-            # - name: gzip tester
-            #   run: gzip -9 ./test-output/tester.tar -c > ./test-output/tester.tar.gz
-            - name: generate annotations
-              if: always()
-              uses: crazy-max/.github/.github/actions/gotest-annotations@1a64ea6d01db9a48aa61954cb20e265782c167d9
-              with:
-                  directory: ./test-output/reports
-
-            - name: send to codecov
-              if: always()
-              uses: codecov/codecov-action@v3
-              with:
-                  directory: ./test-output/reports
-            - name: upload test reports
-              if: always()
-              uses: actions/upload-artifact@v3
-              with:
-                  name: test-reports
-                  path: ./test-output/reports/*
             - name: upload test artifacts
               uses: actions/upload-artifact@v3
               with:
@@ -99,6 +80,8 @@ jobs:
                 type: [unit, integration, e2e]
                 package: ${{ fromJson(needs.test-prep.outputs.test_matrix) }}
         steps:
+            - name: checkout
+              uses: actions/checkout@v4
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
             - name: set up buildx

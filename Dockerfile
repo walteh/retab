@@ -95,18 +95,12 @@ ARG BIN_NAME
 ENV CGO_ENABLED=1
 RUN apk add --no-cache gcc musl-dev libc6-compat
 RUN mkdir -p /out
-COPY --link --from=gotestsum /out /usr/bin/
 RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod \
-	gotestsum \
-	--format=standard-verbose \
-	--jsonfile=/reports/go-test-report.json \
-	--junitfile=/reports/junit-report.xml \
-	-- -coverprofile=/reports/coverage-report.txt -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out
+	go test -coverprofile=/reports/coverage-report.txt -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out
 
 FROM scratch AS test
-COPY --link --from=test-builder /reports /reports
 COPY --link --from=test-builder /out /
 COPY --link --from=gotestsum /out /
 COPY --link --from=test2json /out /
