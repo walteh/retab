@@ -134,13 +134,13 @@ RUN apk add --no-cache file tar jq
 COPY --link  --from=build . /src/
 RUN <<EOT
 	set -e
-	if [ "$BUILDKIT_MULTI_PLATFORM" != true ] ; then
+	if [ "$BUILDKIT_MULTI_PLATFORM" != 'true' && "$BUILDKIT_MULTIPLATFORM" != '1' ]; then
 		searchdir="/src/"
 	else
 		searchdir="/src/*/"
 	fi
 	mkdir -p /out
-	for pdir in "${searchdir}"; do
+	for pdir in ${searchdir}; do
 		(
 			cd "${pdir}"
 			artifact="$(jq -r '.artifact' buildrc.json)"
