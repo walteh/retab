@@ -86,7 +86,7 @@ jobs:
             - name: upload test artifacts
               uses: actions/upload-artifact@v3
               with:
-                  name: tester
+                  name: test
                   path: ./test-output/*
                   if-no-files-found: error
 
