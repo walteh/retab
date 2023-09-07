@@ -1,2 +1,0 @@
-# --artifact-server-path ./bin/artifacts
--P ubuntu-22.04=catthehacker/ubuntu:act-22.04

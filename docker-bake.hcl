@@ -3,7 +3,7 @@ variable "GO_VERSION" {
 }
 
 variable "BUILDRC_VERSION" {
-	default = "0.14.1"
+	default = "0.12.9"
 }
 
 variable "DOCS_FORMATS" {
