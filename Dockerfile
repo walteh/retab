@@ -15,32 +15,18 @@ ARG BUILDKIT_VERSION=nightly
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS golatest
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bookworm AS cgolatest
-
 
 FROM --platform=$BUILDPLATFORM walteh/buildrc:0.14.1 as buildrc
 
 FROM --platform=$BUILDPLATFORM alpine:latest AS alpine
-FROM --platform=$BUILDPLATFORM busybox:glibc AS glibc
+FROM --platform=$BUILDPLATFORM busybox:musl AS musl
 
 FROM golatest AS gobase
-COPY --link --from=xx / /
-COPY --link --from=buildrc /usr/bin/buildrc /usr/bin/buildrc
+COPY --from=xx / /
+COPY --from=buildrc /usr/bin/buildrc /usr/bin/buildrc
 RUN apk add --no-cache file git bash
 ENV GOFLAGS=-mod=vendor
 ENV CGO_ENABLED=0
-WORKDIR /src
-
-FROM cgolatest AS cgobase
-COPY --link --from=xx / /
-COPY --link --from=buildrc /usr/bin/buildrc /usr/bin/buildrc
-RUN apt-get update && apt-get install -y --no-install-recommends \
-	gcc \
-	musl-dev \
-	g++-x86-64-linux-gnu libc6-dev-amd64-cross \
-	&& rm -rf /var/lib/apt/lists/*
-ENV GOFLAGS=-mod=vendor
-ENV CGO_ENABLED=1
 WORKDIR /src
 
 ##################################################################
@@ -57,7 +43,7 @@ COPY --from=metarc /meta /meta
 
 FROM gobase AS builder
 ARG TARGETPLATFORM
-RUN --mount=type=bind,target=.,readonly \
+RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod \
 	--mount=type=bind,from=meta,source=/meta,target=/meta,readonly <<EOT
@@ -91,45 +77,33 @@ COPY --link --from=meta /meta/buildrc.json /
 
 FROM gobase AS gotestsum
 ARG GOTESTSUM_VERSION
-ARG TARGETPLATFORM
 ENV GOFLAGS=
 RUN --mount=target=/root/.cache,type=cache <<EOT
-	set -e
-	# xx-go --wrap;
-	GOBIN=/out CGO_ENABLED=0 go install "gotest.tools/gotestsum@${GOTESTSUM_VERSION}"
-	plat="$(echo ${TARGETPLATFORM} | sed 's|/|_|g')"
-	# mv /go/bin/$plat/gotestsum /out/gotestsum || mv /go/bin/gotestsum /out/gotestsum
-	# xx-verify --static /out/gotestsum
-	mkdir -p /out
+	GOBIN=/out/ go install "gotest.tools/gotestsum@${GOTESTSUM_VERSION}" &&
 	/out/gotestsum --version
-	# mv /out/gotestsum /out/gotestsum
 EOT
 
 FROM gobase AS test2json
-ARG TARGETPLATFORM
 ARG GOTESTSUM_VERSION
 ENV GOFLAGS=
 RUN --mount=target=/root/.cache,type=cache <<EOT
-	xx-go --wrap;
 	CGO_ENABLED=0 go build -o /out/test2json -ldflags="-s -w" cmd/test2json
-	xx-verify --static /out/test2json
 EOT
 
-FROM cgobase AS test-builder
-ARG TARGETPLATFORM
+FROM gobase AS test-builder
+ARG BIN_NAME
+ENV CGO_ENABLED=1
+RUN apk add --no-cache gcc musl-dev libc6-compat
 RUN mkdir -p /out
 COPY --link --from=gotestsum /out /usr/bin/
 RUN --mount=type=bind,target=. \
-	--mount=type=cache,target=/root/.cache  <<EOT
-	set -e
- 	xx-go --wrap;
-	/usr/bin/gotestsum \
-		--format=standard-verbose \
-		--jsonfile=/reports/go-test-report.json \
-		--junitfile=/reports/junit-report.xml \
-		-- -coverprofile=/reports/coverage-report.txt -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out;
-	find /out -type f -name '*.test' -exec xx-verify --static {} \;
-EOT
+	--mount=type=cache,target=/root/.cache \
+	--mount=type=cache,target=/go/pkg/mod \
+	gotestsum \
+	--format=standard-verbose \
+	--jsonfile=/reports/go-test-report.json \
+	--junitfile=/reports/junit-report.xml \
+	-- -coverprofile=/reports/coverage-report.txt -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out
 
 FROM scratch AS test
 COPY --link --from=test-builder /reports /reports
@@ -138,7 +112,7 @@ COPY --link --from=gotestsum /out /
 COPY --link --from=test2json /out /
 COPY --link --from=build . /
 
-FROM  glibc AS tester
+FROM alpine AS tester
 COPY --link --from=test . /usr/bin/
 ARG GO_VERSION
 ENV PKG= NAME= ARGS= GOVERSION=${GO_VERSION}
@@ -146,7 +120,7 @@ ENTRYPOINT gotestsum \
 	--format=standard-verbose \
 	--jsonfile=/out/go-test-report-${PKG##*/}-${NAME}.json \
 	--junitfile=/out/junit-report-${PKG##*/}-${NAME}.xml \
-	--raw-command -- test2json -t -p pkgname ${PKG##*/}.test  -test.bench=.  -test.timeout=10m \
+	--raw-command -- test2json -t -p ${PKG##*/} ${PKG##*/}.test  -test.bench=.  -test.timeout=10m \
 	-test.v -test.coverprofile=/out/coverage-report-${PKG##*/}-${NAME}.txt ${ARGS} \
 	-test.outputdir=/out
 
