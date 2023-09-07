@@ -3,7 +3,7 @@ variable "GO_VERSION" {
 }
 
 variable "BUILDRC_VERSION" {
-	default = "0.12.9"
+	default = "0.14.1"
 }
 
 variable "DOCS_FORMATS" {
@@ -62,6 +62,10 @@ variable "TEST_OUTPUT" {
 	default = "${DESTDIR}/testreports"
 }
 
+variable "TEST_IMAGES_OUTPUT" {
+	default = "${DESTDIR}/test-images"
+}
+
 variable "GITHUB_REPOSITORY" {
 	default = ""
 }
@@ -84,6 +88,7 @@ target "_common" {
 		TEST_OUTPUT                   = TEST_OUTPUT
 		BUILDRC_VERSION               = BUILDRC_VERSION
 		PACKAGE_OUTPUT                = PACKAGE_OUTPUT
+		TEST_IMAGES_OUTPUT            = TEST_IMAGES_OUTPUT
 	}
 }
 
@@ -105,6 +110,8 @@ target "_cross" {
 		BUILDKIT_MULTI_PLATFORM = true
 	}
 }
+
+
 
 target "_attest" {
 	attest = GITHUB_REPOSITORY != "" ? [
@@ -197,6 +204,20 @@ target "validate-buf" {
 	output   = ["type=cacheonly"]
 }
 
+target "ghactions" {
+	inherits   = ["_common"]
+	target     = "validator"
+	dockerfile = "./hack/dockerfiles/ghactions.Dockerfile"
+	output     = ["type=cacheonly"]
+}
+
+target "ghaction" {
+	inherits   = ["_common"]
+	target     = "validate"
+	dockerfile = "./hack/dockerfiles/ghactions.Dockerfile"
+	output     = ["type=cacheonly"]
+}
+
 target "outdated" {
 	inherits   = ["_common"]
 	dockerfile = "./hack/dockerfiles/vendor.Dockerfile"
@@ -281,31 +302,39 @@ target "package" {
 target "test" {
 	inherits = ["_common"]
 	target   = "test"
+	/* platforms = ["local"] */
 }
 
-target "tester" {
-	inherits = ["_common"]
+target "unit" {
+	inherits = ["_common", "test"]
 	target   = "tester"
+	args = {
+		ARGS = "-test.skip=Integration -test.skip=E2E"
+		NAME = "unit"
+	}
+	output = ["type=docker,name=unit,dest=${TEST_IMAGES_OUTPUT}/unit.tar"]
 }
 
-/* target "integration-test" {
-	inherits = ["_common"]
+target "integration" {
+	inherits = ["_common", "test"]
 	target   = "tester"
-	output   = ["type=docker,name=integration-test"]
 	args = {
-		TEST_ARGS = "-run=Integration"
-		TEST_NAME = "integration"
+		ARGS = "-test.run=Integration"
+		NAME = "integration"
 	}
+	output = ["type=docker,name=integration,dest=${TEST_IMAGES_OUTPUT}/integration.tar"]
 }
 
-target "unit-test" {
-	inherits = ["_common"]
-	output   = ["type=docker,name=unit-test"]
+target "e2e" {
+	inherits = ["_common", "test"]
+	target   = "tester-with-build"
 	args = {
-		TEST_ARGS = "-skip=Integration"
-		TEST_NAME = "unit"
+		ARGS = "-test.run=E2E"
+		NAME = "e2e"
+		E2E  = 1
 	}
-} */
+	output = ["type=docker,name=e2e,dest=${TEST_IMAGES_OUTPUT}/e2e.tar"]
+}
 
 ##################################################################
 # IMAGE

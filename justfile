@@ -12,10 +12,10 @@ generate-mockery:
     docker buildx bake generate-mockery
 
 generate-meta:
-    docker buildx bake meta
+	docker buildx bake meta
 
 generate-vendor:
-    docker buildx bake generate-vendor
+	docker buildx bake generate-vendor
 
 generate-docs:
     docker buildx bake generate-docs
@@ -39,6 +39,16 @@ validate-docs:
 validate-gen:
     docker buildx bake validate-gen
 
+ghactions:
+	mkdir -p ./bin/images && \
+	docker buildx bake ghactions --set "*.output=type=docker,dest=./bin/images/runner.tar,name=runner" --set "*.platform=linux/amd64" && \
+	docker load -i ./bin/images/runner.tar && \
+	docker run --platform=linux/amd64 --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/test-output:/out runner
+
+ghaction:
+	docker buildx bake ghaction
+
+
 outdated:
 	docker buildx bake outdated
 	cat ./bin/outdated/outdated.txt
@@ -47,20 +57,23 @@ outdated:
 # TEST
 ##################################################################
 
-test:
-	docker buildx bake test --set "*.platform=linux/arm64" --set "*.output=type=docker,dest=./bin/testbuild.tar,context=tester"
-	# docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out unit-test
-	# docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out integration-test
+unit-test PACKAGE:
+	mkdir -p ./bin/test-images && \
+	docker buildx bake unit --set "*.args.PKG={{PACKAGE}}" && \
+	docker load -i ./bin/test-images/unit.tar && \
+	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/test-output:/out unit
 
-unit-test:
-	docker buildx bake test --set "*.output=type=local,dest=./bin/test-reporting"  && \
-	docker buildx bake tester --set "*.contexts.test=./bin/test-reporting" --set "*.output=type=docker,name=runners,dest=./bin/runner.tar" --progress plain && \
-	docker load < ./bin/runner.tar && \
-	docker run  --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out -e PKG=tests -e ARGS="-test.run=Integration" -e NAME="integration" runners
+integration-test PACKAGE:
+	mkdir -p ./bin/test-images && \
+	docker buildx bake integration --set "*.args.PKG={{PACKAGE}}" && \
+	docker load -i ./bin/test-images/integration.tar && \
+	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/test-output:/out integration
 
-integration-test:
-	docker buildx bake integration-test
-	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/testreports:/out integration-test
+e2e-test PACKAGE:
+	mkdir -p ./bin/test-images && \
+	docker buildx bake e2e --set "*.args.PKG={{PACKAGE}}" && \
+	docker load -i ./bin/test-images/e2e.tar && \
+	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/test-output:/out e2e
 
 ##################################################################
 # BUILD
@@ -68,7 +81,6 @@ integration-test:
 
 build:
     docker buildx bake build
-
 
 package:
 	BUILD_OUTPUT=$(mktemp -d -t release-XXXXXXXXXX) && \

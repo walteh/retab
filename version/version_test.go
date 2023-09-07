@@ -1,6 +1,8 @@
-package tests
+package version_test
 
 import (
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -9,8 +11,14 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-func TestVersionIntegration(t *testing.T) {
-	cmd := mainCmd(withArgs("--version"))
+func TestVersionE2E(t *testing.T) {
+
+	if os.Getenv("E2E") != "1" {
+		t.SkipNow()
+	}
+
+	cmd := exec.Command("/usr/bin/retab", "--version")
+	cmd.Env = append([]string{}, os.Environ()...)
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
 

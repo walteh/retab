@@ -110,12 +110,11 @@ COPY --link --from=test-builder /reports /reports
 COPY --link --from=test-builder /out /
 COPY --link --from=gotestsum /out /
 COPY --link --from=test2json /out /
-COPY --link --from=build . /
 
 FROM alpine AS tester
 COPY --link --from=test . /usr/bin/
-ARG GO_VERSION
-ENV PKG= NAME= ARGS= GOVERSION=${GO_VERSION}
+ARG GO_VERSION PKG NAME ARGS
+ENV PKG=${PKG} NAME=${NAME} ARGS=${ARGS} GOVERSION=${GO_VERSION}
 ENTRYPOINT gotestsum \
 	--format=standard-verbose \
 	--jsonfile=/out/go-test-report-${PKG##*/}-${NAME}.json \
@@ -123,6 +122,12 @@ ENTRYPOINT gotestsum \
 	--raw-command -- test2json -t -p ${PKG##*/} ${PKG##*/}.test  -test.bench=.  -test.timeout=10m \
 	-test.v -test.coverprofile=/out/coverage-report-${PKG##*/}-${NAME}.txt ${ARGS} \
 	-test.outputdir=/out
+
+FROM tester AS tester-with-build
+COPY --link --from=build . /usr/bin/
+ARG E2E=0
+ENV E2E=${E2E}
+
 
 ##################################################################
 # RELEASE
