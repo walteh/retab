@@ -105,6 +105,8 @@ target "_common" {
 		BUILDRC_VERSION               = BUILDRC_VERSION
 		PACKAGE_OUTPUT                = PACKAGE_OUTPUT
 		TEST_IMAGES_OUTPUT            = TEST_IMAGES_OUTPUT
+		BUILDX_EXPERIMENTAL           = 1 // enables experimental cmds/flags for docs generation
+		FORMATS                       = DOCS_FORMATS
 	}
 }
 
@@ -186,60 +188,27 @@ target "_buf" {
 # VALIDATE
 ##################################################################
 
-group "validate" {
-	targets = ["lint", "validate-vendor", "validate-docs", "validate-mockery", "validate-buf", "outdated"]
-}
-
-target "lint" {
-	inherits   = ["_common"]
-	dockerfile = "./hack/dockerfiles/lint.Dockerfile"
+target "validate" {
+	inherits = ["_common"]
+	matrix = {
+		item = [
+			{ name = "lint", dest = "" },
+			{ name = "vendor", dest = VENDOR_OUTPUT },
+			{ name = "docs", dest = DOCS_OUTPUT },
+			{ name = "mockery", dest = MOCKERY_OUTPUT },
+			{ name = "buf", dest = BUF_OUTPUT },
+		]
+	}
+	name = "validate-${item.name}"
+	args = {
+		NAME    = item.name
+		DESTDIR = item.dest
+	}
 	output     = ["type=cacheonly"]
-}
-
-target "validate-vendor" {
-	inherits = ["_vendor"]
-	target   = "validate"
-	output   = ["type=cacheonly"]
-}
-
-target "validate-docs" {
-	inherits = ["_docs"]
-	target   = "validate"
-	output   = ["type=cacheonly"]
-}
-
-target "validate-mockery" {
-	inherits = ["_mockery"]
-	target   = "validate"
-	output   = ["type=cacheonly"]
-}
-
-target "validate-buf" {
-	inherits = ["_buf"]
-	target   = "validate"
-	output   = ["type=cacheonly"]
-}
-
-target "ghactions" {
-	inherits   = ["_common"]
-	target     = "validator"
-	dockerfile = "./hack/dockerfiles/ghactions.Dockerfile"
-	output     = ["type=cacheonly"]
-}
-
-target "ghaction" {
-	inherits   = ["_common"]
 	target     = "validate"
-	dockerfile = "./hack/dockerfiles/ghactions.Dockerfile"
-	output     = ["type=cacheonly"]
+	dockerfile = "./hack/dockerfiles/${item.name}.Dockerfile"
 }
 
-target "outdated" {
-	inherits   = ["_common"]
-	dockerfile = "./hack/dockerfiles/vendor.Dockerfile"
-	target     = "outdated-output"
-	output     = ["${DESTDIR}/outdated"]
-}
 
 ##################################################################
 # GENERATE

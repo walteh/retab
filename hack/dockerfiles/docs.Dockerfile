@@ -36,6 +36,9 @@ COPY --from=gen /out /
 
 FROM tools AS validate
 ARG DESTDIR
-COPY ${DESTDIR} /old
-COPY --from=update / /new
-RUN set -e && buildrc diff --current=/old --correct=/new --glob=**/*
+RUN --mount=target=/context \
+	--mount=from=gen,target=/out,source=/out,type=bind <<EOT
+	set -e
+	ls -l /out
+	buildrc diff --current="/context/${DESTDIR}" --correct="/out" --glob="**/*"
+EOT
