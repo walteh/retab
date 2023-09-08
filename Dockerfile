@@ -105,22 +105,43 @@ COPY --link --from=test-builder /out /
 COPY --link --from=gotestsum /out /
 COPY --link --from=test2json /out /
 
-FROM alpine AS test-runner
-COPY --link --from=test . /usr/bin/
-COPY --link --from=build . /usr/bin/
-ARG GO_VERSION PKG NAME ARGS E2E
+FROM alpine:latest AS case-builder
+ARG PKG= NAME= ARGS= E2E=
+COPY --link --from=test . /usr/bin
+COPY --link --from=build . /usr/bin
+RUN <<EOT
+	set -e -x -o pipefail
+	mkdir -p /dat
+
+	echo "${ARGS}" > /dat/args
+	echo "${E2E}" > /dat/e2e
+	echo "${PKG##*/}" > /dat/pkg
+	echo "${NAME}" > /dat/name
+EOT
+
+FROM scratch AS case
+COPY --link --from=case-builder . .
+
+FROM alpine:latest AS test-runner
+ARG GO_VERSION
+ENV GOVERSION=${GO_VERSION}
 ARG DOCKER_HOST=tcp://0.0.0.0:2375
+COPY --link --from=case . .
 RUN --network=host --mount=type=bind,target=/src \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod  <<EOT
-	echo "package: [${PKG}]"
+	set -e
+	echo "package: [$(cat /dat/pkg)]"
 	cd /src
+	PKG=$(cat /dat/pkg)
+	NAME=$(cat /dat/name)
+	ARGS=$(cat /dat/args)
 	gotestsum \
 		--format=standard-verbose \
-		--jsonfile=/out/go-test-report-${PKG##*/}-${NAME}.json \
-		--junitfile=/out/junit-report-${PKG##*/}-${NAME}.xml \
-		--raw-command -- test2json -t -p ${PKG##*/} ${PKG##*/}.test  -test.bench=.  -test.timeout=10m \
-		-test.v -test.coverprofile=/out/coverage-report-${PKG##*/}-${NAME}.txt ${ARGS} \
+		--jsonfile=/out/go-test-report-$(cat /dat/pkg)-$(cat /dat/name).json \
+		--junitfile=/out/junit-report-$(cat /dat/pkg)-$(cat /dat/name).xml \
+		--raw-command -- test2json -t -p $(cat /dat/pkg) $(cat /dat/pkg).test  -test.bench=.  -test.timeout=10m \
+		-test.v -test.coverprofile=/out/coverage-report-$(cat /dat/pkg)-$(cat /dat/name).txt $(cat /dat/args) \
 		-test.outputdir=/out;
 EOT
 

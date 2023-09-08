@@ -62,6 +62,12 @@ variable "TEST_OUTPUT" {
 	default = "${DESTDIR}/testreports"
 }
 
+
+variable "TEST_CASE_OUTPUT" {
+	default = "${DESTDIR}/test-cases"
+}
+
+
 variable "TEST_IMAGES_OUTPUT" {
 	default = "${DESTDIR}/test-images"
 }
@@ -134,7 +140,7 @@ target "_attest" {
 }
 
 group "default" {
-	targets = ["binaries"]
+	targets = ["build"]
 }
 
 target "_vendor" {
@@ -309,13 +315,31 @@ target "package" {
 # TESTING
 ##################################################################
 
-target "test" {
+/* target "test" {
 	inherits = ["_common"]
 	target   = "test"
-	/* platforms = ["local"] */
+} */
+
+target "test" {
+	inherits = ["_common"]
+	target   = "case"
+	matrix = {
+		item = [
+			{ ARGS = "-test.skip=Integration -test.skip=E2E", NAME = "unit" },
+			{ ARGS = "-test.run=Integration", NAME = "integration" },
+			{ ARGS = "-test.run=E2E", NAME = "e2e" }
+		]
+	}
+	name = "${item.NAME}"
+	args = {
+		ARGS = item.ARGS
+		NAME = item.NAME
+		E2E  = item.NAME == "e2e" ? 1 : 0
+	}
+	output = ["type=local,dest=${DESTDIR}/test-cases/${item.NAME}"]
 }
 
-target "unit" {
+/* target "unit" {
 	inherits = ["_common", "test"]
 	target   = "tester"
 	args = {
@@ -369,7 +393,7 @@ target "e2e" {
 		E2E  = 1
 	}
 	output = ["type=docker,name=e2e,dest=${TEST_IMAGES_OUTPUT}/e2e.tar"]
-}
+} */
 
 ##################################################################
 # IMAGE

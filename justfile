@@ -48,7 +48,6 @@ ghactions:
 ghaction:
 	docker buildx bake ghaction
 
-
 outdated:
 	docker buildx bake outdated
 	cat ./bin/outdated/outdated.txt
@@ -57,19 +56,9 @@ outdated:
 # TEST
 ##################################################################
 
-cni PACKAGE:
-	# docker buildx rm cni2 || true
-	# docker buildx build --tag buildkit-cni:local --file ./hack/dockerfiles/cni.Dockerfile --load .
-	# docker buildx create --use --bootstrap --name cni2 --driver docker-container --driver-opt "image=buildkit-cni:local" --driver-opt network=host --buildkitd-flags "--oci-worker-net=cni" --config ./buildkitd.toml
-	docker buildx bake integration2 --set "*.args.PKG={{PACKAGE}}"
-
-test PACKAGE:
-	docker buildx bake integration3 --set "*.args.PKG={{PACKAGE}}"
-
-unit-test2 PACKAGE:
-	mkdir -p ./bin/test-images && \
-	docker buildx bake test  && \
-	docker build --target tester . --output type=local,dest=./bin/help --build-arg "PKG={{PACKAGE}}" --build-arg "NAME=integration" --build-arg "ARGS=-test.run=Integration" --allow "network.host"
+x CASE PACKAGE:
+	docker buildx bake {{CASE}} --set "*.args.PKG={{PACKAGE}}"  && \
+	docker buildx build --allow "network.host" --target tester . --build-context=case=./bin/test-cases/{{CASE}} --output type=local,dest=./bin/help
 
 unit-test PACKAGE:
 	mkdir -p ./bin/test-images && \

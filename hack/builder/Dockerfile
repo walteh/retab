@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
-ARG BUILDKIT_VERSION=v0.12.1
-ARG CNI_VERSION=v1.0.1
+ARG BUILDKIT_VERSION=v0.12.2
+ARG CNI_VERSION=v1.3.0
 
 FROM --platform=$BUILDPLATFORM alpine AS cni-plugins
 RUN apk add --no-cache curl

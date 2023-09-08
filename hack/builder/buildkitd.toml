@@ -1,0 +1,17 @@
+debug = true
+insecure-entitlements = ["network.host"]
+
+[worker.oci]
+enabled = true
+max-parallelism = 4
+
+# [grpc]
+# address = ["tcp://0.0.0.0:1234"]
+# # debugAddress is address for attaching go profiles and debuggers.
+# debugAddress = "0.0.0.0:6060"
+# uid = 0
+# gid = 0
+# [grpc.tls]
+# cert = "/etc/buildkit/tls.crt"
+# key = "/etc/buildkit/tls.key"
+# ca = "/etc/buildkit/tlsca.crt"

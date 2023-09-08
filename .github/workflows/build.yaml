@@ -105,49 +105,52 @@ jobs:
               if: "${{ matrix.type == 'e2e' }}"
               uses: actions/download-artifact@v3
               with:
-                  name: build
+                  name: e2e
                   path: ./build-output
             - name: ensure build-output
               run: mkdir -p ./build-output
-            - name: bake tester
+            - name: bake case
               uses: docker/bake-action@v3
               with:
-                  files: ./docker-bake.hcl
                   targets: ${{ matrix.type }}
+                  push: false
+                  files: ./docker-bake.hcl
                   set: |
                       *.contexts.test=./test-output
                       *.contexts.build=./build-output
-                      *.args.PKG=${{ matrix.package }}
-                      *.output=type=docker,name=tester,dest=./test-output/tester.tar
                       *.platform=${{ env.MAIN_PLATFORM }}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
-            # - name: load tester
-            #   run: gzip -d ./tester-output/tester.tar.gz -c | docker load
-            - name: load tester
-              run: docker load -i ./test-output/tester.tar
-            - name: run tests
-              run: |
-                  docker run --network host \
-                    -v /var/run/docker.sock:/var/run/docker.sock \
-                    -v ./testout:/out \
-                    tester:latest
+                      *.args.PKG=${{ matrix.package }}
+                      *.output=type=local,dest=./case-output
+            - name: bake tester
+              uses: docker/build-push-action@v2
+              with:
+                  target: tester
+                  push: false
+                  platforms: ${{ env.MAIN_PLATFORM }}
+                  allow: network.host
+                  outputs: type=local,dest=./test-reports
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+                  build-contexts: |
+                      case=./case-output
             - name: generate annotations
               if: always()
               uses: crazy-max/.github/.github/actions/gotest-annotations@1a64ea6d01db9a48aa61954cb20e265782c167d9
               with:
-                  directory: ./testout
+                  directory: ./test-reports
             - name: send to codecov
               if: always()
               uses: codecov/codecov-action@v3
               with:
-                  directory: ./testout
+                  directory: ./test-reports
             - name: upload test reports
               if: always()
               uses: actions/upload-artifact@v3
               with:
                   name: test-reports
-                  path: ./testout/*
+                  path: ./test-reports/*
 
     build-prep:
         runs-on: ubuntu-22.04
@@ -233,6 +236,7 @@ jobs:
                   if-no-files-found: error
             - name: upload test artifacts
               uses: actions/upload-artifact@v3
+              if: ${{ matrix.platform == env.MAIN_PLATFORM }}
               with:
                   name: e2e
                   path: ./build-output/*
