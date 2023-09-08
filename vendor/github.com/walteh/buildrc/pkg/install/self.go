@@ -12,9 +12,9 @@ import (
 )
 
 func InstallSelfAs(ctx context.Context, afos afero.Fs, name string) error {
-	return InstallAs(ctx, afos, afos, os.Args[0], name)
+	return InstallAs(ctx, afos, os.Args[0], name)
 }
-func InstallAs(ctx context.Context, afos afero.Fs, fls afero.Fs, path string, name string) error {
+func InstallAs(ctx context.Context, fls afero.Fs, path string, name string) error {
 
 	fle, err := fls.Open(path)
 	if err != nil {
@@ -36,7 +36,7 @@ func InstallAs(ctx context.Context, afos afero.Fs, fls afero.Fs, path string, na
 		nameDir := filepath.Join(homeDir, "."+name)
 
 		// create a ~/.name directory
-		if err := afos.MkdirAll(nameDir, 0755); err != nil {
+		if err := fls.MkdirAll(nameDir, 0755); err != nil {
 			return err
 		}
 
@@ -51,7 +51,7 @@ func InstallAs(ctx context.Context, afos afero.Fs, fls afero.Fs, path string, na
 					return err
 				}
 				defer flee.Close()
-				err = afero.WriteReader(afos, filepath.Join(nameDir, filepath.Base(flee.Name())), flee)
+				err = afero.WriteReader(fls, filepath.Join(nameDir, filepath.Base(flee.Name())), flee)
 				if err != nil {
 					return err
 				}
@@ -64,23 +64,23 @@ func InstallAs(ctx context.Context, afos afero.Fs, fls afero.Fs, path string, na
 
 			defer flee.Close()
 
-			err = afero.WriteReader(afos, filepath.Join(nameDir, filepath.Base(flee.Name())), flee)
+			err = fls.Rename(path, filepath.Join(nameDir, filepath.Base(flee.Name())))
 			if err != nil {
 				return err
 			}
 
 		}
 
-		if err := afos.Chmod(filepath.Join(nameDir, name), 0755); err != nil {
+		if err := fls.Chmod(filepath.Join(nameDir, name), 0755); err != nil {
 			return err
 		}
 
-		err = updateRc(ctx, afos, ".zshrc", homeDir, nameDir)
+		err = updateRc(ctx, fls, ".zshrc", homeDir, nameDir)
 		if err != nil {
 			return err
 		}
 
-		err = updateRc(ctx, afos, ".bashrc", homeDir, nameDir)
+		err = updateRc(ctx, fls, ".bashrc", homeDir, nameDir)
 		if err != nil {
 			return err
 		}
@@ -119,12 +119,7 @@ func InstallAs(ctx context.Context, afos afero.Fs, fls afero.Fs, path string, na
 			return fmt.Errorf("could not find %s.exe in %s", name, path)
 		}
 
-		flee, err := fls.Open(ref)
-		if err != nil {
-			return err
-		}
-		defer flee.Close()
-		err = afero.WriteReader(afos, "$LOCALAPPDATA\\Microsoft\\WindowsApps\\"+name+".exe", flee)
+		err = fls.Rename(path, "$LOCALAPPDATA\\Microsoft\\WindowsApps\\"+name+".exe")
 		if err != nil {
 			return err
 		}

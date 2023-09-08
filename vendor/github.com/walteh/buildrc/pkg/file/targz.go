@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -180,7 +181,18 @@ func Untargz(ctx context.Context, fs afero.Fs, pth string) (afero.File, error) {
 
 		destFile, err := fs.Create(destPath)
 		if err != nil {
-			return nil, wrap(ctx, err)
+			if errors.Is(err, os.ErrNotExist) {
+				err := fs.MkdirAll(filepath.Dir(destPath), 0755)
+				if err != nil {
+					return nil, wrap(ctx, err)
+				}
+				destFile, err = fs.Create(destPath)
+				if err != nil {
+					return nil, wrap(ctx, err)
+				}
+			} else {
+				return nil, wrap(ctx, err)
+			}
 		}
 
 		_, err = io.Copy(destFile, tr)
