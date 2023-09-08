@@ -284,12 +284,12 @@ target "package" {
 # TESTING
 ##################################################################
 
-/* target "test" {
+target "test" {
 	inherits = ["_common"]
 	target   = "test"
-} */
+}
 
-target "test" {
+target "case" {
 	inherits = ["_common"]
 	target   = "case"
 	matrix = {

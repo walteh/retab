@@ -67,7 +67,7 @@ jobs:
             - name: upload test artifacts
               uses: actions/upload-artifact@v3
               with:
-                  name: test-prep
+                  name: test
                   path: ./test-output/*
                   if-no-files-found: error
 
@@ -89,7 +89,7 @@ jobs:
             - name: download test artifacts
               uses: actions/download-artifact@v3
               with:
-                  name: test-prep
+                  name: test
                   path: ./test-output
             - name: wait on build
               if: "${{ matrix.type == 'e2e' }}"
