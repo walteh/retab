@@ -39,7 +39,8 @@ jobs:
     test-prep:
         runs-on: ubuntu-22.04
         outputs:
-            test_matrix: ${{ steps.matrix.outputs.test_matrix }}
+            case_matrix: ${{ steps.matrix.outputs.case_matrix }}
+            package_matrix: ${{ steps.matrix.outputs.package_matrix }}
         steps:
             - name: checkout
               uses: actions/checkout@v4
@@ -61,9 +62,13 @@ jobs:
                       *.cache-to=type=gha,mode=max
             - name: make test matrix
               id: matrix
-              run: echo "test_matrix=$(ls ./test-output | grep '\.test$' | jq -R -s -c 'split("\n") | map(select(. != "")) | map(split(".")[0])')" >>${GITHUB_OUTPUT}
+              run: |
+                  echo "package_matrix=$(ls ./test-output | grep '\.test$' | jq -R -s -c 'split("\n") | map(select(. != "")) | map(split(".")[0])')" >>${GITHUB_OUTPUT}
+                  echo "case_matrix=$(docker buildx bake case --print | jq -cr '.group.case.targets')" >>${GITHUB_OUTPUT}
             - name: show test matrix
-              run: echo "test_matrix = ${{ steps.matrix.outputs.test_matrix }}"
+              run: |
+                  echo "package_matrix = ${{ steps.matrix.outputs.package_matrix }}"
+                  echo "case_matrix = ${{ steps.matrix.outputs.case_matrix }}"
             - name: upload test artifacts
               uses: actions/upload-artifact@v3
               with:
@@ -77,8 +82,8 @@ jobs:
             - test-prep
         strategy:
             matrix:
-                type: [unit, integration, e2e]
-                package: ${{ fromJson(needs.test-prep.outputs.test_matrix) }}
+                case: ${{ fromJson(needs.test-prep.outputs.case_matrix) }}
+                package: ${{ fromJson(needs.test-prep.outputs.package_matrix) }}
         steps:
             - name: checkout
               uses: actions/checkout@v4
@@ -92,7 +97,7 @@ jobs:
                   name: test
                   path: ./test-output
             - name: wait on build
-              if: "${{ matrix.type == 'e2e' }}"
+              if: "${{ matrix.case == 'e2e' }}"
               uses: lewagon/wait-on-check-action@v1.3.1
               with:
                   ref: ${{ github.ref }}
@@ -102,7 +107,7 @@ jobs:
                   running-workflow-name: ${{ github.workflow }}
                   allowed-conclusions: success
             - name: download build
-              if: "${{ matrix.type == 'e2e' }}"
+              if: "${{ matrix.case == 'e2e' }}"
               uses: actions/download-artifact@v3
               with:
                   name: e2e
@@ -112,7 +117,7 @@ jobs:
             - name: bake case
               uses: docker/bake-action@v3
               with:
-                  targets: ${{ matrix.type }}
+                  targets: ${{ matrix.case }}
                   push: false
                   files: ./docker-bake.hcl
                   set: |
@@ -178,12 +183,14 @@ jobs:
               id: platforms
               run: |
                   echo "build_matrix=$(docker buildx bake build --print | jq -cr '.target.build.platforms')" >>${GITHUB_OUTPUT}
-                  echo "validate_matrix=$(docker buildx bake validate --print | jq -cr '.group.validate.targets')" >>${GITHUB_OUTPUT}
+                  echo "validate_matrix=$(docker buildx bake validate --print | jq -cr '.group.validate.targets | map(split("-")[1])')" >>${GITHUB_OUTPUT}
+                  echo "case_matrix=$(docker buildx bake case --print | jq -cr '.group.case.targets')" >>${GITHUB_OUTPUT}
                   echo "package_matrix=$(cat ./meta-output/${{ env.MAIN_PLATFORM_UNDER }}/meta/go-testable-packages | jq -cr 'map(split("/")[-1])')" >>${GITHUB_OUTPUT}
             - name: show matrix
               run: |
                   echo "build_matrix = ${{ steps.platforms.outputs.build_matrix }}"
                   echo "validate_matrix = ${{ steps.platforms.outputs.validate_matrix }}"
+                  echo "case_matrix = ${{ steps.platforms.outputs.case_matrix }}"
                   echo "package_matrix = ${{ steps.platforms.outputs.package_matrix }}"
             - id: upload-meta
               uses: actions/upload-artifact@v3
@@ -409,7 +416,7 @@ jobs:
               uses: docker/bake-action@v3
               with:
                   files: ./docker-bake.hcl
-                  targets: ${{ matrix.target }}
+                  targets: validate-${{ matrix.target }}
                   set: |
                       *.contexts.meta=./meta-output
                       *.cache-from=type=gha
