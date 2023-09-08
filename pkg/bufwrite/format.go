@@ -15,8 +15,6 @@
 package bufwrite
 
 import (
-	"errors"
-	"fmt"
 	"io"
 	"reflect"
 	"sort"
@@ -25,6 +23,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/bufbuild/protocompile/ast"
+	"github.com/pkg/errors"
 	"github.com/walteh/retab/pkg/configuration"
 	"go.uber.org/multierr"
 )
@@ -47,8 +46,8 @@ type formatter struct {
 
 	// If true, a space will be written to the output unless the next character
 	// written is a newline (don't wait errant trailing spaces).
-	pendingSpace  bool
-	pending______ bool
+	pendingSpace      bool
+	pendingUnderscore bool
 	// If true, the formatter is in the middle of printing compact options.
 	inCompactOptions bool
 
@@ -161,8 +160,8 @@ func (f *formatter) Indent(nextNode ast.Node) {
 // This will not write indentation or newlines. Use P if you
 // want to emit identation or newlines.
 func (f *formatter) WriteString(elem string) {
-	if f.pending______ {
-		f.pending______ = false
+	if f.pendingUnderscore {
+		f.pendingUnderscore = false
 		str := "______"
 		if _, err := f.writer.Write([]byte(str)); err != nil {
 			f.err = multierr.Append(f.err, err)
@@ -796,7 +795,7 @@ func (f *formatter) writeEnumValue(enumValueNode *ast.EnumValueNode) {
 }
 
 // func (me *formatter) ______() {
-// 	me.pending______ = true
+// 	me.pendingUnderscore = true
 // }
 
 // writeField writes the field node as a single line. If the field has
@@ -1308,7 +1307,7 @@ func (f *formatter) writeCompositeValueForArrayLiteral(
 	case *ast.MessageLiteralNode:
 		f.writeMessageLiteralForArray(node, lastElement)
 	default:
-		f.err = multierr.Append(f.err, fmt.Errorf("unexpected array value node %T", node))
+		f.err = multierr.Append(f.err, errors.Errorf("unexpected array value node %T", node))
 	}
 }
 
@@ -1723,7 +1722,7 @@ func (f *formatter) writeNode(node ast.Node) {
 	case *ast.EmptyDeclNode:
 		// Nothing to do here.
 	default:
-		f.err = multierr.Append(f.err, fmt.Errorf("unexpected node: %T", node))
+		f.err = multierr.Append(f.err, errors.Errorf("unexpected node: %T", node))
 	}
 }
 

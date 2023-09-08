@@ -1,6 +1,6 @@
 package fmt
 
-// `hclFmt` commmand recursively looks for hcl files in the directory tree starting at workingDir, and formats them
+// `hclFmt` command recursively looks for hcl files in the directory tree starting at workingDir, and formats them
 // based on the language style guides provided by Hashicorp. This is done using the official hcl2 library.
 
 import (
@@ -23,7 +23,7 @@ type Handler struct {
 	WorkingDir string `name:"working-dir" help:"The working directory to use. Defaults to the current directory."`
 }
 
-func (me *Handler) BuildCommand(ctx context.Context) *cobra.Command {
+func (me *Handler) BuildCommand(_ context.Context) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "fmt",
 		Short: "format hcl files with the official hcl2 library, but with tabs",
@@ -35,7 +35,7 @@ func (me *Handler) BuildCommand(ctx context.Context) *cobra.Command {
 	return cmd
 }
 
-func (me *Handler) ParseArguments(ctx context.Context, cmd *cobra.Command, file []string) error {
+func (me *Handler) ParseArguments(_ context.Context, _ *cobra.Command, file []string) error {
 
 	me.File = file[0]
 
@@ -57,9 +57,9 @@ func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
 
 		if len(matches) == 0 {
 			continue
-		} else {
-			return format.Format(ctx, bufr, fs, me.File, me.WorkingDir)
 		}
+
+		return format.Format(ctx, bufr, fs, me.File, me.WorkingDir)
 	}
 
 	for _, target := range fmtr.Targets() {
@@ -71,9 +71,9 @@ func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
 
 		if len(matches) == 0 {
 			continue
-		} else {
-			return format.Format(ctx, fmtr, fs, me.File, me.WorkingDir)
 		}
+
+		return format.Format(ctx, fmtr, fs, me.File, me.WorkingDir)
 	}
 
 	return errors.New("no targets found")

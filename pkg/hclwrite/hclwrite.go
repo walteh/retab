@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclwrite"
 )
 
-const NUM_SPACES_PER_INDENT = 1
+const NumSpacesPerIndent = 1
 
 type Token struct {
 	hclwrite.Token
@@ -50,7 +50,7 @@ func asHCLSyntax(t *Token) hclsyntax.Token {
 
 // format rewrites tokens within the given sequence, in-place, to adjust the
 // whitespace around their content to achieve canonical formatting.
-func (tokens Tokens) format() {
+func (ts Tokens) format() {
 	// Formatting is a multi-pass process. More details on the passes below,
 	// but this is the overview:
 	// - adjust the leading space on each line to create appropriate
@@ -65,7 +65,7 @@ func (tokens Tokens) format() {
 	// changing the SpacesBefore attribute on a token while leaving the
 	// other token attributes unchanged.
 
-	lines := linesForFormat(tokens)
+	lines := linesForFormat(ts)
 	formatIndent(lines)
 	formatSpaces(lines)
 	formatCells(lines)
@@ -115,7 +115,7 @@ func formatIndent(lines []formatLine) {
 
 		switch {
 		case netBrackets > 0:
-			line.lead[0].TabsBefore = NUM_SPACES_PER_INDENT * len(indents)
+			line.lead[0].TabsBefore = NumSpacesPerIndent * len(indents)
 			line.lead[0].SpacesBefore = 0
 			indents = append(indents, netBrackets)
 		case netBrackets < 0:
@@ -136,10 +136,10 @@ func formatIndent(lines []formatLine) {
 					closed = 0
 				}
 			}
-			line.lead[0].TabsBefore = NUM_SPACES_PER_INDENT * len(indents)
+			line.lead[0].TabsBefore = NumSpacesPerIndent * len(indents)
 			line.lead[0].SpacesBefore = 0
 		default:
-			line.lead[0].TabsBefore = NUM_SPACES_PER_INDENT * len(indents)
+			line.lead[0].TabsBefore = NumSpacesPerIndent * len(indents)
 			line.lead[0].SpacesBefore = 0
 		}
 	}
@@ -508,7 +508,7 @@ func tokenBracketChange(tok *Token) int {
 //	single-line comment token, represents the comment.
 //
 // When formatting, the leading spaces of the first tokens in each of these
-// cells is adjusted to align vertically their occurences on consecutive
+// cells is adjusted to align vertically their occurrences on consecutive
 // rows.
 type formatLine struct {
 	lead    Tokens

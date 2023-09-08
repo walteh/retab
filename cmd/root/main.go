@@ -41,7 +41,7 @@ func (me *Root) BuildCommand(ctx context.Context) *cobra.Command {
 	return cmd
 }
 
-func (me *Root) ParseArguments(ctx context.Context, cmd *cobra.Command, args []string) error {
+func (me *Root) ParseArguments(ctx context.Context, cmd *cobra.Command, _ []string) error {
 
 	var level zerolog.Level
 	if me.Debug {

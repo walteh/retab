@@ -15,7 +15,7 @@ type Handler struct {
 	Latest bool
 }
 
-func (me *Handler) BuildCommand(ctx context.Context) *cobra.Command {
+func (me *Handler) BuildCommand(_ context.Context) *cobra.Command {
 	cmd := &cobra.Command{
 		Short: "install buildrc",
 	}
@@ -27,13 +27,13 @@ func (me *Handler) BuildCommand(ctx context.Context) *cobra.Command {
 	return cmd
 }
 
-func (me *Handler) ParseArguments(ctx context.Context, cmd *cobra.Command, file []string) error {
+func (me *Handler) ParseArguments(_ context.Context, _ *cobra.Command, _ []string) error {
 
 	return nil
 
 }
 
-func (me *Handler) Run(ctx context.Context, cmd *cobra.Command) error {
+func (me *Handler) Run(ctx context.Context) error {
 	if me.Latest {
 		return install.InstallLatestGithubRelease(ctx, afero.NewOsFs(), "walteh", "retab", "latest", "")
 	}

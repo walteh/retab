@@ -24,7 +24,7 @@ func (me *Formatter) Targets() []string {
 	return []string{"*.proto", "*.proto3"}
 }
 
-func (me *Formatter) Format(ctx context.Context, cfg configuration.Provider, read io.Reader) (io.Reader, error) {
+func (me *Formatter) Format(_ context.Context, cfg configuration.Provider, read io.Reader) (io.Reader, error) {
 
 	fileNode, err := parser.Parse("idk", read, reporter.NewHandler(nil))
 	if err != nil {
@@ -42,11 +42,9 @@ func (me *Formatter) Format(ctx context.Context, cfg configuration.Provider, rea
 				panic(err)
 			}
 			return
-		} else {
-			err := write.Close()
-			if err != nil {
-				panic(err)
-			}
+		}
+		if err := write.Close(); err != nil {
+			panic(err)
 		}
 	}()
 

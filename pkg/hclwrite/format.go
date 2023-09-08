@@ -85,8 +85,9 @@ func FormatBytes(cfg configuration.Provider, src []byte) (io.Reader, error) {
 		if err != nil {
 			w.CloseWithError(err)
 			return
-		} else {
-			w.Close()
+		}
+		if err := w.Close(); err != nil {
+			panic(err)
 		}
 	}()
 	return r, nil

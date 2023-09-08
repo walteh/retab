@@ -14,7 +14,7 @@ type EditorConfigConfigurationProvider struct {
 	parsedIndentSize int
 }
 
-func NewEditorConfigConfigurationProvider(ctx context.Context, filename string) (*EditorConfigConfigurationProvider, error) {
+func NewEditorConfigConfigurationProvider(_ context.Context, filename string) (*EditorConfigConfigurationProvider, error) {
 	x, err := editorconfig.GetDefinitionForFilename(filename)
 	if err != nil {
 		return nil, err

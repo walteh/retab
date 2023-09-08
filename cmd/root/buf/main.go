@@ -1,6 +1,6 @@
 package buf
 
-// `hclFmt` commmand recursively looks for hcl files in the directory tree starting at workingDir, and formats them
+// `hclFmt` command recursively looks for hcl files in the directory tree starting at workingDir, and formats them
 // based on the language style guides provided by Hashicorp. This is done using the official hcl2 library.
 
 import (
@@ -20,7 +20,7 @@ type Handler struct {
 	WorkingDir string `name:"working-dir" help:"The working directory to use. Defaults to the current directory."`
 }
 
-func (me *Handler) BuildCommand(ctx context.Context) *cobra.Command {
+func (me *Handler) BuildCommand(_ context.Context) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "buf",
 		Short: "format proto files with the official buf library, but with tabs",
@@ -32,7 +32,7 @@ func (me *Handler) BuildCommand(ctx context.Context) *cobra.Command {
 	return cmd
 }
 
-func (me *Handler) ParseArguments(ctx context.Context, cmd *cobra.Command, file []string) error {
+func (me *Handler) ParseArguments(_ context.Context, _ *cobra.Command, file []string) error {
 
 	me.File = file[0]
 
