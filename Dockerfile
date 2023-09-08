@@ -119,8 +119,8 @@ EOT
 
 FROM scratch AS case
 COPY --link --from=case-builder /dat /dat
-COPY --link --from=test . /usr/bin/
-COPY --link --from=build . /usr/bin/
+COPY --link --from=test . /
+COPY --link --from=build . /
 
 FROM alpine AS test-runner
 ARG GO_VERSION
