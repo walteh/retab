@@ -56,7 +56,7 @@ outdated:
 # TEST
 ##################################################################
 
-x CASE PACKAGE:
+case CASE PACKAGE:
 	docker buildx bake {{CASE}} --set "*.args.PKG={{PACKAGE}}"  && \
 	docker buildx build --allow "network.host" --target tester . --build-context=case=./bin/test-cases/{{CASE}} --output type=local,dest=./bin/help
 

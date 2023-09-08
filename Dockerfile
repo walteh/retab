@@ -105,10 +105,8 @@ COPY --link --from=test-builder /out /
 COPY --link --from=gotestsum /out /
 COPY --link --from=test2json /out /
 
-FROM alpine:latest AS case-builder
+FROM alpine AS case-builder
 ARG PKG= NAME= ARGS= E2E=
-COPY --link --from=test . /usr/bin
-COPY --link --from=build . /usr/bin
 RUN <<EOT
 	set -e -x -o pipefail
 	mkdir -p /dat
@@ -120,22 +118,23 @@ RUN <<EOT
 EOT
 
 FROM scratch AS case
-COPY --link --from=case-builder . .
+COPY --link --from=case-builder /dat /dat
+COPY --link --from=test . /usr/bin/
+COPY --link --from=build . /usr/bin/
 
-FROM alpine:latest AS test-runner
+FROM alpine AS test-runner
 ARG GO_VERSION
 ENV GOVERSION=${GO_VERSION}
 ARG DOCKER_HOST=tcp://0.0.0.0:2375
 COPY --link --from=case . .
-RUN --network=host --mount=type=bind,target=/src \
+
+RUN --network=host  \
+	--mount=type=bind,target=/src \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod  <<EOT
 	set -e
 	echo "package: [$(cat /dat/pkg)]"
 	cd /src
-	PKG=$(cat /dat/pkg)
-	NAME=$(cat /dat/name)
-	ARGS=$(cat /dat/args)
 	gotestsum \
 		--format=standard-verbose \
 		--jsonfile=/out/go-test-report-$(cat /dat/pkg)-$(cat /dat/name).json \
