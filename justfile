@@ -57,6 +57,20 @@ outdated:
 # TEST
 ##################################################################
 
+cni PACKAGE:
+	# docker buildx rm cni2 || true
+	# docker buildx build --tag buildkit-cni:local --file ./hack/dockerfiles/cni.Dockerfile --load .
+	# docker buildx create --use --bootstrap --name cni2 --driver docker-container --driver-opt "image=buildkit-cni:local" --driver-opt network=host --buildkitd-flags "--oci-worker-net=cni" --config ./buildkitd.toml
+	docker buildx bake integration2 --set "*.args.PKG={{PACKAGE}}"
+
+test PACKAGE:
+	docker buildx bake integration3 --set "*.args.PKG={{PACKAGE}}"
+
+unit-test2 PACKAGE:
+	mkdir -p ./bin/test-images && \
+	docker buildx bake test  && \
+	docker build --target tester . --output type=local,dest=./bin/help --build-arg "PKG={{PACKAGE}}" --build-arg "NAME=integration" --build-arg "ARGS=-test.run=Integration" --allow "network.host"
+
 unit-test PACKAGE:
 	mkdir -p ./bin/test-images && \
 	docker buildx bake unit --set "*.args.PKG={{PACKAGE}}" && \

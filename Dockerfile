@@ -105,23 +105,27 @@ COPY --link --from=test-builder /out /
 COPY --link --from=gotestsum /out /
 COPY --link --from=test2json /out /
 
-FROM alpine AS tester
+FROM alpine AS test-runner
 COPY --link --from=test . /usr/bin/
-ARG GO_VERSION PKG NAME ARGS
-ENV PKG=${PKG} NAME=${NAME} ARGS=${ARGS} GOVERSION=${GO_VERSION}
-ENTRYPOINT gotestsum \
-	--format=standard-verbose \
-	--jsonfile=/out/go-test-report-${PKG##*/}-${NAME}.json \
-	--junitfile=/out/junit-report-${PKG##*/}-${NAME}.xml \
-	--raw-command -- test2json -t -p ${PKG##*/} ${PKG##*/}.test  -test.bench=.  -test.timeout=10m \
-	-test.v -test.coverprofile=/out/coverage-report-${PKG##*/}-${NAME}.txt ${ARGS} \
-	-test.outputdir=/out
-
-FROM tester AS tester-with-build
 COPY --link --from=build . /usr/bin/
-ARG E2E=0
-ENV E2E=${E2E}
+ARG GO_VERSION PKG NAME ARGS E2E
+ARG DOCKER_HOST=tcp://0.0.0.0:2375
+RUN --network=host --mount=type=bind,target=/src \
+	--mount=type=cache,target=/root/.cache \
+	--mount=type=cache,target=/go/pkg/mod  <<EOT
+	echo "package: [${PKG}]"
+	cd /src
+	gotestsum \
+		--format=standard-verbose \
+		--jsonfile=/out/go-test-report-${PKG##*/}-${NAME}.json \
+		--junitfile=/out/junit-report-${PKG##*/}-${NAME}.xml \
+		--raw-command -- test2json -t -p ${PKG##*/} ${PKG##*/}.test  -test.bench=.  -test.timeout=10m \
+		-test.v -test.coverprofile=/out/coverage-report-${PKG##*/}-${NAME}.txt ${ARGS} \
+		-test.outputdir=/out;
+EOT
 
+FROM scratch AS tester
+COPY --link --from=test-runner /out /
 
 ##################################################################
 # RELEASE

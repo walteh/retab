@@ -74,6 +74,16 @@ variable "GITHUB_RUN_ID" {
 	default = ""
 }
 
+variable "HTTP_PROXY" {
+	default = ""
+}
+variable "HTTPS_PROXY" {
+	default = ""
+}
+variable "NO_PROXY" {
+	default = ""
+}
+
 target "_common" {
 	args = {
 		GO_VERSION                    = GO_VERSION
@@ -315,6 +325,7 @@ target "unit" {
 	output = ["type=docker,name=unit,dest=${TEST_IMAGES_OUTPUT}/unit.tar"]
 }
 
+
 target "integration" {
 	inherits = ["_common", "test"]
 	target   = "tester"
@@ -323,6 +334,30 @@ target "integration" {
 		NAME = "integration"
 	}
 	output = ["type=docker,name=integration,dest=${TEST_IMAGES_OUTPUT}/integration.tar"]
+}
+
+target "integration2" {
+	inherits = ["_common", "test"]
+	target   = "tester2out"
+	args = {
+		ARGS = "-test.run=Integration"
+		NAME = "integration"
+	}
+	output = ["type=local,dest=${TEST_IMAGES_OUTPUT}/int"]
+
+}
+
+target "integration3" {
+	args = {
+		HTTP_PROXY  = HTTP_PROXY
+		HTTPS_PROXY = HTTPS_PROXY
+		NO_PROXY    = NO_PROXY
+		ARGS        = "-test.run=Integration"
+		NAME        = "integration"
+	}
+	target = "tester3out"
+
+	output = ["type=local,dest=${TEST_IMAGES_OUTPUT}/int"]
 }
 
 target "e2e" {

@@ -1,0 +1,5 @@
+insecure-entitlements = ["network.host"]
+
+[worker.oci]
+enabled = true
+max-parallelism = 4
