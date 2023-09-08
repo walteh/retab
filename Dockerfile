@@ -119,22 +119,21 @@ EOT
 
 FROM scratch AS case
 COPY --link --from=case-builder /dat /dat
-COPY --link --from=test . /
-COPY --link --from=build . /
+COPY --link --from=test . /usr/bin/
+COPY --link --from=build . /usr/bin/
 
 FROM alpine AS test-runner
 ARG GO_VERSION
 ENV GOVERSION=${GO_VERSION}
 ARG DOCKER_HOST=tcp://0.0.0.0:2375
 COPY --link --from=case . .
-
+RUN apk add --no-cache file
 RUN --network=host  \
-	--mount=type=bind,target=/src \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod  <<EOT
 	set -e
 	echo "package: [$(cat /dat/pkg)]"
-	cd /src
+	file gotestsum
 	gotestsum \
 		--format=standard-verbose \
 		--jsonfile=/out/go-test-report-$(cat /dat/pkg)-$(cat /dat/name).json \
