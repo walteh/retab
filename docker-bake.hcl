@@ -239,15 +239,15 @@ target "package" {
 # TESTING
 ##################################################################
 
-target "testable" {
+target "test-build" {
 	inherits = ["_common"]
-	target   = "testable"
-	output   = ["type=local,dest=${DEST_DIR}/testable"]
+	target   = "test-build"
+	output   = ["type=local,dest=${DEST_DIR}/test-build"]
 }
 
-target "case" {
+target "test" {
 	inherits = ["_common"]
-	target   = "case"
+	target   = "test"
 	matrix = {
 		item = [
 			{
@@ -261,36 +261,20 @@ target "case" {
 			{
 				name = "e2e"
 				args = "-test.run=E2E"
+			},
+			{
+				name = "all"
+				args = ""
 			}
 		]
 	}
-	name = "case-${item.name}"
+	name = "test-${item.name}"
 	args = {
 		ARGS = item.args
 		NAME = item.name
-		E2E  = item.name == "e2e" ? 1 : 0
+		E2E  = item.name == "e2e" || item.name == "all" ? 1 : 0
 	}
-	output = ["type=local,dest=${DEST_DIR}/case-${item.name}"]
-}
-
-target "test" {
-	matrix = {
-		item = [
-			{
-				name = "unit"
-			},
-			{
-				name = "integration"
-			},
-			{
-				name = "e2e"
-			}
-		]
-	}
-	name     = "test-${item.name}"
-	inherits = ["_common", "case-${item.name}"]
-	target   = "test"
-	output   = ["type=local,dest=${DEST_DIR}/test"]
+	output = ["type=docker,dest=${DEST_DIR}/test-${item.name}.tar,name=test-${item.name}"]
 }
 
 ##################################################################

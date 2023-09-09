@@ -56,27 +56,22 @@ outdated:
 # TEST
 ##################################################################
 
-case CASE PACKAGE PLATFORM:
-	docker buildx bake {{CASE}} --set "*.args.PKG={{PACKAGE}}" --set "*.platform={{PLATFORM}}" && \
-	docker buildx build --allow "network.host" --target tester . --build-context=case=./bin/case-{{CASE}} --output type=local,dest=./bin/help --platform {{PLATFORM}}
+# case CASE PACKAGE PLATFORM:
+# 	docker buildx bake {{CASE}} --set "*.args.PKG={{PACKAGE}}" --set "*.platform={{PLATFORM}}" && \
+# 	docker buildx build --allow "network.host" --target tester . --build-context=case=./bin/case-{{CASE}} --output type=local,dest=./bin/help --platform {{PLATFORM}}
 
-unit-test PACKAGE:
-	mkdir -p ./bin/test-images && \
-	docker buildx bake unit --set "*.args.PKG={{PACKAGE}}" && \
-	docker load -i ./bin/test-images/unit.tar && \
-	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/test-output:/out unit
+test-pkg PACKAGE:
+	just test all {{PACKAGE}}
 
-integration-test PACKAGE:
-	mkdir -p ./bin/test-images && \
-	docker buildx bake integration --set "*.args.PKG={{PACKAGE}}" && \
-	docker load -i ./bin/test-images/integration.tar && \
-	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/test-output:/out integration
+test CASE PACKAGE:
+	docker buildx bake test-{{CASE}} && \
+	docker load -i ./bin/test-{{CASE}}.tar && \
+	docker run -e PKGS='{{PACKAGE}}'  --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/test-reports:/out test-{{CASE}}:latest  && \
+	echo "test-{{CASE}}: {{PACKAGE}}"
 
-e2e-test PACKAGE:
-	mkdir -p ./bin/test-images && \
-	docker buildx bake e2e --set "*.args.PKG={{PACKAGE}}" && \
-	docker load -i ./bin/test-images/e2e.tar && \
-	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/test-output:/out e2e
+test-all:
+	pkgs=$(go list -test ./... | grep "\.test$" | jq -R -c -s 'split("\n") | map(select(. != "")) | map(split("/")[-1]) | map(split(".")[0])') && \
+	just test all "$pkgs"
 
 ##################################################################
 # BUILD

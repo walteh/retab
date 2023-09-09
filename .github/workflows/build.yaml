@@ -64,7 +64,7 @@ jobs:
               id: matrix
               run: |
                   echo "package_matrix=$(ls ./test-output | grep '\.test$' | jq -R -s -c 'split("\n") | map(select(. != "")) | map(split(".")[0])')" >>${GITHUB_OUTPUT}
-                  echo "case_matrix=$(docker buildx bake case --print | jq -cr '.group.case.targets')" >>${GITHUB_OUTPUT}
+                  echo "case_matrix=$(docker buildx bake case --print | jq -cr '.group.case.targets | map(select(. != "all"))')" >>${GITHUB_OUTPUT}
             - name: show test matrix
               run: |
                   echo "package_matrix = ${{ steps.matrix.outputs.package_matrix }}"
@@ -114,11 +114,6 @@ jobs:
                   path: ./build-output
             - name: ensure build-output
               run: mkdir -p ./build-output
-            - name: runner
-              run: |
-                  ls -l ./test-output
-                  echo "-------------------"
-                  ls -l ./build-output
             - name: bake case
               uses: docker/bake-action@v3
               with:
@@ -131,27 +126,14 @@ jobs:
                       *.platform=${{ env.MAIN_PLATFORM }}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
-                      *.args.PKG=${{ matrix.package }}
-                      *.output=type=local,dest=./case-output
-            - name: debuger
+            - name: run test
               run: |
-                  ls -l ./case-output
-                  echo "-------------------"
-                  ls -l ./build-output
-            - name: bake tester
-              uses: docker/build-push-action@v4.2.1
-              with:
-                  target: tester
-                  push: false
-
-                  platforms: ${{ env.MAIN_PLATFORM }}
-                  allow: network.host
-                  outputs: type=local,dest=./test-reports
-                  no-cache: true
-                  #   cache-from: type=gha
-                  #   cache-to: type=gha,mode=max
-                  build-contexts: |
-                      case=./case-output
+                  docker load -i ./test-${{ matrix.case }}.tar
+                  docker run --network host \
+                     -v /var/run/docker.sock:/var/run/docker.sock \
+                     -v ./bin/test-${{ matrix.case }}:/out \
+                     -e PKGS=${{ matrix.package }} \
+                      test-${{ matrix.case }}
             - name: generate annotations
               if: always()
               uses: crazy-max/.github/.github/actions/gotest-annotations@1a64ea6d01db9a48aa61954cb20e265782c167d9

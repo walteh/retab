@@ -97,53 +97,69 @@ RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/go/pkg/mod \
 	go test -coverprofile=/reports/coverage-report.txt -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out
 
-FROM scratch AS testable
-COPY --link --from=test-builder /out /
-COPY --link --from=gotestsum /out /
-COPY --link --from=test2json /out /
+FROM scratch AS test-build
+COPY --link --from=test-builder /out /tests
+COPY --link --from=gotestsum /out /bins
+COPY --link --from=test2json /out /bins
 
-FROM alpine AS case-builder
-ARG PKG= NAME= ARGS= E2E=
+FROM alpine AS case
+ARG NAME= ARGS= E2E=
+COPY --from=test-build /bins /bins
+COPY --from=test-build /tests /bins
+COPY --from=build . /bins
+
 RUN <<EOT
 	set -e -x -o pipefail
 	mkdir -p /dat
 
 	echo "${ARGS}" > /dat/args
 	echo "${E2E}" > /dat/e2e
-	echo "${PKG##*/}" > /dat/pkg
 	echo "${NAME}" > /dat/name
+
+	chmod +x /bins/gotestsum
+	chmod +x /bins/test2json
 EOT
 
-FROM scratch AS case
-COPY --link --from=case-builder /dat /dat
-COPY --link --from=testable . /out
-COPY --link --from=build . /out
+# FROM scratch AS case-build
+# COPY --link --from=case-builder /dat /dat
+# COPY --link --from=case-builder /bins /usr/bin
 
-FROM docker:dind AS test-runner
+# FROM alpine AS case-build-runner
+# ARG GO_VERSION
+# ENV GOVERSION=${GO_VERSION}
+# COPY --link --from=case . .
+# RUN <<EOT
+# 	set -e -x -o pipefail
+# 	PKG=$(cat /dat/pkg)
+# 	NAME=$(cat /dat/name)
+# 	ARGS=$(cat /dat/args)
+# 	/usr/bin/gotestsum --format=standard-verbose \
+# 		--jsonfile=/out/go-test-report-$PKG-$NAME.json \
+# 		--junitfile=/out/junit-report-$PKG-$NAME.xml \
+# 		--raw-command -- /usr/bin/test2json -t -p $PKG /usr/bin/$PKG.test  -test.bench=.  -test.timeout=10m \
+# 		-test.v -test.coverprofile=/out/coverage-report-$PKG-$NAME.txt $ARGS \
+# 		-test.outputdir=/out;
+# 	done
+# EOT
+
+# FROM scratch AS case-built
+# COPY --link --from=case-build-runner /out /
+
+FROM alpine AS test
 ARG GO_VERSION
 ENV GOVERSION=${GO_VERSION}
-ARG DOCKER_HOST=tcp://0.0.0.0:2375
-COPY --link --from=case . /case
-RUN apk add --no-cache file
-RUN <<EOT
-	set -e -x -o pipefail
-	dockerd-entrypoint.sh
-	PKG=$(cat /dat/pkg)
-	NAME=$(cat /dat/name)
-	ARGS=$(cat /dat/args)
-	chmod +x /usr/bin/gotestsum
-	chmod +x /usr/bin/test2json
-	chmod +x /usr/bin/$PKG.test
-	/usr/bin/gotestsum --format=standard-verbose \
-		--jsonfile=/out/go-test-report-$PKG-$NAME.json \
-		--junitfile=/out/junit-report-$PKG-$NAME.xml \
-		--raw-command -- /usr/bin/test2json -t -p $PKG /usr/bin/$PKG.test  -test.bench=.  -test.timeout=10m \
-		-test.v -test.coverprofile=/out/coverage-report-$PKG-$NAME.txt $ARGS \
-		-test.outputdir=/out;
-EOT
-
-FROM scratch AS test
-COPY --link --from=test-runner /out /
+RUN apk add --no-cache jq
+COPY --link --from=case /bins /usr/bin
+COPY --link --from=case /dat /dat
+ENV PKGS=
+ENTRYPOINT for PKG in $(echo "${PKGS}" | jq -r '.[]' || echo "$PKGS"); do \
+	export E2E=$(cat /dat/e2e) && \
+	echo "" && echo "---------- ${PKG}: $(cat /dat/name) ----------" && /usr/bin/gotestsum --format=standard-verbose \
+	--jsonfile=/out/go-test-report-${PKG}-$(cat /dat/name).json \
+	--junitfile=/out/junit-report-${PKG}-$(cat /dat/name).xml \
+	--raw-command -- /usr/bin/test2json -t -p ${PKG} /usr/bin/${PKG}.test  -test.bench=.  -test.timeout=10m \
+	-test.v -test.coverprofile=/out/coverage-report-${PKG}-$(cat /dat/name).txt $(cat /dat/args) \
+	-test.outputdir=/out; done
 
 ##################################################################
 # RELEASE
