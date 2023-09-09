@@ -78,7 +78,7 @@ jobs:
               uses: actions/upload-artifact@v3
               with:
                   name: test-build
-                  path: ./test-build/*
+                  path: ./bin/test-build/*
                   if-no-files-found: error
 
     test:
