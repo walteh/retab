@@ -134,7 +134,7 @@ jobs:
                       *.args.PKG=${{ matrix.package }}
                       *.output=type=local,dest=./case-output
             - name: bake tester
-              uses: docker/build-push-action@v2
+              uses: docker/build-push-action@v4.2.1
               with:
                   target: tester
                   push: false
