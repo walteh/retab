@@ -17,7 +17,7 @@ func TestVersionE2E(t *testing.T) {
 		t.SkipNow()
 	}
 
-	cmd := exec.Command("/usr/bin/retab", "--version")
+	cmd := exec.Command("retab", "--version")
 	cmd.Env = append([]string{}, os.Environ()...)
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
