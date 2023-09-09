@@ -25,7 +25,7 @@ generate-docs:
 ##################################################################
 
 validate:
-	docker buildx bake validate
+	docker buildx bake validate --no-cache
 
 lint:
     docker buildx bake lint

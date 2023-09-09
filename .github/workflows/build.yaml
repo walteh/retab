@@ -248,7 +248,7 @@ jobs:
               if: ${{ matrix.platform == env.MAIN_PLATFORM }}
               with:
                   name: e2e
-                  path: ./build-output/*
+                  path: ./build-output/${{ env.MAIN_PLATFORM }}/*
                   if-no-files-found: error
 
     registry:
