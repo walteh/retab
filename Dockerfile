@@ -119,8 +119,8 @@ EOT
 
 FROM scratch AS case
 COPY --link --from=case-builder /dat /dat
-COPY --link --from=test . /usr/bin/
-COPY --link --from=build . /usr/bin/
+COPY --link --from=test . /
+COPY --link --from=build . /
 
 FROM alpine AS test-runner
 ARG GO_VERSION
@@ -132,7 +132,7 @@ RUN --network=host   <<EOT
 	set -e
 	file gotestsum
 	echo "package: [$(cat /dat/pkg)]"
-	file /usr/bin/gotestsum
+	# file /usr/bin/gotestsum
 	gotestsum \
 		--format=standard-verbose \
 		--jsonfile=/out/go-test-report-$(cat /dat/pkg)-$(cat /dat/name).json \
