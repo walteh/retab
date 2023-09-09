@@ -212,6 +212,10 @@ ENTRYPOINT /usr/bin/${BIN_NAME}.exe
 
 FROM entry-unix AS entry-darwin
 FROM entry-unix AS entry-linux
+FROM entry-unix AS entry-freebsd
+FROM entry-unix AS entry-openbsd
+FROM entry-unix AS entry-netbsd
+FROM entry-unix AS entry-ios
 
 FROM entry-$TARGETOS AS entry
 # enable scanning for this stage
