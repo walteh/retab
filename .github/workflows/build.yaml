@@ -333,8 +333,8 @@ jobs:
                   path: meta-output
             - id: meta
               run: |
-                  echo "version=$(cat ./meta-output/${{env.MAIN_PLATFORM_UNDER}}/meta/version)" >> $GITHUB_OUTPUT
-                  echo "revision=$(cat ./meta-output/${{env.MAIN_PLATFORM_UNDER}}/meta/revision)" >> $GITHUB_OUTPUT
+                  echo "version=$(cat ./meta-output/${{env.MAIN_PLATFORM_UNDER}}/version)" >> $GITHUB_OUTPUT
+                  echo "revision=$(cat ./meta-output/${{env.MAIN_PLATFORM_UNDER}}/revision)" >> $GITHUB_OUTPUT
             - name: bake package
               uses: docker/bake-action@v3
               with:
