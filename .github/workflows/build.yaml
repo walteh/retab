@@ -72,8 +72,6 @@ jobs:
                   targets: test-build
                   set: |
                       *.platform=${{ env.MAIN_PLATFORM }}
-                      *.cache-from=type=gha,scope=test-build
-                      *.cache-to=type=gha,scope=test-build,mode=max
             - name: upload test-build artifacts
               uses: actions/upload-artifact@v3
               with:
