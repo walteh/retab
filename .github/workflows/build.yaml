@@ -114,6 +114,11 @@ jobs:
                   path: ./build-output
             - name: ensure build-output
               run: mkdir -p ./build-output
+            - name: runner
+              run: |
+                  ls -l ./test-output
+                  echo "-------------------"
+                  ls -l ./build-output
             - name: bake case
               uses: docker/bake-action@v3
               with:
