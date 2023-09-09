@@ -27,7 +27,7 @@ on:
 
 env:
     BUILDX_VERSION: "latest"
-    BUILDKIT_IMAGE: "moby/buildkit:latest"
+    BUILDKIT_IMAGE: "moby/buildkit:master"
     REPO_SLUG: ${{ github.repository }}
     DESTDIR: "./bin"
     TEST_CACHE_SCOPE: "test"
@@ -52,6 +52,9 @@ jobs:
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
+              with:
+                  version: ${{ env.BUILDX_VERSION }}
+                  driver-opts: image=${{ env.BUILDKIT_IMAGE }}
             - name: setup go
               uses: actions/setup-go@v4
               with:
@@ -99,6 +102,9 @@ jobs:
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
+              with:
+                  version: ${{ env.BUILDX_VERSION }}
+                  driver-opts: image=${{ env.BUILDKIT_IMAGE }}
             - name: download test artifacts
               uses: actions/download-artifact@v3
               with:
@@ -170,6 +176,9 @@ jobs:
                   fetch-depth: 0
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
+              with:
+                  version: ${{ env.BUILDX_VERSION }}
+                  driver-opts: image=${{ env.BUILDKIT_IMAGE }}
             - name: download meta
               uses: actions/download-artifact@v3
             - name: bake meta
@@ -221,6 +230,9 @@ jobs:
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
+              with:
+                  version: ${{ env.BUILDX_VERSION }}
+                  driver-opts: image=${{ env.BUILDKIT_IMAGE }}
             - name: download meta
               uses: actions/download-artifact@v3
               with:
@@ -270,6 +282,9 @@ jobs:
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
+              with:
+                  version: ${{ env.BUILDX_VERSION }}
+                  driver-opts: image=${{ env.BUILDKIT_IMAGE }}
             - name: download meta
               uses: actions/download-artifact@v3
               with:
@@ -316,6 +331,9 @@ jobs:
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
+              with:
+                  version: ${{ env.BUILDX_VERSION }}
+                  driver-opts: image=${{ env.BUILDKIT_IMAGE }}
             - name: download build
               uses: actions/download-artifact@v3
               with:
@@ -399,7 +417,8 @@ jobs:
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
               with:
-                  version: latest
+                  version: ${{ env.BUILDX_VERSION }}
+                  driver-opts: image=${{ env.BUILDKIT_IMAGE }}
             - name: download meta
               uses: actions/download-artifact@v3
               with:
