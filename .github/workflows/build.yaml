@@ -78,7 +78,7 @@ jobs:
             - name: tar gzip test-build
               run: |
                   mkdir -p ./bin/out
-                  tar -czf ./bin/out/test-build.tar.gz -C ./bin test-build
+                  tar -czf ./bin/out/test-build.tar.gz -C ./bin/test-build .
             - name: upload test-build artifacts
               uses: actions/upload-artifact@v3
               with:
