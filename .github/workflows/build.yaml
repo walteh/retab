@@ -226,8 +226,13 @@ jobs:
               with:
                   name: meta
                   path: meta-output
+            - name: list version
+              id: version
+              run: echo "version=$(cat ./meta-output/${{ steps.prepare.outputs.PLATFORM_PAIR_UNDERSCORE }}/version)" >> $GITHUB_OUTPUT
             - name: bake build
               uses: docker/bake-action@v3
+              env:
+                  VERSION_TAG: ${{ steps.prepare.outputs.PLATFORM_PAIR_UNDERSCORE }}
               with:
                   files: ./docker-bake.hcl
                   targets: build
@@ -274,19 +279,6 @@ jobs:
               run: |
                   echo "version=$(cat ./meta-output/meta/version)" >> $GITHUB_OUTPUT
                   echo "revision=$(cat ./meta-output/meta/revision)" >> $GITHUB_OUTPUT
-            - name: docker meta
-              id: docker-meta
-              uses: docker/metadata-action@v4
-              with:
-                  images: |
-                      ${{ env.REPO_SLUG }}
-                      ghcr.io/${{ env.REPO_SLUG }}
-                  tags: |
-                      type=ref,event=branch
-                      type=ref,event=pr
-                      type=semver,pattern={{version}},value=${{ steps.meta.outputs.version }},enable=${{ github.ref == 'refs/heads/main' }}
-                      type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-                  bake-target: meta-helper
             - name: login to dockerhub
               uses: docker/login-action@v2
               with:
@@ -300,9 +292,10 @@ jobs:
                   password: ${{ secrets.GITHUB_TOKEN }}
             - name: bake registry and push
               uses: docker/bake-action@v3
+              env:
+                  VERSION_TAG: ${{ steps.meta.outputs.version }}
               with:
                   files: ./docker-bake.hcl
-                      ${{ steps.meta.outputs.bake-file }}
                   targets: registry
                   push: true
                   sbom: true

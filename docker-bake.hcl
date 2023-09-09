@@ -1,77 +1,88 @@
-variable "DOCKER_IMAGE" {
-	default = "walteh/retab"
-}
-
-variable "BIN_NAME" {
-	default = "retab"
-}
-
-variable "ROOT_DIR" {
-	default = "."
-}
-
-variable "DEST_DIR" {
-	default = "${ROOT_DIR}/bin"
-}
-
-variable "GEN_DIR" {
-	default = "${ROOT_DIR}/gen"
-}
-
+variable "BIN_NAME" { default = "retab" }
+variable "ROOT_DIR" { default = "." }
+variable "DEST_DIR" { default = "${ROOT_DIR}/bin" }
+variable "GEN_DIR" { default = "${ROOT_DIR}/gen" }
 
 ##################################################################
 # LOCALS
 ##################################################################
 
-variable "HTTP_PROXY" {
-	default = ""
-}
-variable "HTTPS_PROXY" {
-	default = ""
-}
-variable "NO_PROXY" {
-	default = ""
-}
+variable "HTTP_PROXY" {}
+variable "HTTPS_PROXY" {}
+variable "NO_PROXY" {}
+variable "CI" {}
+variable "VERSION_TAG" {}
 
 ##################################################################
 # GITHUB ACTIONS
 ##################################################################
 
+variable "GITHUB_REPOSITORY" {}
+variable "GITHUB_RUN_ID" {}
+variable "GITHUB_SHA" {}
+variable "GITHUB_REF" {}
+variable "GITHUB_JOB" {}
+variable "GITHUB_ACTOR" {}
+variable "GITHUB_JOB_NAME" {}
+variable "GITHUB_ACTIONS" {}
 
-variable "GITHUB_REPOSITORY" {
-	default = ""
+IS_GITHUB_ACTIONS = GITHUB_ACTIONS == "true" ? true : false
+
+GITHUB_ACTIONS_TAGS = flatten([
+	GITHUB_REF == "refs/heads/main" ? ["latest", "main"] : [],
+])
+
+target _github_actions {
+	cache-to   = ["type=gha,scope=${GITHUB_JOB_NAME != "" ? GITHUB_JOB_NAME : GITHUB_JOB}"]
+	cache-from = ["type=gha,mode=max,scope=${GITHUB_JOB_NAME != "" ? GITHUB_JOB_NAME : GITHUB_JOB}"]
+	labels = {
+		"org.opencontainers.image.url"           = "https://github.com/${GITHUB_REPOSITORY}"
+		"org.opencontainers.image.documentation" = "https://github.com/${GITHUB_REPOSITORY}/README.md"
+		"org.opencontainers.image.source"        = "https://github.com/${GITHUB_REPOSITORY}"
+		"org.opencontainers.image.revision"      = "${GITHUB_SHA}"
+		"org.opencontainers.image.authors"       = "${GITHUB_ACTOR}"
+	}
 }
 
-variable "GITHUB_RUN_ID" {
-	default = ""
-}
+##################################################################
+# TAGS
+##################################################################
 
-variable "GITHUB_SHA" {
-	default = ""
-}
+DOCKER_IMAGE_ROOTS = [for x in [
+	!IS_LOCAL ? "${DOCKER_ORG}/${DOCKER_REPO}" : "local/${DOCKER_REPO}",
+	IS_GITHUB_ACTIONS ? "ghcr.io/${GITHUB_REPOSITORY}" : null,
+] : x if x != null]
 
-variable "GITHUB_REF" {
-	default = ""
-}
+IS_DOCKER_DEFAULT_BIN = BIN_NAME == DOCKER_REPO ? true : false
 
-variable "GITHUB_JOB" {
-	default = ""
-}
+DOCKER_IMAGE_TAGS = [for tag in flatten([
+	# local tags for local builds
+	IS_LOCAL ? ["local"] : [],
+	# tags for main branch
+	IS_GITHUB_ACTIONS ? GITHUB_ACTIONS_TAGS : [],
+	# if version tag exists, use it
+	VERSION_TAG != "" ? [VERSION_TAG] : [],
+]) : IS_DOCKER_DEFAULT_BIN ? tag : "${BIN_NAME}-${tag}"]
 
-variable "GITHUB_JOB_NAME" {
-	default = ""
-}
-
-variable "IS_GITHUB_ACTIONS" {
-	default = GITHUB_REPOSITORY != "" ? 1 : 0
+target "_tagged" {
+	tags = flatten([
+		for image in DOCKER_IMAGE_ROOTS : [for tag in DOCKER_IMAGE_TAGS : "${image}:${tag}"]
+	])
 }
 
 ##################################################################
 # COMMON
 ##################################################################
 
+DOCKER_ORG = "walteh"
+
+DOCKER_REPO = "retab"
+
+IS_LOCAL = CI != "1" && CI != "true" ? true : false
 
 target "_common" {
+	push     = false
+	inherits = flatten([IS_GITHUB_ACTIONS ? ["_github_actions"] : []])
 	args = {
 		GO_VERSION                    = "1.21.0"
 		BUILDRC_VERSION               = "0.12.9"
@@ -83,13 +94,15 @@ target "_common" {
 		BUILDX_EXPERIMENTAL           = 1
 		DOCS_FORMATS                  = "md"
 	}
-	cache-to = IS_GITHUB_ACTIONS == 1 ? [
-		"type=gha,scope=${GITHUB_JOB_NAME != "" ? GITHUB_JOB_NAME : GITHUB_JOB}"
-	] : []
-	cache-from = IS_GITHUB_ACTIONS == 1 ? [
-		"type=gha,mode=max,scope=${GITHUB_JOB_NAME != "" ? GITHUB_JOB_NAME : GITHUB_JOB}"
-	] : []
+	labels = {
+		"org.opencontainers.image.title"       = "${BIN_NAME}"
+		"org.opencontainers.image.description" = "A tool to reformat spaced out text into tabbed text"
+		"org.opencontainers.image.created"     = timestamp()
+		"org.opencontainers.image.vendor"      = "${DOCKER_ORG}"
+		"org.opencontainers.image.version"     = "local"
+	}
 }
+
 
 target "_cross" {
 	platforms = [
@@ -110,18 +123,8 @@ target "_cross" {
 	}
 }
 
-target "_tagged" {
-	tags = flatten([
-		IS_GITHUB_ACTIONS == 1 ? ["latest"] : [],
-		[]
-	])
-	labels = merge({}, IS_GITHUB_ACTIONS == 1 ? {
-		"org.opencontainers.image.source" = "https://github.com/${GITHUB_REPOSITORY}"
-	} : {})
-}
-
 target "_attest" {
-	attest = IS_GITHUB_ACTIONS == 1 ? [
+	attest = IS_GITHUB_ACTIONS ? [
 		"type=provenance,mode=max,builder-id=https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}",
 		"type=sbom"
 		] : [
@@ -217,11 +220,6 @@ target "meta" {
 	output   = ["type=local,dest=${DEST_DIR}/meta"]
 }
 
-# Special target: https://github.com/docker/metadata-action#bake-definition
-target "meta-helper" {
-	tags = ["${DOCKER_IMAGE}:local"]
-}
-
 ##################################################################
 # BUILD
 ##################################################################
@@ -296,15 +294,14 @@ target "test" {
 ##################################################################
 
 target "image" {
-	inherits  = ["meta-helper", "build"]
+	inherits  = ["build"]
 	target    = "entry"
 	output    = ["type=image"]
 	platforms = ["local"]
 }
 
 target "registry" {
-	inherits = ["meta-helper", "_cross", "_attest"]
+	inherits = ["_cross", "_attest", "_common", "_tagged"]
 	target   = "entry"
 	output   = ["type=image"]
-
 }
