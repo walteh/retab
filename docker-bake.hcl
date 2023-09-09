@@ -54,6 +54,10 @@ variable "GITHUB_REF" {
 	default = ""
 }
 
+variable "GITHUB_JOB" {
+	default = ""
+}
+
 variable "IS_GITHUB_ACTIONS" {
 	default = GITHUB_REPOSITORY != "" ? 1 : 0
 }
@@ -75,6 +79,12 @@ target "_common" {
 		BUILDX_EXPERIMENTAL           = 1
 		DOCS_FORMATS                  = "md"
 	}
+	cache-to = IS_GITHUB_ACTIONS == 1 ? [
+		"type=gha,scope=${GITHUB_JOB}"
+	] : []
+	cache-from = IS_GITHUB_ACTIONS == 1 ? [
+		"type=gha,mode=max,scope=${GITHUB_JOB}"
+	] : []
 }
 
 target "_cross" {

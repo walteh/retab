@@ -132,8 +132,6 @@ jobs:
                       *.contexts.test-build=./test-build
                       *.contexts.build=./build-output
                       *.platform=${{ env.MAIN_PLATFORM }}
-                      *.cache-from=type=gha
-                      *.cache-to=type=gha,mode=max
             - name: run test
               run: |
                   docker load -i ./bin/test-${{ matrix.case }}.tar
@@ -235,8 +233,6 @@ jobs:
                       *.contexts.meta=./meta-output/${{ steps.prepare.outputs.PLATFORM_PAIR_UNDERSCORE }}
                       *.output=./build-output
                       *.platform=${{ matrix.platform }}
-                      *.cache-from=type=gha
-                      *.cache-to=type=gha,mode=max
             - name: upload build artifacts
               uses: actions/upload-artifact@v3
               with:
@@ -311,8 +307,6 @@ jobs:
                   set: |
                       *.contexts.meta=./meta-output
                       *.contexts.build=./build-output
-                      *.cache-from=type=gha
-                      *.cache-to=type=gha,mode=max
 
     release:
         runs-on: ubuntu-22.04
@@ -421,5 +415,3 @@ jobs:
                   targets: validate-${{ matrix.target }}
                   set: |
                       *.contexts.meta=./meta-output
-                      *.cache-from=type=gha
-                      *.cache-to=type=gha,mode=max
