@@ -129,12 +129,21 @@ ARG DOCKER_HOST=tcp://0.0.0.0:2375
 COPY --link --from=case /out /usr/bin/
 COPY --link --from=case /dat /dat
 RUN apk add --no-cache file
-RUN --network=host /usr/bin/gotestsum --format=standard-verbose \
-	--jsonfile=/out/go-test-report-$(cat /dat/pkg)-$(cat /dat/name).json \
-	--junitfile=/out/junit-report-$(cat /dat/pkg)-$(cat /dat/name).xml \
-	--raw-command -- /usr/bin/test2json -t -p $(cat /dat/pkg) /usr/bin/$(cat /dat/pkg).test  -test.bench=.  -test.timeout=10m \
-	-test.v -test.coverprofile=/out/coverage-report-$(cat /dat/pkg)-$(cat /dat/name).txt $(cat /dat/args) \
-	-test.outputdir=/out;
+RUN --network=host <<EOT
+	set -e -x -o pipefail
+	PKG=$(cat /dat/pkg)
+	NAME=$(cat /dat/name)
+	ARGS=$(cat /dat/args)
+	chmod +x /usr/bin/gotestsum
+	chmod +x /usr/bin/test2json
+	chmod +x /usr/bin/$PKG.test
+	 /usr/bin/gotestsum --format=standard-verbose \
+		--jsonfile=/out/go-test-report-$PKG-$NAME.json \
+		--junitfile=/out/junit-report-$PKG-$NAME.xml \
+		--raw-command -- /usr/bin/test2json -t -p $PKG /usr/bin/$PKG.test  -test.bench=.  -test.timeout=10m \
+		-test.v -test.coverprofile=/out/coverage-report-$PKG-$NAME.txt $ARGS \
+		-test.outputdir=/out;
+EOT
 
 FROM scratch AS tester
 COPY --link --from=test-runner /out /
