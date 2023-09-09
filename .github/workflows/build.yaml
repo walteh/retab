@@ -50,30 +50,29 @@ jobs:
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
               uses: docker/setup-buildx-action@v2
-            - name: bake test
+            - name: bake test-build
               uses: docker/bake-action@v3
               with:
                   files: ./docker-bake.hcl
-                  targets: test
+                  targets: test-build
                   set: |
-                      *.output=type=local,dest=./test-output
                       *.platform=${{ env.MAIN_PLATFORM }}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
             - name: make test matrix
               id: matrix
               run: |
-                  echo "package_matrix=$(ls ./test-output | grep '\.test$' | jq -R -s -c 'split("\n") | map(select(. != "")) | map(split(".")[0])')" >>${GITHUB_OUTPUT}
+                  echo "package_matrix=$(go list -test ./... | grep "\.test$" | jq -R -c -s 'split("\n") | map(select(. != "")) | map(split("/")[-1]) | map(split(".")[0])')" >>${GITHUB_OUTPUT}
                   echo "case_matrix=$(docker buildx bake case --print | jq -cr '.group.case.targets | map(select(. != "all"))')" >>${GITHUB_OUTPUT}
             - name: show test matrix
               run: |
                   echo "package_matrix = ${{ steps.matrix.outputs.package_matrix }}"
                   echo "case_matrix = ${{ steps.matrix.outputs.case_matrix }}"
-            - name: upload test artifacts
+            - name: upload test-build artifacts
               uses: actions/upload-artifact@v3
               with:
-                  name: test
-                  path: ./test-output/*
+                  name: test-build
+                  path: ./test-build/*
                   if-no-files-found: error
 
     test:
@@ -94,8 +93,8 @@ jobs:
             - name: download test artifacts
               uses: actions/download-artifact@v3
               with:
-                  name: test
-                  path: ./test-output
+                  name: test-build
+                  path: ./test-build
             - name: wait on build
               if: "${{ matrix.case == 'e2e' }}"
               uses: lewagon/wait-on-check-action@v1.3.1
@@ -121,7 +120,7 @@ jobs:
                   push: false
                   files: ./docker-bake.hcl
                   set: |
-                      *.contexts.test=./test-output
+                      *.contexts.test-build=./test-build
                       *.contexts.build=./build-output
                       *.platform=${{ env.MAIN_PLATFORM }}
                       *.cache-from=type=gha
