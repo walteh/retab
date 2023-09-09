@@ -116,10 +116,7 @@ RUN <<EOT
 	echo "${E2E}" > /dat/e2e
 	echo "${NAME}" > /dat/name
 
-	chmod +x /bins/gotestsum
-	chmod +x /bins/test2json
-
-	for file in /bins/*.test; do
+	for file in /bins/*; do
 		chmod +x $file
 	done
 EOT
