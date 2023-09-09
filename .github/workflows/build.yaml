@@ -134,7 +134,6 @@ jobs:
                       *.args.PKG=${{ matrix.package }}
                       *.output=type=local,dest=./case-output
             - name: debuger
-              if: "${{ matrix.case == 'e2e' }}"
               run: |
                   ls -l ./case-output
                   echo "-------------------"

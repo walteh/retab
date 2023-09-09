@@ -100,7 +100,7 @@ RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/go/pkg/mod \
 	go test -coverprofile=/reports/coverage-report.txt -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out
 
-FROM scratch AS test
+FROM scratch AS testable
 COPY --link --from=test-builder /out /
 COPY --link --from=gotestsum /out /
 COPY --link --from=test2json /out /
@@ -119,7 +119,7 @@ EOT
 
 FROM scratch AS case
 COPY --link --from=case-builder /dat /dat
-COPY --link --from=test . /out
+COPY --link --from=testable . /out
 COPY --link --from=build . /out
 
 FROM alpine AS test-runner
@@ -145,7 +145,7 @@ RUN --network=host <<EOT
 		-test.outputdir=/out;
 EOT
 
-FROM scratch AS tester
+FROM scratch AS test
 COPY --link --from=test-runner /out /
 
 

@@ -26,7 +26,7 @@ RUN --mount=target=/context \
 	cp -r go.mod go.sum vendor /out
 EOT
 
-FROM scratch AS update
+FROM scratch AS generate
 COPY --from=vendored /out /
 
 FROM tools AS validate

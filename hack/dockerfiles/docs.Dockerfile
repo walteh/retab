@@ -31,7 +31,7 @@ RUN --mount=target=/context \
 	cp -r docs/reference/* /out
 EOT
 
-FROM scratch AS update
+FROM scratch AS generate
 COPY --from=gen /out /
 
 FROM tools AS validate

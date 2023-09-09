@@ -192,11 +192,26 @@ target "validate" {
 	inherits = ["_common"]
 	matrix = {
 		item = [
-			{ name = "lint", dest = "" },
-			{ name = "vendor", dest = VENDOR_OUTPUT },
-			{ name = "docs", dest = DOCS_OUTPUT },
-			{ name = "mockery", dest = MOCKERY_OUTPUT },
-			{ name = "buf", dest = BUF_OUTPUT },
+			{
+				name = "lint",
+				dest = ""
+			},
+			{
+				name = "vendor",
+				dest = VENDOR_OUTPUT
+			},
+			{
+				name = "docs",
+				dest = DOCS_OUTPUT
+			},
+			{
+				name = "mockery",
+				dest = MOCKERY_OUTPUT
+			},
+			{
+				name = "buf",
+				dest = BUF_OUTPUT
+			},
 		]
 	}
 	name = "validate-${item.name}"
@@ -214,28 +229,36 @@ target "validate" {
 # GENERATE
 ##################################################################
 
-group "generate" {
-	targets = ["generate-vendor", "generate-docs", "generate-mockery", "generate-buf"]
-}
-
-target "generate-vendor" {
-	inherits = ["_vendor"]
-	target   = "update"
-}
-
-target "generate-docs" {
-	inherits = ["_docs"]
-	target   = "update"
-}
-
-target "generate-mockery" {
-	inherits = ["_mockery"]
-	target   = "update"
-}
-
-target "generate-buf" {
-	inherits = ["_buf"]
-	target   = "update"
+target "generate" {
+	inherits = ["_common"]
+	matrix = {
+		item = [
+			{
+				name = "vendor",
+				dest = VENDOR_OUTPUT
+			},
+			{
+				name = "docs",
+				dest = DOCS_OUTPUT
+			},
+			{
+				name = "mockery",
+				dest = MOCKERY_OUTPUT
+			},
+			{
+				name = "buf",
+				dest = BUF_OUTPUT
+			},
+		]
+	}
+	name = "generate-${item.name}"
+	args = {
+		NAME    = item.name
+		DESTDIR = item.dest
+	}
+	output     = ["type=local,dest=${item.dest}"]
+	target     = "generate"
+	dockerfile = "./hack/dockerfiles/${item.name}.Dockerfile"
 }
 
 ##################################################################
@@ -284,9 +307,10 @@ target "package" {
 # TESTING
 ##################################################################
 
-target "test" {
+target "testable" {
 	inherits = ["_common"]
-	target   = "test"
+	target   = "testable"
+	output   = ["type=local,dest=${DESTDIR}/testable"]
 }
 
 target "case" {
@@ -294,75 +318,32 @@ target "case" {
 	target   = "case"
 	matrix = {
 		item = [
-			{ ARGS = "-test.skip=Integration -test.skip=E2E", NAME = "unit" },
-			{ ARGS = "-test.run=Integration", NAME = "integration" },
-			{ ARGS = "-test.run=E2E", NAME = "e2e" }
+			{
+				name = "unit"
+				args = "-test.skip=Integration -test.skip=E2E"
+			},
+			{
+				name = "integration"
+				args = "-test.run=Integration"
+			},
+			{
+				name = "e2e"
+				args = "-test.run=E2E"
+			}
 		]
 	}
-	name = "${item.NAME}"
+	name = "case-${item.name}"
 	args = {
-		ARGS = item.ARGS
-		NAME = item.NAME
-		E2E  = item.NAME == "e2e" ? 1 : 0
+		ARGS = item.args
+		NAME = item.name
+		E2E  = item.name == "e2e" ? 1 : 0
 	}
-	output = ["type=local,dest=${DESTDIR}/test-cases/${item.NAME}"]
+	contexts = {
+		build    = BUILD_OUTPUT
+		testable = TEST_OUTPUT
+	}
+	output = ["type=local,dest=${DESTDIR}/case-${item.name}"]
 }
-
-/* target "unit" {
-	inherits = ["_common", "test"]
-	target   = "tester"
-	args = {
-		ARGS = "-test.skip=Integration -test.skip=E2E"
-		NAME = "unit"
-	}
-	output = ["type=docker,name=unit,dest=${TEST_IMAGES_OUTPUT}/unit.tar"]
-}
-
-
-target "integration" {
-	inherits = ["_common", "test"]
-	target   = "tester"
-	args = {
-		ARGS = "-test.run=Integration"
-		NAME = "integration"
-	}
-	output = ["type=docker,name=integration,dest=${TEST_IMAGES_OUTPUT}/integration.tar"]
-}
-
-target "integration2" {
-	inherits = ["_common", "test"]
-	target   = "tester2out"
-	args = {
-		ARGS = "-test.run=Integration"
-		NAME = "integration"
-	}
-	output = ["type=local,dest=${TEST_IMAGES_OUTPUT}/int"]
-
-}
-
-target "integration3" {
-	args = {
-		HTTP_PROXY  = HTTP_PROXY
-		HTTPS_PROXY = HTTPS_PROXY
-		NO_PROXY    = NO_PROXY
-		ARGS        = "-test.run=Integration"
-		NAME        = "integration"
-	}
-	target = "tester3out"
-
-	output = ["type=local,dest=${TEST_IMAGES_OUTPUT}/int"]
-}
-
-target "e2e" {
-	inherits = ["_common", "test"]
-	target   = "tester-with-build"
-	args = {
-		ARGS = "-test.run=E2E"
-		NAME = "e2e"
-		E2E  = 1
-	}
-	output = ["type=docker,name=e2e,dest=${TEST_IMAGES_OUTPUT}/e2e.tar"]
-} */
 
 ##################################################################
 # IMAGE

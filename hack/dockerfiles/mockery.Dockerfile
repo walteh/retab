@@ -26,7 +26,7 @@ RUN --mount=type=bind,target=.,rw \
 EOT
 
 # Final update stage
-FROM scratch AS update
+FROM scratch AS generate
 COPY --from=mockerygen /out /
 
 FROM tools AS validate
