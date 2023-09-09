@@ -58,7 +58,7 @@ outdated:
 
 case CASE PACKAGE PLATFORM:
 	docker buildx bake {{CASE}} --set "*.args.PKG={{PACKAGE}}" --set "*.platform={{PLATFORM}}" && \
-	docker buildx build --allow "network.host" --target tester . --build-context=case=./bin/test-cases/{{CASE}} --output type=local,dest=./bin/help --platform {{PLATFORM}}
+	docker buildx build --allow "network.host" --target tester . --build-context=case=./bin/case-{{CASE}} --output type=local,dest=./bin/help --platform {{PLATFORM}}
 
 unit-test PACKAGE:
 	mkdir -p ./bin/test-images && \

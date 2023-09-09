@@ -1,23 +1,3 @@
-variable "GO_VERSION" {
-	default = "1.21.0"
-}
-
-variable "BUILDRC_VERSION" {
-	default = "0.12.9"
-}
-
-variable "DOCS_FORMATS" {
-	default = "md"
-}
-
-variable "DESTDIR" {
-	default = "./bin"
-}
-
-variable "GENDIR" {
-	default = "./gen"
-}
-
 variable "DOCKER_IMAGE" {
 	default = "walteh/retab"
 }
@@ -26,59 +6,22 @@ variable "BIN_NAME" {
 	default = "retab"
 }
 
-variable "VENDOR_OUTPUT" {
+variable "ROOT_DIR" {
 	default = "."
 }
 
-variable "DOCS_OUTPUT" {
-	default = "./docs/reference"
+variable "DEST_DIR" {
+	default = "${ROOT_DIR}/bin"
 }
 
-variable "GEN_OUTPUT" {
-	default = "./gen"
-}
-
-variable "MOCKERY_OUTPUT" {
-	default = "${GEN_OUTPUT}/mockery"
-}
-
-variable "BUF_OUTPUT" {
-	default = "${GEN_OUTPUT}/buf"
-}
-
-variable "BUILD_OUTPUT" {
-	default = "${DESTDIR}/build"
-}
-
-variable "RELEASE_OUTPUT" {
-	default = "${DESTDIR}/release"
-}
-
-variable "PACKAGE_OUTPUT" {
-	default = "${DESTDIR}/package"
-}
-
-variable "TEST_OUTPUT" {
-	default = "${DESTDIR}/testreports"
+variable "GEN_DIR" {
+	default = "${ROOT_DIR}/gen"
 }
 
 
-variable "TEST_CASE_OUTPUT" {
-	default = "${DESTDIR}/test-cases"
-}
-
-
-variable "TEST_IMAGES_OUTPUT" {
-	default = "${DESTDIR}/test-images"
-}
-
-variable "GITHUB_REPOSITORY" {
-	default = ""
-}
-
-variable "GITHUB_RUN_ID" {
-	default = ""
-}
+##################################################################
+# LOCALS
+##################################################################
 
 variable "HTTP_PROXY" {
 	default = ""
@@ -90,23 +33,47 @@ variable "NO_PROXY" {
 	default = ""
 }
 
+##################################################################
+# GITHUB ACTIONS
+##################################################################
+
+
+variable "GITHUB_REPOSITORY" {
+	default = ""
+}
+
+variable "GITHUB_RUN_ID" {
+	default = ""
+}
+
+variable "GITHUB_SHA" {
+	default = ""
+}
+
+variable "GITHUB_REF" {
+	default = ""
+}
+
+variable "IS_GITHUB_ACTIONS" {
+	default = GITHUB_REPOSITORY != "" ? 1 : 0
+}
+
+##################################################################
+# COMMON
+##################################################################
+
+
 target "_common" {
 	args = {
-		GO_VERSION                    = GO_VERSION
+		GO_VERSION                    = "1.21.0"
+		BUILDRC_VERSION               = "0.12.9"
+		XX_VERSION                    = "1.2.1"
+		GOTESTSUM_VERSION             = "v1.10.1"
+		GOLANGCI_LINT_VERSION         = "v1.54.2"
 		BUILDKIT_CONTEXT_KEEP_GIT_DIR = 1
-		DOCKER_IMAGE                  = DOCKER_IMAGE
 		BIN_NAME                      = BIN_NAME
-		VENDOR_OUTPUT                 = VENDOR_OUTPUT
-		DOCS_OUTPUT                   = DOCS_OUTPUT
-		GEN_OUTPUT                    = GEN_OUTPUT
-		BUILD_OUTPUT                  = BUILD_OUTPUT
-		RELEASE_OUTPUT                = RELEASE_OUTPUT
-		TEST_OUTPUT                   = TEST_OUTPUT
-		BUILDRC_VERSION               = BUILDRC_VERSION
-		PACKAGE_OUTPUT                = PACKAGE_OUTPUT
-		TEST_IMAGES_OUTPUT            = TEST_IMAGES_OUTPUT
-		BUILDX_EXPERIMENTAL           = 1 // enables experimental cmds/flags for docs generation
-		FORMATS                       = DOCS_FORMATS
+		BUILDX_EXPERIMENTAL           = 1
+		DOCS_FORMATS                  = "md"
 	}
 }
 
@@ -125,14 +92,22 @@ target "_cross" {
 		"windows/arm64"
 	]
 	args = {
-		BUILDKIT_MULTI_PLATFORM = true
+		BUILDKIT_MULTI_PLATFORM = 1
 	}
 }
 
-
+target "_tagged" {
+	tags = flatten([
+		IS_GITHUB_ACTIONS == 1 ? ["latest"] : [],
+		[]
+	])
+	labels = merge({}, IS_GITHUB_ACTIONS == 1 ? {
+		"org.opencontainers.image.source" = "https://github.com/${GITHUB_REPOSITORY}"
+	} : {})
+}
 
 target "_attest" {
-	attest = GITHUB_REPOSITORY != "" ? [
+	attest = IS_GITHUB_ACTIONS == 1 ? [
 		"type=provenance,mode=max,builder-id=https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}",
 		"type=sbom"
 		] : [
@@ -145,86 +120,6 @@ group "default" {
 	targets = ["build"]
 }
 
-target "_vendor" {
-	inherits   = ["_common"]
-	dockerfile = "./hack/dockerfiles/vendor.Dockerfile"
-	output     = ["type=local,dest=${VENDOR_OUTPUT}"]
-	args = {
-		BUILDX_EXPERIMENTAL = 1 // enables experimental cmds/flags for docs generation
-		DESTDIR             = VENDOR_OUTPUT
-	}
-}
-
-target "_docs" {
-	inherits   = ["_common"]
-	dockerfile = "./hack/dockerfiles/docs.Dockerfile"
-	output     = [DOCS_OUTPUT]
-	args = {
-		FORMATS             = DOCS_FORMATS
-		BUILDX_EXPERIMENTAL = 1 // enables experimental cmds/flags for docs generation
-		DESTDIR             = DOCS_OUTPUT
-	}
-}
-
-target "_mockery" {
-	inherits   = ["_common"]
-	dockerfile = "./hack/dockerfiles/mockery.Dockerfile"
-	output     = [MOCKERY_OUTPUT]
-	args = {
-		DESTDIR = MOCKERY_OUTPUT
-	}
-}
-
-target "_buf" {
-	inherits   = ["_common"]
-	dockerfile = "./hack/dockerfiles/buf.Dockerfile"
-	output     = [BUF_OUTPUT]
-	args = {
-		DESTDIR = BUF_OUTPUT
-	}
-}
-
-##################################################################
-# VALIDATE
-##################################################################
-
-target "validate" {
-	inherits = ["_common"]
-	matrix = {
-		item = [
-			{
-				name = "lint",
-				dest = ""
-			},
-			{
-				name = "vendor",
-				dest = VENDOR_OUTPUT
-			},
-			{
-				name = "docs",
-				dest = DOCS_OUTPUT
-			},
-			{
-				name = "mockery",
-				dest = MOCKERY_OUTPUT
-			},
-			{
-				name = "buf",
-				dest = BUF_OUTPUT
-			},
-		]
-	}
-	name = "validate-${item.name}"
-	args = {
-		NAME    = item.name
-		DESTDIR = item.dest
-	}
-	output     = ["type=cacheonly"]
-	target     = "validate"
-	dockerfile = "./hack/dockerfiles/${item.name}.Dockerfile"
-}
-
-
 ##################################################################
 # GENERATE
 ##################################################################
@@ -235,19 +130,19 @@ target "generate" {
 		item = [
 			{
 				name = "vendor",
-				dest = VENDOR_OUTPUT
+				dest = "${ROOT_DIR}"
 			},
 			{
 				name = "docs",
-				dest = DOCS_OUTPUT
+				dest = "${ROOT_DIR}/docs/reference"
 			},
 			{
 				name = "mockery",
-				dest = MOCKERY_OUTPUT
+				dest = "${GEN_DIR}/mockery"
 			},
 			{
 				name = "buf",
-				dest = BUF_OUTPUT
+				dest = "${GEN_DIR}/buf"
 			},
 		]
 	}
@@ -262,13 +157,50 @@ target "generate" {
 }
 
 ##################################################################
+# VALIDATE
+##################################################################
+
+target "validate" {
+	matrix = {
+		item = [
+			{
+				name     = "lint"
+				inherits = []
+			},
+			{
+				name     = "vendor",
+				inherits = ["generate-vendor"],
+			},
+			{
+				name     = "docs",
+				inherits = ["generate-docs"],
+			},
+			{
+				name     = "mockery",
+				inherits = ["generate-mockery"],
+			},
+			{
+				name     = "buf",
+				inherits = ["generate-buf"],
+			},
+		]
+	}
+	inherits   = flatten([["_common"], item.inherits])
+	name       = "validate-${item.name}"
+	output     = ["type=cacheonly"]
+	target     = "validate"
+	dockerfile = "./hack/dockerfiles/${item.name}.Dockerfile"
+}
+
+
+##################################################################
 # METADATA
 ##################################################################
 
 target "meta" {
 	inherits = ["_common", "_cross"]
 	target   = "meta"
-	output   = ["${DESTDIR}"]
+	output   = ["type=local,dest=${DEST_DIR}/meta"]
 }
 
 # Special target: https://github.com/docker/metadata-action#bake-definition
@@ -283,23 +215,23 @@ target "meta-helper" {
 target "local" {
 	inherits  = ["_common"]
 	target    = "build"
-	output    = [BUILD_OUTPUT]
+	output    = ["type=local,dest=${DEST_DIR}/build"]
 	platforms = ["local"]
 }
 
 target "build" {
 	inherits = ["_common", "_cross", "_attest"]
 	target   = "build"
-	output   = [BUILD_OUTPUT]
+	output   = ["type=local,dest=${DEST_DIR}/build"]
 }
 
 target "package" {
-	inherits  = ["_common"]
+	inherits  = ["_common", ]
 	target    = "package"
-	output    = [PACKAGE_OUTPUT]
+	output    = ["type=local,dest=${DEST_DIR}/package"]
 	platforms = ["local"]
 	contexts = {
-		build = BUILD_OUTPUT
+		build = "${DEST_DIR}/build"
 	}
 }
 
@@ -310,7 +242,7 @@ target "package" {
 target "testable" {
 	inherits = ["_common"]
 	target   = "testable"
-	output   = ["type=local,dest=${DESTDIR}/testable"]
+	output   = ["type=local,dest=${DEST_DIR}/testable"]
 }
 
 target "case" {
@@ -338,11 +270,27 @@ target "case" {
 		NAME = item.name
 		E2E  = item.name == "e2e" ? 1 : 0
 	}
-	contexts = {
-		build    = BUILD_OUTPUT
-		testable = TEST_OUTPUT
+	output = ["type=local,dest=${DEST_DIR}/case-${item.name}"]
+}
+
+target "test" {
+	matrix = {
+		item = [
+			{
+				name = "unit"
+			},
+			{
+				name = "integration"
+			},
+			{
+				name = "e2e"
+			}
+		]
 	}
-	output = ["type=local,dest=${DESTDIR}/case-${item.name}"]
+	name     = "test-${item.name}"
+	inherits = ["_common", "case-${item.name}"]
+	target   = "test"
+	output   = ["type=local,dest=${DEST_DIR}/test"]
 }
 
 ##################################################################
@@ -360,4 +308,5 @@ target "registry" {
 	inherits = ["meta-helper", "_cross", "_attest"]
 	target   = "entry"
 	output   = ["type=image"]
+
 }

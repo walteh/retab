@@ -4,13 +4,9 @@
 # SETUP
 ##################################################################
 
-ARG GO_VERSION=1.21.0
-ARG XX_VERSION=1.2.1
-
-ARG DOCKER_VERSION=24.0.5
-ARG GOTESTSUM_VERSION=v1.10.1
-ARG REGISTRY_VERSION=latest
-ARG BUILDKIT_VERSION=nightly
+ARG GO_VERSION=
+ARG XX_VERSION=
+ARG GOTESTSUM_VERSION=
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 
@@ -39,17 +35,18 @@ RUN --mount=type=bind,target=/src,readonly \
 	buildrc full --git-dir=/src --files-dir=/meta
 
 FROM scratch AS meta
-COPY --from=metarc /meta /meta
+COPY --link --from=metarc /meta /
 
 FROM gobase AS builder
 ARG TARGETPLATFORM
+COPY --link --from=meta . /meta
 RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/root/.cache \
-	--mount=type=cache,target=/go/pkg/mod \
-	--mount=type=bind,from=meta,source=/meta,target=/meta,readonly <<EOT
+	--mount=type=cache,target=/go/pkg/mod  <<EOT
   	set -e
  	xx-go --wrap;
-	LDFLAGS="-s -w -X $(cat /meta/go-pkg)/version.Version=$(cat /meta/version) -X $(cat /meta/go-pkg)/version.Revision=$(cat /meta/revision) -X $(cat /meta/go-pkg)/version.Package=$(cat /meta/go-pkg)";
+	GO_PKG=$(cat /meta/go-pkg);
+	LDFLAGS="-s -w -X ${GO_PKG}/version.Version=$(cat /meta/version) -X ${GO_PKG}/version.Revision=$(cat /meta/revision) -X ${GO_PKG}/version.Package=${GO_PKG}";
 	CGO_ENABLED=0 go build -mod vendor -trimpath -ldflags "$LDFLAGS" -o /out/$(cat /meta/executable) ./cmd;
   	xx-verify --static /out/$(cat /meta/executable);
 EOT
@@ -68,7 +65,7 @@ COPY --link --from=builder /out/${BIN_NAME} /${BIN_NAME}.exe
 FROM build-$TARGETOS AS build
 # enable scanning for this stage
 ARG BUILDKIT_SBOM_SCAN_STAGE=true
-COPY --link --from=meta /meta/buildrc.json /
+COPY --link --from=meta /buildrc.json /
 
 
 ##################################################################
@@ -122,22 +119,22 @@ COPY --link --from=case-builder /dat /dat
 COPY --link --from=testable . /out
 COPY --link --from=build . /out
 
-FROM alpine AS test-runner
+FROM docker:dind AS test-runner
 ARG GO_VERSION
 ENV GOVERSION=${GO_VERSION}
 ARG DOCKER_HOST=tcp://0.0.0.0:2375
-COPY --link --from=case /out /usr/bin/
-COPY --link --from=case /dat /dat
+COPY --link --from=case . /case
 RUN apk add --no-cache file
-RUN --network=host <<EOT
+RUN <<EOT
 	set -e -x -o pipefail
+	dockerd-entrypoint.sh
 	PKG=$(cat /dat/pkg)
 	NAME=$(cat /dat/name)
 	ARGS=$(cat /dat/args)
 	chmod +x /usr/bin/gotestsum
 	chmod +x /usr/bin/test2json
 	chmod +x /usr/bin/$PKG.test
-	 /usr/bin/gotestsum --format=standard-verbose \
+	/usr/bin/gotestsum --format=standard-verbose \
 		--jsonfile=/out/go-test-report-$PKG-$NAME.json \
 		--junitfile=/out/junit-report-$PKG-$NAME.xml \
 		--raw-command -- /usr/bin/test2json -t -p $PKG /usr/bin/$PKG.test  -test.bench=.  -test.timeout=10m \
@@ -148,18 +145,16 @@ EOT
 FROM scratch AS test
 COPY --link --from=test-runner /out /
 
-
 ##################################################################
 # RELEASE
 ##################################################################
 
 FROM alpine AS packager
-ARG BUILDKIT_MULTI_PLATFORM
 RUN apk add --no-cache file tar jq
-COPY --link  --from=build . /src/
+COPY --link --from=build . /src/
 RUN <<EOT
-	set -e
-	if [ "$BUILDKIT_MULTI_PLATFORM" != 'true' && "$BUILDKIT_MULTIPLATFORM" != '1' ]; then
+	set -e -x -o pipefail
+	if [ -f /src/buildrc.json ]; then
 		searchdir="/src/"
 	else
 		searchdir="/src/*/"
@@ -168,10 +163,11 @@ RUN <<EOT
 	for pdir in ${searchdir}; do
 		(
 			cd "${pdir}"
-			artifact="$(jq -r '.artifact' buildrc.json)"
+			artifact="$(jq -r '.artifact' ./buildrc.json)"
 			tar -czf "/out/${artifact}.tar.gz" .
 		)
 	done
+
 	(
 		cd /out
 		find . -type f \( -name '*.tar.gz' \) -exec sha256sum -b {} \; >./checksums.txt
@@ -180,15 +176,23 @@ RUN <<EOT
 EOT
 
 FROM scratch AS package
-COPY --from=packager /out/ /
+COPY --link --from=packager /out/ /
 
 ##################################################################
 # IMAGE
 ##################################################################
 
-FROM scratch AS entry
-ARG BIN_NAME
-ENV BIN_NAME=${BIN_NAME}
-COPY --link --from=meta /meta/buildrc.json /usr/bin/${BIN_NAME}/buildrc.json
-COPY --link --from=builder /usr/bin/${BIN_NAME} /usr/bin/
+FROM build AS entry-unix
 ENTRYPOINT /usr/bin/${BIN_NAME}
+
+FROM build AS entry-windows
+ENTRYPOINT /usr/bin/${BIN_NAME}.exe
+
+FROM entry-unix AS entry-darwin
+FROM entry-unix AS entry-linux
+
+FROM entry-$TARGETOS AS entry
+# enable scanning for this stage
+ARG BUILDKIT_SBOM_SCAN_STAGE=true
+
+

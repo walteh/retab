@@ -31,8 +31,8 @@ COPY --from=bufgen /out /
 
 FROM tools AS validate
 ARG DESTDIR
-RUN --mount=target=/context \
-	--mount=from=bufgen,target=/out,source=/out,type=bind <<EOT
+COPY --from=generate . /expected
+RUN --mount=target=/current <<EOT
 	set -e
-	buildrc diff --current="/context/${DESTDIR}" --correct="/out" --glob="**/*.pb.go"
+	buildrc diff --current="/current/${DESTDIR}" --correct="/expected" --glob="**/*.pb.go"
 EOT

@@ -20,13 +20,13 @@ FROM tools AS gen
 RUN apk add --no-cache rsync git
 WORKDIR /src
 COPY --from=docsgen /out/docsgen /usr/bin
-ARG FORMATS
+ARG DOCS_FORMATS
 ARG BUILDX_EXPERIMENTAL
 RUN --mount=target=/context \
 	--mount=target=.,type=tmpfs <<EOT
 	set -e
 	rsync -a /context/. .
-	docsgen "docs/reference"
+	FORMATS="${DOCS_FORMATS}" docsgen "docs/reference"
 	mkdir /out
 	cp -r docs/reference/* /out
 EOT
