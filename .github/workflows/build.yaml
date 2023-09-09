@@ -140,7 +140,7 @@ jobs:
                   docker run --network host \
                      -v /var/run/docker.sock:/var/run/docker.sock \
                      -v ./bin/test-reports:/out \
-                     -e PKGS=[${{ matrix.package }}] \
+                     -e PKGS=${{ matrix.package }} \
                       test-${{ matrix.case }}
             - name: generate annotations
               if: always()
