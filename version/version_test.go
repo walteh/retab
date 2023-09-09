@@ -19,7 +19,7 @@ func TestVersionE2E(t *testing.T) {
 
 	cmd := exec.Command("retab", "--version")
 	cmd.Env = append([]string{}, os.Environ()...)
-	// cmd.Dir = "/usr/bin"
+	cmd.Dir = "/usr/bin/"
 	out, err := cmd.CombinedOutput()
 	// defer func() {
 	// 	if err != nil {
