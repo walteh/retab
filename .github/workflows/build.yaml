@@ -54,6 +54,15 @@ jobs:
               uses: actions/setup-go@v4
               with:
                   go-version: 1.21.0 # needs 1.21.0 to parse go.mod
+            - name: make test matrix
+              id: matrix
+              run: |
+                  echo "package_matrix=$(go list -test ./... | grep "\.test$" | jq -R -c -s 'split("\n") | map(select(. != "")) | map(split("/")[-1]) | map(split(".")[0])')" >>${GITHUB_OUTPUT}
+                  echo "case_matrix=$(docker buildx bake test --print | jq -cr '.group.test.targets | map(split("-")[1]) | map(select(. != "all"))')" >>${GITHUB_OUTPUT}
+            - name: show test matrix
+              run: |
+                  echo "package_matrix = ${{ steps.matrix.outputs.package_matrix }}"
+                  echo "case_matrix = ${{ steps.matrix.outputs.case_matrix }}"
             - name: bake test-build
               uses: docker/bake-action@v3
               with:
@@ -63,15 +72,6 @@ jobs:
                       *.platform=${{ env.MAIN_PLATFORM }}
                       *.cache-from=type=gha
                       *.cache-to=type=gha,mode=max
-            - name: make test matrix
-              id: matrix
-              run: |
-                  echo "package_matrix=$(go list -test ./... | grep "\.test$" | jq -R -c -s 'split("\n") | map(select(. != "")) | map(split("/")[-1]) | map(split(".")[0])')" >>${GITHUB_OUTPUT}
-                  echo "case_matrix=$(docker buildx bake case --print | jq -cr '.group.case.targets | map(select(. != "all"))')" >>${GITHUB_OUTPUT}
-            - name: show test matrix
-              run: |
-                  echo "package_matrix = ${{ steps.matrix.outputs.package_matrix }}"
-                  echo "case_matrix = ${{ steps.matrix.outputs.case_matrix }}"
             - name: upload test-build artifacts
               uses: actions/upload-artifact@v3
               with:
