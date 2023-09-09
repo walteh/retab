@@ -128,15 +128,16 @@ ENV GOVERSION=${GO_VERSION}
 ARG DOCKER_HOST=tcp://0.0.0.0:2375
 COPY --link --from=case . .
 RUN apk add --no-cache file
-RUN --network=host gotestsum --format=standard-verbose \
+RUN --network=host /usr/bin/gotestsum --format=standard-verbose \
 	--jsonfile=/out/go-test-report-$(cat /dat/pkg)-$(cat /dat/name).json \
 	--junitfile=/out/junit-report-$(cat /dat/pkg)-$(cat /dat/name).xml \
-	--raw-command -- test2json -t -p $(cat /dat/pkg) $(cat /dat/pkg).test  -test.bench=.  -test.timeout=10m \
+	--raw-command -- /usr/bin/test2json -t -p $(cat /dat/pkg) /usr/bin/$(cat /dat/pkg).test  -test.bench=.  -test.timeout=10m \
 	-test.v -test.coverprofile=/out/coverage-report-$(cat /dat/pkg)-$(cat /dat/name).txt $(cat /dat/args) \
 	-test.outputdir=/out;
 
 FROM scratch AS tester
 COPY --link --from=test-runner /out /
+
 
 ##################################################################
 # RELEASE
