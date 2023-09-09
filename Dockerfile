@@ -119,14 +119,15 @@ EOT
 
 FROM scratch AS case
 COPY --link --from=case-builder /dat /dat
-COPY --link --from=test . /
-COPY --link --from=build . /
+COPY --link --from=test . /out
+COPY --link --from=build . /out
 
 FROM alpine AS test-runner
 ARG GO_VERSION
 ENV GOVERSION=${GO_VERSION}
 ARG DOCKER_HOST=tcp://0.0.0.0:2375
-COPY --link --from=case . .
+COPY --link --from=case /out /usr/bin/
+COPY --link --from=case /dat /dat
 RUN apk add --no-cache file
 RUN --network=host /usr/bin/gotestsum --format=standard-verbose \
 	--jsonfile=/out/go-test-report-$(cat /dat/pkg)-$(cat /dat/name).json \
