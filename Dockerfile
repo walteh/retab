@@ -153,8 +153,8 @@ FROM alpine AS test
 ARG GO_VERSION
 ENV GOVERSION=${GO_VERSION}
 RUN apk add --no-cache jq
-COPY --link --from=case /bins /usr/bin
-COPY --link --from=case /dat /dat
+COPY --from=case /bins /usr/bin
+COPY --from=case /dat /dat
 ENV PKGS=
 ENTRYPOINT for PKG in $(echo "${PKGS}" | jq -r '.[]' || echo "$PKGS"); do \
 	export E2E=$(cat /dat/e2e) && \
