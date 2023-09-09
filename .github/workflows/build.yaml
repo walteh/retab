@@ -26,7 +26,7 @@ on:
         branches: [main]
 
 env:
-    BUILDX_VERSION: "master"
+    BUILDX_VERSION: "latest"
     BUILDKIT_IMAGE: "moby/buildkit:master"
     REPO_SLUG: ${{ github.repository }}
     DESTDIR: "./bin"
