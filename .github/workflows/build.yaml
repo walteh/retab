@@ -138,11 +138,13 @@ jobs:
               with:
                   target: tester
                   push: false
+
                   platforms: ${{ env.MAIN_PLATFORM }}
                   allow: network.host
                   outputs: type=local,dest=./test-reports
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
+                  no-cache: true
+                  #   cache-from: type=gha
+                  #   cache-to: type=gha,mode=max
                   build-contexts: |
                       case=./case-output
             - name: generate annotations
