@@ -93,6 +93,8 @@ jobs:
         steps:
             - name: checkout
               uses: actions/checkout@v4
+            - name: bin
+              run: mkdir -p ./bin
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
