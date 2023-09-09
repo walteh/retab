@@ -75,11 +75,15 @@ jobs:
                   targets: test-build
                   set: |
                       *.platform=${{ env.MAIN_PLATFORM }}
+            - name: tar gzip test-build
+              run: |
+                  mkdir -p ./bin/out
+                  tar -czf ./bin/out/test-build.tar.gz -C ./bin test-build
             - name: upload test-build artifacts
               uses: actions/upload-artifact@v3
               with:
                   name: test-build
-                  path: ./bin/test-build/*
+                  path: ./bin/out/*
                   if-no-files-found: error
 
     test:
@@ -109,7 +113,11 @@ jobs:
               uses: actions/download-artifact@v3
               with:
                   name: test-build
-                  path: ./test-build
+                  path: .
+            - name: extract test artifacts
+              run: |
+                  mkdir -p ./test-build
+                  tar -xzf ./test-build.tar.gz -C ./test-build
             - name: wait on build
               if: "${{ matrix.case == 'e2e' }}"
               uses: lewagon/wait-on-check-action@v1.3.1
@@ -201,11 +209,15 @@ jobs:
                   echo "validate_matrix = ${{ steps.platforms.outputs.validate_matrix }}"
                   echo "case_matrix = ${{ steps.platforms.outputs.case_matrix }}"
                   echo "package_matrix = ${{ steps.platforms.outputs.package_matrix }}"
+            - name: tar gzip meta
+              run: |
+                  mkdir -p ./bin
+                  tar -czf ./bin/meta.tar.gz -C ./meta-output .
             - id: upload-meta
               uses: actions/upload-artifact@v3
               with:
                   name: meta
-                  path: ./meta-output
+                  path: ./bin/*
 
     build:
         runs-on: ubuntu-22.04
@@ -237,7 +249,11 @@ jobs:
               uses: actions/download-artifact@v3
               with:
                   name: meta
-                  path: meta-output
+                  path: .
+            - name: extract meta
+              run: |
+                  mkdir -p ./meta-output
+                  tar -xzf ./meta.tar.gz -C ./meta-output
             - name: list version
               id: version
               run: echo "version=$(cat ./meta-output/${{ steps.prepare.outputs.PLATFORM_PAIR_UNDERSCORE }}/version)" >> $GITHUB_OUTPUT
@@ -289,7 +305,11 @@ jobs:
               uses: actions/download-artifact@v3
               with:
                   name: meta
-                  path: meta-output
+                  path: .
+            - name: extract meta
+              run: |
+                  mkdir -p ./meta-output
+                  tar -xzf ./meta.tar.gz -C ./meta-output
             - id: meta
               run: |
                   echo "version=$(cat ./meta-output/meta/version)" >> $GITHUB_OUTPUT
@@ -343,7 +363,11 @@ jobs:
               uses: actions/download-artifact@v3
               with:
                   name: meta
-                  path: meta-output
+                  path: .
+            - name: extract meta
+              run: |
+                  mkdir -p ./meta-output
+                  tar -xzf ./meta.tar.gz -C ./meta-output
             - id: meta
               run: |
                   echo "version=$(cat ./meta-output/${{env.MAIN_PLATFORM_UNDER}}/version)" >> $GITHUB_OUTPUT
@@ -423,7 +447,11 @@ jobs:
               uses: actions/download-artifact@v3
               with:
                   name: meta
-                  path: meta-output
+                  path: .
+            - name: extract meta
+              run: |
+                  mkdir -p ./meta-output
+                  tar -xzf ./meta.tar.gz -C ./meta-output
             - name: bake ${{ matrix.target }}
               uses: docker/bake-action@v3
               with:
