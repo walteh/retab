@@ -46,6 +46,8 @@ jobs:
               uses: actions/checkout@v4
               with:
                   fetch-depth: 0
+            - name: bin
+              run: mkdir -p ./bin
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
@@ -84,6 +86,7 @@ jobs:
         needs:
             - test-prep
         strategy:
+            fail-fast: false
             matrix:
                 case: ${{ fromJson(needs.test-prep.outputs.case_matrix) }}
                 package: ${{ fromJson(needs.test-prep.outputs.package_matrix) }}
