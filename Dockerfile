@@ -128,12 +128,11 @@ ENV GOVERSION=${GO_VERSION}
 ARG DOCKER_HOST=tcp://0.0.0.0:2375
 COPY --link --from=case . .
 RUN apk add --no-cache file
-RUN --network=host  \
-	--mount=type=cache,target=/root/.cache \
-	--mount=type=cache,target=/go/pkg/mod  <<EOT
+RUN --network=host   <<EOT
 	set -e
-	echo "package: [$(cat /dat/pkg)]"
 	file gotestsum
+	echo "package: [$(cat /dat/pkg)]"
+	file /usr/bin/gotestsum
 	gotestsum \
 		--format=standard-verbose \
 		--jsonfile=/out/go-test-report-$(cat /dat/pkg)-$(cat /dat/name).json \
