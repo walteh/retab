@@ -58,6 +58,10 @@ variable "GITHUB_JOB" {
 	default = ""
 }
 
+variable "GITHUB_JOB_NAME" {
+	default = ""
+}
+
 variable "IS_GITHUB_ACTIONS" {
 	default = GITHUB_REPOSITORY != "" ? 1 : 0
 }
@@ -80,10 +84,10 @@ target "_common" {
 		DOCS_FORMATS                  = "md"
 	}
 	cache-to = IS_GITHUB_ACTIONS == 1 ? [
-		"type=gha,scope=${GITHUB_JOB}"
+		"type=gha,scope=${GITHUB_JOB_NAME != "" ? GITHUB_JOB_NAME : GITHUB_JOB}"
 	] : []
 	cache-from = IS_GITHUB_ACTIONS == 1 ? [
-		"type=gha,mode=max,scope=${GITHUB_JOB}"
+		"type=gha,mode=max,scope=${GITHUB_JOB_NAME != "" ? GITHUB_JOB_NAME : GITHUB_JOB}"
 	] : []
 }
 

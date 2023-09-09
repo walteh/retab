@@ -90,6 +90,8 @@ jobs:
             matrix:
                 case: ${{ fromJson(needs.test-prep.outputs.case_matrix) }}
                 package: ${{ fromJson(needs.test-prep.outputs.package_matrix) }}
+        env:
+            GITHUB_JOB_NAME: "${{ github.job }}_${{ matrix.case }}_${{ matrix.package }}"
         steps:
             - name: checkout
               uses: actions/checkout@v4
@@ -206,6 +208,8 @@ jobs:
             fail-fast: false
             matrix:
                 platform: ${{ fromJson(needs.build-prep.outputs.build_matrix) }}
+        env:
+            GITHUB_JOB_NAME: "${{ github.job }}_${{ matrix.platform }}"
         steps:
             - name: prepare
               id: prepare
@@ -395,6 +399,8 @@ jobs:
             fail-fast: false
             matrix:
                 target: ${{ fromJson(needs.build-prep.outputs.validate_matrix) }}
+        env:
+            GITHUB_JOB_NAME: "${{ github.job }}_${{ matrix.target }}"
         steps:
             - name: checkout
               uses: actions/checkout@v4
