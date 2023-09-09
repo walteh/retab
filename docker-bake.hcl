@@ -1,12 +1,20 @@
-variable "BIN_NAME" { default = "retab" }
-variable "ROOT_DIR" { default = "." }
-variable "DEST_DIR" { default = "${ROOT_DIR}/bin" }
-variable "GEN_DIR" { default = "${ROOT_DIR}/gen" }
-
 ##################################################################
-# LOCALS
+# GLOBALS
 ##################################################################
 
+DOCKER_ORG     = "walteh"
+DOCKER_REPO    = "retab"
+IS_DEFAULT_BIN = BIN_NAME == DOCKER_REPO ? true : false
+IS_LOCAL       = CI != "1" && CI != "true" ? true : false
+ROOT_DIR       = "."
+DEST_DIR       = "${ROOT_DIR}/bin"
+GEN_DIR        = "${ROOT_DIR}/gen"
+
+##################################################################
+# INPUTS
+##################################################################
+
+variable "BIN_NAME" { default = DOCKER_REPO }
 variable "HTTP_PROXY" {}
 variable "HTTPS_PROXY" {}
 variable "NO_PROXY" {}
@@ -53,8 +61,6 @@ DOCKER_IMAGE_ROOTS = [for x in [
 	IS_GITHUB_ACTIONS ? "ghcr.io/${GITHUB_REPOSITORY}" : null,
 ] : x if x != null]
 
-IS_DOCKER_DEFAULT_BIN = BIN_NAME == DOCKER_REPO ? true : false
-
 DOCKER_IMAGE_TAGS = [for tag in flatten([
 	# local tags for local builds
 	IS_LOCAL ? ["local"] : [],
@@ -62,7 +68,7 @@ DOCKER_IMAGE_TAGS = [for tag in flatten([
 	IS_GITHUB_ACTIONS ? GITHUB_ACTIONS_TAGS : [],
 	# if version tag exists, use it
 	VERSION_TAG != "" ? [VERSION_TAG] : [],
-]) : IS_DOCKER_DEFAULT_BIN ? tag : "${BIN_NAME}-${tag}"]
+]) : IS_DEFAULT_BIN ? tag : "${tag}-${BIN_NAME}"]
 
 target "_tagged" {
 	tags = flatten([
@@ -74,15 +80,11 @@ target "_tagged" {
 # COMMON
 ##################################################################
 
-DOCKER_ORG = "walteh"
-
-DOCKER_REPO = "retab"
-
-IS_LOCAL = CI != "1" && CI != "true" ? true : false
-
 target "_common" {
-	push     = false
-	inherits = flatten([IS_GITHUB_ACTIONS ? ["_github_actions"] : []])
+	push = false
+	inherits = flatten([
+		IS_GITHUB_ACTIONS ? ["_github_actions"] : []
+	])
 	args = {
 		GO_VERSION                    = "1.21.0"
 		BUILDRC_VERSION               = "0.12.9"
@@ -99,7 +101,7 @@ target "_common" {
 		"org.opencontainers.image.description" = "A tool to reformat spaced out text into tabbed text"
 		"org.opencontainers.image.created"     = timestamp()
 		"org.opencontainers.image.vendor"      = "${DOCKER_ORG}"
-		"org.opencontainers.image.version"     = "local"
+		"org.opencontainers.image.version"     = VERSION_TAG != "" ? VERSION_TAG : null
 	}
 }
 
@@ -115,8 +117,14 @@ target "_cross" {
 		"linux/ppc64le",
 		"linux/riscv64",
 		"linux/s390x",
+		"freebsd/amd64",
+		"freebsd/arm64",
+		"openbsd/amd64",
+		"openbsd/arm64",
+		"netbsd/amd64",
+		"netbsd/arm64",
 		"windows/amd64",
-		"windows/arm64"
+		"windows/arm64",
 	]
 	args = {
 		BUILDKIT_MULTI_PLATFORM = 1
@@ -134,7 +142,44 @@ target "_attest" {
 }
 
 group "default" {
-	targets = ["build"]
+	targets = ["image"]
+}
+
+##################################################################
+# COMMANDS
+##################################################################
+
+COMMANDS = {
+	lint = {
+		dockerfile = "./hack/dockerfiles/lint.Dockerfile"
+		validate   = { target = "validate" }
+		generate   = null
+		dest       = "${ROOT_DIR}"
+	}
+	vendor = {
+		dockerfile = "./hack/dockerfiles/vendor.Dockerfile"
+		validate   = { target = "validate" }
+		generate   = { target = "generate" }
+		dest       = "${ROOT_DIR}"
+	}
+	docs = {
+		dockerfile = "./hack/dockerfiles/docs.Dockerfile"
+		validate   = { target = "validate" }
+		generate   = { target = "generate" }
+		dest       = "${ROOT_DIR}/docs/reference"
+	}
+	mockery = {
+		dockerfile = "./hack/dockerfiles/mockery.Dockerfile"
+		validate   = { target = "validate" }
+		generate   = { target = "generate" }
+		dest       = "${GEN_DIR}/mockery"
+	}
+	buf = {
+		dockerfile = "./hack/dockerfiles/buf.Dockerfile"
+		validate   = { target = "validate" }
+		generate   = { target = "generate" }
+		dest       = "${GEN_DIR}/buf"
+	}
 }
 
 ##################################################################
@@ -144,33 +189,15 @@ group "default" {
 target "generate" {
 	inherits = ["_common"]
 	matrix = {
-		item = [
-			{
-				name = "vendor",
-				dest = "${ROOT_DIR}"
-			},
-			{
-				name = "docs",
-				dest = "${ROOT_DIR}/docs/reference"
-			},
-			{
-				name = "mockery",
-				dest = "${GEN_DIR}/mockery"
-			},
-			{
-				name = "buf",
-				dest = "${GEN_DIR}/buf"
-			},
-		]
+		item = [for name, item in COMMANDS : merge(item, { name = name }) if item.generate != null]
 	}
 	name = "generate-${item.name}"
 	args = {
-		NAME    = item.name
-		DESTDIR = item.dest
+		NAME = item.name
 	}
 	output     = ["type=local,dest=${item.dest}"]
-	target     = "generate"
-	dockerfile = "./hack/dockerfiles/${item.name}.Dockerfile"
+	target     = item.generate.target
+	dockerfile = item.dockerfile
 }
 
 ##################################################################
@@ -178,35 +205,18 @@ target "generate" {
 ##################################################################
 
 target "validate" {
+	inherits = ["_common"]
 	matrix = {
-		item = [
-			{
-				name     = "lint"
-				inherits = []
-			},
-			{
-				name     = "vendor",
-				inherits = ["generate-vendor"],
-			},
-			{
-				name     = "docs",
-				inherits = ["generate-docs"],
-			},
-			{
-				name     = "mockery",
-				inherits = ["generate-mockery"],
-			},
-			{
-				name     = "buf",
-				inherits = ["generate-buf"],
-			},
-		]
+		item = [for name, item in COMMANDS : merge(item, { name = name }) if item.validate != null]
 	}
-	inherits   = flatten([["_common"], item.inherits])
 	name       = "validate-${item.name}"
 	output     = ["type=cacheonly"]
-	target     = "validate"
-	dockerfile = "./hack/dockerfiles/${item.name}.Dockerfile"
+	target     = item.validate.target
+	dockerfile = item.dockerfile
+	args = {
+		NAME    = item.name
+		DESTDIR = item.dest
+	}
 }
 
 
@@ -294,7 +304,7 @@ target "test" {
 ##################################################################
 
 target "image" {
-	inherits  = ["build"]
+	inherits  = ["_attest", "_common", "_tagged"]
 	target    = "entry"
 	output    = ["type=image"]
 	platforms = ["local"]

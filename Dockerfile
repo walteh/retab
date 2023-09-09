@@ -44,10 +44,11 @@ RUN --mount=type=bind,target=. \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod  <<EOT
   	set -e
+	export CGO_ENABLED=0
  	xx-go --wrap;
 	GO_PKG=$(cat /meta/go-pkg);
 	LDFLAGS="-s -w -X ${GO_PKG}/version.Version=$(cat /meta/version) -X ${GO_PKG}/version.Revision=$(cat /meta/revision) -X ${GO_PKG}/version.Package=${GO_PKG}";
-	CGO_ENABLED=0 go build -mod vendor -trimpath -ldflags "$LDFLAGS" -o /out/$(cat /meta/executable) ./cmd;
+	go build -mod vendor -trimpath -ldflags "$LDFLAGS" -o /out/$(cat /meta/executable) ./cmd;
   	xx-verify --static /out/$(cat /meta/executable);
 EOT
 
@@ -57,6 +58,10 @@ COPY --link --from=builder /out/${BIN_NAME} /${BIN_NAME}
 
 FROM build-unix AS build-darwin
 FROM build-unix AS build-linux
+FROM build-unix AS build-freebsd
+FROM build-unix AS build-openbsd
+FROM build-unix AS build-netbsd
+FROM build-unix AS build-ios
 
 FROM scratch AS build-windows
 ARG BIN_NAME
