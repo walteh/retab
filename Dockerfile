@@ -98,9 +98,9 @@ RUN --mount=type=bind,target=. \
 	go test -coverprofile=/reports/coverage-report.txt -c -race -vet='' -covermode=atomic -mod=vendor ./... -o /out
 
 FROM scratch AS test-build
-COPY --link --from=test-builder /out /tests
-COPY --link --from=gotestsum /out /bins
-COPY --link --from=test2json /out /bins
+COPY --from=test-builder /out /tests
+COPY --from=gotestsum /out /bins
+COPY --from=test2json /out /bins
 
 FROM alpine AS case
 ARG NAME= ARGS= E2E=
@@ -118,6 +118,10 @@ RUN <<EOT
 
 	chmod +x /bins/gotestsum
 	chmod +x /bins/test2json
+
+	for file in /bins/*.test; do
+		chmod +x $file
+	done
 EOT
 
 # FROM scratch AS case-build
