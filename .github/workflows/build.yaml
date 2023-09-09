@@ -133,6 +133,12 @@ jobs:
                       *.cache-to=type=gha,mode=max
                       *.args.PKG=${{ matrix.package }}
                       *.output=type=local,dest=./case-output
+            - name: debuger
+              if: "${{ matrix.case == 'e2e' }}"
+              run: |
+                  ls -l ./case-output
+                  echo "-------------------"
+                  ls -l ./build-output
             - name: bake tester
               uses: docker/build-push-action@v4.2.1
               with:
