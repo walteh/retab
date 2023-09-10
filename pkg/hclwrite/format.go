@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
 	"github.com/walteh/retab/pkg/configuration"
@@ -31,9 +32,21 @@ func (ts Tokens) WriteTo(wr io.Writer, cfg configuration.Provider) (int64, error
 
 	var n int64
 	var err error
+	nlcount := 0
 	for _, token := range ts {
 		if err != nil {
 			return n, err
+		}
+
+		if cfg.TrimMultipleEmptyLines() {
+			if cfg.TrimMultipleEmptyLines() && token.Type == hclsyntax.TokenNewline {
+				nlcount++
+				if nlcount > 2 {
+					continue
+				}
+			} else {
+				nlcount = 0
+			}
 		}
 
 		// Write the leading tabs, if any
