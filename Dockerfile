@@ -205,7 +205,6 @@ COPY --link --from=packager /out/ /
 ##################################################################
 
 FROM build AS entry-unix
-ENV PATH=""
 ENTRYPOINT /usr/bin/${BIN_NAME}
 
 FROM build AS entry-windows

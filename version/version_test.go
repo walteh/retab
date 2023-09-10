@@ -21,16 +21,16 @@ func TestVersionE2E(t *testing.T) {
 	cmd.Env = append([]string{}, os.Environ()...)
 	// cmd.Dir = "/usr/bin/"
 	out, err := cmd.CombinedOutput()
-	defer func() {
-		if err != nil {
-			// run ls -l to make sure the binary is not stripped
-			ccmd := exec.Command("ls", "-l", "/usr/bin")
-			cmd.Env = append([]string{}, os.Environ()...)
-			o, err := ccmd.CombinedOutput()
-			require.NoError(t, err, string(o))
-			t.Log(string(o))
-		}
-	}()
+	// defer func() {
+	// 	if err != nil {
+	// 		// run ls -l to make sure the binary is not stripped
+	// 		ccmd := exec.Command("ls", "-l", "/usr/bin")
+	// 		cmd.Env = append([]string{}, os.Environ()...)
+	// 		o, err := ccmd.CombinedOutput()
+	// 		require.NoError(t, err, string(o))
+	// 		t.Log(string(o))
+	// 	}
+	// }()
 	require.NoError(t, err, string(out))
 
 	// There should be at least one newline and the first line
