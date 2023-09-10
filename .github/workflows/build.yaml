@@ -117,14 +117,22 @@ jobs:
               run: |
                   mkdir -p ./test-build
                   tar -xzf ./test-build.tar.gz -C ./test-build
-            - name: wait on build
-              if: "${{ matrix.case == 'e2e' }}"
+            - name: wait on e2e build (not pull request)
+              if: "${{ matrix.case == 'e2e' && github.event_name != 'pull_request' }}"
               uses: lewagon/wait-on-check-action@v1.3.1
               with:
-                  ref: ${{ github.ref }}
+                  ref: ${{ github.event.pull_request.head.sha }}
                   check-name: "build (${{ env.MAIN_PLATFORM }})"
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
-                  wait-interval: 10
+                  running-workflow-name: ${{ github.workflow }}
+                  allowed-conclusions: success
+            - name: wait on e2e build (if pull request)
+              if: "${{ matrix.case == 'e2e' && github.event_name == 'pull_request' }}"
+              uses: lewagon/wait-on-check-action@v1.3.1
+              with:
+                  ref: ${{ github.event.pull_request.head.sha }}
+                  check-name: "build (${{ env.MAIN_PLATFORM }})"
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
                   running-workflow-name: ${{ github.workflow }}
                   allowed-conclusions: success
             - name: download build
