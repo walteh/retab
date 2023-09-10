@@ -8,6 +8,9 @@ charset = utf-8
 end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
+trim_multiple_empty_lines = true
+
+[*.go]
 
 [*.proto]
 indent_style = tab
