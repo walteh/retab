@@ -312,6 +312,7 @@ jobs:
                   mkdir -p ./meta-output
                   tar -xzf ./meta.tar.gz -C ./meta-output
             - id: meta
+              name: set meta to output
               run: |
                   echo "version=$(cat ./meta-output/meta/version)" >> $GITHUB_OUTPUT
                   echo "revision=$(cat ./meta-output/meta/revision)" >> $GITHUB_OUTPUT
