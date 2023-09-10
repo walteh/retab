@@ -27,10 +27,9 @@ on:
 
 env:
     BUILDX_VERSION: "latest"
-    BUILDKIT_IMAGE: "moby/buildkit:latest"
+    BUILDKIT_IMAGE: "moby/buildkit:master"
     REPO_SLUG: ${{ github.repository }}
     DESTDIR: "./bin"
-    TEST_CACHE_SCOPE: "test"
     DOCKERHUB_USERNAME: walteh
     MAIN_PLATFORM: linux/amd64
     MAIN_PLATFORM_UNDER: linux_amd64
@@ -312,8 +311,8 @@ jobs:
             - id: meta
               name: set meta to output
               run: |
-                  echo "version=$(cat ./meta-output/version)" >> $GITHUB_OUTPUT
-                  echo "revision=$(cat ./meta-output/revision)" >> $GITHUB_OUTPUT
+                  echo "version=$(cat ./meta-output/${{ env.MAIN_PLATFORM_UNDER }}/version)" >> $GITHUB_OUTPUT
+                  echo "revision=$(cat ./meta-output/${{ env.MAIN_PLATFORM_UNDER }}/revision)" >> $GITHUB_OUTPUT
             - name: login to dockerhub
               uses: docker/login-action@v2
               with:
