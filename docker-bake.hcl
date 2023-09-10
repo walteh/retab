@@ -117,12 +117,12 @@ target "_cross" {
 		/* "linux/ppc64le",
 		"linux/riscv64",
 		"linux/s390x", */
-		"freebsd/amd64",
+		/* "freebsd/amd64",
 		"freebsd/arm64",
 		"openbsd/amd64",
 		"openbsd/arm64",
 		"netbsd/amd64",
-		"netbsd/arm64",
+		"netbsd/arm64", */
 		"windows/amd64",
 		"windows/arm64",
 	]
