@@ -56,6 +56,8 @@ target _github_actions {
 # TAGS
 ##################################################################
 
+DOCKER_FORMATTED_VERSION_TAG = VERSION_TAG != "" ? split("+", trimprefix(VERSION_TAG, "v"))[0] : null
+
 DOCKER_IMAGE_ROOTS = [for x in [
 	!IS_LOCAL ? "${DOCKER_ORG}/${DOCKER_REPO}" : "local/${DOCKER_REPO}",
 	IS_GITHUB_ACTIONS ? "ghcr.io/${GITHUB_REPOSITORY}" : null,
@@ -67,7 +69,7 @@ DOCKER_IMAGE_TAGS = [for tag in flatten([
 	# tags for main branch
 	IS_GITHUB_ACTIONS ? GITHUB_ACTIONS_TAGS : [],
 	# if version tag exists, use it
-	VERSION_TAG != "" ? [VERSION_TAG] : [],
+	DOCKER_FORMATTED_VERSION_TAG != null ? [DOCKER_FORMATTED_VERSION_TAG] : [],
 ]) : IS_DEFAULT_BIN ? tag : "${tag}-${BIN_NAME}"]
 
 target "_tagged" {

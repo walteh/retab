@@ -41,3 +41,7 @@ func (x *EditorConfigConfigurationProvider) IndentSize() int {
 func (x *EditorConfigConfigurationProvider) UseTabs() bool {
 	return !strings.Contains(x.Definition.IndentStyle, "space")
 }
+
+func (x *EditorConfigConfigurationProvider) TrimMultipleEmptyLines() bool {
+	return x.Definition.Raw["trim_multiple_empty_lines"] == "true"
+}

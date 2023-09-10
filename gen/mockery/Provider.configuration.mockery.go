@@ -58,6 +58,47 @@ func (_c *MockProvider_configuration_IndentSize_Call) RunAndReturn(run func() in
 	return _c
 }
 
+// TrimMultipleEmptyLines provides a mock function with given fields:
+func (_m *MockProvider_configuration) TrimMultipleEmptyLines() bool {
+	ret := _m.Called()
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockProvider_configuration_TrimMultipleEmptyLines_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TrimMultipleEmptyLines'
+type MockProvider_configuration_TrimMultipleEmptyLines_Call struct {
+	*mock.Call
+}
+
+// TrimMultipleEmptyLines is a helper method to define mock.On call
+func (_e *MockProvider_configuration_Expecter) TrimMultipleEmptyLines() *MockProvider_configuration_TrimMultipleEmptyLines_Call {
+	return &MockProvider_configuration_TrimMultipleEmptyLines_Call{Call: _e.mock.On("TrimMultipleEmptyLines")}
+}
+
+func (_c *MockProvider_configuration_TrimMultipleEmptyLines_Call) Run(run func()) *MockProvider_configuration_TrimMultipleEmptyLines_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockProvider_configuration_TrimMultipleEmptyLines_Call) Return(_a0 bool) *MockProvider_configuration_TrimMultipleEmptyLines_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockProvider_configuration_TrimMultipleEmptyLines_Call) RunAndReturn(run func() bool) *MockProvider_configuration_TrimMultipleEmptyLines_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UseTabs provides a mock function with given fields:
 func (_m *MockProvider_configuration) UseTabs() bool {
 	ret := _m.Called()
