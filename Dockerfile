@@ -204,10 +204,14 @@ COPY --link --from=packager /out/ /
 # IMAGE
 ##################################################################
 
-FROM build AS entry-unix
+FROM scratch AS entry-unix
+ARG BIN_NAME
+COPY --link --from=build . /usr/bin
 ENTRYPOINT /usr/bin/${BIN_NAME}
 
-FROM build AS entry-windows
+FROM scratch AS entry-windows
+ARG BIN_NAME
+COPY --link --from=build . /usr/bin
 ENTRYPOINT /usr/bin/${BIN_NAME}.exe
 
 FROM entry-unix AS entry-darwin

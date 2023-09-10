@@ -84,6 +84,7 @@ package:
 	BUILD_OUTPUT=$(mktemp -d -t release-XXXXXXXXXX) && \
 	docker buildx bake build --set "*.output=${BUILD_OUTPUT}" && \
 	docker buildx bake package --set "*.contexts.build=${BUILD_OUTPUT}" && \
+	docker buildx bake registry --set "*.contexts.build=${BUILD_OUTPUT}" && \
 	rm -rf ${BUILD_OUTPUT}
 
 local:
