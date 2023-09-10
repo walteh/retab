@@ -27,7 +27,7 @@ on:
 
 env:
     BUILDX_VERSION: "latest"
-    BUILDKIT_IMAGE: "moby/buildkit:master"
+    BUILDKIT_IMAGE: "moby/buildkit:latest"
     REPO_SLUG: ${{ github.repository }}
     DESTDIR: "./bin"
     TEST_CACHE_SCOPE: "test"
