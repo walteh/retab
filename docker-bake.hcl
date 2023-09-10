@@ -314,4 +314,8 @@ target "registry" {
 	inherits = ["_cross", "_attest", "_common", "_tagged"]
 	target   = "entry"
 	output   = ["type=image"]
+	args = {
+		BUILDX_EXPERIMENTAL = 0
+	}
 }
+
