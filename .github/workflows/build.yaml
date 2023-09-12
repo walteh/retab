@@ -50,7 +50,7 @@ jobs:
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
-              uses: docker/setup-buildx-action@v2
+              uses: docker/setup-buildx-action@v3
               with:
                   version: ${{ env.BUILDX_VERSION }}
                   driver-opts: image=${{ env.BUILDKIT_IMAGE }}
@@ -104,7 +104,7 @@ jobs:
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
-              uses: docker/setup-buildx-action@v2
+              uses: docker/setup-buildx-action@v3
               with:
                   version: ${{ env.BUILDX_VERSION }}
                   driver-opts: image=${{ env.BUILDKIT_IMAGE }}
@@ -190,7 +190,7 @@ jobs:
               with:
                   fetch-depth: 0
             - name: set up buildx
-              uses: docker/setup-buildx-action@v2
+              uses: docker/setup-buildx-action@v3
               with:
                   version: ${{ env.BUILDX_VERSION }}
                   driver-opts: image=${{ env.BUILDKIT_IMAGE }}
@@ -246,7 +246,7 @@ jobs:
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
-              uses: docker/setup-buildx-action@v2
+              uses: docker/setup-buildx-action@v3
               with:
                   version: ${{ env.BUILDX_VERSION }}
                   driver-opts: image=${{ env.BUILDKIT_IMAGE }}
@@ -302,7 +302,7 @@ jobs:
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
-              uses: docker/setup-buildx-action@v2
+              uses: docker/setup-buildx-action@v3
               with:
                   buildkitd-flags: --debug
                   version: ${{ env.BUILDX_VERSION }}
@@ -357,7 +357,7 @@ jobs:
             - name: set up qemu
               uses: docker/setup-qemu-action@v2
             - name: set up buildx
-              uses: docker/setup-buildx-action@v2
+              uses: docker/setup-buildx-action@v3
               with:
                   version: ${{ env.BUILDX_VERSION }}
                   driver-opts: image=${{ env.BUILDKIT_IMAGE }}
@@ -417,7 +417,7 @@ jobs:
     #         - name: set up qemu
     #           uses: docker/setup-qemu-action@v2
     #         - name: set up buildx
-    #           uses: docker/setup-buildx-action@v2
+    #           uses: docker/setup-buildx-action@v3
     #           with:
     #               version: latest
     #               driver-opts: image=moby/buildkit:master
@@ -447,7 +447,7 @@ jobs:
               uses: actions/checkout@v4
               with: { fetch-depth: 0 }
             - name: set up buildx
-              uses: docker/setup-buildx-action@v2
+              uses: docker/setup-buildx-action@v3
               with:
                   version: ${{ env.BUILDX_VERSION }}
                   driver-opts: image=${{ env.BUILDKIT_IMAGE }}
