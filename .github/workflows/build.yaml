@@ -322,12 +322,12 @@ jobs:
                   echo "version=$(cat ./meta-output/${{ env.MAIN_PLATFORM_UNDER }}/version)" >> $GITHUB_OUTPUT
                   echo "revision=$(cat ./meta-output/${{ env.MAIN_PLATFORM_UNDER }}/revision)" >> $GITHUB_OUTPUT
             - name: login to dockerhub
-              uses: docker/login-action@v2
+              uses: docker/login-action@v3
               with:
                   username: ${{ env.DOCKERHUB_USERNAME }}
                   password: ${{ secrets.DOCKERHUB_PASSWORD }}
             - name: login to ghcr
-              uses: docker/login-action@v2
+              uses: docker/login-action@v3
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
