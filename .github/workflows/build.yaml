@@ -68,7 +68,7 @@ jobs:
                   echo "package_matrix = ${{ steps.matrix.outputs.package_matrix }}"
                   echo "case_matrix = ${{ steps.matrix.outputs.case_matrix }}"
             - name: bake test-build
-              uses: docker/bake-action@v3
+              uses: docker/bake-action@v4
               with:
                   files: ./docker-bake.hcl
                   targets: test-build
@@ -144,7 +144,7 @@ jobs:
             - name: ensure build-output
               run: mkdir -p ./build-output
             - name: bake case
-              uses: docker/bake-action@v3
+              uses: docker/bake-action@v4
               with:
                   targets: test-${{ matrix.case }}
                   push: false
@@ -197,7 +197,7 @@ jobs:
             - name: download meta
               uses: actions/download-artifact@v3
             - name: bake meta
-              uses: docker/bake-action@v3
+              uses: docker/bake-action@v4
               with:
                   files: ./docker-bake.hcl
                   targets: meta
@@ -263,7 +263,7 @@ jobs:
               id: version
               run: echo "version=$(cat ./meta-output/${{ steps.prepare.outputs.PLATFORM_PAIR_UNDERSCORE }}/version)" >> $GITHUB_OUTPUT
             - name: bake build
-              uses: docker/bake-action@v3
+              uses: docker/bake-action@v4
               env:
                   VERSION_TAG: ${{ steps.prepare.outputs.PLATFORM_PAIR_UNDERSCORE }}
               with:
@@ -333,7 +333,7 @@ jobs:
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
             - name: bake registry and push
-              uses: docker/bake-action@v3
+              uses: docker/bake-action@v4
               env:
                   VERSION_TAG: ${{ steps.meta.outputs.version }}
               with:
@@ -381,7 +381,7 @@ jobs:
                   echo "version=$(cat ./meta-output/${{env.MAIN_PLATFORM_UNDER}}/version)" >> $GITHUB_OUTPUT
                   echo "revision=$(cat ./meta-output/${{env.MAIN_PLATFORM_UNDER}}/revision)" >> $GITHUB_OUTPUT
             - name: bake package
-              uses: docker/bake-action@v3
+              uses: docker/bake-action@v4
               with:
                   files: ./docker-bake.hcl
                   targets: package
@@ -423,7 +423,7 @@ jobs:
     #               driver-opts: image=moby/buildkit:master
     #               buildkitd-flags: --debug
     #         - name: bake build
-    #           uses: docker/bake-action@v3
+    #           uses: docker/bake-action@v4
     #           with:
     #               files: ./docker-bake.hcl
     #               targets: build
@@ -461,7 +461,7 @@ jobs:
                   mkdir -p ./meta-output
                   tar -xzf ./meta.tar.gz -C ./meta-output
             - name: bake ${{ matrix.target }}
-              uses: docker/bake-action@v3
+              uses: docker/bake-action@v4
               with:
                   files: ./docker-bake.hcl
                   targets: validate-${{ matrix.target }}
