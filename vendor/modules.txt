@@ -29,6 +29,9 @@ github.com/editorconfig/editorconfig-core-go/v2
 # github.com/fatih/color v1.15.0
 ## explicit; go 1.17
 github.com/fatih/color
+# github.com/go-faster/errors v0.6.1
+## explicit; go 1.18
+github.com/go-faster/errors
 # github.com/golang/protobuf v1.5.3
 ## explicit; go 1.9
 github.com/golang/protobuf/proto

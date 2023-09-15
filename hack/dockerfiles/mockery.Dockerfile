@@ -34,5 +34,6 @@ ARG DESTDIR
 RUN --mount=target=/context \
 	--mount=from=mockerygen,target=/out,source=/out,type=bind <<EOT
 	set -e
-	buildrc diff --current="/context/${DESTDIR}" --correct="/out" --glob="*.mockery.go"
+	cd /context
+	buildrc diff --current="./${DESTDIR}" --correct="/out" --glob="*.mockery.go"
 EOT

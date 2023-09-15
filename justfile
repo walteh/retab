@@ -56,10 +56,6 @@ outdated:
 # TEST
 ##################################################################
 
-# case CASE PACKAGE PLATFORM:
-# 	docker buildx bake {{CASE}} --set "*.args.PKG={{PACKAGE}}" --set "*.platform={{PLATFORM}}" && \
-# 	docker buildx build --allow "network.host" --target tester . --build-context=case=./bin/case-{{CASE}} --output type=local,dest=./bin/help --platform {{PLATFORM}}
-
 test-pkg PACKAGE:
 	just test all {{PACKAGE}}
 
@@ -73,12 +69,19 @@ test-all:
 	pkgs=$(go list -test ./... | grep "\.test$" | jq -R -c -s 'split("\n") | map(select(. != "")) | map(split("/")[-1]) | map(split(".")[0])') && \
 	just test all "$pkgs"
 
+test-fuzz:
+	pkgs=$(go list -test ./... | grep "\.test$" | jq -R -c -s 'split("\n") | map(select(. != "")) | map(split("/")[-1]) | map(split(".")[0])') && \
+	just test fuzz "$pkgs"
+
 ##################################################################
 # BUILD
 ##################################################################
 
 build:
     docker buildx bake build
+
+build-local:
+    docker buildx bake build --set "*.platform=local"
 
 package:
 	BUILD_OUTPUT=$(mktemp -d -t release-XXXXXXXXXX) && \
@@ -90,6 +93,6 @@ package:
 local:
 	docker buildx bake image-default
 
-install: build
+install: build-local
 	binname=$(docker buildx bake _common --print | jq -cr '.target._common.args.BIN_NAME') && \
-	./bin/build/${binname} install && ${binname} --version
+	./bin/build/darwin_arm64/${binname} install && ${binname} --version

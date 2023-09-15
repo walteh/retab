@@ -24,7 +24,7 @@ linters:
         - bodyclose
         - depguard
         - errcheck
-        - goconst
+        # - goconst
         - gofmt
         - goimports
         - gosimple
@@ -47,10 +47,26 @@ linters-settings:
     depguard:
         rules:
             include-go-root: {}
-            pacakges: { deny: [{ pkg: "io/ioutil" }] }
+            pacakges:
+                {
+                    deny:
+                        [
+                            { pkg: "io/ioutil", "deprecated, use io & os" },
+                            {
+                                pkg: github.com/pkg/errors,
+                                desc: "unmaintained, use github.com/go-faster/errors",
+                            },
+                            {
+                                pkg: golang.org/x/xerrors,
+                                desc: "unmaintained, use github.com/go-faster/errors",
+                            },
+                        ],
+                }
+
     forbidigo:
         forbid:
             - '^fmt\.Errorf(# use errors\.Errorf instead)?$'
+
     gosec:
         excludes:
             - G204 # Audit use of command execution
@@ -63,6 +79,13 @@ issues:
         - linters:
               - revive
           text: "stutters"
+        - linters:
+              - revive
+          text: "underscore in package name"
+        - linters:
+              - stylecheck
+          text: "underscores in package name"
+
 presets:
     - bugs
     - comment

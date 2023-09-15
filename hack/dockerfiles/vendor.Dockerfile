@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:labs
 
 ARG GO_VERSION=
-ARG MODOUTDATED_VERSION=v0.8.0
-
+ARG GOMODOUTDATED_VERSION=
 ARG BUILDRC_VERSION=
+
 FROM walteh/buildrc:${BUILDRC_VERSION} AS buildrc
 
 
@@ -12,7 +12,7 @@ COPY --from=buildrc /usr/bin/buildrc /usr/bin/buildrc
 RUN apk add --no-cache git rsync
 WORKDIR /src
 
-FROM psampaz/go-mod-outdated:${MODOUTDATED_VERSION} AS go-mod-outdated
+FROM psampaz/go-mod-outdated:${GOMODOUTDATED_VERSION} AS go-mod-outdated
 
 FROM tools AS vendored
 RUN --mount=target=/context \
@@ -34,7 +34,8 @@ ARG DESTDIR
 RUN --mount=target=/context \
 	--mount=from=vendored,target=/out,source=/out,type=bind <<EOT
 	set -e
-	buildrc diff --current="/context/${DESTDIR}" --correct="/out" --glob="**/vendor/**" --glob="**/go.sum" --glob="**/go.mod"
+	cd /context
+	buildrc diff --current="${DESTDIR}" --correct="/out" --glob="vendor/**" --glob="go.sum" --glob="o.mod"
 EOT
 
 FROM vendored AS outdated

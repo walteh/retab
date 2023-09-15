@@ -36,8 +36,11 @@ variable "GITHUB_ACTIONS" {}
 
 IS_GITHUB_ACTIONS = GITHUB_ACTIONS == "true" ? true : false
 
+GITHUB_PR_NUMBER = IS_GITHUB_ACTIONS && contains(split("/", GITHUB_REF), "pull") ? split("/", GITHUB_REF)[2] : null
+
 GITHUB_ACTIONS_TAGS = flatten([
 	GITHUB_REF == "refs/heads/main" ? ["latest", "main"] : [],
+	GITHUB_PR_NUMBER != null ? ["pr-${GITHUB_PR_NUMBER}"] : [],
 ])
 
 target _github_actions {
@@ -89,10 +92,11 @@ target "_common" {
 	])
 	args = {
 		GO_VERSION                    = "1.21.0"
-		BUILDRC_VERSION               = "0.12.9"
+		BUILDRC_VERSION               = "0.17.1"
 		XX_VERSION                    = "1.2.1"
 		GOTESTSUM_VERSION             = "v1.10.1"
 		GOLANGCI_LINT_VERSION         = "v1.54.2"
+		GOMODOUTDATED_VERSION         = "v0.8.0"
 		BUILDKIT_CONTEXT_KEEP_GIT_DIR = 1
 		BIN_NAME                      = BIN_NAME
 		BUILDX_EXPERIMENTAL           = 1
@@ -106,7 +110,6 @@ target "_common" {
 		"org.opencontainers.image.version"     = VERSION_TAG != "" ? VERSION_TAG : null
 	}
 }
-
 
 target "_cross" {
 	platforms = [
@@ -157,30 +160,35 @@ COMMANDS = {
 		validate   = { target = "validate" }
 		generate   = null
 		dest       = "${ROOT_DIR}"
+		globs      = []
 	}
 	vendor = {
 		dockerfile = "./hack/dockerfiles/vendor.Dockerfile"
 		validate   = { target = "validate" }
 		generate   = { target = "generate" }
 		dest       = "${ROOT_DIR}"
+		globs      = ["go.mod", "go.sum", "vendor/**"]
 	}
 	docs = {
 		dockerfile = "./hack/dockerfiles/docs.Dockerfile"
 		validate   = { target = "validate" }
 		generate   = { target = "generate" }
 		dest       = "${ROOT_DIR}/docs/reference"
+		globs      = ["**/*.md"]
 	}
 	mockery = {
 		dockerfile = "./hack/dockerfiles/mockery.Dockerfile"
 		validate   = { target = "validate" }
 		generate   = { target = "generate" }
 		dest       = "${GEN_DIR}/mockery"
+		globs      = ["**/*.mockery.go"]
 	}
 	buf = {
 		dockerfile = "./hack/dockerfiles/buf.Dockerfile"
 		validate   = { target = "validate" }
 		generate   = { target = "generate" }
 		dest       = "${GEN_DIR}/buf"
+		globs      = ["**/*.proto"]
 	}
 }
 
@@ -220,7 +228,6 @@ target "validate" {
 		DESTDIR = item.dest
 	}
 }
-
 
 ##################################################################
 # METADATA
@@ -289,6 +296,10 @@ target "test" {
 			{
 				name = "all"
 				args = ""
+			},
+			{
+				name = "fuzz",
+				args = "-test.fuzztime=10s -test.fuzzcachedir=${DEST_DIR}/fuzz-cache"
 			}
 		]
 	}
@@ -313,11 +324,11 @@ target "image" {
 }
 
 target "registry" {
-	inherits = ["_cross", "_attest", "_common", "_tagged"]
-	target   = "entry"
+	inherits = ["_common", "_cross", "_attest", "_tagged"]
 	output   = ["type=image"]
+	target   = "entry"
 	args = {
-		BUILDX_EXPERIMENTAL = 0
+		BUILDX_EXPERIMENTAL = 1
 	}
 }
 

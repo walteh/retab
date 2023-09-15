@@ -34,5 +34,6 @@ ARG DESTDIR
 COPY --from=generate . /expected
 RUN --mount=target=/current <<EOT
 	set -e
-	buildrc diff --current="/current/${DESTDIR}" --correct="/expected" --glob="**/*.pb.go"
+	cd /current
+	buildrc diff --current="./${DESTDIR}" --correct="/expected" --glob="**/*.pb.go"
 EOT

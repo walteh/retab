@@ -23,7 +23,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/bufbuild/protocompile/ast"
-	"github.com/pkg/errors"
+	"github.com/go-faster/errors"
 	"github.com/walteh/retab/pkg/configuration"
 	"go.uber.org/multierr"
 )

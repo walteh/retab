@@ -39,6 +39,6 @@ ARG DESTDIR
 RUN --mount=target=/context \
 	--mount=from=gen,target=/out,source=/out,type=bind <<EOT
 	set -e
-	ls -l /out
-	buildrc diff --current="/context/${DESTDIR}" --correct="/out" --glob="**/*"
+	cd /context
+	buildrc diff --current="./${DESTDIR}" --correct="/out" --glob="**/*"
 EOT
