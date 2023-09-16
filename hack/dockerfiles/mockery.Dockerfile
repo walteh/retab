@@ -1,12 +1,15 @@
 # syntax=docker/dockerfile:labs
 
 ARG GO_VERSION
+ARG MOCKERY_VERSION
+ARG BUILDRC_VERSION
 
-ARG BUILDRC_VERSION=
+FROM vektra/mockery:v${MOCKERY_VERSION} AS mockery
 FROM walteh/buildrc:${BUILDRC_VERSION} AS buildrc
 
 FROM golang:${GO_VERSION}-alpine AS tools
 COPY --from=buildrc /usr/bin/buildrc /usr/bin/buildrc
+COPY --from=mockery /usr/local/bin/mockery /usr/bin/mockery
 RUN apk add --no-cache git
 
 # Set common working directory
@@ -14,7 +17,6 @@ WORKDIR /wrk
 
 # Mockery stage
 FROM tools as mockerygen
-COPY --from=vektra/mockery:latest /usr/local/bin/mockery /usr/bin/
 RUN --mount=type=bind,target=.,rw \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod <<EOT

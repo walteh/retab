@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
 	"github.com/walteh/retab/pkg/configuration"
-	"github.com/walteh/retab/pkg/configuration/editorconfig"
+	"github.com/walteh/retab/pkg/editorconfig"
 )
 
 type Provider interface {
