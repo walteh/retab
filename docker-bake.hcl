@@ -97,6 +97,7 @@ target "_common" {
 		GOTESTSUM_VERSION             = "v1.10.1"
 		GOLANGCI_LINT_VERSION         = "v1.54.2"
 		GOMODOUTDATED_VERSION         = "v0.8.0"
+		MOCKERY_VERSION               = "2.33.3"
 		BUILDKIT_CONTEXT_KEEP_GIT_DIR = 1
 		BIN_NAME                      = BIN_NAME
 		BUILDX_EXPERIMENTAL           = 1
