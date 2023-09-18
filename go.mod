@@ -9,13 +9,16 @@ require (
 	github.com/go-faster/errors v0.6.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/hcl/v2 v2.18.0
+	github.com/k0kubun/pp/v3 v3.2.0
 	github.com/mattn/go-zglob v0.0.4
 	github.com/rs/zerolog v1.30.0
+	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/spf13/afero v1.9.5
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
 	github.com/walteh/buildrc v0.14.1
 	github.com/walteh/snake v0.6.0
+	github.com/zclconf/go-cty v1.13.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/mod v0.12.0
 )
@@ -39,7 +42,6 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
-	github.com/zclconf/go-cty v1.13.0 // indirect
 	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/oauth2 v0.9.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
