@@ -10,6 +10,7 @@ import (
 	"github.com/walteh/retab/cmd/root/fmt"
 	"github.com/walteh/retab/cmd/root/hcl"
 	"github.com/walteh/retab/cmd/root/install"
+	"github.com/walteh/retab/cmd/root/yaml"
 	"github.com/walteh/snake"
 
 	"github.com/walteh/retab/version"
@@ -37,6 +38,7 @@ func (me *Root) BuildCommand(ctx context.Context) *cobra.Command {
 	snake.MustNewCommand(ctx, cmd, "buf", &buf.Handler{})
 	snake.MustNewCommand(ctx, cmd, "hcl", &hcl.Handler{})
 	snake.MustNewCommand(ctx, cmd, "install", &install.Handler{})
+	snake.MustNewCommand(ctx, cmd, "yaml", &yaml.Handler{})
 
 	return cmd
 }

@@ -236,7 +236,6 @@ func yaml_emitter_increase_indent(emitter *yaml_emitter_t, flow, indentless bool
 	} else if !indentless {
 		// [Go] This was changed so that indentations are more regular.
 		if emitter.states[len(emitter.states)-1] == yaml_EMIT_BLOCK_SEQUENCE_ITEM_STATE {
-			// The first indent inside a sequence will just skip the "- " indicator.
 			emitter.indent += 2
 		} else {
 			// Everything else aligns to the chosen indentation.
@@ -383,7 +382,7 @@ func yaml_emitter_emit_document_start(emitter *yaml_emitter_t, event *yaml_event
 		}
 
 		implicit := event.implicit
-		if !first || emitter.canonical {
+		if emitter.explicit_document_start || !first || emitter.canonical {
 			implicit = false
 		}
 
@@ -616,12 +615,6 @@ func yaml_emitter_emit_flow_mapping_key(emitter *yaml_emitter_t, event *yaml_eve
 		if !yaml_emitter_write_indicator(emitter, []byte{'{'}, true, true, false) {
 			return false
 		}
-		// if !yaml_emitter_write_indicator(emitter, []byte{'\n'}, true, true, false) {
-		// 	return false
-		// }
-		if !put_break(emitter) {
-			return false
-		}
 		if !yaml_emitter_increase_indent(emitter, true, false) {
 			return false
 		}
@@ -637,24 +630,14 @@ func yaml_emitter_emit_flow_mapping_key(emitter *yaml_emitter_t, event *yaml_eve
 		if !yaml_emitter_process_head_comment(emitter) {
 			return false
 		}
-
 		emitter.flow_level--
 		emitter.indent = emitter.indents[len(emitter.indents)-1]
 		emitter.indents = emitter.indents[:len(emitter.indents)-1]
-
 		if emitter.canonical && !first {
 			if !yaml_emitter_write_indent(emitter) {
 				return false
 			}
 		}
-
-		if !put_break(emitter) {
-			return false
-		}
-		if !yaml_emitter_write_indent(emitter) {
-			return false
-		}
-
 		if !yaml_emitter_write_indicator(emitter, []byte{'}'}, false, false, false) {
 			return false
 		}
@@ -671,9 +654,6 @@ func yaml_emitter_emit_flow_mapping_key(emitter *yaml_emitter_t, event *yaml_eve
 
 	if !first && !trail {
 		if !yaml_emitter_write_indicator(emitter, []byte{','}, false, false, false) {
-			return false
-		}
-		if !put_break(emitter) {
 			return false
 		}
 	}
@@ -746,7 +726,7 @@ func yaml_emitter_emit_flow_mapping_value(emitter *yaml_emitter_t, event *yaml_e
 // Expect a block item node.
 func yaml_emitter_emit_block_sequence_item(emitter *yaml_emitter_t, event *yaml_event_t, first bool) bool {
 	if first {
-		if !yaml_emitter_increase_indent(emitter, false, false) {
+		if !yaml_emitter_increase_indent(emitter, false, emitter.indentless_block_sequence) {
 			return false
 		}
 	}
@@ -1167,8 +1147,11 @@ func yaml_emitter_process_line_comment(emitter *yaml_emitter_t) bool {
 		return true
 	}
 	if !emitter.whitespace {
-		if !put(emitter, ' ') {
-			return false
+		// Insert as many spaces before the line comment as requested.
+		for i := 0; i < emitter.pad_line_comments; i++ {
+			if !put(emitter, ' ') {
+				return false
+			}
 		}
 	}
 	if !yaml_emitter_write_comment(emitter, emitter.line_comment) {
@@ -1515,7 +1498,6 @@ func yaml_emitter_write_indent(emitter *yaml_emitter_t) bool {
 			return false
 		}
 	}
-
 	if emitter.foot_indent == indent {
 		if !put_break(emitter) {
 			return false
@@ -1527,7 +1509,7 @@ func yaml_emitter_write_indent(emitter *yaml_emitter_t) bool {
 		}
 	}
 	emitter.whitespace = true
-	emitter.indention = true
+	//emitter.indention = true
 	emitter.space_above = false
 	emitter.foot_indent = -1
 	return true
@@ -1966,7 +1948,7 @@ func yaml_emitter_write_folded_scalar(emitter *yaml_emitter_t, value []byte) boo
 				for is_break(value, k) {
 					k += width(value[k])
 				}
-				if !is_blankz(value, k) {
+				if !emitter.assume_folded_as_literal && !is_blankz(value, k) {
 					if !put_break(emitter) {
 						return false
 					}
