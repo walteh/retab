@@ -9,35 +9,39 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/santhosh-tekuri/jsonschema/v5"
+	"github.com/walteh/retab/schemas"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 	"gopkg.in/yaml.v3"
 )
 
-var rootScheme = &hcl.BodySchema{
-	Blocks: []hcl.BlockHeaderSchema{
-		{
-			Type:       "file",
-			LabelNames: []string{"name"},
-		},
-	},
-}
+// var rootScheme = &hcl.BodySchema{
+// 	Blocks: []hcl.BlockHeaderSchema{
+// 		{
+// 			Type:       "file",
+// 			LabelNames: []string{"name"},
+// 		},
+// 		{
+// 			Type: "func",
+// 		},
+// 	},
+// }
 
-var fileScheme = &hcl.BodySchema{
-	Attributes: []hcl.AttributeSchema{
-		{
-			Name:     "dir",
-			Required: true,
-		},
-		{
-			Name:     "schema",
-			Required: true,
-		},
-		{
-			Name:     "data",
-			Required: true,
-		},
-	},
-}
+// var fileScheme = &hcl.BodySchema{
+// 	Attributes: []hcl.AttributeSchema{
+// 		{
+// 			Name:     "dir",
+// 			Required: true,
+// 		},
+// 		{
+// 			Name:     "schema",
+// 			Required: true,
+// 		},
+// 		{
+// 			Name:     "data",
+// 			Required: true,
+// 		},
+// 	},
+// }
 
 type BlockEvaluation struct {
 	Name   string
@@ -49,7 +53,7 @@ type BlockEvaluation struct {
 }
 
 func (me *BlockEvaluation) GetJSONSchema(ctx context.Context) (*jsonschema.Schema, error) {
-	return LoadJsonSchemaFile(ctx, me.Schema)
+	return schemas.LoadJSONSchema(ctx, me.Schema)
 }
 
 func (me *BlockEvaluation) ValidateJSONSchema(ctx context.Context) error {
@@ -113,6 +117,7 @@ func NewBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsy
 		}
 
 		return blk, nil
+
 	default:
 		return nil, fmt.Errorf("unknown block type %s", block.Type)
 	}

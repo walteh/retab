@@ -52,6 +52,7 @@ github.com/hashicorp/go-multierror
 ## explicit; go 1.18
 github.com/hashicorp/hcl/v2
 github.com/hashicorp/hcl/v2/ext/customdecode
+github.com/hashicorp/hcl/v2/ext/userfunc
 github.com/hashicorp/hcl/v2/hclparse
 github.com/hashicorp/hcl/v2/hclsyntax
 github.com/hashicorp/hcl/v2/hclwrite
@@ -116,7 +117,7 @@ github.com/stretchr/testify/require
 ## explicit; go 1.21.0
 github.com/walteh/buildrc/pkg/file
 github.com/walteh/buildrc/pkg/install
-# github.com/walteh/snake v0.6.0
+# github.com/walteh/snake v0.8.2
 ## explicit; go 1.21.0
 github.com/walteh/snake
 # github.com/zclconf/go-cty v1.13.0
@@ -144,12 +145,12 @@ golang.org/x/net/context
 ## explicit; go 1.17
 golang.org/x/oauth2
 golang.org/x/oauth2/internal
-# golang.org/x/sys v0.11.0
+# golang.org/x/sys v0.12.0
 ## explicit; go 1.17
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/text v0.12.0
+# golang.org/x/text v0.13.0
 ## explicit; go 1.17
 golang.org/x/text/feature/plural
 golang.org/x/text/internal

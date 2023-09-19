@@ -17,10 +17,11 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
 	github.com/walteh/buildrc v0.14.1
-	github.com/walteh/snake v0.6.0
+	github.com/walteh/snake v0.8.2
 	github.com/zclconf/go-cty v1.13.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/mod v0.12.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -44,10 +45,9 @@ require (
 	github.com/stretchr/objx v0.5.0 // indirect
 	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/oauth2 v0.9.0 // indirect
-	golang.org/x/sys v0.11.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
+	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
