@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/k0kubun/pp/v3"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -60,18 +61,26 @@ func TestValidHCLDecoding(t *testing.T) {
 	defer fle.Close()
 
 	// load schema file
-	got, errd := ParseBlocksFromFile(ctx, fle)
+	ectx, got, errd := NewEvaluation(ctx, fle)
 	assert.NoError(t, errd)
-	for _, b := range got {
 
-		err = b.ValidateJSONSchema(ctx)
+	for _, b := range got.Blocks {
+
+		blk, err := NewBlockEvaluation(ctx, ectx, b)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		out, err := yaml.Marshal(b.Content)
-		if err != nil {
-			t.Fatal(err)
+		if blk.Validation != nil {
+			for _, err := range blk.Validation.Problems {
+				pp.Println(err)
+			}
+			t.Fatal(blk.Validation)
+		}
+
+		out, erry := yaml.Marshal(blk.Content)
+		if erry != nil {
+			t.Fatal(erry)
 		}
 
 		t.Log(string(out))

@@ -3,12 +3,14 @@ package hclread
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/santhosh-tekuri/jsonschema/v5"
-	"github.com/spf13/afero"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
+	"gopkg.in/yaml.v3"
 )
 
 var rootScheme = &hcl.BodySchema{
@@ -37,19 +39,20 @@ var fileScheme = &hcl.BodySchema{
 	},
 }
 
-type Block struct {
+type BlockEvaluation struct {
 	Name   string
 	Schema string
 	Dir    string
 	// ContentRaw cty.Value
-	Content map[string]any
+	Content    map[string]any
+	Validation *ValidationError
 }
 
-func (me *Block) GetJSONSchema(ctx context.Context) (*jsonschema.Schema, error) {
+func (me *BlockEvaluation) GetJSONSchema(ctx context.Context) (*jsonschema.Schema, error) {
 	return LoadJsonSchemaFile(ctx, me.Schema)
 }
 
-func (me *Block) ValidateJSONSchema(ctx context.Context) error {
+func (me *BlockEvaluation) ValidateJSONSchema(ctx context.Context) error {
 	schema, err := me.GetJSONSchema(ctx)
 	if err != nil {
 		return err
@@ -58,83 +61,81 @@ func (me *Block) ValidateJSONSchema(ctx context.Context) error {
 	return schema.Validate(me.Content)
 }
 
-func ParseBlocksFromFile(ctx context.Context, fle afero.File) (res []*Block, err hcl.Diagnostics) {
+func NewBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (res *BlockEvaluation, err error) {
+	switch block.Type {
+	case "file":
+		blk := &BlockEvaluation{
+			Name: block.Labels[0],
+		}
 
-	all, errd := afero.ReadAll(fle)
-	if errd != nil {
-		return nil, hcl.Diagnostics{&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "Failed to read file",
-			Detail:   err.Error(),
-		}}
-	}
+		var dataAttr hcl.Expression
 
-	hcldata, err := hclparse.NewParser().ParseHCL(all, fle.Name())
-	if err.HasErrors() {
-		return nil, err
-	}
+		for _, attr := range block.Body.Attributes {
 
-	ctn, err := hcldata.Body.Content(rootScheme)
-	if err.HasErrors() {
-		return nil, err
-	}
-
-	var blocks []*Block
-	for _, block := range ctn.Blocks {
-		switch block.Type {
-		case "file":
-			blk := &Block{
-				Name: block.Labels[0],
-			}
-			ctn2, err := block.Body.Content(fileScheme)
+			// Evaluate the attribute's expression to get a cty.Value
+			val, err := attr.Expr.Value(ectx)
 			if err.HasErrors() {
 				return nil, err
 			}
-			for _, attr := range ctn2.Attributes {
-				evalContext := &hcl.EvalContext{}
 
-				// Evaluate the attribute's expression to get a cty.Value
-				val, err := attr.Expr.Value(evalContext)
-				if err.HasErrors() {
+			switch attr.Name {
+			case "dir":
+				blk.Dir = val.AsString()
+			case "schema":
+				blk.Schema = val.AsString()
+			case "data":
+				wrk, err := stdlib.JSONEncode(val)
+				if err != nil {
 					return nil, err
 				}
 
-				switch attr.Name {
-				case "dir":
-					blk.Dir = val.AsString()
-				case "schema":
-					blk.Schema = val.AsString()
-				case "data":
-					wrk, err := stdlib.JSONEncode(val)
-					if err != nil {
-						return nil, hcl.Diagnostics{
-							&hcl.Diagnostic{
-								Severity: hcl.DiagError,
-								Summary:  "Failed to encode data",
-								Detail:   err.Error(),
-							},
-						}
-					}
-
-					err = json.Unmarshal([]byte(wrk.AsString()), &blk.Content)
-					if err != nil {
-						return nil, hcl.Diagnostics{
-							&hcl.Diagnostic{
-								Severity: hcl.DiagError,
-								Summary:  "Failed to decode data",
-								Detail:   err.Error(),
-							},
-						}
-					}
-				default:
-					// ignore unknown attributes
-					continue
+				err = json.Unmarshal([]byte(wrk.AsString()), &blk.Content)
+				if err != nil {
+					return nil, err
 				}
+
+				dataAttr = attr.Expr
+
+			default:
+				// ignore unknown attributes
+				continue
 			}
 
-			blocks = append(blocks, blk)
 		}
+
+		// Validate the block body against the schema
+		if errv := blk.ValidateJSONSchema(ctx); errv != nil {
+			if lerr, err := LoadValidationErrors(ctx, dataAttr, errv); err != nil {
+				return nil, err
+			} else {
+				blk.Validation = lerr
+			}
+		}
+
+		return blk, nil
+	default:
+		return nil, fmt.Errorf("unknown block type %s", block.Type)
 	}
 
-	return blocks, nil
+}
+
+func (me *BlockEvaluation) HasValidationErrors() bool {
+	return me.Validation != nil
+}
+
+func (me *BlockEvaluation) Encode() ([]byte, error) {
+	arr := strings.Split(me.Name, ".")
+	if len(arr) < 2 {
+		return nil, fmt.Errorf("invalid file name [%s] - missing extension", me.Name)
+	}
+	switch arr[len(arr)-1] {
+	case "json":
+		return json.MarshalIndent(me.Content, "", "\t")
+	case "yaml":
+		return yaml.Marshal(me.Content)
+	// case "hcl":
+	// 	return
+	default:
+		return nil, fmt.Errorf("unknown file extension [%s] in %s", arr[len(arr)-1], me.Name)
+	}
 }

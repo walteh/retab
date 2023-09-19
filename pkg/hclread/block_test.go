@@ -46,7 +46,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    []*Block
+		want    []*BlockEvaluation
 		wantErr error
 	}{
 		{
@@ -54,7 +54,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 			args: args{
 				str: validHCL2,
 			},
-			want: []*Block{
+			want: []*BlockEvaluation{
 				{
 					Name:   "default.yaml",
 					Schema: "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json",
@@ -106,7 +106,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			got, err := ParseBlocksFromFile(ctx, file)
+			_, got, err := NewEvaluation(ctx, file)
 			if tt.wantErr == nil {
 				assert.NoError(t, err)
 			} else {
