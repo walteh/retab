@@ -8,6 +8,7 @@ require (
 	github.com/editorconfig/editorconfig-core-go/v2 v2.5.2
 	github.com/go-faster/errors v0.6.1
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/hashicorp/hcl-lang v0.0.0-20230919101450-aa9b38d58c90
 	github.com/hashicorp/hcl/v2 v2.18.0
 	github.com/k0kubun/pp/v3 v3.2.0
 	github.com/mattn/go-zglob v0.0.4
@@ -18,7 +19,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/walteh/buildrc v0.14.1
 	github.com/walteh/snake v0.8.2
-	github.com/zclconf/go-cty v1.13.0
+	github.com/zclconf/go-cty v1.14.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/mod v0.12.0
 	gopkg.in/yaml.v3 v3.0.1

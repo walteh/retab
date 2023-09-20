@@ -19,7 +19,7 @@ file "default.yaml" {
 		}
 		jobs = {
 			build = {
-				runson = "ubuntu-latest"
+				runs-on = "ubuntu-latest"
 				steps = [
 					{
 						name = "Checkout"

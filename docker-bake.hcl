@@ -98,6 +98,7 @@ target "_common" {
 		GOLANGCI_LINT_VERSION         = "v1.54.2"
 		GOMODOUTDATED_VERSION         = "v0.8.0"
 		MOCKERY_VERSION               = "2.33.3"
+		GOPLS_VERSION                 = "0.13.2"
 		BUILDKIT_CONTEXT_KEEP_GIT_DIR = 1
 		BIN_NAME                      = BIN_NAME
 		BUILDX_EXPERIMENTAL           = 1
@@ -190,6 +191,13 @@ COMMANDS = {
 		generate   = { target = "generate" }
 		dest       = "${GEN_DIR}/buf"
 		globs      = ["**/*.proto"]
+	}
+	gopls = {
+		dockerfile = "./hack/dockerfiles/gopls.Dockerfile"
+		validate   = { target = "validate" }
+		generate   = { target = "generate" }
+		dest       = "${GEN_DIR}/gopls"
+		globs      = ["*.go"]
 	}
 }
 

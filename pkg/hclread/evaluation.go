@@ -12,11 +12,6 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 )
 
-type Evalutaion struct {
-	ectx *hcl.EvalContext
-	Body *hclsyntax.Body
-}
-
 func NewEvaluation(ctx context.Context, fle afero.File) (*hcl.EvalContext, *hclsyntax.Body, error) {
 	defer fle.Close()
 
