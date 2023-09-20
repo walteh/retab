@@ -1,28 +1,16 @@
-{
-	"jobs": {
-		"build": {
-			"runs-on": "ubuntu-latest",
-			"steps": [
-				{
-					"name": "Checkout",
-					"uses": "actions/checkout@v2",
-					"with": {
-						"fetch-depth": 3
-					}
-				},
-				{
-					"name": "Run tests",
-					"run": "\t\t\t\t\t\t\techo \"Hello world\"\n"
-				}
-			]
-		}
-	},
-	"name": "test",
-	"on": {
-		"push": {
-			"branches": [
-				"main"
-			]
-		}
-	}
-}
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v2
+              with:
+                fetch-depth: 3
+            - name: Run tests
+              run: |
+                echo "Hello world"
+name: test
+"on":
+    push:
+        branches:
+            - main

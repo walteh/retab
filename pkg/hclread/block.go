@@ -137,7 +137,12 @@ func (me *BlockEvaluation) Encode() ([]byte, error) {
 	case "json":
 		return json.MarshalIndent(me.Content, "", "\t")
 	case "yaml":
-		return yaml.Marshal(me.Content)
+		dat, err := yaml.Marshal(me.Content)
+		if err != nil {
+			return nil, err
+		}
+
+		return []byte(strings.ReplaceAll(string(dat), "\t", "")), nil
 	// case "hcl":
 	// 	return
 	default:
