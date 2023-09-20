@@ -11,7 +11,6 @@ import (
 	lsp "github.com/walteh/retab/gen/gopls"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
 	"github.com/walteh/retab/internal/lsp/document"
-	"github.com/walteh/retab/internal/lsp/state"
 	"github.com/walteh/retab/internal/lsp/uri"
 )
 
@@ -40,39 +39,5 @@ func (svc *service) TextDocumentDidOpen(ctx context.Context, params lsp.DidOpenT
 
 	ctx = lsctx.WithLanguageId(ctx, params.TextDocument.LanguageID)
 
-	mod, err := svc.modStore.ModuleByPath(dh.Dir.Path())
-	if err != nil {
-		if state.IsModuleNotFound(err) {
-			err = svc.modStore.Add(dh.Dir.Path())
-			if err != nil {
-				return err
-			}
-			mod, err = svc.modStore.ModuleByPath(dh.Dir.Path())
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-
-	svc.logger.Printf("opened module: %s", mod.Path)
-
-	// We reparse because the file being opened may not match
-	// (originally parsed) content on the disk
-	// TODO: Do this only if we can verify the file differs?
-	modHandle := document.DirHandleFromPath(mod.Path)
-	jobIds, err := svc.indexer.DocumentOpened(ctx, modHandle)
-	if err != nil {
-		return err
-	}
-
-	if svc.singleFileMode {
-		err = svc.stateStore.WalkerPaths.EnqueueDir(ctx, modHandle)
-		if err != nil {
-			return err
-		}
-	}
-
-	return svc.stateStore.JobStore.WaitForJobs(ctx, jobIds...)
+	return svc.stateStore.JobStore.WaitForJobs(ctx)
 }

@@ -8,12 +8,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hashicorp/go-version"
-	"github.com/stretchr/testify/mock"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
 	"github.com/walteh/retab/internal/lsp/walker"
 )
 
@@ -27,31 +24,6 @@ func TestReferences_basic(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("0.12.0")),
-							nil,
-							nil,
-						},
-					},
-					{
-						Method:        "GetExecPath",
-						Repeatability: 1,
-						ReturnArguments: []interface{}{
-							"",
-						},
-					},
-				},
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
@@ -154,12 +126,7 @@ func TestReferences_variableToModuleInput(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				submodPath: validTfMockCalls(),
-			},
-		},
+		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
 	stop := ls.Start(t)

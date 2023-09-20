@@ -4,17 +4,13 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/creachadair/jrpc2"
-	"github.com/hashicorp/go-version"
-	"github.com/stretchr/testify/mock"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
 	"github.com/walteh/retab/internal/lsp/walker"
 )
 
@@ -47,43 +43,6 @@ func TestLangServer_formatting_basic(t *testing.T) {
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 		StateStore:      ss,
 		WalkerCollector: wc,
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("0.12.0")),
-							nil,
-							nil,
-						},
-					},
-					{
-						Method:        "GetExecPath",
-						Repeatability: 1,
-						ReturnArguments: []interface{}{
-							"",
-						},
-					},
-					{
-						Method:        "Format",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-							[]byte("provider  \"test\"   {\n\n}\n"),
-						},
-						ReturnArguments: []interface{}{
-							[]byte("provider \"test\" {\n\n}\n"),
-							nil,
-						},
-					},
-				},
-			},
-		},
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -145,43 +104,6 @@ func TestLangServer_formatting_oldVersion(t *testing.T) {
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 		StateStore:      ss,
 		WalkerCollector: wc,
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("0.7.6")),
-							nil,
-							nil,
-						},
-					},
-					{
-						Method:        "GetExecPath",
-						Repeatability: 1,
-						ReturnArguments: []interface{}{
-							"",
-						},
-					},
-					{
-						Method:        "Format",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-							[]byte("provider  \"test\"   {\n\n}\n"),
-						},
-						ReturnArguments: []interface{}{
-							nil,
-							errors.New("not implemented"),
-						},
-					},
-				},
-			},
-		},
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -232,43 +154,6 @@ func TestLangServer_formatting_variables(t *testing.T) {
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 		StateStore:      ss,
 		WalkerCollector: wc,
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("0.12.0")),
-							nil,
-							nil,
-						},
-					},
-					{
-						Method:        "GetExecPath",
-						Repeatability: 1,
-						ReturnArguments: []interface{}{
-							"",
-						},
-					},
-					{
-						Method:        "Format",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-							[]byte("test  = \"dev\""),
-						},
-						ReturnArguments: []interface{}{
-							[]byte("test = \"dev\""),
-							nil,
-						},
-					},
-				},
-			},
-		},
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -330,14 +215,14 @@ func TestLangServer_formatting_diffBug(t *testing.T) {
     }
 }
 `
-	formattedCfg := `resource "aws_lambda_function" "f" {
-  environment {
-    variables = {
-      a = "b"
-    }
-  }
-}
-`
+	// 	formattedCfg := `resource "aws_lambda_function" "f" {
+	//   environment {
+	//     variables = {
+	//       a = "b"
+	//     }
+	//   }
+	// }
+	// `
 
 	ss, err := state.NewStateStore()
 	if err != nil {
@@ -348,43 +233,6 @@ func TestLangServer_formatting_diffBug(t *testing.T) {
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 		StateStore:      ss,
 		WalkerCollector: wc,
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("0.12.0")),
-							nil,
-							nil,
-						},
-					},
-					{
-						Method:        "GetExecPath",
-						Repeatability: 1,
-						ReturnArguments: []interface{}{
-							"",
-						},
-					},
-					{
-						Method:        "Format",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType("*context.valueCtx"),
-							[]byte(cfg),
-						},
-						ReturnArguments: []interface{}{
-							[]byte(formattedCfg),
-							nil,
-						},
-					},
-				},
-			},
-		},
 	}))
 	stop := ls.Start(t)
 	defer stop()

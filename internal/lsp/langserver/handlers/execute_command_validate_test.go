@@ -8,11 +8,9 @@ import (
 	"testing"
 
 	"github.com/creachadair/jrpc2"
-	"github.com/stretchr/testify/mock"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/cmd"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
 	"github.com/walteh/retab/internal/lsp/walker"
 )
 
@@ -27,11 +25,6 @@ func TestLangServer_workspaceExecuteCommand_validate_argumentError(t *testing.T)
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): validTfMockCalls(),
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))

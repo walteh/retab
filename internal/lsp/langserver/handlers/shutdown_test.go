@@ -8,20 +8,11 @@ import (
 	"testing"
 
 	"github.com/creachadair/jrpc2"
-	"github.com/stretchr/testify/mock"
 	"github.com/walteh/retab/internal/lsp/langserver"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
 )
 
 func TestShutdown_twice(t *testing.T) {
-	tmpDir := TempDir(t)
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): validTfMockCalls(),
-			},
-		},
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 

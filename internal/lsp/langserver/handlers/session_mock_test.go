@@ -15,25 +15,18 @@ import (
 
 	"github.com/creachadair/jrpc2/handler"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
-	"github.com/walteh/retab/internal/lsp/registry"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/terraform/discovery"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
 	"github.com/walteh/retab/internal/lsp/walker"
 )
 
 type MockSessionInput struct {
-	TerraformCalls     *exec.TerraformMockCalls
 	AdditionalHandlers map[string]handler.Func
 	StateStore         *state.StateStore
 	WalkerCollector    *walker.WalkerCollector
-	RegistryServer     *httptest.Server
 }
 
 type mockSession struct {
-	mockInput      *MockSessionInput
-	registryServer *httptest.Server
-
+	mockInput    *MockSessionInput
 	stopFunc     func()
 	stopCalled   bool
 	stopCalledMu *sync.RWMutex
@@ -50,37 +43,16 @@ func (ms *mockSession) new(srvCtx context.Context) session.Session {
 		stateStore = ms.mockInput.StateStore
 		walkerCollector = ms.mockInput.WalkerCollector
 		handlers = ms.mockInput.AdditionalHandlers
-		ms.registryServer = ms.mockInput.RegistryServer
 	}
-
-	var tfCalls *exec.TerraformMockCalls
-	if ms.mockInput != nil && ms.mockInput.TerraformCalls != nil {
-		tfCalls = ms.mockInput.TerraformCalls
-	}
-
-	d := &discovery.MockDiscovery{
-		Path: "tf-mock",
-	}
-
-	regClient := registry.NewClient()
-	if ms.registryServer == nil {
-		ms.registryServer = defaultRegistryServer()
-	}
-	ms.registryServer.Start()
-
-	regClient.BaseURL = ms.registryServer.URL
 
 	svc := &service{
 		logger:             testLogger(),
 		srvCtx:             srvCtx,
 		sessCtx:            sessCtx,
 		stopSession:        ms.stop,
-		tfDiscoFunc:        d.LookPath,
-		tfExecFactory:      exec.NewMockExecutor(tfCalls),
 		additionalHandlers: handlers,
 		stateStore:         stateStore,
 		walkerCollector:    walkerCollector,
-		registryClient:     regClient,
 	}
 
 	return svc
@@ -101,7 +73,6 @@ func testLogger() *log.Logger {
 }
 
 func (ms *mockSession) stop() {
-	ms.registryServer.Close()
 
 	ms.stopCalledMu.Lock()
 	defer ms.stopCalledMu.Unlock()

@@ -4,41 +4,26 @@
 package indexer
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 
 	"github.com/walteh/retab/internal/lsp/job"
-	"github.com/walteh/retab/internal/lsp/registry"
-	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
 )
 
 type Indexer struct {
-	logger           *log.Logger
-	fs               ReadOnlyFS
-	modStore         *state.ModuleStore
-	schemaStore      *state.ProviderSchemaStore
-	registryModStore *state.RegistryModuleStore
-	jobStore         job.JobStore
-	tfExecFactory    exec.ExecutorFactory
-	registryClient   registry.Client
+	logger   *log.Logger
+	fs       ReadOnlyFS
+	jobStore job.JobStore
 }
 
-func NewIndexer(fs ReadOnlyFS, modStore *state.ModuleStore, schemaStore *state.ProviderSchemaStore,
-	registryModStore *state.RegistryModuleStore, jobStore job.JobStore,
-	tfExec exec.ExecutorFactory, registryClient registry.Client) *Indexer {
+func NewIndexer(fs ReadOnlyFS, jobStore job.JobStore) *Indexer {
 
-	discardLogger := log.New(ioutil.Discard, "", 0)
+	discardLogger := log.New(io.Discard, "", 0)
 
 	return &Indexer{
-		fs:               fs,
-		modStore:         modStore,
-		schemaStore:      schemaStore,
-		registryModStore: registryModStore,
-		jobStore:         jobStore,
-		tfExecFactory:    tfExec,
-		registryClient:   registryClient,
-		logger:           discardLogger,
+		fs:       fs,
+		jobStore: jobStore,
+		logger:   discardLogger,
 	}
 }
 

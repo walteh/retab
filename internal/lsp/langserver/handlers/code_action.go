@@ -8,9 +8,7 @@ import (
 	"fmt"
 
 	lsp "github.com/walteh/retab/gen/gopls"
-	"github.com/walteh/retab/internal/lsp/langserver/errors"
 	ilsp "github.com/walteh/retab/internal/lsp/lsp"
-	"github.com/walteh/retab/internal/lsp/terraform/module"
 )
 
 func (svc *service) TextDocumentCodeAction(ctx context.Context, params lsp.CodeActionParams) []lsp.CodeAction {
@@ -45,32 +43,23 @@ func (svc *service) textDocumentCodeAction(ctx context.Context, params lsp.CodeA
 
 	svc.logger.Printf("Code actions supported: %v", wantedCodeActions)
 
-	dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
+	// dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
 
-	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
-	if err != nil {
-		return ca, err
-	}
+	// doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
+	// if err != nil {
+	// 	return ca, err
+	// }
 
 	for action := range wantedCodeActions {
 		switch action {
 		case ilsp.SourceFormatAllTerraform:
-			tfExec, err := module.TerraformExecutorForModule(ctx, dh.Dir.Path())
-			if err != nil {
-				return ca, errors.EnrichTfExecError(err)
-			}
-
-			edits, err := svc.formatDocument(ctx, tfExec, doc.Text, dh)
-			if err != nil {
-				return ca, err
-			}
 
 			ca = append(ca, lsp.CodeAction{
 				Title: "Format Document",
 				Kind:  action,
 				Edit: &lsp.WorkspaceEdit{
 					Changes: map[lsp.DocumentURI][]lsp.TextEdit{
-						lsp.DocumentURI(dh.FullURI()): edits,
+						// lsp.DocumentURI(dh.FullURI()): edits,
 					},
 				},
 			})

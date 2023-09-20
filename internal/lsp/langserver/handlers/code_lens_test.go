@@ -9,14 +9,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hashicorp/go-version"
 	tfjson "github.com/hashicorp/terraform-json"
-	"github.com/stretchr/testify/mock"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
 	"github.com/walteh/retab/internal/lsp/walker"
 )
 
@@ -113,42 +110,6 @@ func TestCodeLens_referenceCount(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("0.12.0")),
-							nil,
-							nil,
-						},
-					},
-					{
-						Method:        "GetExecPath",
-						Repeatability: 1,
-						ReturnArguments: []interface{}{
-							"",
-						},
-					},
-					{
-						Method:        "ProviderSchemas",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							&testSchema,
-							nil,
-						},
-					},
-				},
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
@@ -251,12 +212,6 @@ func TestCodeLens_referenceCount_crossModule(t *testing.T) {
 	}
 	wc := walker.NewWalkerCollector()
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				submodPath:  validTfMockCalls(),
-				rootModPath: validTfMockCalls(),
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))

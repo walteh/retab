@@ -51,12 +51,6 @@ func (svc *service) TextDocumentDidChange(ctx context.Context, params lsp.DidCha
 		return err
 	}
 
-	// check existence
-	_, err = svc.modStore.ModuleByPath(dh.Dir.Path())
-	if err != nil {
-		return err
-	}
-
 	jobIds, err := svc.indexer.DocumentChanged(ctx, dh.Dir)
 	if err != nil {
 		return err

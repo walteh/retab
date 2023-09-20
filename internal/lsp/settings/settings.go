@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/walteh/retab/internal/lsp/terraform/datadir"
 )
 
 type ExperimentalFeatures struct {
@@ -23,52 +22,35 @@ type Indexing struct {
 	IgnorePaths          []string `mapstructure:"ignorePaths"`
 }
 
-type Terraform struct {
-	Path        string `mapstructure:"path"`
-	Timeout     string `mapstructure:"timeout"`
-	LogFilePath string `mapstructure:"logFilePath"`
-}
-
 type Options struct {
 	CommandPrefix string   `mapstructure:"commandPrefix"`
 	Indexing      Indexing `mapstructure:"indexing"`
+
+	Path string `mapstructure:"path"`
 
 	// ExperimentalFeatures encapsulates experimental features users can opt into.
 	ExperimentalFeatures ExperimentalFeatures `mapstructure:"experimentalFeatures"`
 
 	IgnoreSingleFileWarning bool `mapstructure:"ignoreSingleFileWarning"`
-
-	Terraform Terraform `mapstructure:"terraform"`
-
-	XLegacyModulePaths              []string `mapstructure:"rootModulePaths"`
-	XLegacyExcludeModulePaths       []string `mapstructure:"excludeModulePaths"`
-	XLegacyIgnoreDirectoryNames     []string `mapstructure:"ignoreDirectoryNames"`
-	XLegacyTerraformExecPath        string   `mapstructure:"terraformExecPath"`
-	XLegacyTerraformExecTimeout     string   `mapstructure:"terraformExecTimeout"`
-	XLegacyTerraformExecLogFilePath string   `mapstructure:"terraformExecLogFilePath"`
 }
 
 func (o *Options) Validate() error {
-	if o.Terraform.Path != "" {
-		path := o.Terraform.Path
+	if o.Path != "" {
+		path := o.Path
 		if !filepath.IsAbs(path) {
-			return fmt.Errorf("Expected absolute path for Terraform binary, got %q", path)
+			return fmt.Errorf("Expected absolute path for binary, got %q", path)
 		}
 		stat, err := os.Stat(path)
 		if err != nil {
-			return fmt.Errorf("Unable to find Terraform binary: %s", err)
+			return fmt.Errorf("Unable to find binary: %s", err)
 		}
 		if stat.IsDir() {
-			return fmt.Errorf("Expected a Terraform binary, got a directory: %q", path)
+			return fmt.Errorf("Expected a binary, got a directory: %q", path)
 		}
 	}
 
 	if len(o.Indexing.IgnoreDirectoryNames) > 0 {
 		for _, directory := range o.Indexing.IgnoreDirectoryNames {
-			if directory == datadir.DataDirName {
-				return fmt.Errorf("cannot ignore directory %q", datadir.DataDirName)
-			}
-
 			if strings.Contains(directory, string(filepath.Separator)) {
 				return fmt.Errorf("expected directory name, got a path: %q", directory)
 			}

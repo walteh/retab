@@ -16,14 +16,11 @@ import (
 	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/hc-install/releases"
 	"github.com/hashicorp/hc-install/src"
-	tfjson "github.com/hashicorp/terraform-json"
 	tfaddr "github.com/hashicorp/terraform-registry-address"
 	"github.com/otiai10/copy"
-	"github.com/stretchr/testify/mock"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
 	"github.com/walteh/retab/internal/lsp/walker"
 )
 
@@ -48,11 +45,7 @@ func TestLangServer_DidChangeWatchedFiles_change_file(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): validTfMockCalls(),
-			},
-		},
+
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
@@ -157,49 +150,6 @@ func TestLangServer_DidChangeWatchedFiles_create_file(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 2,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("0.12.0")),
-							nil,
-							nil,
-						},
-					},
-					{
-						Method:        "GetExecPath",
-						Repeatability: 1,
-						ReturnArguments: []interface{}{
-							"",
-						},
-					},
-					{
-						Method:        "ProviderSchemas",
-						Repeatability: 2,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							&tfjson.ProviderSchemas{
-								FormatVersion: "0.1",
-								Schemas: map[string]*tfjson.ProviderSchema{
-									"test": {
-										ConfigSchema: &tfjson.Schema{},
-									},
-								},
-							},
-							nil,
-						},
-					},
-				},
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
@@ -302,11 +252,6 @@ func TestLangServer_DidChangeWatchedFiles_delete_file(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): validTfMockCalls(),
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
@@ -404,11 +349,6 @@ func TestLangServer_DidChangeWatchedFiles_change_dir(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): validTfMockCalls(),
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
@@ -513,11 +453,6 @@ func TestLangServer_DidChangeWatchedFiles_create_dir(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): validTfMockCalls(),
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
@@ -622,11 +557,6 @@ func TestLangServer_DidChangeWatchedFiles_delete_dir(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): validTfMockCalls(),
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
@@ -721,49 +651,6 @@ func TestLangServer_DidChangeWatchedFiles_pluginChange(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				testHandle.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 2,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("0.12.0")),
-							nil,
-							nil,
-						},
-					},
-					{
-						Method:        "GetExecPath",
-						Repeatability: 1,
-						ReturnArguments: []interface{}{
-							"",
-						},
-					},
-					{
-						Method:        "ProviderSchemas",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							&tfjson.ProviderSchemas{
-								FormatVersion: "0.1",
-								Schemas: map[string]*tfjson.ProviderSchema{
-									"foo": {
-										ConfigSchema: &tfjson.Schema{},
-									},
-								},
-							},
-							nil,
-						},
-					},
-				},
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
@@ -831,11 +718,6 @@ func TestLangServer_DidChangeWatchedFiles_moduleInstalled(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				testHandle.Path(): validTfMockCalls(),
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))

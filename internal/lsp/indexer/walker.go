@@ -9,11 +9,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/job"
-	"github.com/walteh/retab/internal/lsp/schemas"
-	"github.com/walteh/retab/internal/lsp/terraform/datadir"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
-	"github.com/walteh/retab/internal/lsp/terraform/module"
-	op "github.com/walteh/retab/internal/lsp/terraform/module/operation"
 )
 
 func (idx *Indexer) WalkedModule(ctx context.Context, modHandle document.DirHandle) (job.IDs, error) {
@@ -26,9 +21,9 @@ func (idx *Indexer) WalkedModule(ctx context.Context, modHandle document.DirHand
 	parseId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 		Dir: modHandle,
 		Func: func(ctx context.Context) error {
-			return module.ParseModuleConfiguration(ctx, idx.fs, idx.modStore, modHandle.Path())
+			return nil
 		},
-		Type: op.OpTypeParseModuleConfiguration.String(),
+		Type: "parseModule",
 	})
 	if err != nil {
 		errs = multierror.Append(errs, err)
@@ -42,9 +37,9 @@ func (idx *Indexer) WalkedModule(ctx context.Context, modHandle document.DirHand
 	if parseId != "" {
 		metaId, err = idx.jobStore.EnqueueJob(ctx, job.Job{
 			Dir:  modHandle,
-			Type: op.OpTypeLoadModuleMetadata.String(),
+			Type: "op.OpTypeLoadModuleMetadata.String()",
 			Func: func(ctx context.Context) error {
-				return module.LoadModuleMetadata(ctx, idx.modStore, modHandle.Path())
+				return nil
 			},
 			DependsOn: job.IDs{parseId},
 		})
@@ -60,9 +55,9 @@ func (idx *Indexer) WalkedModule(ctx context.Context, modHandle document.DirHand
 	parseVarsId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 		Dir: modHandle,
 		Func: func(ctx context.Context) error {
-			return module.ParseVariables(ctx, idx.fs, idx.modStore, modHandle.Path())
+			return nil
 		},
-		Type: op.OpTypeParseVariables.String(),
+		Type: "op.OpTypeParseVariables.String()",
 	})
 	if err != nil {
 		errs = multierror.Append(errs, err)
@@ -74,9 +69,9 @@ func (idx *Indexer) WalkedModule(ctx context.Context, modHandle document.DirHand
 		varsRefsId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 			Dir: modHandle,
 			Func: func(ctx context.Context) error {
-				return module.DecodeVarsReferences(ctx, idx.modStore, idx.schemaStore, modHandle.Path())
+				return nil
 			},
-			Type:      op.OpTypeDecodeVarsReferences.String(),
+			Type:      "op.OpTypeDecodeVarsReferences.String()",
 			DependsOn: job.IDs{parseVarsId},
 		})
 		if err != nil {
@@ -87,72 +82,10 @@ func (idx *Indexer) WalkedModule(ctx context.Context, modHandle document.DirHand
 		}
 	}
 
-	dataDir := datadir.WalkDataDirOfModule(idx.fs, modHandle.Path())
-	idx.logger.Printf("parsed datadir: %#v", dataDir)
-
-	var modManifestId job.ID
-	if dataDir.ModuleManifestPath != "" {
-		// References are collected *after* manifest parsing
-		// so that we reflect any references to submodules.
-		modManifestId, err = idx.jobStore.EnqueueJob(ctx, job.Job{
-			Dir: modHandle,
-			Func: func(ctx context.Context) error {
-				return module.ParseModuleManifest(ctx, idx.fs, idx.modStore, modHandle.Path())
-			},
-			Type: op.OpTypeParseModuleManifest.String(),
-			Defer: func(ctx context.Context, jobErr error) (job.IDs, error) {
-				return idx.decodeInstalledModuleCalls(ctx, modHandle, false)
-			},
-		})
-		if err != nil {
-			errs = multierror.Append(errs, err)
-		} else {
-			ids = append(ids, modManifestId)
-			refCollectionDeps = append(refCollectionDeps, modManifestId)
-			// provider requirements may be within the (installed) modules
-			providerVersionDeps = append(providerVersionDeps, modManifestId)
-		}
-	}
-
-	if dataDir.PluginLockFilePath != "" {
-		dependsOn := make(job.IDs, 0)
-		pSchemaVerId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
-			Dir: modHandle,
-			Func: func(ctx context.Context) error {
-				return module.ParseProviderVersions(ctx, idx.fs, idx.modStore, modHandle.Path())
-			},
-			Type:      op.OpTypeParseProviderVersions.String(),
-			DependsOn: providerVersionDeps,
-		})
-		if err != nil {
-			errs = multierror.Append(errs, err)
-		} else {
-			ids = append(ids, pSchemaVerId)
-			dependsOn = append(dependsOn, pSchemaVerId)
-			refCollectionDeps = append(refCollectionDeps, pSchemaVerId)
-		}
-
-		pSchemaId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
-			Dir: modHandle,
-			Func: func(ctx context.Context) error {
-				ctx = exec.WithExecutorFactory(ctx, idx.tfExecFactory)
-				return module.ObtainSchema(ctx, idx.modStore, idx.schemaStore, modHandle.Path())
-			},
-			Type:      op.OpTypeObtainSchema.String(),
-			DependsOn: dependsOn,
-		})
-		if err != nil {
-			errs = multierror.Append(errs, err)
-		} else {
-			ids = append(ids, pSchemaId)
-			refCollectionDeps = append(refCollectionDeps, pSchemaId)
-		}
-	}
-
 	eSchemaId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 		Dir: modHandle,
 		Func: func(ctx context.Context) error {
-			return module.PreloadEmbeddedSchema(ctx, idx.logger, schemas.FS, idx.modStore, idx.schemaStore, modHandle.Path())
+			return nil
 		},
 		// This could theoretically also depend on ObtainSchema to avoid
 		// attempt to preload the same schema twice but we avoid that dependency
@@ -160,7 +93,7 @@ func (idx *Indexer) WalkedModule(ctx context.Context, modHandle document.DirHand
 		// seconds) and this would then defeat the main benefit
 		// of preloaded schemas which can be loaded in miliseconds.
 		DependsOn: providerVersionDeps,
-		Type:      op.OpTypePreloadEmbeddedSchema.String(),
+		Type:      "op.OpTypePreloadEmbeddedSchema.String()",
 	})
 	if err != nil {
 		return ids, err

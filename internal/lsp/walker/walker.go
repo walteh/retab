@@ -14,7 +14,6 @@ import (
 
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/job"
-	"github.com/walteh/retab/internal/lsp/terraform/ast"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -68,11 +67,10 @@ type ModuleStore interface {
 
 const tracerName = "github.com/walteh/retab/internal/lsp/walker"
 
-func NewWalker(fs fs.ReadDirFS, pathStore PathStore, modStore ModuleStore, walkFunc WalkFunc) *Walker {
+func NewWalker(fs fs.ReadDirFS, pathStore PathStore, walkFunc WalkFunc) *Walker {
 	return &Walker{
 		fs:                    fs,
 		pathStore:             pathStore,
-		modStore:              modStore,
 		walkFunc:              walkFunc,
 		logger:                discardLogger,
 		ignoredDirectoryNames: skipDirNames,
@@ -198,8 +196,6 @@ func (w *Walker) walk(ctx context.Context, dir document.DirHandle) error {
 		// the entries it was able to read before the error, along with the error.
 	}
 
-	dirIndexed := false
-
 	for _, dirEntry := range dirEntries {
 		select {
 		case <-ctx.Done():
@@ -210,23 +206,6 @@ func (w *Walker) walk(ctx context.Context, dir document.DirHandle) error {
 
 		if w.isSkippableDir(dirEntry.Name()) {
 			w.logger.Printf("skipping ignored dir name: %s", dirEntry.Name())
-			continue
-		}
-
-		if !dirIndexed && ast.IsModuleFilename(dirEntry.Name()) && !ast.IsIgnoredFile(dirEntry.Name()) {
-			dirIndexed = true
-			w.logger.Printf("found module %s", dir)
-
-			err := w.modStore.AddIfNotExists(dir.Path())
-			if err != nil {
-				return err
-			}
-
-			ids, err := w.walkFunc(ctx, dir)
-			if err != nil {
-				w.collectError(fmt.Errorf("walkFunc: %w", err))
-			}
-			w.collectJobIds(ids)
 			continue
 		}
 

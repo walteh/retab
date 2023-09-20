@@ -7,10 +7,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/mock"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
 	"github.com/walteh/retab/internal/lsp/walker"
 )
 
@@ -25,11 +23,6 @@ func TestLangServer_workspace_symbol_basic(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): validTfMockCalls(),
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))

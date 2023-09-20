@@ -10,18 +10,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hashicorp/go-version"
-	install "github.com/hashicorp/hc-install"
-	"github.com/hashicorp/hc-install/product"
-	"github.com/hashicorp/hc-install/releases"
-	"github.com/hashicorp/hc-install/src"
-	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/terraform/discovery"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
 	"github.com/walteh/retab/internal/lsp/walker"
 )
 
@@ -81,32 +73,9 @@ func BenchmarkInitializeFolder_basic(b *testing.B) {
 		},
 	}
 
-	tfVersion := version.Must(version.NewVersion("1.1.7"))
-
-	i := install.NewInstaller()
-	ctx := context.Background()
-	execPath, err := i.Install(ctx, []src.Installable{
-		&releases.ExactVersion{
-			Product: product.Terraform,
-			Version: tfVersion,
-		},
-	})
-	if err != nil {
-		b.Fatal(err)
-	}
-
 	for _, mod := range modules {
 		b.Run(mod.name, func(b *testing.B) {
 			rootDir := b.TempDir()
-
-			tf, err := exec.NewExecutor(rootDir, execPath)
-			if err != nil {
-				b.Fatal(err)
-			}
-			err = tf.Init(ctx, tfexec.FromModule(mod.sourceAddr))
-			if err != nil {
-				b.Fatal(err)
-			}
 
 			b.Cleanup(func() {
 				os.RemoveAll(rootDir)
@@ -125,15 +94,12 @@ func BenchmarkInitializeFolder_basic(b *testing.B) {
 
 				b.StartTimer()
 				ls := langserver.NewLangServerMock(b, func(ctx context.Context) session.Session {
-					d := &discovery.Discovery{}
 					sessCtx, stopSession := context.WithCancel(ctx)
 					return &service{
 						logger:          discardLogs,
 						srvCtx:          ctx,
 						sessCtx:         sessCtx,
 						stopSession:     stopSession,
-						tfDiscoFunc:     d.LookPath,
-						tfExecFactory:   exec.NewExecutor,
 						walkerCollector: wc,
 						stateStore:      ss,
 					}

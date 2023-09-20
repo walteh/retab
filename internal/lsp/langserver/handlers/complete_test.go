@@ -4,7 +4,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,18 +11,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hashicorp/go-version"
-	hcinstall "github.com/hashicorp/hc-install"
-	"github.com/hashicorp/hc-install/fs"
-	"github.com/hashicorp/hc-install/product"
-	"github.com/hashicorp/hc-install/releases"
-	"github.com/hashicorp/hc-install/src"
 	tfjson "github.com/hashicorp/terraform-json"
-	"github.com/stretchr/testify/mock"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
 	"github.com/walteh/retab/internal/lsp/walker"
 )
 
@@ -68,43 +59,7 @@ func TestModuleCompletion_withValidData_basic(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("0.12.0")),
-							nil,
-							nil,
-						},
-					},
-					{
-						Method:        "GetExecPath",
-						Repeatability: 1,
-						ReturnArguments: []interface{}{
-							"",
-						},
-					},
-					{
-						Method:        "ProviderSchemas",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							&testSchema,
-							nil,
-						},
-					},
-				},
-			},
-		},
+		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
 	stop := ls.Start(t)
@@ -154,7 +109,7 @@ func TestModuleCompletion_withValidData_basic(t *testing.T) {
 						"label": "alias",
 						"kind": 10,
 						"detail": "optional, string",
-						"documentation": "Alias for using the same provider with different configurations for different resources, e.g. eu-west",
+						"documentation": "Alias for using the same provider [with] different configurations for different resources, e.g. eu-west",
 						"insertTextFormat": 1,
 						"textEdit": {
 							"range": {
@@ -279,25 +234,7 @@ func TestModuleCompletion_withValidData_tooOldVersion(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("0.10.0")),
-							nil,
-							nil,
-						},
-					},
-				},
-			},
-		},
+		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
 	stop := ls.Start(t)
@@ -432,25 +369,7 @@ func TestModuleCompletion_withValidData_tooNewVersion(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("999.999.999")),
-							nil,
-							nil,
-						},
-					},
-				},
-			},
-		},
+		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
 	stop := ls.Start(t)
@@ -622,42 +541,6 @@ func TestModuleCompletion_withValidDataAndSnippets(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("0.12.0")),
-							nil,
-							nil,
-						},
-					},
-					{
-						Method:        "GetExecPath",
-						Repeatability: 1,
-						ReturnArguments: []interface{}{
-							"",
-						},
-					},
-					{
-						Method:        "ProviderSchemas",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							&testSchema,
-							nil,
-						},
-					},
-				},
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
@@ -716,7 +599,7 @@ func TestModuleCompletion_withValidDataAndSnippets(t *testing.T) {
 						"label": "alias",
 						"kind": 10,
 						"detail": "optional, string",
-						"documentation": "Alias for using the same provider with different configurations for different resources, e.g. eu-west",
+						"documentation": "Alias for using the same provider [with] different configurations for different resources, e.g. eu-west",
 						"insertTextFormat": 2,
 						"textEdit": {
 							"range": {
@@ -925,42 +808,6 @@ func TestVarsCompletion_withValidData(t *testing.T) {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("0.12.0")),
-							nil,
-							nil,
-						},
-					},
-					{
-						Method:        "GetExecPath",
-						Repeatability: 1,
-						ReturnArguments: []interface{}{
-							"",
-						},
-					},
-					{
-						Method:        "ProviderSchemas",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							&testSchema,
-							nil,
-						},
-					},
-				},
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
@@ -1062,60 +909,12 @@ output "test" {
 }
 `
 
-	tfExec := tfExecutor(t, tmpDir.Path(), "1.0.2")
-	err := tfExec.Get(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var testSchema tfjson.ProviderSchemas
-	err = json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	ss, err := state.NewStateStore()
 	if err != nil {
 		t.Fatal(err)
 	}
 	wc := walker.NewWalkerCollector()
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("0.12.0")),
-							nil,
-							nil,
-						},
-					},
-					{
-						Method:        "GetExecPath",
-						Repeatability: 1,
-						ReturnArguments: []interface{}{
-							"",
-						},
-					},
-					{
-						Method:        "ProviderSchemas",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							&testSchema,
-							nil,
-						},
-					},
-				},
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
@@ -1314,14 +1113,8 @@ output "test" {
 }
 `
 
-	tfExec := tfExecutor(t, tmpDir.Path(), "1.0.2")
-	err := tfExec.Get(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	var testSchema tfjson.ProviderSchemas
-	err = json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
+	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1333,42 +1126,6 @@ output "test" {
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("0.12.0")),
-							nil,
-							nil,
-						},
-					},
-					{
-						Method:        "GetExecPath",
-						Repeatability: 1,
-						ReturnArguments: []interface{}{
-							"",
-						},
-					},
-					{
-						Method:        "ProviderSchemas",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							&testSchema,
-							nil,
-						},
-					},
-				},
-			},
-		},
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
@@ -1648,42 +1405,7 @@ variable "ccc" {}
 	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): {
-					{
-						Method:        "Version",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							version.Must(version.NewVersion("0.12.0")),
-							nil,
-							nil,
-						},
-					},
-					{
-						Method:        "GetExecPath",
-						Repeatability: 1,
-						ReturnArguments: []interface{}{
-							"",
-						},
-					},
-					{
-						Method:        "ProviderSchemas",
-						Repeatability: 1,
-						Arguments: []interface{}{
-							mock.AnythingOfType(""),
-						},
-						ReturnArguments: []interface{}{
-							&testSchema,
-							nil,
-						},
-					},
-				},
-			},
-		},
+
 		StateStore:      ss,
 		WalkerCollector: wc,
 	}))
@@ -1790,49 +1512,6 @@ variable "ccc" {}
 				]
 			}
 		}`)
-}
-
-func tfExecutor(t *testing.T, workdir, tfVersion string) exec.TerraformExecutor {
-	ctx := context.Background()
-	installDir := filepath.Join(t.TempDir(), "hcinstall")
-	if err := os.MkdirAll(installDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := os.Remove(installDir); err != nil {
-			t.Fatal(err)
-		}
-	})
-
-	i := hcinstall.NewInstaller()
-	v := version.Must(version.NewVersion(tfVersion))
-
-	execPath, err := i.Ensure(ctx, []src.Source{
-		&fs.ExactVersion{
-			Product: product.Terraform,
-			Version: v,
-		},
-		&releases.ExactVersion{
-			Product:    product.Terraform,
-			Version:    v,
-			InstallDir: installDir,
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() {
-		if err := i.Remove(ctx); err != nil {
-			t.Fatal(err)
-		}
-	})
-
-	tfExec, err := exec.NewExecutor(workdir, execPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return tfExec
 }
 
 func writeContentToFile(t *testing.T, path string, content string) {

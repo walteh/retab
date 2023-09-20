@@ -18,7 +18,6 @@ import (
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
 	"github.com/walteh/retab/internal/lsp/walker"
 )
 
@@ -125,13 +124,7 @@ type testOrBench interface {
 func TestInitalizeAndShutdown(t *testing.T) {
 	tmpDir := TempDir(t)
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): validTfMockCalls(),
-			},
-		},
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -154,13 +147,7 @@ func TestInitalizeAndShutdown(t *testing.T) {
 func TestInitalizeWithCommandPrefix(t *testing.T) {
 	tmpDir := TempDir(t)
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): validTfMockCalls(),
-			},
-		},
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -179,13 +166,7 @@ func TestInitalizeWithCommandPrefix(t *testing.T) {
 func TestEOF(t *testing.T) {
 	tmpDir := TempDir(t)
 
-	ms := newMockSession(&MockSessionInput{
-		TerraformCalls: &exec.TerraformMockCalls{
-			PerWorkDir: map[string][]*mock.Call{
-				tmpDir.Path(): validTfMockCalls(),
-			},
-		},
-	})
+	ms := newMockSession(&MockSessionInput{})
 	ls := langserver.NewLangServerMock(t, ms.new)
 	stop := ls.Start(t)
 	defer stop()

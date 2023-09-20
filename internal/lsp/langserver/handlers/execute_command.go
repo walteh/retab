@@ -11,23 +11,14 @@ import (
 	lsp "github.com/walteh/retab/gen/gopls"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
 	"github.com/walteh/retab/internal/lsp/langserver/cmd"
-	"github.com/walteh/retab/internal/lsp/langserver/handlers/command"
 )
 
 func cmdHandlers(svc *service) cmd.Handlers {
-	cmdHandler := &command.CmdHandler{
-		StateStore: svc.stateStore,
-		Logger:     svc.logger,
-	}
-	return cmd.Handlers{
-		cmd.Name("rootmodules"):        removedHandler("use module.callers instead"),
-		cmd.Name("module.callers"):     cmdHandler.ModuleCallersHandler,
-		cmd.Name("terraform.init"):     cmdHandler.TerraformInitHandler,
-		cmd.Name("terraform.validate"): cmdHandler.TerraformValidateHandler,
-		cmd.Name("module.calls"):       cmdHandler.ModuleCallsHandler,
-		cmd.Name("module.providers"):   cmdHandler.ModuleProvidersHandler,
-		cmd.Name("module.terraform"):   cmdHandler.TerraformVersionRequestHandler,
-	}
+	// cmdHandler := &command.CmdHandler{
+	// 	StateStore: svc.stateStore,
+	// 	Logger:     svc.logger,
+	// }
+	return cmd.Handlers{}
 }
 
 func (svc *service) WorkspaceExecuteCommand(ctx context.Context, params lsp.ExecuteCommandParams) (interface{}, error) {

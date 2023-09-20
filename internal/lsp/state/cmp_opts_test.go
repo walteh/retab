@@ -8,12 +8,10 @@ import (
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/walteh/retab/internal/lsp/terraform/datadir"
 	"github.com/zclconf/go-cty-debug/ctydebug"
 )
 
 var cmpOpts = cmp.Options{
-	cmp.AllowUnexported(datadir.ModuleManifest{}),
 	cmp.AllowUnexported(hclsyntax.Body{}),
 	cmp.Comparer(func(x, y version.Constraint) bool {
 		return x.String() == y.String()

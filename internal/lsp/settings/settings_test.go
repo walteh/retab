@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/walteh/retab/internal/lsp/terraform/datadir"
 )
 
 func TestDecodeOptions_nil(t *testing.T) {
@@ -56,7 +55,7 @@ func TestValidate_IgnoreDirectoryNames_error(t *testing.T) {
 		input  string
 		result string
 	}{
-		{datadir.DataDirName, `cannot ignore directory ".terraform"`},
+		// {datadir.DataDirName, `cannot ignore directory ".terraform"`},
 		{filepath.Join("path", "path"), fmt.Sprintf(`expected directory name, got a path: %q`, filepath.Join("path", "path"))},
 	}
 

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"time"
 
 	"github.com/creachadair/jrpc2"
 	rpch "github.com/creachadair/jrpc2/handler"
@@ -27,13 +26,10 @@ import (
 	"github.com/walteh/retab/internal/lsp/langserver/session"
 	ilsp "github.com/walteh/retab/internal/lsp/lsp"
 	"github.com/walteh/retab/internal/lsp/protocol"
-	"github.com/walteh/retab/internal/lsp/registry"
 	"github.com/walteh/retab/internal/lsp/scheduler"
 	"github.com/walteh/retab/internal/lsp/settings"
 	"github.com/walteh/retab/internal/lsp/state"
 	"github.com/walteh/retab/internal/lsp/telemetry"
-	"github.com/walteh/retab/internal/lsp/terraform/discovery"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
 	"github.com/walteh/retab/internal/lsp/walker"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -57,21 +53,14 @@ type service struct {
 	closedDirWalker *walker.Walker
 	openDirWalker   *walker.Walker
 
-	fs               *filesystem.Filesystem
-	modStore         *state.ModuleStore
-	schemaStore      *state.ProviderSchemaStore
-	regMetadataStore *state.RegistryModuleStore
-	tfDiscoFunc      discovery.DiscoveryFunc
-	tfExecFactory    exec.ExecutorFactory
-	tfExecOpts       *exec.ExecutorOpts
-	telemetry        telemetry.Sender
-	decoder          *decoder.Decoder
-	stateStore       *state.StateStore
-	server           session.Server
-	diagsNotifier    *diagnostics.Notifier
-	notifier         *notifier.Notifier
-	indexer          *indexer.Indexer
-	registryClient   registry.Client
+	fs            *filesystem.Filesystem
+	telemetry     telemetry.Sender
+	decoder       *decoder.Decoder
+	stateStore    *state.StateStore
+	server        session.Server
+	diagsNotifier *diagnostics.Notifier
+	notifier      *notifier.Notifier
+	indexer       *indexer.Indexer
 
 	walkerCollector    *walker.WalkerCollector
 	additionalHandlers map[string]rpch.Func
@@ -82,18 +71,13 @@ type service struct {
 var discardLogs = log.New(ioutil.Discard, "", 0)
 
 func NewSession(srvCtx context.Context) session.Session {
-	d := &discovery.Discovery{}
-
 	sessCtx, stopSession := context.WithCancel(srvCtx)
 	return &service{
-		logger:         discardLogs,
-		srvCtx:         srvCtx,
-		sessCtx:        sessCtx,
-		stopSession:    stopSession,
-		tfDiscoFunc:    d.LookPath,
-		tfExecFactory:  exec.NewExecutor,
-		telemetry:      &telemetry.NoopSender{},
-		registryClient: registry.NewClient(),
+		logger:      discardLogs,
+		srvCtx:      srvCtx,
+		sessCtx:     sessCtx,
+		stopSession: stopSession,
+		telemetry:   &telemetry.NoopSender{},
 	}
 }
 
@@ -254,8 +238,6 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			}
 
 			ctx = ilsp.WithClientCapabilities(ctx, cc)
-			ctx = exec.WithExecutorOpts(ctx, svc.tfExecOpts)
-			ctx = exec.WithExecutorFactory(ctx, svc.tfExecFactory)
 
 			return handle(ctx, req, svc.TextDocumentCodeAction)
 		},
@@ -274,9 +256,6 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			if err != nil {
 				return nil, err
 			}
-
-			ctx = exec.WithExecutorOpts(ctx, svc.tfExecOpts)
-			ctx = exec.WithExecutorFactory(ctx, svc.tfExecFactory)
 
 			return handle(ctx, req, svc.TextDocumentFormatting)
 		},
@@ -308,8 +287,6 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 
 			ctx = lsctx.WithDiagnosticsNotifier(ctx, svc.diagsNotifier)
 			ctx = lsctx.WithExperimentalFeatures(ctx, &expFeatures)
-			ctx = exec.WithExecutorOpts(ctx, svc.tfExecOpts)
-			ctx = exec.WithExecutorFactory(ctx, svc.tfExecFactory)
 
 			return handle(ctx, req, svc.TextDocumentDidSave)
 		},
@@ -347,8 +324,6 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			ctx = lsctx.WithRootDirectory(ctx, &rootDir)
 			ctx = lsctx.WithDiagnosticsNotifier(ctx, svc.diagsNotifier)
 			ctx = ilsp.ContextWithClientName(ctx, &clientName)
-			ctx = exec.WithExecutorOpts(ctx, svc.tfExecOpts)
-			ctx = exec.WithExecutorFactory(ctx, svc.tfExecFactory)
 
 			return handle(ctx, req, svc.WorkspaceExecuteCommand)
 		},
@@ -401,59 +376,6 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 }
 
 func (svc *service) configureSessionDependencies(ctx context.Context, cfgOpts *settings.Options) error {
-	// Raise warnings for deprecated options
-	if cfgOpts.XLegacyTerraformExecPath != "" {
-		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-			Type: lsp.Warning,
-			Message: fmt.Sprintf("terraformExecPath (%q) is deprecated (no-op), use terraform.path instead",
-				cfgOpts.XLegacyExcludeModulePaths),
-		})
-	}
-	if cfgOpts.XLegacyTerraformExecTimeout != "" {
-		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-			Type: lsp.Warning,
-			Message: fmt.Sprintf("terraformExecTimeout (%q) is deprecated (no-op), use terraform.timeout instead",
-				cfgOpts.XLegacyExcludeModulePaths),
-		})
-	}
-	if cfgOpts.XLegacyTerraformExecLogFilePath != "" {
-		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-			Type: lsp.Warning,
-			Message: fmt.Sprintf("terraformExecLogFilePath (%q) is deprecated (no-op), use terraform.logFilePath instead",
-				cfgOpts.XLegacyExcludeModulePaths),
-		})
-	}
-
-	// The following is set via CLI flags, hence available in the server context
-	execOpts := &exec.ExecutorOpts{}
-	if len(cfgOpts.Terraform.Path) > 0 {
-		execOpts.ExecPath = cfgOpts.Terraform.Path
-	} else {
-		path, err := svc.tfDiscoFunc()
-		if err == nil {
-			execOpts.ExecPath = path
-		}
-	}
-	svc.srvCtx = lsctx.WithTerraformExecPath(svc.srvCtx, execOpts.ExecPath)
-
-	if len(cfgOpts.Terraform.LogFilePath) > 0 {
-		execOpts.ExecLogPath = cfgOpts.Terraform.LogFilePath
-	}
-
-	if len(cfgOpts.Terraform.Timeout) > 0 {
-		d, err := time.ParseDuration(cfgOpts.Terraform.Timeout)
-		if err != nil {
-			return fmt.Errorf("Failed to parse terraform.timeout LSP config option: %s", err)
-		}
-		execOpts.Timeout = d
-	}
-
-	svc.diagsNotifier = diagnostics.NewNotifier(svc.server, svc.logger)
-
-	svc.tfExecOpts = execOpts
-
-	svc.sessCtx = exec.WithExecutorOpts(svc.sessCtx, execOpts)
-	svc.sessCtx = exec.WithExecutorFactory(svc.sessCtx, svc.tfExecFactory)
 
 	if svc.stateStore == nil {
 		store, err := state.NewStateStore()
@@ -503,35 +425,28 @@ func (svc *service) configureSessionDependencies(ctx context.Context, cfgOpts *s
 		}
 	}
 
-	svc.notifier = notifier.NewNotifier(svc.stateStore.Modules, moduleHooks)
+	svc.notifier = notifier.NewNotifier(moduleHooks)
 	svc.notifier.SetLogger(svc.logger)
 	svc.notifier.Start(svc.sessCtx)
-
-	svc.modStore = svc.stateStore.Modules
-	svc.schemaStore = svc.stateStore.ProviderSchemas
 
 	svc.fs = filesystem.NewFilesystem(svc.stateStore.DocumentStore)
 	svc.fs.SetLogger(svc.logger)
 
-	svc.indexer = indexer.NewIndexer(svc.fs, svc.modStore, svc.schemaStore, svc.stateStore.RegistryModules,
-		svc.stateStore.JobStore, svc.tfExecFactory, svc.registryClient)
+	svc.indexer = indexer.NewIndexer(svc.fs, svc.stateStore.JobStore)
 	svc.indexer.SetLogger(svc.logger)
 
-	svc.decoder = decoder.NewDecoder(&idecoder.PathReader{
-		ModuleReader: svc.modStore,
-		SchemaReader: svc.schemaStore,
-	})
+	svc.decoder = decoder.NewDecoder(&idecoder.PathReader{})
 	decoderContext := idecoder.DecoderContext(ctx)
 	svc.AppendCompletionHooks(decoderContext)
 	svc.decoder.SetContext(decoderContext)
 
 	closedPa := state.NewPathAwaiter(svc.stateStore.WalkerPaths, false)
-	svc.closedDirWalker = walker.NewWalker(svc.fs, closedPa, svc.modStore, svc.indexer.WalkedModule)
+	svc.closedDirWalker = walker.NewWalker(svc.fs, closedPa, svc.indexer.WalkedModule)
 	svc.closedDirWalker.Collector = svc.walkerCollector
 	svc.closedDirWalker.SetLogger(svc.logger)
 
 	opendPa := state.NewPathAwaiter(svc.stateStore.WalkerPaths, true)
-	svc.openDirWalker = walker.NewWalker(svc.fs, opendPa, svc.modStore, svc.indexer.WalkedModule)
+	svc.openDirWalker = walker.NewWalker(svc.fs, opendPa, svc.indexer.WalkedModule)
 	svc.closedDirWalker.Collector = svc.walkerCollector
 	svc.openDirWalker.SetLogger(svc.logger)
 

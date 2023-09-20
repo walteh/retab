@@ -10,11 +10,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/go-version"
-	tfaddr "github.com/hashicorp/terraform-registry-address"
-	tfmod "github.com/hashicorp/terraform-schema/module"
-	"github.com/hashicorp/terraform-schema/registry"
-	tfschema "github.com/hashicorp/terraform-schema/schema"
 )
 
 const (
@@ -222,59 +217,10 @@ var dbSchema = &memdb.DBSchema{
 }
 
 type StateStore struct {
-	DocumentStore   *DocumentStore
-	JobStore        *JobStore
-	Modules         *ModuleStore
-	ProviderSchemas *ProviderSchemaStore
-	WalkerPaths     *WalkerPathStore
-	RegistryModules *RegistryModuleStore
-
-	db *memdb.MemDB
-}
-
-type ModuleStore struct {
-	db        *memdb.MemDB
-	Changes   *ModuleChangeStore
-	tableName string
-	logger    *log.Logger
-
-	// TimeProvider provides current time (for mocking time.Now in tests)
-	TimeProvider func() time.Time
-
-	// MaxModuleNesting represents how many nesting levels we'd attempt
-	// to parse provider requirements before returning error.
-	MaxModuleNesting int
-}
-
-type ModuleChangeStore struct {
-	db *memdb.MemDB
-}
-
-type ModuleReader interface {
-	CallersOfModule(modPath string) ([]*Module, error)
-	ModuleByPath(modPath string) (*Module, error)
-	List() ([]*Module, error)
-}
-
-type ModuleCallReader interface {
-	ModuleCalls(modPath string) (tfmod.ModuleCalls, error)
-	LocalModuleMeta(modPath string) (*tfmod.Meta, error)
-	RegistryModuleMeta(addr tfaddr.Module, cons version.Constraints) (*registry.ModuleData, error)
-}
-
-type ProviderSchemaStore struct {
-	db        *memdb.MemDB
-	tableName string
-	logger    *log.Logger
-}
-type RegistryModuleStore struct {
-	db        *memdb.MemDB
-	tableName string
-	logger    *log.Logger
-}
-
-type SchemaReader interface {
-	ProviderSchema(modPath string, addr tfaddr.Provider, vc version.Constraints) (*tfschema.ProviderSchema, error)
+	DocumentStore *DocumentStore
+	JobStore      *JobStore
+	WalkerPaths   *WalkerPathStore
+	db            *memdb.MemDB
 }
 
 func NewStateStore() (*StateStore, error) {
@@ -298,23 +244,6 @@ func NewStateStore() (*StateStore, error) {
 			nextJobHighPrioMu: &sync.Mutex{},
 			nextJobLowPrioMu:  &sync.Mutex{},
 		},
-		Modules: &ModuleStore{
-			db:               db,
-			tableName:        moduleTableName,
-			logger:           defaultLogger,
-			TimeProvider:     time.Now,
-			MaxModuleNesting: 50,
-		},
-		ProviderSchemas: &ProviderSchemaStore{
-			db:        db,
-			tableName: providerSchemaTableName,
-			logger:    defaultLogger,
-		},
-		RegistryModules: &RegistryModuleStore{
-			db:        db,
-			tableName: registryModuleTableName,
-			logger:    defaultLogger,
-		},
 		WalkerPaths: &WalkerPathStore{
 			db:              db,
 			tableName:       walkerPathsTableName,
@@ -328,10 +257,7 @@ func NewStateStore() (*StateStore, error) {
 func (s *StateStore) SetLogger(logger *log.Logger) {
 	s.DocumentStore.logger = logger
 	s.JobStore.logger = logger
-	s.Modules.logger = logger
-	s.ProviderSchemas.logger = logger
 	s.WalkerPaths.logger = logger
-	s.RegistryModules.logger = logger
 }
 
 var defaultLogger = log.New(ioutil.Discard, "", 0)

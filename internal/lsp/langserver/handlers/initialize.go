@@ -209,17 +209,12 @@ func getTelemetryProperties(out *settings.DecodedOptions) map[string]interface{}
 		"lsVersion":                                       "",
 	}
 
-	properties["options.rootModulePaths"] = len(out.Options.XLegacyModulePaths) > 0
-	properties["options.excludeModulePaths"] = len(out.Options.XLegacyExcludeModulePaths) > 0
 	properties["options.commandPrefix"] = len(out.Options.CommandPrefix) > 0
 	properties["options.indexing.ignoreDirectoryNames"] = len(out.Options.Indexing.IgnoreDirectoryNames) > 0
 	properties["options.indexing.ignorePaths"] = len(out.Options.Indexing.IgnorePaths) > 0
 	properties["options.experimentalFeatures.prefillRequiredFields"] = out.Options.ExperimentalFeatures.PrefillRequiredFields
 	properties["options.experimentalFeatures.validateOnSave"] = out.Options.ExperimentalFeatures.ValidateOnSave
 	properties["options.ignoreSingleFileWarning"] = out.Options.IgnoreSingleFileWarning
-	properties["options.terraform.path"] = len(out.Options.Terraform.Path) > 0
-	properties["options.terraform.timeout"] = out.Options.Terraform.Timeout
-	properties["options.terraform.logFilePath"] = len(out.Options.Terraform.LogFilePath) > 0
 
 	return properties
 }
@@ -275,28 +270,6 @@ func (svc *service) setupWalker(ctx context.Context, params lsp.InitializeParams
 	err := lsctx.SetRootDirectory(ctx, root.Path())
 	if err != nil {
 		return err
-	}
-
-	if len(options.XLegacyModulePaths) != 0 {
-		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-			Type: lsp.Warning,
-			Message: fmt.Sprintf("rootModulePaths (%q) is deprecated (no-op), add a folder to workspace "+
-				"instead if you'd like it to be indexed", options.XLegacyModulePaths),
-		})
-	}
-	if len(options.XLegacyExcludeModulePaths) != 0 {
-		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-			Type: lsp.Warning,
-			Message: fmt.Sprintf("excludeModulePaths (%q) is deprecated (no-op), use indexing.ignorePaths instead",
-				options.XLegacyExcludeModulePaths),
-		})
-	}
-	if len(options.XLegacyIgnoreDirectoryNames) != 0 {
-		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-			Type: lsp.Warning,
-			Message: fmt.Sprintf("ignoreDirectoryNames (%q) is deprecated (no-op), use indexing.ignoreDirectoryNames instead",
-				options.XLegacyIgnoreDirectoryNames),
-		})
 	}
 
 	var ignoredPaths []string

@@ -8,9 +8,6 @@ import (
 
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/job"
-	"github.com/walteh/retab/internal/lsp/schemas"
-	"github.com/walteh/retab/internal/lsp/terraform/module"
-	op "github.com/walteh/retab/internal/lsp/terraform/module/operation"
 )
 
 func (idx *Indexer) DocumentChanged(ctx context.Context, modHandle document.DirHandle) (job.IDs, error) {
@@ -19,9 +16,9 @@ func (idx *Indexer) DocumentChanged(ctx context.Context, modHandle document.DirH
 	parseId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 		Dir: modHandle,
 		Func: func(ctx context.Context) error {
-			return module.ParseModuleConfiguration(ctx, idx.fs, idx.modStore, modHandle.Path())
+			return nil
 		},
-		Type:        op.OpTypeParseModuleConfiguration.String(),
+		Type:        " op.OpTypeParseModuleConfiguration.String()",
 		IgnoreState: true,
 	})
 	if err != nil {
@@ -38,9 +35,9 @@ func (idx *Indexer) DocumentChanged(ctx context.Context, modHandle document.DirH
 	parseVarsId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 		Dir: modHandle,
 		Func: func(ctx context.Context) error {
-			return module.ParseVariables(ctx, idx.fs, idx.modStore, modHandle.Path())
+			return nil
 		},
-		Type:        op.OpTypeParseVariables.String(),
+		Type:        "op.OpTypeParseVariables.String()",
 		IgnoreState: true,
 	})
 	if err != nil {
@@ -51,9 +48,9 @@ func (idx *Indexer) DocumentChanged(ctx context.Context, modHandle document.DirH
 	varsRefsId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 		Dir: modHandle,
 		Func: func(ctx context.Context) error {
-			return module.DecodeVarsReferences(ctx, idx.modStore, idx.schemaStore, modHandle.Path())
+			return nil
 		},
-		Type:        op.OpTypeDecodeVarsReferences.String(),
+		Type:        "op.OpTypeDecodeVarsReferences.String()",
 		DependsOn:   job.IDs{parseVarsId},
 		IgnoreState: true,
 	})
@@ -71,9 +68,9 @@ func (idx *Indexer) decodeModule(ctx context.Context, modHandle document.DirHand
 	metaId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 		Dir: modHandle,
 		Func: func(ctx context.Context) error {
-			return module.LoadModuleMetadata(ctx, idx.modStore, modHandle.Path())
+			return nil
 		},
-		Type:        op.OpTypeLoadModuleMetadata.String(),
+		Type:        "op.OpTypeLoadModuleMetadata.String()",
 		DependsOn:   dependsOn,
 		IgnoreState: ignoreState,
 		Defer: func(ctx context.Context, jobErr error) (jobIds job.IDs, err error) {
@@ -81,21 +78,13 @@ func (idx *Indexer) decodeModule(ctx context.Context, modHandle document.DirHand
 				err = jobErr
 				return
 			}
-			modCalls, mcErr := idx.decodeDeclaredModuleCalls(ctx, modHandle, ignoreState)
-			if mcErr != nil {
-				idx.logger.Printf("decoding declared module calls for %q failed: %s", modHandle.URI, mcErr)
-				// We log the error but still continue scheduling other jobs
-				// which are still valuable for the rest of the configuration
-				// even if they may not have the data for module calls.
-			}
 
 			eSchemaId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 				Dir: modHandle,
 				Func: func(ctx context.Context) error {
-					return module.PreloadEmbeddedSchema(ctx, idx.logger, schemas.FS, idx.modStore, idx.schemaStore, modHandle.Path())
+					return nil
 				},
-				DependsOn:   modCalls,
-				Type:        op.OpTypePreloadEmbeddedSchema.String(),
+				Type:        "op.OpTypePreloadEmbeddedSchema.String()",
 				IgnoreState: ignoreState,
 			})
 			if err != nil {
@@ -106,10 +95,10 @@ func (idx *Indexer) decodeModule(ctx context.Context, modHandle document.DirHand
 			refOriginsId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 				Dir: modHandle,
 				Func: func(ctx context.Context) error {
-					return module.DecodeReferenceOrigins(ctx, idx.modStore, idx.schemaStore, modHandle.Path())
+					return nil
 				},
-				Type:        op.OpTypeDecodeReferenceOrigins.String(),
-				DependsOn:   append(modCalls, eSchemaId),
+				Type:        "op.OpTypeDecodeReferenceOrigins.String()",
+				DependsOn:   job.IDs{eSchemaId},
 				IgnoreState: ignoreState,
 			})
 			jobIds = append(jobIds, refOriginsId)
@@ -124,9 +113,9 @@ func (idx *Indexer) decodeModule(ctx context.Context, modHandle document.DirHand
 	refTargetsId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 		Dir: modHandle,
 		Func: func(ctx context.Context) error {
-			return module.DecodeReferenceTargets(ctx, idx.modStore, idx.schemaStore, modHandle.Path())
+			return nil
 		},
-		Type:        op.OpTypeDecodeReferenceTargets.String(),
+		Type:        "op.OpTypeDecodeReferenceTargets.String()",
 		DependsOn:   job.IDs{metaId},
 		IgnoreState: ignoreState,
 	})
@@ -140,11 +129,10 @@ func (idx *Indexer) decodeModule(ctx context.Context, modHandle document.DirHand
 	_, err = idx.jobStore.EnqueueJob(ctx, job.Job{
 		Dir: modHandle,
 		Func: func(ctx context.Context) error {
-			return module.GetModuleDataFromRegistry(ctx, idx.registryClient,
-				idx.modStore, idx.registryModStore, modHandle.Path())
+			return nil
 		},
 		Priority: job.LowPriority,
-		Type:     op.OpTypeGetModuleDataFromRegistry.String(),
+		Type:     "op.OpTypeGetModuleDataFromRegistry.String()",
 	})
 	if err != nil {
 		return ids, err

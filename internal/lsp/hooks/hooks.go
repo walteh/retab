@@ -10,13 +10,9 @@ import (
 	"log"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
-	"github.com/walteh/retab/internal/lsp/registry"
-	"github.com/walteh/retab/internal/lsp/state"
 )
 
 type Hooks struct {
-	ModStore       *state.ModuleStore
-	RegistryClient registry.Client
-	AlgoliaClient  *search.Client
-	Logger         *log.Logger
+	AlgoliaClient *search.Client
+	Logger        *log.Logger
 }

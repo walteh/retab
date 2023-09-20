@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	tfaddr "github.com/hashicorp/terraform-registry-address"
 	lsp "github.com/walteh/retab/internal/protocol"
 )
 
@@ -37,14 +36,4 @@ func (t *Telemetry) SendEvent(ctx context.Context, name string, properties map[s
 		Name:       name,
 		Properties: properties,
 	})
-}
-
-func IsPublicProvider(addr tfaddr.Provider) bool {
-	if addr.Hostname == tfaddr.DefaultProviderRegistryHost {
-		return true
-	}
-	if addr.IsLegacy() || addr.IsBuiltIn() {
-		return true
-	}
-	return false
 }

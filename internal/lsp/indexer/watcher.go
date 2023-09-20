@@ -9,9 +9,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/job"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
-	"github.com/walteh/retab/internal/lsp/terraform/module"
-	op "github.com/walteh/retab/internal/lsp/terraform/module/operation"
 )
 
 func (idx *Indexer) ModuleManifestChanged(ctx context.Context, modHandle document.DirHandle) (job.IDs, error) {
@@ -20,12 +17,12 @@ func (idx *Indexer) ModuleManifestChanged(ctx context.Context, modHandle documen
 	modManifestId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 		Dir: modHandle,
 		Func: func(ctx context.Context) error {
-			return module.ParseModuleManifest(ctx, idx.fs, idx.modStore, modHandle.Path())
+			return nil
 		},
-		Type:        op.OpTypeParseModuleManifest.String(),
+		Type:        "op.OpTypeParseModuleManifest.String()",
 		IgnoreState: true,
 		Defer: func(ctx context.Context, jobErr error) (job.IDs, error) {
-			return idx.decodeInstalledModuleCalls(ctx, modHandle, true)
+			return nil, nil
 		},
 	})
 	if err != nil {
@@ -44,10 +41,10 @@ func (idx *Indexer) PluginLockChanged(ctx context.Context, modHandle document.Di
 	pSchemaVerId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 		Dir: modHandle,
 		Func: func(ctx context.Context) error {
-			return module.ParseProviderVersions(ctx, idx.fs, idx.modStore, modHandle.Path())
+			return nil
 		},
 		IgnoreState: true,
-		Type:        op.OpTypeParseProviderVersions.String(),
+		Type:        "op.OpTypeParseProviderVersions.String()",
 	})
 	if err != nil {
 		errs = multierror.Append(errs, err)
@@ -59,11 +56,10 @@ func (idx *Indexer) PluginLockChanged(ctx context.Context, modHandle document.Di
 	pSchemaId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 		Dir: modHandle,
 		Func: func(ctx context.Context) error {
-			ctx = exec.WithExecutorFactory(ctx, idx.tfExecFactory)
-			return module.ObtainSchema(ctx, idx.modStore, idx.schemaStore, modHandle.Path())
+			return nil
 		},
 		IgnoreState: true,
-		Type:        op.OpTypeObtainSchema.String(),
+		Type:        "op.OpTypeObtainSchema.String()",
 		DependsOn:   dependsOn,
 	})
 	if err != nil {

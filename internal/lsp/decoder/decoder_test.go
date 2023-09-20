@@ -7,9 +7,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"io"
 	"io/fs"
-	"log"
 	"path"
 	"path/filepath"
 	"sync"
@@ -19,17 +17,10 @@ import (
 	"github.com/hashicorp/hcl-lang/decoder"
 	"github.com/hashicorp/hcl-lang/lang"
 	idecoder "github.com/walteh/retab/internal/lsp/decoder"
-	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/terraform/module"
 )
 
 func TestDecoder_CodeLensesForFile_concurrencyBug(t *testing.T) {
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
 
-	logger := log.New(io.Discard, "", 0)
 	testCfg := `data "terraform_remote_state" "vpc" { }
 `
 	dirNames := []string{"testdir1", "testdir2"}
@@ -43,38 +34,7 @@ func TestDecoder_CodeLensesForFile_concurrencyBug(t *testing.T) {
 
 	ctx := context.Background()
 
-	dataDir := "data"
-	schemasFs := fstest.MapFS{
-		dataDir:                                           &fstest.MapFile{Mode: fs.ModeDir},
-		dataDir + "/terraform.io":                         &fstest.MapFile{Mode: fs.ModeDir},
-		dataDir + "/terraform.io/builtin":                 &fstest.MapFile{Mode: fs.ModeDir},
-		dataDir + "/terraform.io/builtin/terraform":       &fstest.MapFile{Mode: fs.ModeDir},
-		dataDir + "/terraform.io/builtin/terraform/1.0.0": &fstest.MapFile{Mode: fs.ModeDir},
-		dataDir + "/terraform.io/builtin/terraform/1.0.0/schema.json.gz": &fstest.MapFile{
-			Data: gzipCompressBytes(t, []byte(tfSchemaJSON)),
-		},
-	}
-
-	for _, dirName := range dirNames {
-		err := ss.Modules.Add(dirName)
-		if err != nil {
-			t.Error(err)
-		}
-		err = module.ParseModuleConfiguration(ctx, mapFs, ss.Modules, dirName)
-		if err != nil {
-			t.Error(err)
-		}
-		err = module.LoadModuleMetadata(ctx, ss.Modules, dirName)
-		if err != nil {
-			t.Error(err)
-		}
-		err = module.PreloadEmbeddedSchema(ctx, logger, schemasFs, ss.Modules, ss.ProviderSchemas, dirName)
-	}
-
-	d := decoder.NewDecoder(&idecoder.PathReader{
-		ModuleReader: ss.Modules,
-		SchemaReader: ss.ProviderSchemas,
-	})
+	d := decoder.NewDecoder(&idecoder.PathReader{})
 
 	var wg sync.WaitGroup
 	for _, dirName := range dirNames {

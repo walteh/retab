@@ -59,10 +59,6 @@ func (s *DocumentStore) OpenDocument(dh document.Handle, langId string, version 
 	if err != nil {
 		return err
 	}
-	err = updateModuleChangeDirOpenMark(txn, dh.Dir, true)
-	if err != nil {
-		return err
-	}
 
 	txn.Commit()
 	return nil
@@ -145,11 +141,6 @@ func (s *DocumentStore) CloseDocument(dh document.Handle) error {
 	}
 
 	err = updateWalkerDirOpenMark(txn, dh.Dir, false)
-	if err != nil {
-		return err
-	}
-
-	err = updateModuleChangeDirOpenMark(txn, dh.Dir, false)
 	if err != nil {
 		return err
 	}

@@ -9,43 +9,19 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/job"
-	"github.com/walteh/retab/internal/lsp/terraform/exec"
-	"github.com/walteh/retab/internal/lsp/terraform/module"
-	op "github.com/walteh/retab/internal/lsp/terraform/module/operation"
 )
 
 func (idx *Indexer) DocumentOpened(ctx context.Context, modHandle document.DirHandle) (job.IDs, error) {
-	mod, err := idx.modStore.ModuleByPath(modHandle.Path())
-	if err != nil {
-		return nil, err
-	}
 
 	ids := make(job.IDs, 0)
 	var errs *multierror.Error
 
-	if mod.TerraformVersionState == op.OpStateUnknown {
-		_, err := idx.jobStore.EnqueueJob(ctx, job.Job{
-			Dir: modHandle,
-			Func: func(ctx context.Context) error {
-				ctx = exec.WithExecutorFactory(ctx, idx.tfExecFactory)
-				return module.GetTerraformVersion(ctx, idx.modStore, modHandle.Path())
-			},
-			Type: op.OpTypeGetTerraformVersion.String(),
-		})
-		if err != nil {
-			errs = multierror.Append(errs, err)
-		}
-		// Given that getting version may take time and we only use it to
-		// enhance the UX, we ignore the outcome (job ID) here
-		// to avoid delays when documents of new modules are open.
-	}
-
 	parseId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 		Dir: modHandle,
 		Func: func(ctx context.Context) error {
-			return module.ParseModuleConfiguration(ctx, idx.fs, idx.modStore, modHandle.Path())
+			return nil
 		},
-		Type:        op.OpTypeParseModuleConfiguration.String(),
+		Type:        "op.OpTypeParseModuleConfiguration.String()",
 		IgnoreState: true,
 	})
 	if err != nil {
@@ -62,9 +38,9 @@ func (idx *Indexer) DocumentOpened(ctx context.Context, modHandle document.DirHa
 	parseVarsId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 		Dir: modHandle,
 		Func: func(ctx context.Context) error {
-			return module.ParseVariables(ctx, idx.fs, idx.modStore, modHandle.Path())
+			return nil
 		},
-		Type:        op.OpTypeParseVariables.String(),
+		Type:        "op.OpTypeParseVariables.String()",
 		IgnoreState: true,
 	})
 	if err != nil {
@@ -75,9 +51,9 @@ func (idx *Indexer) DocumentOpened(ctx context.Context, modHandle document.DirHa
 	varsRefsId, err := idx.jobStore.EnqueueJob(ctx, job.Job{
 		Dir: modHandle,
 		Func: func(ctx context.Context) error {
-			return module.DecodeVarsReferences(ctx, idx.modStore, idx.schemaStore, modHandle.Path())
+			return nil
 		},
-		Type:      op.OpTypeDecodeVarsReferences.String(),
+		Type:      "op.OpTypeDecodeVarsReferences.String()",
 		DependsOn: job.IDs{parseVarsId},
 	})
 	if err != nil {
