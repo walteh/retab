@@ -7,20 +7,20 @@ import (
 	"context"
 
 	"github.com/hashicorp/hcl-lang/lang"
-	lsp "github.com/walteh/retab/gen/gopls"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
-func (svc *service) References(ctx context.Context, params lsp.ReferenceParams) ([]lsp.Location, error) {
-	list := make([]lsp.Location, 0)
+func (svc *service) References(ctx context.Context, params gopls.ReferenceParams) ([]gopls.Location, error) {
+	list := make([]gopls.Location, 0)
 
-	dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
 	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return list, err
 	}
 
-	pos, err := ilsp.HCLPositionFromLspPosition(params.TextDocumentPositionParams.Position, doc)
+	pos, err := lsp.HCLPositionFromLspPosition(params.TextDocumentPositionParams.Position, doc)
 	if err != nil {
 		return list, err
 	}
@@ -32,5 +32,5 @@ func (svc *service) References(ctx context.Context, params lsp.ReferenceParams) 
 
 	origins := svc.decoder.ReferenceOriginsTargetingPos(path, doc.Filename, pos)
 
-	return ilsp.RefOriginsToLocations(origins), nil
+	return lsp.RefOriginsToLocations(origins), nil
 }

@@ -5,11 +5,11 @@ package lsp
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/document"
 )
 
-func HCLPositionFromLspPosition(pos lsp.Position, doc *document.Document) (hcl.Pos, error) {
+func HCLPositionFromLspPosition(pos gopls.Position, doc *document.Document) (hcl.Pos, error) {
 	byteOffset, err := document.ByteOffsetForPos(doc.Lines, lspPosToDocumentPos(pos))
 	if err != nil {
 		return hcl.Pos{}, err
@@ -22,7 +22,7 @@ func HCLPositionFromLspPosition(pos lsp.Position, doc *document.Document) (hcl.P
 	}, nil
 }
 
-func lspPosToDocumentPos(pos lsp.Position) document.Pos {
+func lspPosToDocumentPos(pos gopls.Position) document.Pos {
 	return document.Pos{
 		Line:   int(pos.Line),
 		Column: int(pos.Character),

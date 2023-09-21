@@ -7,14 +7,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 
 	"github.com/creachadair/jrpc2"
 	rpch "github.com/creachadair/jrpc2/handler"
 	"github.com/hashicorp/hcl-lang/decoder"
 	"github.com/hashicorp/hcl-lang/lang"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
 	idecoder "github.com/walteh/retab/internal/lsp/decoder"
 	"github.com/walteh/retab/internal/lsp/document"
@@ -24,7 +24,7 @@ import (
 	"github.com/walteh/retab/internal/lsp/langserver/diagnostics"
 	"github.com/walteh/retab/internal/lsp/langserver/notifier"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/internal/lsp/lsp"
 	"github.com/walteh/retab/internal/lsp/scheduler"
 	"github.com/walteh/retab/internal/lsp/settings"
 	"github.com/walteh/retab/internal/lsp/state"
@@ -68,7 +68,7 @@ type service struct {
 	singleFileMode bool
 }
 
-var discardLogs = log.New(ioutil.Discard, "", 0)
+var discardLogs = log.New(io.Discard, "", 0)
 
 func NewSession(srvCtx context.Context) session.Session {
 	sessCtx, stopSession := context.WithCancel(srvCtx)
@@ -99,7 +99,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 
 	svc.telemetry = &telemetry.NoopSender{Logger: svc.logger}
 
-	cc := &lsp.ClientCapabilities{}
+	cc := &gopls.ClientCapabilities{}
 
 	rootDir := ""
 	commandPrefix := ""
@@ -113,10 +113,10 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 				return nil, err
 			}
 
-			ctx = ilsp.WithClientCapabilities(ctx, cc)
+			ctx = lsp.WithClientCapabilities(ctx, cc)
 			ctx = lsctx.WithRootDirectory(ctx, &rootDir)
 			ctx = lsctx.WithCommandPrefix(ctx, &commandPrefix)
-			ctx = ilsp.ContextWithClientName(ctx, &clientName)
+			ctx = lsp.ContextWithClientName(ctx, &clientName)
 			ctx = lsctx.WithExperimentalFeatures(ctx, &expFeatures)
 
 			version, ok := lsctx.LanguageServerVersion(svc.srvCtx)
@@ -132,7 +132,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 				return nil, err
 			}
 
-			ctx = ilsp.WithClientCapabilities(ctx, cc)
+			ctx = lsp.WithClientCapabilities(ctx, cc)
 
 			return handle(ctx, req, svc.Initialized)
 		},
@@ -163,7 +163,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 				return nil, err
 			}
 
-			ctx = ilsp.WithClientCapabilities(ctx, cc)
+			ctx = lsp.WithClientCapabilities(ctx, cc)
 
 			return handle(ctx, req, svc.TextDocumentSymbol)
 		},
@@ -173,8 +173,8 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 				return nil, err
 			}
 
-			ctx = ilsp.WithClientCapabilities(ctx, cc)
-			ctx = ilsp.ContextWithClientName(ctx, &clientName)
+			ctx = lsp.WithClientCapabilities(ctx, cc)
+			ctx = lsp.ContextWithClientName(ctx, &clientName)
 
 			return handle(ctx, req, svc.TextDocumentLink)
 		},
@@ -184,7 +184,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 				return nil, err
 			}
 
-			ctx = ilsp.WithClientCapabilities(ctx, cc)
+			ctx = lsp.WithClientCapabilities(ctx, cc)
 
 			return handle(ctx, req, svc.GoToDeclaration)
 		},
@@ -194,7 +194,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 				return nil, err
 			}
 
-			ctx = ilsp.WithClientCapabilities(ctx, cc)
+			ctx = lsp.WithClientCapabilities(ctx, cc)
 
 			return handle(ctx, req, svc.GoToDefinition)
 		},
@@ -204,7 +204,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 				return nil, err
 			}
 
-			ctx = ilsp.WithClientCapabilities(ctx, cc)
+			ctx = lsp.WithClientCapabilities(ctx, cc)
 			ctx = lsctx.WithExperimentalFeatures(ctx, &expFeatures)
 
 			return handle(ctx, req, svc.TextDocumentComplete)
@@ -215,7 +215,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 				return nil, err
 			}
 
-			ctx = ilsp.WithClientCapabilities(ctx, cc)
+			ctx = lsp.WithClientCapabilities(ctx, cc)
 			ctx = lsctx.WithExperimentalFeatures(ctx, &expFeatures)
 
 			return handle(ctx, req, svc.CompletionItemResolve)
@@ -226,8 +226,8 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 				return nil, err
 			}
 
-			ctx = ilsp.WithClientCapabilities(ctx, cc)
-			ctx = ilsp.ContextWithClientName(ctx, &clientName)
+			ctx = lsp.WithClientCapabilities(ctx, cc)
+			ctx = lsp.ContextWithClientName(ctx, &clientName)
 
 			return handle(ctx, req, svc.TextDocumentHover)
 		},
@@ -237,7 +237,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 				return nil, err
 			}
 
-			ctx = ilsp.WithClientCapabilities(ctx, cc)
+			ctx = lsp.WithClientCapabilities(ctx, cc)
 
 			return handle(ctx, req, svc.TextDocumentCodeAction)
 		},
@@ -247,7 +247,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 				return nil, err
 			}
 
-			ctx = ilsp.WithClientCapabilities(ctx, cc)
+			ctx = lsp.WithClientCapabilities(ctx, cc)
 
 			return handle(ctx, req, svc.TextDocumentCodeLens)
 		},
@@ -265,7 +265,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 				return nil, err
 			}
 
-			ctx = ilsp.WithClientCapabilities(ctx, cc)
+			ctx = lsp.WithClientCapabilities(ctx, cc)
 
 			return handle(ctx, req, svc.SignatureHelp)
 		},
@@ -275,7 +275,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 				return nil, err
 			}
 
-			ctx = ilsp.WithClientCapabilities(ctx, cc)
+			ctx = lsp.WithClientCapabilities(ctx, cc)
 
 			return handle(ctx, req, svc.TextDocumentSemanticTokensFull)
 		},
@@ -323,7 +323,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			ctx = lsctx.WithCommandPrefix(ctx, &commandPrefix)
 			ctx = lsctx.WithRootDirectory(ctx, &rootDir)
 			ctx = lsctx.WithDiagnosticsNotifier(ctx, svc.diagsNotifier)
-			ctx = ilsp.ContextWithClientName(ctx, &clientName)
+			ctx = lsp.ContextWithClientName(ctx, &clientName)
 
 			return handle(ctx, req, svc.WorkspaceExecuteCommand)
 		},
@@ -333,7 +333,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 				return nil, err
 			}
 
-			ctx = ilsp.WithClientCapabilities(ctx, cc)
+			ctx = lsp.WithClientCapabilities(ctx, cc)
 
 			return handle(ctx, req, svc.WorkspaceSymbol)
 		},
@@ -402,7 +402,7 @@ func (svc *service) configureSessionDependencies(ctx context.Context, cfgOpts *s
 	svc.highPrioIndexer.Start(svc.sessCtx)
 	svc.logger.Printf("started high priority scheduler")
 
-	cc, err := ilsp.ClientCapabilities(ctx)
+	cc, err := lsp.ClientCapabilities(ctx)
 	if err == nil {
 		if _, ok := protocol.ExperimentalClientCapabilities(cc.Experimental).ShowReferencesCommandId(); ok {
 			moduleHooks = append(moduleHooks, refreshCodeLens(svc.server))
@@ -432,21 +432,21 @@ func (svc *service) configureSessionDependencies(ctx context.Context, cfgOpts *s
 	svc.fs = filesystem.NewFilesystem(svc.stateStore.DocumentStore)
 	svc.fs.SetLogger(svc.logger)
 
-	svc.indexer = indexer.NewIndexer(svc.fs, svc.stateStore.JobStore)
+	svc.indexer = indexer.NewIndexer(svc.fs.Ref(), svc.stateStore.JobStore)
 	svc.indexer.SetLogger(svc.logger)
 
-	svc.decoder = decoder.NewDecoder(&idecoder.PathReader{})
+	svc.decoder = decoder.NewDecoder(svc.fs)
 	decoderContext := idecoder.DecoderContext(ctx)
 	svc.AppendCompletionHooks(decoderContext)
 	svc.decoder.SetContext(decoderContext)
 
 	closedPa := state.NewPathAwaiter(svc.stateStore.WalkerPaths, false)
-	svc.closedDirWalker = walker.NewWalker(svc.fs, closedPa, svc.indexer.WalkedModule)
+	svc.closedDirWalker = walker.NewWalker(svc.fs.Ref(), closedPa, svc.indexer.WalkedModule)
 	svc.closedDirWalker.Collector = svc.walkerCollector
 	svc.closedDirWalker.SetLogger(svc.logger)
 
 	opendPa := state.NewPathAwaiter(svc.stateStore.WalkerPaths, true)
-	svc.openDirWalker = walker.NewWalker(svc.fs, opendPa, svc.indexer.WalkedModule)
+	svc.openDirWalker = walker.NewWalker(svc.fs.Ref(), opendPa, svc.indexer.WalkedModule)
 	svc.closedDirWalker.Collector = svc.walkerCollector
 	svc.openDirWalker.SetLogger(svc.logger)
 

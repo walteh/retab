@@ -61,7 +61,7 @@ func TestValidHCLDecoding(t *testing.T) {
 	defer fle.Close()
 
 	// load schema file
-	ectx, got, errd := NewEvaluation(ctx, fle)
+	_, ectx, got, errd := NewEvaluation(ctx, fle)
 	assert.NoError(t, errd)
 
 	for _, b := range got.Blocks {

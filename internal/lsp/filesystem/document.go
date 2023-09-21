@@ -6,14 +6,23 @@ package filesystem
 import (
 	"io/fs"
 
+	"github.com/spf13/afero"
 	"github.com/walteh/retab/internal/lsp/document"
 )
 
-func documentAsFile(doc *document.Document) fs.File {
-	return inMemFile{
-		bytes: doc.Text,
-		info:  documentAsFileInfo(doc),
+func documentAsFile(doc *document.Document) (afero.File, error) {
+
+	fle, err := afero.NewMemMapFs().Open(doc.Filename)
+	if err != nil {
+		return nil, err
 	}
+
+	_, err = fle.Write(doc.Text)
+	if err != nil {
+		return nil, err
+	}
+
+	return fle, nil
 }
 
 func documentAsFileInfo(doc *document.Document) fs.FileInfo {
@@ -37,10 +46,5 @@ func documentsAsDirEntries(docs []*document.Document) []fs.DirEntry {
 }
 
 func documentAsDirEntry(doc *document.Document) fs.DirEntry {
-	return inMemDirEntry{
-		name:  doc.Filename,
-		isDir: false,
-		typ:   0,
-		info:  documentAsFileInfo(doc),
-	}
+	return fs.FileInfoToDirEntry(documentAsFileInfo(doc))
 }

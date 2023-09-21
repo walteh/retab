@@ -19,7 +19,7 @@ func ByteOffsetForPos(lines source.Lines, pos Pos) (int, error) {
 	return byteOffsetForLSPColumn(lines[pos.Line], pos.Column), nil
 }
 
-// byteForLSPColumn takes an lsp.Position.Character value for the receving line
+// byteForLSPColumn takes an goplsPosition.Character value for the receving line
 // and finds the byte offset of the start of the UTF-8 sequence that represents
 // it in the overall source buffer. This is different than the byte returned
 // by posForLSPColumn because it can return offsets that are partway through

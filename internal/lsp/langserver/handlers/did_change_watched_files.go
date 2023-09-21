@@ -6,13 +6,13 @@ package handlers
 import (
 	"context"
 
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/job"
 	"github.com/walteh/retab/internal/lsp/uri"
 )
 
-func (svc *service) DidChangeWatchedFiles(ctx context.Context, params lsp.DidChangeWatchedFilesParams) error {
+func (svc *service) DidChangeWatchedFiles(ctx context.Context, params gopls.DidChangeWatchedFilesParams) error {
 	var ids job.IDs
 
 	for _, change := range params.Changes {
@@ -24,15 +24,15 @@ func (svc *service) DidChangeWatchedFiles(ctx context.Context, params lsp.DidCha
 			continue
 		}
 
-		if change.Type == lsp.Deleted {
+		if change.Type == gopls.Deleted {
 
 		}
 
-		if change.Type == lsp.Changed {
+		if change.Type == gopls.Changed {
 
 		}
 
-		if change.Type == lsp.Created {
+		if change.Type == gopls.Created {
 		}
 	}
 

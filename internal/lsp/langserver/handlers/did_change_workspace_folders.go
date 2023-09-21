@@ -8,16 +8,16 @@ import (
 	"fmt"
 
 	"github.com/creachadair/jrpc2"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/uri"
 )
 
-func (svc *service) DidChangeWorkspaceFolders(ctx context.Context, params lsp.DidChangeWorkspaceFoldersParams) error {
+func (svc *service) DidChangeWorkspaceFolders(ctx context.Context, params gopls.DidChangeWorkspaceFoldersParams) error {
 	for _, removed := range params.Event.Removed {
 		if !uri.IsURIValid(removed.URI) {
-			jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-				Type: lsp.Warning,
+			jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
+				Type: gopls.Warning,
 				Message: fmt.Sprintf("Ignoring workspace folder (unsupport or invalid URI) %s."+
 					" This is most likely bug, please report it.", removed.URI),
 			})
@@ -28,8 +28,8 @@ func (svc *service) DidChangeWorkspaceFolders(ctx context.Context, params lsp.Di
 
 	for _, added := range params.Event.Added {
 		if !uri.IsURIValid(added.URI) {
-			jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-				Type: lsp.Warning,
+			jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
+				Type: gopls.Warning,
 				Message: fmt.Sprintf("Ignoring workspace folder (unsupport or invalid URI) %s."+
 					" This is most likely bug, please report it.", added.URI),
 			})
@@ -46,8 +46,8 @@ func (svc *service) indexNewModule(ctx context.Context, modURI string) {
 
 	err := svc.stateStore.WalkerPaths.EnqueueDir(ctx, modHandle)
 	if err != nil {
-		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-			Type: lsp.Warning,
+		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
+			Type: gopls.Warning,
 			Message: fmt.Sprintf("Ignoring new folder %s: %s."+
 				" This is most likely bug, please report it.", modURI, err),
 		})
@@ -60,8 +60,8 @@ func (svc *service) removeIndexedModule(ctx context.Context, modURI string) {
 
 	err := svc.stateStore.WalkerPaths.DequeueDir(modHandle)
 	if err != nil {
-		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-			Type: lsp.Warning,
+		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
+			Type: gopls.Warning,
 			Message: fmt.Sprintf("Ignoring removed folder %s: %s."+
 				" This is most likely bug, please report it.", modURI, err),
 		})

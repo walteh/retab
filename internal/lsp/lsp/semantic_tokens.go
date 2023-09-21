@@ -5,9 +5,9 @@ package lsp
 
 import (
 	"github.com/hashicorp/hcl-lang/lang"
-	tfschema "github.com/hashicorp/terraform-schema/schema"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/lsp/semtok"
+	"github.com/walteh/retab/pkg/tokmod"
 )
 
 // Registering types which are actually in use
@@ -33,7 +33,7 @@ func init() {
 		serverTokenTypes = append(serverTokenTypes, semtok.TokenType(tokType))
 	}
 	serverTokenModifiers = append(serverTokenModifiers, semtok.TokenModifier(lang.TokenModifierDependent))
-	for _, tokModifier := range tfschema.SemanticTokenModifiers {
+	for _, tokModifier := range tokmod.SupportedModifiers {
 		serverTokenModifiers = append(serverTokenModifiers, semtok.TokenModifier(tokModifier))
 	}
 }
@@ -65,7 +65,7 @@ func TokenModifiersLegend(clientSupported []string) semtok.TokenModifiers {
 }
 
 type SemanticTokensClientCapabilities struct {
-	lsp.SemanticTokensClientCapabilities
+	gopls.SemanticTokensClientCapabilities
 }
 
 func (c SemanticTokensClientCapabilities) FullRequest() bool {

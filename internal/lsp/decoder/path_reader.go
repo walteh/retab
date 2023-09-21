@@ -3,26 +3,37 @@
 
 package decoder
 
-import (
-	"context"
-	"fmt"
+// type PathReader struct {
+// }
 
-	"github.com/hashicorp/hcl-lang/decoder"
-	"github.com/hashicorp/hcl-lang/lang"
-)
+// var _ decoder.PathReader = &PathReader{}
 
-type PathReader struct {
-}
+// func (mr *PathReader) Paths(ctx context.Context) []lang.Path {
+// 	paths := make([]lang.Path, 0)
 
-var _ decoder.PathReader = &PathReader{}
+// 	// langId, _ := LanguageId(ctx)
 
-func (mr *PathReader) Paths(ctx context.Context) []lang.Path {
-	paths := make([]lang.Path, 0)
+// 	// paths = append(paths, lang.Path{
+// 	// 	Path:       mod.Path,
+// 	// 	LanguageID: langId.String(),
+// 	// })
 
-	return paths
-}
+// 	paths = append(paths, lang.Path{
+// 		Path:       ".",
+// 		LanguageID: lsp.Retab.String(),
+// 	})
+// 	// if len(mod.ParsedVarsFiles) > 0 {
+// 	// 	paths = append(paths, lang.Path{
+// 	// 		Path:       mod.Path,
+// 	// 		LanguageID: lsp.fvars.String(),
+// 	// 	})
+// 	// }
 
-func (mr *PathReader) PathContext(path lang.Path) (*decoder.PathContext, error) {
+// 	return paths
+// }
 
-	return nil, fmt.Errorf("unknown language ID: %q", path.LanguageID)
-}
+// func (mr *PathReader) PathContext(path lang.Path) (*decoder.PathContext, error) {
+
+// 	// fmt.Errorf("unknown language ID: %q", path.LanguageID)
+// 	return varsPathContext()
+// }

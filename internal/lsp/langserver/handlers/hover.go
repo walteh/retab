@@ -6,17 +6,17 @@ package handlers
 import (
 	"context"
 
-	lsp "github.com/walteh/retab/gen/gopls"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
-func (svc *service) TextDocumentHover(ctx context.Context, params lsp.TextDocumentPositionParams) (*lsp.Hover, error) {
-	cc, err := ilsp.ClientCapabilities(ctx)
+func (svc *service) TextDocumentHover(ctx context.Context, params gopls.TextDocumentPositionParams) (*gopls.Hover, error) {
+	cc, err := lsp.ClientCapabilities(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
 	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func (svc *service) TextDocumentHover(ctx context.Context, params lsp.TextDocume
 		return nil, err
 	}
 
-	pos, err := ilsp.HCLPositionFromLspPosition(params.Position, doc)
+	pos, err := lsp.HCLPositionFromLspPosition(params.Position, doc)
 	if err != nil {
 		return nil, err
 	}
@@ -39,5 +39,5 @@ func (svc *service) TextDocumentHover(ctx context.Context, params lsp.TextDocume
 		return nil, err
 	}
 
-	return ilsp.HoverData(hoverData, cc.TextDocument), nil
+	return lsp.HoverData(hoverData, cc.TextDocument), nil
 }

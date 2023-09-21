@@ -51,7 +51,7 @@ func TestReferences_basic(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": `+fmt.Sprintf("%q",
 			`variable "test" {
 }
@@ -153,7 +153,7 @@ func TestReferences_variableToModuleInput(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": `+fmt.Sprintf("%q",
 			`variable "environment_name" {
   type = string

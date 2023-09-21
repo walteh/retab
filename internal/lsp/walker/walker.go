@@ -7,11 +7,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"io/ioutil"
 	"log"
 	"path/filepath"
 
+	"github.com/spf13/afero"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/job"
 	"go.opentelemetry.io/otel"
@@ -39,7 +39,7 @@ var (
 type pathToWatch struct{}
 
 type Walker struct {
-	fs        fs.ReadDirFS
+	fs        afero.Fs
 	pathStore PathStore
 	modStore  ModuleStore
 
@@ -67,9 +67,9 @@ type ModuleStore interface {
 
 const tracerName = "github.com/walteh/retab/internal/lsp/walker"
 
-func NewWalker(fs fs.ReadDirFS, pathStore PathStore, walkFunc WalkFunc) *Walker {
+func NewWalker(fls afero.Fs, pathStore PathStore, walkFunc WalkFunc) *Walker {
 	return &Walker{
-		fs:                    fs,
+		fs:                    afero.NewReadOnlyFs(fls),
 		pathStore:             pathStore,
 		walkFunc:              walkFunc,
 		logger:                discardLogger,
@@ -189,7 +189,7 @@ func (w *Walker) walk(ctx context.Context, dir document.DirHandle) error {
 		return nil
 	}
 
-	dirEntries, err := fs.ReadDir(w.fs, dir.Path())
+	dirEntries, err := afero.ReadDir(w.fs, dir.Path())
 	if err != nil {
 		w.logger.Printf("reading directory failed: %s: %s", dir.Path(), err)
 		// fs.ReadDir (or at least the os.ReadDir implementation) returns

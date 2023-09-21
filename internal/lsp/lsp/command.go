@@ -5,11 +5,11 @@ package lsp
 
 import (
 	"github.com/hashicorp/hcl-lang/lang"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 )
 
-func Command(cmd lang.Command) (lsp.Command, error) {
-	lspCmd := lsp.Command{
+func Command(cmd lang.Command) (gopls.Command, error) {
+	lspCmd := gopls.Command{
 		Title:   cmd.Title,
 		Command: cmd.ID,
 	}

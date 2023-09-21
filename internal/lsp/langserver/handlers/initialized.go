@@ -6,12 +6,12 @@ package handlers
 import (
 	"context"
 
-	lsp "github.com/walteh/retab/gen/gopls"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
-func (svc *service) Initialized(ctx context.Context, params lsp.InitializedParams) error {
-	caps, err := ilsp.ClientCapabilities(ctx)
+func (svc *service) Initialized(ctx context.Context, params gopls.InitializedParams) error {
+	caps, err := lsp.ClientCapabilities(ctx)
 	if err != nil {
 		return err
 	}
@@ -19,7 +19,7 @@ func (svc *service) Initialized(ctx context.Context, params lsp.InitializedParam
 	return svc.setupWatchedFiles(ctx, caps.Workspace.DidChangeWatchedFiles)
 }
 
-func (svc *service) setupWatchedFiles(ctx context.Context, caps lsp.DidChangeWatchedFilesClientCapabilities) error {
+func (svc *service) setupWatchedFiles(ctx context.Context, caps gopls.DidChangeWatchedFilesClientCapabilities) error {
 	if !caps.DynamicRegistration {
 		svc.logger.Printf("Client doesn't support dynamic watched files registration, " +
 			"provider and module changes may not be reflected at runtime")

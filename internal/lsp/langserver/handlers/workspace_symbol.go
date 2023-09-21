@@ -6,12 +6,12 @@ package handlers
 import (
 	"context"
 
-	lsp "github.com/walteh/retab/gen/gopls"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
-func (svc *service) WorkspaceSymbol(ctx context.Context, params lsp.WorkspaceSymbolParams) ([]lsp.SymbolInformation, error) {
-	cc, err := ilsp.ClientCapabilities(ctx)
+func (svc *service) WorkspaceSymbol(ctx context.Context, params gopls.WorkspaceSymbolParams) ([]gopls.SymbolInformation, error) {
+	cc, err := lsp.ClientCapabilities(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -21,5 +21,5 @@ func (svc *service) WorkspaceSymbol(ctx context.Context, params lsp.WorkspaceSym
 		return nil, err
 	}
 
-	return ilsp.WorkspaceSymbols(symbols, cc.Workspace.Symbol), nil
+	return lsp.WorkspaceSymbols(symbols, cc.Workspace.Symbol), nil
 }

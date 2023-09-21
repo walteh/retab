@@ -7,17 +7,17 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/hcl-lang/decoder"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/uri"
 )
 
-func RefOriginsToLocations(origins decoder.ReferenceOrigins) []lsp.Location {
-	locations := make([]lsp.Location, len(origins))
+func RefOriginsToLocations(origins decoder.ReferenceOrigins) []gopls.Location {
+	locations := make([]gopls.Location, len(origins))
 
 	for i, origin := range origins {
 		originUri := uri.FromPath(filepath.Join(origin.Path.Path, origin.Range.Filename))
-		locations[i] = lsp.Location{
-			URI:   lsp.DocumentURI(originUri),
+		locations[i] = gopls.Location{
+			URI:   gopls.DocumentURI(originUri),
 			Range: HCLRangeToLSP(origin.Range),
 		}
 	}

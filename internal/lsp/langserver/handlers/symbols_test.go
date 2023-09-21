@@ -63,7 +63,7 @@ func TestLangServer_symbols_basic(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": "provider \"github\" {}",
 			"uri": "%s/main.tf"
 		}

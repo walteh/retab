@@ -5,13 +5,13 @@ package lsp
 
 import (
 	"github.com/hashicorp/hcl-lang/lang"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/mdplain"
 )
 
-func ToCompletionList(candidates lang.Candidates, caps lsp.TextDocumentClientCapabilities) lsp.CompletionList {
-	list := lsp.CompletionList{
-		Items:        make([]lsp.CompletionItem, len(candidates.List)),
+func ToCompletionList(candidates lang.Candidates, caps gopls.TextDocumentClientCapabilities) gopls.CompletionList {
+	list := gopls.CompletionList{
+		Items:        make([]gopls.CompletionItem, len(candidates.List)),
 		IsIncomplete: !candidates.IsComplete,
 	}
 
@@ -22,7 +22,7 @@ func ToCompletionList(candidates lang.Candidates, caps lsp.TextDocumentClientCap
 	return list
 }
 
-func toCompletionItem(candidate lang.Candidate, caps lsp.CompletionClientCapabilities) lsp.CompletionItem {
+func toCompletionItem(candidate lang.Candidate, caps gopls.CompletionClientCapabilities) gopls.CompletionItem {
 	snippetSupport := caps.CompletionItem.SnippetSupport
 
 	doc := candidate.Description.Value
@@ -31,46 +31,46 @@ func toCompletionItem(candidate lang.Candidate, caps lsp.CompletionClientCapabil
 	// https://github.com/golang/tools/blob/4783bc9b/internal/lsp/protocol/tsprotocol.go#L753
 	doc = mdplain.Clean(doc)
 
-	var kind lsp.CompletionItemKind
+	var kind gopls.CompletionItemKind
 	switch candidate.Kind {
 	case lang.AttributeCandidateKind:
-		kind = lsp.PropertyCompletion
+		kind = gopls.PropertyCompletion
 	case lang.BlockCandidateKind:
-		kind = lsp.ClassCompletion
+		kind = gopls.ClassCompletion
 	case lang.LabelCandidateKind:
-		kind = lsp.FieldCompletion
+		kind = gopls.FieldCompletion
 	case lang.BoolCandidateKind:
-		kind = lsp.EnumMemberCompletion
+		kind = gopls.EnumMemberCompletion
 	case lang.StringCandidateKind:
-		kind = lsp.TextCompletion
+		kind = gopls.TextCompletion
 	case lang.NumberCandidateKind:
-		kind = lsp.ValueCompletion
+		kind = gopls.ValueCompletion
 	case lang.KeywordCandidateKind:
-		kind = lsp.KeywordCompletion
+		kind = gopls.KeywordCompletion
 	case lang.ListCandidateKind, lang.SetCandidateKind, lang.TupleCandidateKind:
-		kind = lsp.EnumCompletion
+		kind = gopls.EnumCompletion
 	case lang.MapCandidateKind, lang.ObjectCandidateKind:
-		kind = lsp.StructCompletion
+		kind = gopls.StructCompletion
 	case lang.TraversalCandidateKind:
-		kind = lsp.VariableCompletion
+		kind = gopls.VariableCompletion
 	}
 
 	// TODO: Omit item which uses kind unsupported by the client
 
-	var cmd *lsp.Command
+	var cmd *gopls.Command
 	if candidate.TriggerSuggest && snippetSupport {
-		cmd = &lsp.Command{
+		cmd = &gopls.Command{
 			Command: "editor.action.triggerSuggest",
 			Title:   "Suggest",
 		}
 	}
 
-	item := lsp.CompletionItem{
+	item := gopls.CompletionItem{
 		Label:               candidate.Label,
 		Kind:                kind,
 		InsertTextFormat:    insertTextFormat(snippetSupport),
 		Detail:              candidate.Detail,
-		Documentation:       &lsp.Or_CompletionItem_documentation{Value: doc},
+		Documentation:       &gopls.Or_CompletionItem_documentation{Value: doc},
 		TextEdit:            textEdit(candidate.TextEdit, snippetSupport),
 		Command:             cmd,
 		AdditionalTextEdits: TextEdits(candidate.AdditionalTextEdits, snippetSupport),
@@ -85,16 +85,16 @@ func toCompletionItem(candidate lang.Candidate, caps lsp.CompletionClientCapabil
 		item.Deprecated = candidate.IsDeprecated
 	}
 	if tagSliceContains(caps.CompletionItem.TagSupport.ValueSet,
-		lsp.ComplDeprecated) && candidate.IsDeprecated {
-		item.Tags = []lsp.CompletionItemTag{
-			lsp.ComplDeprecated,
+		gopls.ComplDeprecated) && candidate.IsDeprecated {
+		item.Tags = []gopls.CompletionItemTag{
+			gopls.ComplDeprecated,
 		}
 	}
 
 	return item
 }
 
-func tagSliceContains(supported []lsp.CompletionItemTag, tag lsp.CompletionItemTag) bool {
+func tagSliceContains(supported []gopls.CompletionItemTag, tag gopls.CompletionItemTag) bool {
 	for _, item := range supported {
 		if item == tag {
 			return true

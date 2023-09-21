@@ -6,19 +6,19 @@ package handlers
 import (
 	"context"
 
-	lsp "github.com/walteh/retab/gen/gopls"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
-func (svc *service) TextDocumentSymbol(ctx context.Context, params lsp.DocumentSymbolParams) ([]lsp.DocumentSymbol, error) {
-	var symbols []lsp.DocumentSymbol
+func (svc *service) TextDocumentSymbol(ctx context.Context, params gopls.DocumentSymbolParams) ([]gopls.DocumentSymbol, error) {
+	var symbols []gopls.DocumentSymbol
 
-	cc, err := ilsp.ClientCapabilities(ctx)
+	cc, err := lsp.ClientCapabilities(ctx)
 	if err != nil {
 		return symbols, err
 	}
 
-	dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
 	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return symbols, err
@@ -34,5 +34,5 @@ func (svc *service) TextDocumentSymbol(ctx context.Context, params lsp.DocumentS
 		return symbols, err
 	}
 
-	return ilsp.DocumentSymbols(sbs, cc.TextDocument.DocumentSymbol), nil
+	return lsp.DocumentSymbols(sbs, cc.TextDocument.DocumentSymbol), nil
 }

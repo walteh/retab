@@ -7,19 +7,19 @@ import (
 	"context"
 
 	"github.com/creachadair/jrpc2"
-	lsp "github.com/walteh/retab/gen/gopls"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
-func (svc *service) TextDocumentSemanticTokensFull(ctx context.Context, params lsp.SemanticTokensParams) (lsp.SemanticTokens, error) {
-	tks := lsp.SemanticTokens{}
+func (svc *service) TextDocumentSemanticTokensFull(ctx context.Context, params gopls.SemanticTokensParams) (gopls.SemanticTokens, error) {
+	tks := gopls.SemanticTokens{}
 
-	cc, err := ilsp.ClientCapabilities(ctx)
+	cc, err := lsp.ClientCapabilities(ctx)
 	if err != nil {
 		return tks, err
 	}
 
-	caps := ilsp.SemanticTokensClientCapabilities{
+	caps := lsp.SemanticTokensClientCapabilities{
 		SemanticTokensClientCapabilities: cc.TextDocument.SemanticTokens,
 	}
 	if !caps.FullRequest() {
@@ -30,7 +30,7 @@ func (svc *service) TextDocumentSemanticTokensFull(ctx context.Context, params l
 		return tks, jrpc2.MethodNotFound.Err()
 	}
 
-	dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
 	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return tks, err
@@ -46,7 +46,7 @@ func (svc *service) TextDocumentSemanticTokensFull(ctx context.Context, params l
 		return tks, err
 	}
 
-	te := &ilsp.TokenEncoder{
+	te := &lsp.TokenEncoder{
 		Lines:      doc.Lines,
 		Tokens:     tokens,
 		ClientCaps: cc.TextDocument.SemanticTokens,

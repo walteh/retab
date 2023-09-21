@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/hcl-lang/lang"
 	"github.com/hashicorp/hcl-lang/reference"
 	"github.com/hashicorp/hcl/v2"
-	lsp "github.com/walteh/retab/gen/gopls"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
 func ReferenceCount(showReferencesCmdId string) lang.CodeLensFunc {
@@ -84,8 +84,8 @@ func ReferenceCount(showReferencesCmdId string) lang.CodeLensFunc {
 					Title: getTitle("reference", "references", originCount),
 					ID:    showReferencesCmdId,
 					Arguments: []lang.CommandArgument{
-						Position(ilsp.HCLPosToLSP(hclPos)),
-						ReferenceContext(lsp.ReferenceContext{}),
+						Position(lsp.HCLPosToLSP(hclPos)),
+						ReferenceContext(gopls.ReferenceContext{}),
 					},
 				},
 			})
@@ -99,16 +99,16 @@ func ReferenceCount(showReferencesCmdId string) lang.CodeLensFunc {
 	}
 }
 
-type Position lsp.Position
+type Position gopls.Position
 
 func (p Position) MarshalJSON() ([]byte, error) {
-	return json.Marshal(lsp.Position(p))
+	return json.Marshal(gopls.Position(p))
 }
 
-type ReferenceContext lsp.ReferenceContext
+type ReferenceContext gopls.ReferenceContext
 
 func (rc ReferenceContext) MarshalJSON() ([]byte, error) {
-	return json.Marshal(lsp.ReferenceContext(rc))
+	return json.Marshal(gopls.ReferenceContext(rc))
 }
 
 func posMiddleOfRange(rng *hcl.Range) hcl.Pos {

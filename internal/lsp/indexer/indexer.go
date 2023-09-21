@@ -7,21 +7,22 @@ import (
 	"io"
 	"log"
 
+	"github.com/spf13/afero"
 	"github.com/walteh/retab/internal/lsp/job"
 )
 
 type Indexer struct {
 	logger   *log.Logger
-	fs       ReadOnlyFS
+	fs       afero.Fs
 	jobStore job.JobStore
 }
 
-func NewIndexer(fs ReadOnlyFS, jobStore job.JobStore) *Indexer {
+func NewIndexer(fs afero.Fs, jobStore job.JobStore) *Indexer {
 
 	discardLogger := log.New(io.Discard, "", 0)
 
 	return &Indexer{
-		fs:       fs,
+		fs:       afero.NewReadOnlyFs(fs),
 		jobStore: jobStore,
 		logger:   discardLogger,
 	}

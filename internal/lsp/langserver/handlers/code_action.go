@@ -7,11 +7,11 @@ import (
 	"context"
 	"fmt"
 
-	lsp "github.com/walteh/retab/gen/gopls"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
-func (svc *service) TextDocumentCodeAction(ctx context.Context, params lsp.CodeActionParams) []lsp.CodeAction {
+func (svc *service) TextDocumentCodeAction(ctx context.Context, params gopls.CodeActionParams) []gopls.CodeAction {
 	ca, err := svc.textDocumentCodeAction(ctx, params)
 	if err != nil {
 		svc.logger.Printf("code action failed: %s", err)
@@ -20,8 +20,8 @@ func (svc *service) TextDocumentCodeAction(ctx context.Context, params lsp.CodeA
 	return ca
 }
 
-func (svc *service) textDocumentCodeAction(ctx context.Context, params lsp.CodeActionParams) ([]lsp.CodeAction, error) {
-	var ca []lsp.CodeAction
+func (svc *service) textDocumentCodeAction(ctx context.Context, params gopls.CodeActionParams) ([]gopls.CodeAction, error) {
+	var ca []gopls.CodeAction
 
 	// For action definitions, refer to https://code.visualstudio.com/api/references/vscode-api#CodeActionKind
 	// We only support format type code actions at the moment, and do not want to format without the client asking for
@@ -35,7 +35,7 @@ func (svc *service) textDocumentCodeAction(ctx context.Context, params lsp.CodeA
 		svc.logger.Printf("Code actions requested: %q", o)
 	}
 
-	wantedCodeActions := ilsp.SupportedCodeActions.Only(params.Context.Only)
+	wantedCodeActions := lsp.SupportedCodeActions.Only(params.Context.Only)
 	if len(wantedCodeActions) == 0 {
 		return nil, fmt.Errorf("could not find a supported code action to execute for %s, wanted %v",
 			params.TextDocument.URI, params.Context.Only)
@@ -43,7 +43,7 @@ func (svc *service) textDocumentCodeAction(ctx context.Context, params lsp.CodeA
 
 	svc.logger.Printf("Code actions supported: %v", wantedCodeActions)
 
-	dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
 
 	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
@@ -52,19 +52,19 @@ func (svc *service) textDocumentCodeAction(ctx context.Context, params lsp.CodeA
 
 	for action := range wantedCodeActions {
 		switch action {
-		case ilsp.SourceFormatAllTerraform:
+		case lsp.SourceFormatAllTerraform:
 
 			edits, err := svc.formatDocument(ctx, doc.Text, dh)
 			if err != nil {
 				return ca, err
 			}
 
-			ca = append(ca, lsp.CodeAction{
+			ca = append(ca, gopls.CodeAction{
 				Title: "Format Document",
 				Kind:  action,
-				Edit: &lsp.WorkspaceEdit{
-					Changes: map[lsp.DocumentURI][]lsp.TextEdit{
-						lsp.DocumentURI(dh.FullURI()): edits,
+				Edit: &gopls.WorkspaceEdit{
+					Changes: map[gopls.DocumentURI][]gopls.TextEdit{
+						gopls.DocumentURI(dh.FullURI()): edits,
 					},
 				},
 			})

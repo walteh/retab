@@ -6,13 +6,13 @@ package utm
 import (
 	"context"
 
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
 const UtmSource = "terraform-ls"
 
 func UtmMedium(ctx context.Context) string {
-	clientName, ok := ilsp.ClientName(ctx)
+	clientName, ok := lsp.ClientName(ctx)
 	if ok {
 		return clientName
 	}

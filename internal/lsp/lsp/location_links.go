@@ -7,18 +7,18 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/hcl-lang/decoder"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/uri"
 )
 
-func RefTargetsToDefinitionLocationLinks(targets decoder.ReferenceTargets, defCaps *lsp.DefinitionClientCapabilities) interface{} {
+func RefTargetsToDefinitionLocationLinks(targets decoder.ReferenceTargets, defCaps *gopls.DefinitionClientCapabilities) interface{} {
 	if defCaps == nil {
 		return RefTargetsToLocationLinks(targets, false)
 	}
 	return RefTargetsToLocationLinks(targets, defCaps.LinkSupport)
 }
 
-func RefTargetsToDeclarationLocationLinks(targets decoder.ReferenceTargets, declCaps *lsp.DeclarationClientCapabilities) interface{} {
+func RefTargetsToDeclarationLocationLinks(targets decoder.ReferenceTargets, declCaps *gopls.DeclarationClientCapabilities) interface{} {
 	if declCaps == nil {
 		return RefTargetsToLocationLinks(targets, false)
 	}
@@ -27,27 +27,27 @@ func RefTargetsToDeclarationLocationLinks(targets decoder.ReferenceTargets, decl
 
 func RefTargetsToLocationLinks(targets decoder.ReferenceTargets, linkSupport bool) interface{} {
 	if linkSupport {
-		links := make([]lsp.LocationLink, 0)
+		links := make([]gopls.LocationLink, 0)
 		for _, target := range targets {
 			links = append(links, refTargetToLocationLink(target))
 		}
 		return links
 	}
 
-	locations := make([]lsp.Location, 0)
+	locations := make([]gopls.Location, 0)
 	for _, target := range targets {
 		locations = append(locations, refTargetToLocation(target))
 	}
 	return locations
 }
 
-func refTargetToLocationLink(target *decoder.ReferenceTarget) lsp.LocationLink {
+func refTargetToLocationLink(target *decoder.ReferenceTarget) gopls.LocationLink {
 	targetUri := uri.FromPath(filepath.Join(target.Path.Path, target.Range.Filename))
 	originRange := HCLRangeToLSP(target.OriginRange)
 
-	locLink := lsp.LocationLink{
+	locLink := gopls.LocationLink{
 		OriginSelectionRange: &originRange,
-		TargetURI:            lsp.DocumentURI(targetUri),
+		TargetURI:            gopls.DocumentURI(targetUri),
 		TargetRange:          HCLRangeToLSP(target.Range),
 		TargetSelectionRange: HCLRangeToLSP(target.Range),
 	}
@@ -59,11 +59,11 @@ func refTargetToLocationLink(target *decoder.ReferenceTarget) lsp.LocationLink {
 	return locLink
 }
 
-func refTargetToLocation(target *decoder.ReferenceTarget) lsp.Location {
+func refTargetToLocation(target *decoder.ReferenceTarget) gopls.Location {
 	targetUri := uri.FromPath(filepath.Join(target.Path.Path, target.Range.Filename))
 
-	return lsp.Location{
-		URI:   lsp.DocumentURI(targetUri),
+	return gopls.Location{
+		URI:   gopls.DocumentURI(targetUri),
 		Range: HCLRangeToLSP(target.Range),
 	}
 }

@@ -4,14 +4,14 @@
 package lsp
 
 import (
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/document"
 )
 
-func HandleFromDocumentURI(docUri lsp.DocumentURI) document.Handle {
+func HandleFromDocumentURI(docUri gopls.DocumentURI) document.Handle {
 	return document.HandleFromURI(string(docUri))
 }
 
-func DirHandleFromDirURI(dirUri lsp.DocumentURI) document.DirHandle {
+func DirHandleFromDirURI(dirUri gopls.DocumentURI) document.DirHandle {
 	return document.DirHandleFromURI(string(dirUri))
 }

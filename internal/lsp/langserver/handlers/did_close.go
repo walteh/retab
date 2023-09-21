@@ -6,11 +6,11 @@ package handlers
 import (
 	"context"
 
-	lsp "github.com/walteh/retab/gen/gopls"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
-func (svc *service) TextDocumentDidClose(ctx context.Context, params lsp.DidCloseTextDocumentParams) error {
-	dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
+func (svc *service) TextDocumentDidClose(ctx context.Context, params gopls.DidCloseTextDocumentParams) error {
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
 	return svc.stateStore.DocumentStore.CloseDocument(dh)
 }

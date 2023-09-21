@@ -6,23 +6,23 @@ package handlers
 import (
 	"context"
 
-	lsp "github.com/walteh/retab/gen/gopls"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
-func (svc *service) TextDocumentLink(ctx context.Context, params lsp.DocumentLinkParams) ([]lsp.DocumentLink, error) {
-	cc, err := ilsp.ClientCapabilities(ctx)
+func (svc *service) TextDocumentLink(ctx context.Context, params gopls.DocumentLinkParams) ([]gopls.DocumentLink, error) {
+	cc, err := lsp.ClientCapabilities(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
 	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return nil, err
 	}
 
-	if doc.LanguageID != ilsp.Terraform.String() {
+	if doc.LanguageID != lsp.Retab.String() {
 		return nil, nil
 	}
 
@@ -36,5 +36,5 @@ func (svc *service) TextDocumentLink(ctx context.Context, params lsp.DocumentLin
 		return nil, err
 	}
 
-	return ilsp.Links(links, cc.TextDocument.DocumentLink), nil
+	return lsp.Links(links, cc.TextDocument.DocumentLink), nil
 }

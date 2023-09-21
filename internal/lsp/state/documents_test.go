@@ -76,7 +76,7 @@ func TestDocumentStore_UpdateDocument_basic(t *testing.T) {
 
 	testHandle := document.HandleFromURI("file:///dir/test.tf")
 
-	err = s.DocumentStore.OpenDocument(testHandle, "terraform", 0, []byte("foo"))
+	err = s.DocumentStore.OpenDocument(testHandle, "retab", 0, []byte("foo"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestDocumentStore_GetDocument_basic(t *testing.T) {
 	s.DocumentStore.TimeProvider = testTimeProvider
 
 	testHandle := document.HandleFromURI("file:///dir/test.tf")
-	err = s.DocumentStore.OpenDocument(testHandle, "terraform", 0, []byte("foobar"))
+	err = s.DocumentStore.OpenDocument(testHandle, "retab", 0, []byte("foobar"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestDocumentStore_GetDocument_basic(t *testing.T) {
 		Dir:        testHandle.Dir,
 		Filename:   testHandle.Filename,
 		ModTime:    testTimeProvider(),
-		LanguageID: "terraform",
+		LanguageID: "retab",
 		Version:    0,
 		Text:       text,
 		Lines:      source.MakeSourceLines(testHandle.Filename, text),
@@ -148,13 +148,13 @@ func TestDocumentStore_ListDocumentsInDir(t *testing.T) {
 	s.DocumentStore.TimeProvider = testTimeProvider
 
 	testHandle1 := document.HandleFromURI("file:///dir/test1.tf")
-	err = s.DocumentStore.OpenDocument(testHandle1, "terraform", 0, []byte("foobar"))
+	err = s.DocumentStore.OpenDocument(testHandle1, "retab", 0, []byte("foobar"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	testHandle2 := document.HandleFromURI("file:///dir/test2.tf")
-	err = s.DocumentStore.OpenDocument(testHandle2, "terraform", 0, []byte("foobar"))
+	err = s.DocumentStore.OpenDocument(testHandle2, "retab", 0, []byte("foobar"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestDocumentStore_ListDocumentsInDir(t *testing.T) {
 			Dir:        dirHandle,
 			Filename:   "test1.tf",
 			ModTime:    testTimeProvider(),
-			LanguageID: "terraform",
+			LanguageID: "retab",
 			Version:    0,
 			Text:       []byte("foobar"),
 			Lines:      source.MakeSourceLines("test1.tf", []byte("foobar")),
@@ -179,7 +179,7 @@ func TestDocumentStore_ListDocumentsInDir(t *testing.T) {
 			Dir:        dirHandle,
 			Filename:   "test2.tf",
 			ModTime:    testTimeProvider(),
-			LanguageID: "terraform",
+			LanguageID: "retab",
 			Version:    0,
 			Text:       []byte("foobar"),
 			Lines:      source.MakeSourceLines("test2.tf", []byte("foobar")),
@@ -199,13 +199,13 @@ func TestDocumentStore_ListDocumentsInDir_parentDir(t *testing.T) {
 	s.DocumentStore.TimeProvider = testTimeProvider
 
 	testHandle1 := document.HandleFromURI("file:///dir/test1.tf")
-	err = s.DocumentStore.OpenDocument(testHandle1, "terraform", 0, []byte("foobar"))
+	err = s.DocumentStore.OpenDocument(testHandle1, "retab", 0, []byte("foobar"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	testHandle2 := document.HandleFromURI("file:///dir/sub/test2.tf")
-	err = s.DocumentStore.OpenDocument(testHandle2, "terraform", 0, []byte("foobar"))
+	err = s.DocumentStore.OpenDocument(testHandle2, "retab", 0, []byte("foobar"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +221,7 @@ func TestDocumentStore_ListDocumentsInDir_parentDir(t *testing.T) {
 			Dir:        dirHandle,
 			Filename:   "test1.tf",
 			ModTime:    testTimeProvider(),
-			LanguageID: "terraform",
+			LanguageID: "retab",
 			Version:    0,
 			Text:       []byte("foobar"),
 			Lines:      source.MakeSourceLines("test1.tf", []byte("foobar")),

@@ -15,7 +15,7 @@ func Process(ctx context.Context, fs afero.Fs, file string) ([]*BlockEvaluation,
 		return nil, err
 	}
 
-	ectx, blks, err := NewEvaluation(ctx, opn)
+	_, ectx, blks, err := NewEvaluation(ctx, opn)
 	if err != nil {
 		return nil, err
 	}

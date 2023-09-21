@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/langserver/diagnostics"
 	"github.com/walteh/retab/internal/lsp/settings"
 )
@@ -146,12 +146,12 @@ func LanguageServerVersion(ctx context.Context) (string, bool) {
 	return version, true
 }
 
-func WithProgressToken(ctx context.Context, pt lsp.ProgressToken) context.Context {
+func WithProgressToken(ctx context.Context, pt gopls.ProgressToken) context.Context {
 	return context.WithValue(ctx, ctxProgressToken, pt)
 }
 
-func ProgressToken(ctx context.Context) (lsp.ProgressToken, bool) {
-	pt, ok := ctx.Value(ctxProgressToken).(lsp.ProgressToken)
+func ProgressToken(ctx context.Context) (gopls.ProgressToken, bool) {
+	pt, ok := ctx.Value(ctxProgressToken).(gopls.ProgressToken)
 	if !ok {
 		return "", false
 	}

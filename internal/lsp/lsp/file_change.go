@@ -4,7 +4,7 @@
 package lsp
 
 import (
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/document"
 )
 
@@ -13,14 +13,14 @@ type contentChange struct {
 	rng  *document.Range
 }
 
-func ContentChange(chEvent lsp.TextDocumentContentChangeEvent) document.Change {
+func ContentChange(chEvent gopls.TextDocumentContentChangeEvent) document.Change {
 	return &contentChange{
 		text: chEvent.Text,
 		rng:  lspRangeToDocRange(chEvent.Range),
 	}
 }
 
-func DocumentChanges(events []lsp.TextDocumentContentChangeEvent) document.Changes {
+func DocumentChanges(events []gopls.TextDocumentContentChangeEvent) document.Changes {
 	changes := make(document.Changes, len(events))
 	for i, event := range events {
 		ch := ContentChange(event)

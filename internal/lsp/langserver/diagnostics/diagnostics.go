@@ -10,15 +10,15 @@ import (
 	"sync"
 
 	"github.com/hashicorp/hcl/v2"
-	lsp "github.com/walteh/retab/gen/gopls"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/internal/lsp/lsp"
 	"github.com/walteh/retab/internal/lsp/uri"
 )
 
 type diagContext struct {
 	ctx   context.Context
-	uri   lsp.DocumentURI
-	diags []lsp.Diagnostic
+	uri   gopls.DocumentURI
+	diags []gopls.Diagnostic
 }
 
 type DiagnosticSource string
@@ -59,14 +59,14 @@ func (n *Notifier) PublishHCLDiags(ctx context.Context, dirPath string, diags Di
 	}
 
 	for filename, ds := range diags {
-		fileDiags := make([]lsp.Diagnostic, 0)
+		fileDiags := make([]gopls.Diagnostic, 0)
 		for source, diags := range ds {
-			fileDiags = append(fileDiags, ilsp.HCLDiagsToLSP(diags, string(source))...)
+			fileDiags = append(fileDiags, lsp.HCLDiagsToLSP(diags, string(source))...)
 		}
 
 		n.diags <- diagContext{
 			ctx:   ctx,
-			uri:   lsp.DocumentURI(uri.FromPath(filepath.Join(dirPath, filename))),
+			uri:   gopls.DocumentURI(uri.FromPath(filepath.Join(dirPath, filename))),
 			diags: fileDiags,
 		}
 	}
@@ -74,7 +74,7 @@ func (n *Notifier) PublishHCLDiags(ctx context.Context, dirPath string, diags Di
 
 func (n *Notifier) notify() {
 	for d := range n.diags {
-		if err := n.clientNotifier.Notify(d.ctx, "textDocument/publishDiagnostics", lsp.PublishDiagnosticsParams{
+		if err := n.clientNotifier.Notify(d.ctx, "textDocument/publishDiagnostics", gopls.PublishDiagnosticsParams{
 			URI:         d.uri,
 			Diagnostics: d.diags,
 		}); err != nil {

@@ -6,17 +6,17 @@ package decoder
 import (
 	"context"
 
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
 type languageIdCtxKey struct{}
 
-func WithLanguageId(ctx context.Context, langId ilsp.LanguageID) context.Context {
+func WithLanguageId(ctx context.Context, langId lsp.LanguageID) context.Context {
 	return context.WithValue(ctx, languageIdCtxKey{}, langId)
 }
 
-func LanguageId(ctx context.Context) (ilsp.LanguageID, bool) {
-	id, ok := ctx.Value(languageIdCtxKey{}).(ilsp.LanguageID)
+func LanguageId(ctx context.Context) (lsp.LanguageID, bool) {
+	id, ok := ctx.Value(languageIdCtxKey{}).(lsp.LanguageID)
 	if !ok {
 		return "", false
 	}

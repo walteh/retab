@@ -31,6 +31,10 @@ RUN --mount=type=bind,target=.,rw \
 	mkdir -p /out
 	dl ${GOPLS_VERSION} tsprotocol.go
 	dl ${GOPLS_VERSION} tsdocument_changes.go
+
+	# replace the package name as gopls
+	sed -i "s|package protocol|package gopls|g" /out/tsprotocol.go
+	sed -i "s|package protocol|package gopls|g" /out/tsdocument_changes.go
 SHELL
 
 # Final update stage

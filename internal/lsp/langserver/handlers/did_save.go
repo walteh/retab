@@ -6,10 +6,10 @@ package handlers
 import (
 	"context"
 
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 )
 
-func (svc *service) TextDocumentDidSave(ctx context.Context, params lsp.DidSaveTextDocumentParams) error {
+func (svc *service) TextDocumentDidSave(ctx context.Context, params gopls.DidSaveTextDocumentParams) error {
 
 	return nil
 }

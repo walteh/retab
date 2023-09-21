@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	lsp "github.com/walteh/retab/internal/protocol"
+	"github.com/walteh/retab/internal/protocol"
 )
 
 type Telemetry struct {
@@ -20,7 +20,7 @@ type Notifier interface {
 }
 
 func NewSender(version int, notifier Notifier) (*Telemetry, error) {
-	if version != lsp.TelemetryFormatVersion {
+	if version != protocol.TelemetryFormatVersion {
 		return nil, fmt.Errorf("unsupported telemetry format version: %d", version)
 	}
 
@@ -31,7 +31,7 @@ func NewSender(version int, notifier Notifier) (*Telemetry, error) {
 }
 
 func (t *Telemetry) SendEvent(ctx context.Context, name string, properties map[string]interface{}) {
-	t.notifier.Notify(ctx, "telemetry/event", lsp.TelemetryEvent{
+	t.notifier.Notify(ctx, "telemetry/event", protocol.TelemetryEvent{
 		Version:    t.version,
 		Name:       name,
 		Properties: properties,

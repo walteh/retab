@@ -6,17 +6,17 @@ package handlers
 import (
 	"context"
 
-	lsp "github.com/walteh/retab/gen/gopls"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
-func (svc *service) SignatureHelp(ctx context.Context, params lsp.SignatureHelpParams) (*lsp.SignatureHelp, error) {
-	_, err := ilsp.ClientCapabilities(ctx)
+func (svc *service) SignatureHelp(ctx context.Context, params gopls.SignatureHelpParams) (*gopls.SignatureHelp, error) {
+	_, err := lsp.ClientCapabilities(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
 	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func (svc *service) SignatureHelp(ctx context.Context, params lsp.SignatureHelpP
 		return nil, err
 	}
 
-	pos, err := ilsp.HCLPositionFromLspPosition(params.Position, doc)
+	pos, err := lsp.HCLPositionFromLspPosition(params.Position, doc)
 	if err != nil {
 		return nil, err
 	}
@@ -37,5 +37,5 @@ func (svc *service) SignatureHelp(ctx context.Context, params lsp.SignatureHelpP
 		return nil, err
 	}
 
-	return ilsp.ToSignatureHelp(sig), nil
+	return lsp.ToSignatureHelp(sig), nil
 }

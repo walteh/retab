@@ -8,12 +8,12 @@ import (
 
 	"github.com/hashicorp/hcl-lang/decoder"
 	"github.com/hashicorp/hcl-lang/lang"
-	lsp "github.com/walteh/retab/gen/gopls"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
-func (svc *service) GoToDefinition(ctx context.Context, params lsp.TextDocumentPositionParams) (interface{}, error) {
-	cc, err := ilsp.ClientCapabilities(ctx)
+func (svc *service) GoToDefinition(ctx context.Context, params gopls.TextDocumentPositionParams) (interface{}, error) {
+	cc, err := lsp.ClientCapabilities(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -23,11 +23,11 @@ func (svc *service) GoToDefinition(ctx context.Context, params lsp.TextDocumentP
 		return nil, err
 	}
 
-	return ilsp.RefTargetsToDefinitionLocationLinks(targets, cc.TextDocument.Definition), nil
+	return lsp.RefTargetsToDefinitionLocationLinks(targets, cc.TextDocument.Definition), nil
 }
 
-func (svc *service) GoToDeclaration(ctx context.Context, params lsp.TextDocumentPositionParams) (interface{}, error) {
-	cc, err := ilsp.ClientCapabilities(ctx)
+func (svc *service) GoToDeclaration(ctx context.Context, params gopls.TextDocumentPositionParams) (interface{}, error) {
+	cc, err := lsp.ClientCapabilities(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -37,17 +37,17 @@ func (svc *service) GoToDeclaration(ctx context.Context, params lsp.TextDocument
 		return nil, err
 	}
 
-	return ilsp.RefTargetsToDeclarationLocationLinks(targets, cc.TextDocument.Declaration), nil
+	return lsp.RefTargetsToDeclarationLocationLinks(targets, cc.TextDocument.Declaration), nil
 }
 
-func (svc *service) goToReferenceTarget(ctx context.Context, params lsp.TextDocumentPositionParams) (decoder.ReferenceTargets, error) {
-	dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
+func (svc *service) goToReferenceTarget(ctx context.Context, params gopls.TextDocumentPositionParams) (decoder.ReferenceTargets, error) {
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
 	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return nil, err
 	}
 
-	pos, err := ilsp.HCLPositionFromLspPosition(params.Position, doc)
+	pos, err := lsp.HCLPositionFromLspPosition(params.Position, doc)
 	if err != nil {
 		return nil, err
 	}

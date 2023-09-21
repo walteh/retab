@@ -13,10 +13,10 @@ import (
 
 	"github.com/hashicorp/go-version"
 	tfjson "github.com/hashicorp/terraform-json"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/mock"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
 	"github.com/walteh/retab/internal/lsp/document"
-	"github.com/walteh/retab/internal/lsp/filesystem"
 	"github.com/walteh/retab/internal/lsp/job"
 	"github.com/walteh/retab/internal/lsp/state"
 )
@@ -27,14 +27,14 @@ func TestWalker_basic(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fs := filesystem.NewFilesystem(ss.DocumentStore)
+	// fs := filesystem.NewFilesystem(ss.DocumentStore)
 	pa := state.NewPathAwaiter(ss.WalkerPaths, false)
 
 	walkFunc := func(ctx context.Context, modHandle document.DirHandle) (job.IDs, error) {
 		return job.IDs{}, nil
 	}
 
-	w := NewWalker(fs, pa, walkFunc)
+	w := NewWalker(afero.NewMemMapFs(), pa, walkFunc)
 	w.Collector = NewWalkerCollector()
 	w.SetLogger(testLogger())
 

@@ -8,13 +8,13 @@ import (
 
 	"github.com/hashicorp/hcl-lang/decoder"
 	"github.com/hashicorp/hcl-lang/lang"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/uri"
 	"github.com/zclconf/go-cty/cty"
 )
 
-func WorkspaceSymbols(sbs []decoder.Symbol, caps *lsp.WorkspaceSymbolClientCapabilities) []lsp.SymbolInformation {
-	symbols := make([]lsp.SymbolInformation, len(sbs))
+func WorkspaceSymbols(sbs []decoder.Symbol, caps *gopls.WorkspaceSymbolClientCapabilities) []gopls.SymbolInformation {
+	symbols := make([]gopls.SymbolInformation, len(sbs))
 	for i, s := range sbs {
 		kind, ok := symbolKind(s, caps.SymbolKind.ValueSet)
 		if !ok {
@@ -23,20 +23,20 @@ func WorkspaceSymbols(sbs []decoder.Symbol, caps *lsp.WorkspaceSymbolClientCapab
 		}
 
 		path := filepath.Join(s.Path().Path, s.Range().Filename)
-		symbols[i] = lsp.SymbolInformation{
+		symbols[i] = gopls.SymbolInformation{
 			Name: s.Name(),
 			Kind: kind,
-			Location: lsp.Location{
+			Location: gopls.Location{
 				Range: HCLRangeToLSP(s.Range()),
-				URI:   lsp.DocumentURI(uri.FromPath(path)),
+				URI:   gopls.DocumentURI(uri.FromPath(path)),
 			},
 		}
 	}
 	return symbols
 }
 
-func DocumentSymbols(sbs []decoder.Symbol, caps lsp.DocumentSymbolClientCapabilities) []lsp.DocumentSymbol {
-	symbols := make([]lsp.DocumentSymbol, 0)
+func DocumentSymbols(sbs []decoder.Symbol, caps gopls.DocumentSymbolClientCapabilities) []gopls.DocumentSymbol {
+	symbols := make([]gopls.DocumentSymbol, 0)
 
 	for _, s := range sbs {
 		symbol, ok := documentSymbol(s, caps)
@@ -49,13 +49,13 @@ func DocumentSymbols(sbs []decoder.Symbol, caps lsp.DocumentSymbolClientCapabili
 	return symbols
 }
 
-func documentSymbol(symbol decoder.Symbol, caps lsp.DocumentSymbolClientCapabilities) (lsp.DocumentSymbol, bool) {
+func documentSymbol(symbol decoder.Symbol, caps gopls.DocumentSymbolClientCapabilities) (gopls.DocumentSymbol, bool) {
 	kind, ok := symbolKind(symbol, caps.SymbolKind.ValueSet)
 	if !ok {
-		return lsp.DocumentSymbol{}, false
+		return gopls.DocumentSymbol{}, false
 	}
 
-	ds := lsp.DocumentSymbol{
+	ds := gopls.DocumentSymbol{
 		Name:           symbol.Name(),
 		Kind:           kind,
 		Range:          HCLRangeToLSP(symbol.Range()),
@@ -67,10 +67,10 @@ func documentSymbol(symbol decoder.Symbol, caps lsp.DocumentSymbolClientCapabili
 	return ds, true
 }
 
-func symbolKind(symbol decoder.Symbol, supported []lsp.SymbolKind) (lsp.SymbolKind, bool) {
+func symbolKind(symbol decoder.Symbol, supported []gopls.SymbolKind) (gopls.SymbolKind, bool) {
 	switch s := symbol.(type) {
 	case *decoder.BlockSymbol:
-		kind, ok := supportedSymbolKind(supported, lsp.Class)
+		kind, ok := supportedSymbolKind(supported, gopls.Class)
 		if ok {
 			return kind, true
 		}
@@ -86,36 +86,36 @@ func symbolKind(symbol decoder.Symbol, supported []lsp.SymbolKind) (lsp.SymbolKi
 		}
 	}
 
-	return lsp.SymbolKind(0), false
+	return gopls.SymbolKind(0), false
 }
 
-func exprSymbolKind(symbolKind lang.SymbolExprKind, supported []lsp.SymbolKind) (lsp.SymbolKind, bool) {
+func exprSymbolKind(symbolKind lang.SymbolExprKind, supported []gopls.SymbolKind) (gopls.SymbolKind, bool) {
 	switch k := symbolKind.(type) {
 	case lang.LiteralTypeKind:
 		switch k.Type {
 		case cty.Bool:
-			return supportedSymbolKind(supported, lsp.Boolean)
+			return supportedSymbolKind(supported, gopls.Boolean)
 		case cty.String:
-			return supportedSymbolKind(supported, lsp.String)
+			return supportedSymbolKind(supported, gopls.String)
 		case cty.Number:
-			return supportedSymbolKind(supported, lsp.Number)
+			return supportedSymbolKind(supported, gopls.Number)
 		}
 	case lang.TraversalExprKind:
-		return supportedSymbolKind(supported, lsp.Constant)
+		return supportedSymbolKind(supported, gopls.Constant)
 	case lang.TupleConsExprKind:
-		return supportedSymbolKind(supported, lsp.Array)
+		return supportedSymbolKind(supported, gopls.Array)
 	case lang.ObjectConsExprKind:
-		return supportedSymbolKind(supported, lsp.Struct)
+		return supportedSymbolKind(supported, gopls.Struct)
 	}
 
-	return supportedSymbolKind(supported, lsp.Variable)
+	return supportedSymbolKind(supported, gopls.Variable)
 }
 
-func supportedSymbolKind(supported []lsp.SymbolKind, kind lsp.SymbolKind) (lsp.SymbolKind, bool) {
+func supportedSymbolKind(supported []gopls.SymbolKind, kind gopls.SymbolKind) (gopls.SymbolKind, bool) {
 	for _, s := range supported {
 		if s == kind {
 			return s, true
 		}
 	}
-	return lsp.SymbolKind(0), false
+	return gopls.SymbolKind(0), false
 }

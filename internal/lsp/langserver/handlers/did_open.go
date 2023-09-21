@@ -8,21 +8,21 @@ import (
 	"fmt"
 
 	"github.com/creachadair/jrpc2"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/uri"
 )
 
-func (svc *service) TextDocumentDidOpen(ctx context.Context, params lsp.DidOpenTextDocumentParams) error {
+func (svc *service) TextDocumentDidOpen(ctx context.Context, params gopls.DidOpenTextDocumentParams) error {
 	docURI := string(params.TextDocument.URI)
 
 	// URIs are always checked during initialize request, but
 	// we still allow single-file mode, therefore invalid URIs
 	// can still land here, so we check for those.
 	if !uri.IsURIValid(docURI) {
-		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-			Type: lsp.Warning,
+		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
+			Type: gopls.Warning,
 			Message: fmt.Sprintf("Ignoring workspace folder (unsupport or invalid URI) %s."+
 				" This is most likely bug, please report it.", docURI),
 		})

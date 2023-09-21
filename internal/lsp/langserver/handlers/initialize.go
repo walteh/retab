@@ -11,16 +11,16 @@ import (
 
 	"github.com/creachadair/jrpc2"
 	"github.com/mitchellh/go-homedir"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
 	"github.com/walteh/retab/internal/lsp/document"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/internal/lsp/lsp"
 	"github.com/walteh/retab/internal/lsp/settings"
 	"github.com/walteh/retab/internal/lsp/uri"
 	"github.com/walteh/retab/internal/protocol"
 )
 
-func (svc *service) Initialize(ctx context.Context, params lsp.InitializeParams) (lsp.InitializeResult, error) {
+func (svc *service) Initialize(ctx context.Context, params gopls.InitializeParams) (gopls.InitializeResult, error) {
 	serverCaps := initializeResult(ctx)
 
 	out, err := settings.DecodeOptions(params.InitializationOptions)
@@ -45,7 +45,7 @@ func (svc *service) Initialize(ctx context.Context, params lsp.InitializeParams)
 	defer svc.telemetry.SendEvent(ctx, "initialize", properties)
 
 	if params.ClientInfo != nil && params.ClientInfo.Name != "" {
-		err = ilsp.SetClientName(ctx, params.ClientInfo.Name)
+		err = lsp.SetClientName(ctx, params.ClientInfo.Name)
 		if err != nil {
 			return serverCaps, err
 		}
@@ -72,7 +72,7 @@ func (svc *service) Initialize(ctx context.Context, params lsp.InitializeParams)
 
 	serverCaps.Capabilities.Experimental = expServerCaps
 
-	err = ilsp.SetClientCapabilities(ctx, &clientCaps)
+	err = lsp.SetClientCapabilities(ctx, &clientCaps)
 	if err != nil {
 		return serverCaps, err
 	}
@@ -83,15 +83,15 @@ func (svc *service) Initialize(ctx context.Context, params lsp.InitializeParams)
 	}
 
 	stCaps := clientCaps.TextDocument.SemanticTokens
-	caps := ilsp.SemanticTokensClientCapabilities{
+	caps := lsp.SemanticTokensClientCapabilities{
 		SemanticTokensClientCapabilities: clientCaps.TextDocument.SemanticTokens,
 	}
-	semanticTokensOpts := lsp.SemanticTokensOptions{
-		Legend: lsp.SemanticTokensLegend{
-			TokenTypes:     ilsp.TokenTypesLegend(stCaps.TokenTypes).AsStrings(),
-			TokenModifiers: ilsp.TokenModifiersLegend(stCaps.TokenModifiers).AsStrings(),
+	semanticTokensOpts := gopls.SemanticTokensOptions{
+		Legend: gopls.SemanticTokensLegend{
+			TokenTypes:     lsp.TokenTypesLegend(stCaps.TokenTypes).AsStrings(),
+			TokenModifiers: lsp.TokenModifiersLegend(stCaps.TokenModifiers).AsStrings(),
 		},
-		Full: &lsp.Or_SemanticTokensOptions_full{
+		Full: &gopls.Or_SemanticTokensOptions_full{
 			Value: caps.FullRequest(),
 		},
 	}
@@ -101,9 +101,9 @@ func (svc *service) Initialize(ctx context.Context, params lsp.InitializeParams)
 	// set commandPrefix for session
 	lsctx.SetCommandPrefix(ctx, out.Options.CommandPrefix)
 	// apply prefix to executeCommand handler names
-	serverCaps.Capabilities.ExecuteCommandProvider = &lsp.ExecuteCommandOptions{
+	serverCaps.Capabilities.ExecuteCommandProvider = &gopls.ExecuteCommandOptions{
 		Commands: cmdHandlers(svc).Names(out.Options.CommandPrefix),
-		WorkDoneProgressOptions: lsp.WorkDoneProgressOptions{
+		WorkDoneProgressOptions: gopls.WorkDoneProgressOptions{
 			WorkDoneProgress: true,
 		},
 	}
@@ -112,16 +112,16 @@ func (svc *service) Initialize(ctx context.Context, params lsp.InitializeParams)
 	lsctx.SetExperimentalFeatures(ctx, out.Options.ExperimentalFeatures)
 
 	if len(out.UnusedKeys) > 0 {
-		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-			Type:    lsp.Warning,
+		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
+			Type:    gopls.Warning,
 			Message: fmt.Sprintf("Unknown configuration options: %q", out.UnusedKeys),
 		})
 	}
 	cfgOpts := out.Options
 
 	if !clientCaps.Workspace.WorkspaceFolders && len(params.WorkspaceFolders) > 0 {
-		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-			Type: lsp.Warning,
+		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
+			Type: gopls.Warning,
 			Message: "Client sent workspace folders despite not declaring support. " +
 				"Please report this as a bug.",
 		})
@@ -131,8 +131,8 @@ func (svc *service) Initialize(ctx context.Context, params lsp.InitializeParams)
 		svc.singleFileMode = true
 		properties["root_uri"] = "file"
 		if properties["options.ignoreSingleFileWarning"] == false {
-			jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-				Type:    lsp.Warning,
+			jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
+				Type:    gopls.Warning,
 				Message: "Some capabilities may be reduced when editing a single file. We recommend opening a directory for full functionality. Use 'ignoreSingleFileWarning' to suppress this warning.",
 			})
 		}
@@ -219,37 +219,37 @@ func getTelemetryProperties(out *settings.DecodedOptions) map[string]interface{}
 	return properties
 }
 
-func initializeResult(ctx context.Context) lsp.InitializeResult {
-	serverCaps := lsp.InitializeResult{
-		ServerInfo: &lsp.PServerInfoMsg_initialize{},
-		Capabilities: lsp.ServerCapabilities{
-			TextDocumentSync: lsp.TextDocumentSyncOptions{
+func initializeResult(ctx context.Context) gopls.InitializeResult {
+	serverCaps := gopls.InitializeResult{
+		ServerInfo: &gopls.PServerInfoMsg_initialize{},
+		Capabilities: gopls.ServerCapabilities{
+			TextDocumentSync: gopls.TextDocumentSyncOptions{
 				OpenClose: true,
-				Change:    lsp.Incremental,
+				Change:    gopls.Incremental,
 			},
-			CompletionProvider: &lsp.CompletionOptions{
+			CompletionProvider: &gopls.CompletionOptions{
 				ResolveProvider:   true,
 				TriggerCharacters: []string{".", "["},
 			},
-			CodeActionProvider: lsp.CodeActionOptions{
-				CodeActionKinds: ilsp.SupportedCodeActions.AsSlice(),
+			CodeActionProvider: gopls.CodeActionOptions{
+				CodeActionKinds: lsp.SupportedCodeActions.AsSlice(),
 				ResolveProvider: false,
 			},
-			DeclarationProvider:        &lsp.Or_ServerCapabilities_declarationProvider{Value: true},
-			DefinitionProvider:         &lsp.Or_ServerCapabilities_definitionProvider{Value: true},
-			CodeLensProvider:           &lsp.CodeLensOptions{},
-			ReferencesProvider:         &lsp.Or_ServerCapabilities_referencesProvider{Value: true},
-			HoverProvider:              &lsp.Or_ServerCapabilities_hoverProvider{Value: true},
-			DocumentFormattingProvider: &lsp.Or_ServerCapabilities_documentFormattingProvider{Value: true},
-			DocumentSymbolProvider:     &lsp.Or_ServerCapabilities_documentSymbolProvider{Value: true},
-			WorkspaceSymbolProvider:    &lsp.Or_ServerCapabilities_workspaceSymbolProvider{Value: true},
-			Workspace: &lsp.Workspace6Gn{
-				WorkspaceFolders: &lsp.WorkspaceFolders5Gn{
+			DeclarationProvider:        &gopls.Or_ServerCapabilities_declarationProvider{Value: true},
+			DefinitionProvider:         &gopls.Or_ServerCapabilities_definitionProvider{Value: true},
+			CodeLensProvider:           &gopls.CodeLensOptions{},
+			ReferencesProvider:         &gopls.Or_ServerCapabilities_referencesProvider{Value: true},
+			HoverProvider:              &gopls.Or_ServerCapabilities_hoverProvider{Value: true},
+			DocumentFormattingProvider: &gopls.Or_ServerCapabilities_documentFormattingProvider{Value: true},
+			DocumentSymbolProvider:     &gopls.Or_ServerCapabilities_documentSymbolProvider{Value: true},
+			WorkspaceSymbolProvider:    &gopls.Or_ServerCapabilities_workspaceSymbolProvider{Value: true},
+			Workspace: &gopls.Workspace6Gn{
+				WorkspaceFolders: &gopls.WorkspaceFolders5Gn{
 					Supported:           true,
 					ChangeNotifications: "workspace/didChangeWorkspaceFolders",
 				},
 			},
-			SignatureHelpProvider: &lsp.SignatureHelpOptions{
+			SignatureHelpProvider: &gopls.SignatureHelpOptions{
 				TriggerCharacters: []string{"(", ","},
 			},
 		},
@@ -264,7 +264,7 @@ func initializeResult(ctx context.Context) lsp.InitializeResult {
 	return serverCaps
 }
 
-func (svc *service) setupWalker(ctx context.Context, params lsp.InitializeParams, options *settings.Options) error {
+func (svc *service) setupWalker(ctx context.Context, params gopls.InitializeParams, options *settings.Options) error {
 	rootURI := string(params.RootURI)
 	root := document.DirHandleFromURI(rootURI)
 
@@ -277,8 +277,8 @@ func (svc *service) setupWalker(ctx context.Context, params lsp.InitializeParams
 	for _, rawPath := range options.Indexing.IgnorePaths {
 		modPath, err := resolvePath(root.Path(), rawPath)
 		if err != nil {
-			jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-				Type: lsp.Warning,
+			jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
+				Type: gopls.Warning,
 				Message: fmt.Sprintf("Unable to ignore path (unsupported or invalid URI): %s: %s",
 					rawPath, err),
 			})
@@ -295,8 +295,8 @@ func (svc *service) setupWalker(ctx context.Context, params lsp.InitializeParams
 	if len(params.WorkspaceFolders) > 0 {
 		for _, folder := range params.WorkspaceFolders {
 			if !uri.IsURIValid(folder.URI) {
-				jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-					Type: lsp.Warning,
+				jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
+					Type: gopls.Warning,
 					Message: fmt.Sprintf("Ignoring workspace folder (unsupported or invalid URI) %s."+
 						" This is most likely bug, please report it.", folder.URI),
 				})
@@ -307,8 +307,8 @@ func (svc *service) setupWalker(ctx context.Context, params lsp.InitializeParams
 
 			err := svc.stateStore.WalkerPaths.EnqueueDir(ctx, modPath)
 			if err != nil {
-				jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &lsp.ShowMessageParams{
-					Type: lsp.Warning,
+				jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
+					Type: gopls.Warning,
 					Message: fmt.Sprintf("Ignoring workspace folder %s: %s."+
 						" This is most likely bug, please report it.", folder.URI, err),
 				})

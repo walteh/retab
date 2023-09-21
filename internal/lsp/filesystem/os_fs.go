@@ -4,24 +4,9 @@
 package filesystem
 
 import (
-	"io/fs"
-	"os"
+	"github.com/spf13/afero"
 )
 
-type osFs struct{}
-
-func (osfs osFs) Open(name string) (fs.File, error) {
-	return os.Open(name)
-}
-
-func (osfs osFs) Stat(name string) (fs.FileInfo, error) {
-	return os.Stat(name)
-}
-
-func (osfs osFs) ReadDir(name string) ([]fs.DirEntry, error) {
-	return os.ReadDir(name)
-}
-
-func (osfs osFs) ReadFile(name string) ([]byte, error) {
-	return os.ReadFile(name)
+func (me *Filesystem) Ref() afero.Fs {
+	return me.osFs
 }

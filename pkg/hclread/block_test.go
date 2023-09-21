@@ -21,7 +21,7 @@ file "default.yaml" {
 	  }
 		jobs = {
 		  build = {
-			  runson = "ubuntu-latest"
+			  runs-on = "ubuntu-latest"
 			  steps = [
 				  {
 					  name = "Checkout"
@@ -70,7 +70,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 						},
 						"jobs": map[string]interface{}{
 							"build": map[string]interface{}{
-								"runson": "ubuntu-latest",
+								"runs-on": "ubuntu-latest",
 								"steps": []interface{}{
 									map[string]interface{}{
 										"name": "Checkout",
@@ -106,14 +106,26 @@ func TestParseBlocksFromFile(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			_, got, err := NewEvaluation(ctx, file)
+			_, ectx, got, err := NewEvaluation(ctx, file)
 			if tt.wantErr == nil {
 				assert.NoError(t, err)
 			} else {
 				assert.Error(t, err)
 			}
 
-			assert.Equal(t, tt.want, got)
+			resp := make([]*BlockEvaluation, 0)
+
+			for _, block := range got.Blocks {
+				be, err := NewBlockEvaluation(ctx, ectx, block)
+				if tt.wantErr == nil {
+					assert.NoError(t, err)
+					resp = append(resp, be)
+				} else {
+					assert.Error(t, err)
+				}
+			}
+
+			assert.Equal(t, tt.want, resp)
 		})
 	}
 }

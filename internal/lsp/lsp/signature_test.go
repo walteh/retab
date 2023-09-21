@@ -9,14 +9,14 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/hcl-lang/lang"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 )
 
 func TestToSignatureHelp(t *testing.T) {
 	testCases := []struct {
 		name                  string
 		signature             *lang.FunctionSignature
-		expectedSignatureHelp *lsp.SignatureHelp
+		expectedSignatureHelp *gopls.SignatureHelp
 	}{
 		{
 			"nil",
@@ -29,12 +29,12 @@ func TestToSignatureHelp(t *testing.T) {
 				Name:        "foo() string",
 				Description: lang.Markdown("`foo` description"),
 			},
-			&lsp.SignatureHelp{
-				Signatures: []lsp.SignatureInformation{
+			&gopls.SignatureHelp{
+				Signatures: []gopls.SignatureInformation{
 					{
 						Label:         "foo() string",
-						Documentation: &lsp.Or_SignatureInformation_documentation{Value: "foo description"},
-						Parameters:    []lsp.ParameterInformation{},
+						Documentation: &gopls.Or_SignatureInformation_documentation{Value: "foo description"},
+						Parameters:    []gopls.ParameterInformation{},
 					},
 				},
 			},
@@ -52,12 +52,12 @@ func TestToSignatureHelp(t *testing.T) {
 				},
 				ActiveParameter: 0,
 			},
-			&lsp.SignatureHelp{
-				Signatures: []lsp.SignatureInformation{
+			&gopls.SignatureHelp{
+				Signatures: []gopls.SignatureInformation{
 					{
 						Label:         "foo(input list of string) map of number",
-						Documentation: &lsp.Or_SignatureInformation_documentation{Value: "foo description"},
-						Parameters: []lsp.ParameterInformation{
+						Documentation: &gopls.Or_SignatureInformation_documentation{Value: "foo description"},
+						Parameters: []gopls.ParameterInformation{
 							{
 								Label:         "input",
 								Documentation: "input description",
@@ -90,12 +90,12 @@ func TestToSignatureHelp(t *testing.T) {
 				},
 				ActiveParameter: 1,
 			},
-			&lsp.SignatureHelp{
-				Signatures: []lsp.SignatureInformation{
+			&gopls.SignatureHelp{
+				Signatures: []gopls.SignatureInformation{
 					{
 						Label:         "foo(input string, input2 number, input3 string) number",
-						Documentation: &lsp.Or_SignatureInformation_documentation{Value: "foo description"},
-						Parameters: []lsp.ParameterInformation{
+						Documentation: &gopls.Or_SignatureInformation_documentation{Value: "foo description"},
+						Parameters: []gopls.ParameterInformation{
 							{
 								Label:         "input",
 								Documentation: "input description",

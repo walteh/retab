@@ -8,8 +8,7 @@ package lsp
 type LanguageID string
 
 const (
-	Terraform LanguageID = "terraform"
-	Tfvars    LanguageID = "terraform-vars"
+	Retab LanguageID = "retab"
 )
 
 func (l LanguageID) String() string {

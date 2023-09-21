@@ -6,20 +6,20 @@ package handlers
 import (
 	"context"
 
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
-func (svc *service) TextDocumentComplete(ctx context.Context, params lsp.CompletionParams) (lsp.CompletionList, error) {
-	var list lsp.CompletionList
+func (svc *service) TextDocumentComplete(ctx context.Context, params gopls.CompletionParams) (gopls.CompletionList, error) {
+	var list gopls.CompletionList
 
-	cc, err := ilsp.ClientCapabilities(ctx)
+	cc, err := lsp.ClientCapabilities(ctx)
 	if err != nil {
 		return list, err
 	}
 
-	dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
 	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return list, err
@@ -37,7 +37,7 @@ func (svc *service) TextDocumentComplete(ctx context.Context, params lsp.Complet
 
 	d.PrefillRequiredFields = expFeatures.PrefillRequiredFields
 
-	pos, err := ilsp.HCLPositionFromLspPosition(params.TextDocumentPositionParams.Position, doc)
+	pos, err := lsp.HCLPositionFromLspPosition(params.TextDocumentPositionParams.Position, doc)
 	if err != nil {
 		return list, err
 	}
@@ -45,5 +45,5 @@ func (svc *service) TextDocumentComplete(ctx context.Context, params lsp.Complet
 	svc.logger.Printf("Looking for candidates at %q -> %#v", doc.Filename, pos)
 	candidates, err := d.CandidatesAtPos(ctx, doc.Filename, pos)
 	svc.logger.Printf("received candidates: %#v", candidates)
-	return ilsp.ToCompletionList(candidates, cc.TextDocument), err
+	return lsp.ToCompletionList(candidates, cc.TextDocument), err
 }

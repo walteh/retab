@@ -5,28 +5,28 @@ package lsp
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/document"
 )
 
-func documentRangeToLSP(docRng *document.Range) lsp.Range {
+func documentRangeToLSP(docRng *document.Range) gopls.Range {
 	if docRng == nil {
-		return lsp.Range{}
+		return gopls.Range{}
 	}
 
-	return lsp.Range{
-		Start: lsp.Position{
+	return gopls.Range{
+		Start: gopls.Position{
 			Character: uint32(docRng.Start.Column),
 			Line:      uint32(docRng.Start.Line),
 		},
-		End: lsp.Position{
+		End: gopls.Position{
 			Character: uint32(docRng.End.Column),
 			Line:      uint32(docRng.End.Line),
 		},
 	}
 }
 
-func lspRangeToDocRange(rng *lsp.Range) *document.Range {
+func lspRangeToDocRange(rng *gopls.Range) *document.Range {
 	if rng == nil {
 		return nil
 	}
@@ -43,15 +43,15 @@ func lspRangeToDocRange(rng *lsp.Range) *document.Range {
 	}
 }
 
-func HCLRangeToLSP(rng hcl.Range) lsp.Range {
-	return lsp.Range{
+func HCLRangeToLSP(rng hcl.Range) gopls.Range {
+	return gopls.Range{
 		Start: HCLPosToLSP(rng.Start),
 		End:   HCLPosToLSP(rng.End),
 	}
 }
 
-func HCLPosToLSP(pos hcl.Pos) lsp.Position {
-	return lsp.Position{
+func HCLPosToLSP(pos hcl.Pos) gopls.Position {
+	return gopls.Position{
 		Line:      uint32(pos.Line - 1),
 		Character: uint32(pos.Column - 1),
 	}

@@ -72,7 +72,7 @@ func TestCodeLens_withoutOptIn(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": "provider \"test\" {\n\n}\n",
 			"uri": "%s/main.tf"
 		}
@@ -97,11 +97,11 @@ func TestCodeLens_referenceCount(t *testing.T) {
 	tmpDir := TempDir(t)
 	InitPluginCache(t, tmpDir.Path())
 
-	var testSchema tfjson.ProviderSchemas
-	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// var testSchema tfjson.ProviderSchemas
+	// err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
 
 	ss, err := state.NewStateStore()
 	if err != nil {
@@ -137,7 +137,7 @@ func TestCodeLens_referenceCount(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": %q,
 			"uri": "%s/main.tf"
 		}
@@ -239,7 +239,7 @@ func TestCodeLens_referenceCount_crossModule(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": %q,
 			"uri": "%s/main.tf"
 		}

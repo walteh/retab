@@ -8,18 +8,18 @@ import (
 	"io"
 	"time"
 
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/hcl"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/internal/lsp/lsp"
 	"github.com/walteh/retab/pkg/editorconfig"
 	"github.com/walteh/retab/pkg/hclwrite"
 )
 
-func (svc *service) TextDocumentFormatting(ctx context.Context, params lsp.DocumentFormattingParams) ([]lsp.TextEdit, error) {
-	var edits []lsp.TextEdit
+func (svc *service) TextDocumentFormatting(ctx context.Context, params gopls.DocumentFormattingParams) ([]gopls.TextEdit, error) {
+	var edits []gopls.TextEdit
 
-	dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
 
 	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
@@ -34,7 +34,7 @@ func (svc *service) TextDocumentFormatting(ctx context.Context, params lsp.Docum
 	return edits, nil
 }
 
-func (svc *service) formatDocument(ctx context.Context, original []byte, dh document.Handle) ([]lsp.TextEdit, error) {
+func (svc *service) formatDocument(ctx context.Context, original []byte, dh document.Handle) ([]gopls.TextEdit, error) {
 
 	startTime := time.Now()
 
@@ -55,5 +55,5 @@ func (svc *service) formatDocument(ctx context.Context, original []byte, dh docu
 
 	changes := hcl.Diff(dh, original, formatted)
 
-	return ilsp.TextEditsFromDocumentChanges(changes), nil
+	return lsp.TextEditsFromDocumentChanges(changes), nil
 }

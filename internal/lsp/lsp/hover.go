@@ -5,15 +5,14 @@ package lsp
 
 import (
 	"github.com/hashicorp/hcl-lang/lang"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 )
 
-func HoverData(data *lang.HoverData, cc lsp.TextDocumentClientCapabilities) *lsp.Hover {
+func HoverData(data *lang.HoverData, cc gopls.TextDocumentClientCapabilities) *gopls.Hover {
 	if data == nil {
 		return nil
 	}
-	mdSupported := len(cc.Hover.ContentFormat) > 0 &&
-		cc.Hover.ContentFormat[0] == "markdown"
+	mdSupported := len(cc.Hover.ContentFormat) > 0 && cc.Hover.ContentFormat[0] == "markdown"
 
 	// In theory we should be sending lsp.MarkedString (for old clients)
 	// when len(cc.Hover.ContentFormat) == 0, but that's not possible
@@ -21,7 +20,7 @@ func HoverData(data *lang.HoverData, cc lsp.TextDocumentClientCapabilities) *lsp
 	//
 	// We choose to follow gopls' approach (i.e. cut off old clients).
 
-	return &lsp.Hover{
+	return &gopls.Hover{
 		Contents: markupContent(data.Content, mdSupported),
 		Range:    HCLRangeToLSP(data.Range),
 	}

@@ -5,23 +5,23 @@ package lsp
 
 import (
 	"github.com/hashicorp/hcl-lang/lang"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/mdplain"
 )
 
-func markupContent(content lang.MarkupContent, mdSupported bool) lsp.MarkupContent {
+func markupContent(content lang.MarkupContent, mdSupported bool) gopls.MarkupContent {
 	value := content.Value
 
-	kind := lsp.PlainText
+	kind := gopls.PlainText
 	if content.Kind == lang.MarkdownKind {
 		if mdSupported {
-			kind = lsp.Markdown
+			kind = gopls.Markdown
 		} else {
 			value = mdplain.Clean(value)
 		}
 	}
 
-	return lsp.MarkupContent{
+	return gopls.MarkupContent{
 		Kind:  kind,
 		Value: value,
 	}

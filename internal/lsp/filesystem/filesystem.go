@@ -6,11 +6,12 @@ package filesystem
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
-	"io/ioutil"
 	"log"
 	"os"
 
+	"github.com/spf13/afero"
 	"github.com/walteh/retab/internal/lsp/document"
 )
 
@@ -19,7 +20,7 @@ import (
 //
 // This allows for reading files in a directory while reflecting unsaved changes.
 type Filesystem struct {
-	osFs     osFs
+	osFs     afero.Fs
 	docStore DocumentStore
 
 	logger *log.Logger
@@ -32,9 +33,9 @@ type DocumentStore interface {
 
 func NewFilesystem(docStore DocumentStore) *Filesystem {
 	return &Filesystem{
-		osFs:     osFs{},
+		osFs:     afero.NewOsFs(),
 		docStore: docStore,
-		logger:   log.New(ioutil.Discard, "", 0),
+		logger:   log.New(io.Discard, "", 0),
 	}
 }
 
@@ -46,7 +47,7 @@ func (fs *Filesystem) ReadFile(name string) ([]byte, error) {
 	doc, err := fs.docStore.GetDocument(document.HandleFromPath(name))
 	if err != nil {
 		if errors.Is(err, &document.DocumentNotFound{}) {
-			return fs.osFs.ReadFile(name)
+			return afero.ReadFile(fs.osFs, name)
 		}
 		return nil, err
 	}
@@ -54,24 +55,24 @@ func (fs *Filesystem) ReadFile(name string) ([]byte, error) {
 	return []byte(doc.Text), err
 }
 
-func (fs *Filesystem) ReadDir(name string) ([]fs.DirEntry, error) {
+func (me *Filesystem) ReadDir(name string) ([]fs.DirEntry, error) {
 	dirHandle := document.DirHandleFromPath(name)
-	docList, err := fs.docStore.ListDocumentsInDir(dirHandle)
+	docList, err := me.docStore.ListDocumentsInDir(dirHandle)
 	if err != nil {
 		return nil, fmt.Errorf("doc FS: %w", err)
 	}
 
-	osList, err := fs.osFs.ReadDir(name)
+	osList, err := afero.ReadDir(me.osFs, name)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("OS FS: %w", err)
 	}
 
 	list := documentsAsDirEntries(docList)
 	for _, osEntry := range osList {
-		if entryIsInList(list, osEntry) {
+		if entryIsInList(list, fs.FileInfoToDirEntry(osEntry)) {
 			continue
 		}
-		list = append(list, osEntry)
+		list = append(list, fs.FileInfoToDirEntry(osEntry))
 	}
 
 	return list, nil
@@ -86,7 +87,7 @@ func entryIsInList(list []fs.DirEntry, entry fs.DirEntry) bool {
 	return false
 }
 
-func (fs *Filesystem) Open(name string) (fs.File, error) {
+func (fs *Filesystem) Open(name string) (afero.File, error) {
 	doc, err := fs.docStore.GetDocument(document.HandleFromPath(name))
 	if err != nil {
 		if errors.Is(err, &document.DocumentNotFound{}) {
@@ -95,7 +96,7 @@ func (fs *Filesystem) Open(name string) (fs.File, error) {
 		return nil, err
 	}
 
-	return documentAsFile(doc), err
+	return documentAsFile(doc)
 }
 
 func (fs *Filesystem) Stat(name string) (os.FileInfo, error) {

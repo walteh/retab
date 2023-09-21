@@ -6,16 +6,16 @@ package handlers
 import (
 	"context"
 
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
 	"github.com/walteh/retab/internal/lsp/document"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
-func (svc *service) TextDocumentDidChange(ctx context.Context, params lsp.DidChangeTextDocumentParams) error {
-	p := lsp.DidChangeTextDocumentParams{
-		TextDocument: lsp.VersionedTextDocumentIdentifier{
-			TextDocumentIdentifier: lsp.TextDocumentIdentifier{
+func (svc *service) TextDocumentDidChange(ctx context.Context, params gopls.DidChangeTextDocumentParams) error {
+	p := gopls.DidChangeTextDocumentParams{
+		TextDocument: gopls.VersionedTextDocumentIdentifier{
+			TextDocumentIdentifier: gopls.TextDocumentIdentifier{
 				URI: params.TextDocument.URI,
 			},
 			Version: params.TextDocument.Version,
@@ -23,7 +23,7 @@ func (svc *service) TextDocumentDidChange(ctx context.Context, params lsp.DidCha
 		ContentChanges: params.ContentChanges,
 	}
 
-	dh := ilsp.HandleFromDocumentURI(p.TextDocument.URI)
+	dh := lsp.HandleFromDocumentURI(p.TextDocument.URI)
 	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func (svc *service) TextDocumentDidChange(ctx context.Context, params lsp.DidCha
 		return nil
 	}
 
-	changes := ilsp.DocumentChanges(params.ContentChanges)
+	changes := lsp.DocumentChanges(params.ContentChanges)
 	newText, err := document.ApplyChanges(doc.Text, changes)
 	if err != nil {
 		return err
@@ -51,10 +51,10 @@ func (svc *service) TextDocumentDidChange(ctx context.Context, params lsp.DidCha
 		return err
 	}
 
-	jobIds, err := svc.indexer.DocumentChanged(ctx, dh.Dir)
-	if err != nil {
-		return err
-	}
+	// jobIds, err := svc.indexer.DocumentChanged(ctx, dh.Dir)
+	// if err != nil {
+	// 	return err
+	// }
 
-	return svc.stateStore.JobStore.WaitForJobs(ctx, jobIds...)
+	return svc.stateStore.JobStore.WaitForJobs(ctx)
 }

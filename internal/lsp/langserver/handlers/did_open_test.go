@@ -26,7 +26,7 @@ func TestLangServer_didOpenWithoutInitialization(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": "provider \"github\" {}",
 			"uri": "%s/main.tf"
 		}
@@ -70,7 +70,7 @@ func TestLangServer_didOpenLanguageIdStored(t *testing.T) {
 		Method: "textDocument/didOpen",
 		ReqParams: fmt.Sprintf(`{
     "textDocument": {
-        "languageId": "terraform",
+        "languageId": "retab",
         "version": 0,
         "uri": "%s/main.tf",
         "text": %q
@@ -84,7 +84,7 @@ func TestLangServer_didOpenLanguageIdStored(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if diff := cmp.Diff(doc.LanguageID, string("terraform")); diff != "" {
+	if diff := cmp.Diff(doc.LanguageID, string("retab")); diff != "" {
 		t.Fatalf("unexpected languageID: %s", diff)
 	}
 	fullPath := doc.FullPath()

@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/creachadair/jrpc2"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
 	"github.com/walteh/retab/internal/lsp/langserver/cmd"
 )
@@ -21,7 +21,7 @@ func cmdHandlers(svc *service) cmd.Handlers {
 	return cmd.Handlers{}
 }
 
-func (svc *service) WorkspaceExecuteCommand(ctx context.Context, params lsp.ExecuteCommandParams) (interface{}, error) {
+func (svc *service) WorkspaceExecuteCommand(ctx context.Context, params gopls.ExecuteCommandParams) (interface{}, error) {
 	if params.Command == "editor.action.triggerSuggest" {
 		// If this was actually received by the server, it means the client
 		// does not support explicit suggest triggering, so we fail silently
@@ -35,7 +35,7 @@ func (svc *service) WorkspaceExecuteCommand(ctx context.Context, params lsp.Exec
 		return nil, fmt.Errorf("%w: command handler not found for %q", jrpc2.MethodNotFound.Err(), params.Command)
 	}
 
-	pt, ok := params.WorkDoneToken.(lsp.ProgressToken)
+	pt, ok := params.WorkDoneToken.(gopls.ProgressToken)
 	if ok {
 		ctx = lsctx.WithProgressToken(ctx, pt)
 	}

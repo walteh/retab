@@ -16,7 +16,7 @@ import (
 
 	"github.com/hashicorp/hcl-lang/decoder"
 	"github.com/hashicorp/hcl-lang/lang"
-	idecoder "github.com/walteh/retab/internal/lsp/decoder"
+	"github.com/walteh/retab/internal/lsp/filesystem"
 )
 
 func TestDecoder_CodeLensesForFile_concurrencyBug(t *testing.T) {
@@ -34,7 +34,7 @@ func TestDecoder_CodeLensesForFile_concurrencyBug(t *testing.T) {
 
 	ctx := context.Background()
 
-	d := decoder.NewDecoder(&idecoder.PathReader{})
+	d := decoder.NewDecoder(filesystem.NewFilesystem(filesystem.DocumentStore))
 
 	var wg sync.WaitGroup
 	for _, dirName := range dirNames {
@@ -44,7 +44,7 @@ func TestDecoder_CodeLensesForFile_concurrencyBug(t *testing.T) {
 			defer wg.Done()
 			_, err := d.CodeLensesForFile(ctx, lang.Path{
 				Path:       dirName,
-				LanguageID: "terraform",
+				LanguageID: "retab",
 			}, "main.tf")
 			if err != nil {
 				t.Error(err)

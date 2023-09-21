@@ -7,7 +7,7 @@ import (
 	"bytes"
 
 	"github.com/hashicorp/hcl-lang/lang"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/lsp/semtok"
 	"github.com/walteh/retab/internal/lsp/source"
 )
@@ -15,7 +15,7 @@ import (
 type TokenEncoder struct {
 	Lines      source.Lines
 	Tokens     []lang.SemanticToken
-	ClientCaps lsp.SemanticTokensClientCapabilities
+	ClientCaps gopls.SemanticTokensClientCapabilities
 
 	// lastEncodedTokenIdx tracks index of the last encoded token
 	// so we can account for any skipped tokens in calculating diff

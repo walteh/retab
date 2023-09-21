@@ -7,14 +7,14 @@ import (
 	"context"
 
 	"github.com/hashicorp/hcl-lang/lang"
-	lsp "github.com/walteh/retab/gen/gopls"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
-func (svc *service) TextDocumentCodeLens(ctx context.Context, params lsp.CodeLensParams) ([]lsp.CodeLens, error) {
-	list := make([]lsp.CodeLens, 0)
+func (svc *service) TextDocumentCodeLens(ctx context.Context, params gopls.CodeLensParams) ([]gopls.CodeLens, error) {
+	list := make([]gopls.CodeLens, 0)
 
-	dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
 	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return list, err
@@ -31,14 +31,14 @@ func (svc *service) TextDocumentCodeLens(ctx context.Context, params lsp.CodeLen
 	}
 
 	for _, lens := range lenses {
-		cmd, err := ilsp.Command(lens.Command)
+		cmd, err := lsp.Command(lens.Command)
 		if err != nil {
 			svc.logger.Printf("skipping code lens %#v: %s", lens.Command, err)
 			continue
 		}
 
-		list = append(list, lsp.CodeLens{
-			Range:   ilsp.HCLRangeToLSP(lens.Range),
+		list = append(list, gopls.CodeLens{
+			Range:   lsp.HCLRangeToLSP(lens.Range),
 			Command: &cmd,
 		})
 	}

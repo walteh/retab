@@ -23,7 +23,7 @@ func TestLangServer_formattingWithoutInitialization(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": "provider \"github\" {}",
 			"uri": "%s/main.tf"
 		}
@@ -63,7 +63,7 @@ func TestLangServer_formatting_basic(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": "provider  \"test\"   {\n\n}\n",
 			"uri": "%s/main.tf"
 		}

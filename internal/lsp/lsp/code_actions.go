@@ -6,7 +6,7 @@ package lsp
 import (
 	"sort"
 
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 )
 
 const (
@@ -14,7 +14,7 @@ const (
 	SourceFormatAllTerraform = "source.formatAll.retab"
 )
 
-type CodeActions map[lsp.CodeActionKind]bool
+type CodeActions map[gopls.CodeActionKind]bool
 
 var (
 	// `source.*`: Source code actions apply to the entire file. They must be explicitly
@@ -38,8 +38,8 @@ var (
 	}
 )
 
-func (c CodeActions) AsSlice() []lsp.CodeActionKind {
-	s := make([]lsp.CodeActionKind, 0)
+func (c CodeActions) AsSlice() []gopls.CodeActionKind {
+	s := make([]gopls.CodeActionKind, 0)
 	for v := range c {
 		s = append(s, v)
 	}
@@ -50,7 +50,7 @@ func (c CodeActions) AsSlice() []lsp.CodeActionKind {
 	return s
 }
 
-func (ca CodeActions) Only(only []lsp.CodeActionKind) CodeActions {
+func (ca CodeActions) Only(only []gopls.CodeActionKind) CodeActions {
 	wanted := make(CodeActions, 0)
 
 	for _, kind := range only {

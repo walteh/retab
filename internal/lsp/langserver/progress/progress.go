@@ -7,7 +7,7 @@ import (
 	"context"
 
 	"github.com/creachadair/jrpc2"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
 )
 
@@ -17,9 +17,9 @@ func Begin(ctx context.Context, title string) error {
 		return nil
 	}
 
-	return jrpc2.ServerFromContext(ctx).Notify(ctx, "$/progress", lsp.ProgressParams{
+	return jrpc2.ServerFromContext(ctx).Notify(ctx, "$/progress", gopls.ProgressParams{
 		Token: token,
-		Value: lsp.WorkDoneProgressBegin{
+		Value: gopls.WorkDoneProgressBegin{
 			Kind:  "begin",
 			Title: title,
 		},
@@ -32,9 +32,9 @@ func Report(ctx context.Context, message string) error {
 		return nil
 	}
 
-	return jrpc2.ServerFromContext(ctx).Notify(ctx, "$/progress", lsp.ProgressParams{
+	return jrpc2.ServerFromContext(ctx).Notify(ctx, "$/progress", gopls.ProgressParams{
 		Token: token,
-		Value: lsp.WorkDoneProgressReport{
+		Value: gopls.WorkDoneProgressReport{
 			Kind:    "report",
 			Message: message,
 		},
@@ -47,9 +47,9 @@ func End(ctx context.Context, message string) error {
 		return nil
 	}
 
-	return jrpc2.ServerFromContext(ctx).Notify(ctx, "$/progress", lsp.ProgressParams{
+	return jrpc2.ServerFromContext(ctx).Notify(ctx, "$/progress", gopls.ProgressParams{
 		Token: token,
-		Value: lsp.WorkDoneProgressEnd{
+		Value: gopls.WorkDoneProgressEnd{
 			Kind:    "end",
 			Message: message,
 		},

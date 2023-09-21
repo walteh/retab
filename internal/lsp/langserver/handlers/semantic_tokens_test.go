@@ -72,7 +72,7 @@ func TestSemanticTokensFull(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": "provider \"test\" {\n\n}\n",
 			"uri": "%s/main.tf"
 		}
@@ -157,7 +157,7 @@ func TestSemanticTokensFull_clientSupportsDelta(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": "provider \"test\" {\n\n}\n",
 			"uri": "%s/main.tf"
 		}
@@ -239,7 +239,7 @@ func TestVarsSemanticTokensFull(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": "variable \"test\" {\n type=string\n}\n",
 			"uri": "%s/variables.tf"
 		}
@@ -332,7 +332,7 @@ func TestVarsSemanticTokensFull_functionToken(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": "locals {\n  foo = abs(-42)\n}\n",
 			"uri": "%s/locals.tf"
 		}

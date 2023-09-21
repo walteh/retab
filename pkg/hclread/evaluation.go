@@ -12,17 +12,17 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 )
 
-func NewEvaluation(ctx context.Context, fle afero.File) (*hcl.EvalContext, *hclsyntax.Body, error) {
+func NewEvaluation(ctx context.Context, fle afero.File) (*hcl.File, *hcl.EvalContext, *hclsyntax.Body, error) {
 	defer fle.Close()
 
 	all, err := afero.ReadAll(fle)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	hcldata, errd := hclsyntax.ParseConfig(all, fle.Name(), hcl.InitialPos)
 	if errd.HasErrors() {
-		return nil, nil, errd
+		return nil, nil, nil, errd
 	}
 
 	ectx := &hcl.EvalContext{
@@ -35,7 +35,7 @@ func NewEvaluation(ctx context.Context, fle afero.File) (*hcl.EvalContext, *hcls
 
 	userfuncs, rbdy, diag := userfunc.DecodeUserFunctions(hcldata.Body, "func", func() *hcl.EvalContext { return ectx })
 	if diag.HasErrors() {
-		return nil, nil, diag
+		return nil, nil, nil, diag
 	}
 
 	for k, v := range userfuncs {
@@ -60,13 +60,13 @@ func NewEvaluation(ctx context.Context, fle afero.File) (*hcl.EvalContext, *hcls
 	for _, v := range bdy.Attributes {
 		val, diag := v.Expr.Value(ectx)
 		if diag.HasErrors() {
-			return nil, nil, diag
+			return nil, nil, nil, diag
 		}
 		ectx.Variables[v.Name] = val
 	}
 
 	bdy.Attributes = nil
 
-	return ectx, bdy, nil
+	return hcldata, ectx, bdy, nil
 
 }

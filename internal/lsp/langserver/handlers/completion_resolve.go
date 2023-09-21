@@ -7,14 +7,14 @@ import (
 	"context"
 
 	"github.com/hashicorp/hcl-lang/decoder"
-	lsp "github.com/walteh/retab/gen/gopls"
-	ilsp "github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/internal/lsp/lsp"
 	"github.com/walteh/retab/internal/lsp/mdplain"
-	protocol "github.com/walteh/retab/internal/protocol"
+	"github.com/walteh/retab/internal/protocol"
 )
 
 func (svc *service) CompletionItemResolve(ctx context.Context, params protocol.CompletionItemWithResolveHook) (protocol.CompletionItemWithResolveHook, error) {
-	cc, err := ilsp.ClientCapabilities(ctx)
+	cc, err := lsp.ClientCapabilities(ctx)
 	if err != nil {
 		return params, err
 	}
@@ -38,7 +38,7 @@ func (svc *service) CompletionItemResolve(ctx context.Context, params protocol.C
 		// TODO: Revisit when MarkupContent is allowed as Documentation
 		// https://github.com/golang/tools/blob/4783bc9b/internal/lsp/protocol/tsprotocol.go#L753
 		doc = mdplain.Clean(doc)
-		params.Documentation = &lsp.Or_CompletionItem_documentation{
+		params.Documentation = &gopls.Or_CompletionItem_documentation{
 			Value: doc,
 		}
 	}
@@ -47,7 +47,7 @@ func (svc *service) CompletionItemResolve(ctx context.Context, params protocol.C
 	}
 	if len(resolvedCandidate.AdditionalTextEdits) > 0 {
 		snippetSupport := cc.TextDocument.Completion.CompletionItem.SnippetSupport
-		params.AdditionalTextEdits = ilsp.TextEdits(resolvedCandidate.AdditionalTextEdits, snippetSupport)
+		params.AdditionalTextEdits = lsp.TextEdits(resolvedCandidate.AdditionalTextEdits, snippetSupport)
 	}
 
 	return params, nil

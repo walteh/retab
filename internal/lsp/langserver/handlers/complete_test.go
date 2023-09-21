@@ -6,7 +6,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -40,7 +39,7 @@ func TestModuleCompletion_withValidData_basic(t *testing.T) {
 	tmpDir := TempDir(t)
 	InitPluginCache(t, tmpDir.Path())
 
-	err := ioutil.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("provider \"test\" {\n\n}\n"), 0o755)
+	err := os.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("provider \"test\" {\n\n}\n"), 0o755)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +81,7 @@ func TestModuleCompletion_withValidData_basic(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": "provider \"test\" {\n\n}\n",
 			"uri": "%s/main.tf"
 		}
@@ -215,7 +214,7 @@ func TestModuleCompletion_withValidData_tooOldVersion(t *testing.T) {
 	tmpDir := TempDir(t)
 	InitPluginCache(t, tmpDir.Path())
 
-	err := ioutil.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("variable \"test\" {\n\n}\n"), 0o755)
+	err := os.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("variable \"test\" {\n\n}\n"), 0o755)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +256,7 @@ func TestModuleCompletion_withValidData_tooOldVersion(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": "variable \"test\" {\n\n}\n",
 			"uri": "%s/main.tf"
 		}
@@ -350,7 +349,7 @@ func TestModuleCompletion_withValidData_tooNewVersion(t *testing.T) {
 	tmpDir := TempDir(t)
 	InitPluginCache(t, tmpDir.Path())
 
-	err := ioutil.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("variable \"test\" {\n\n}\n"), 0o755)
+	err := os.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("variable \"test\" {\n\n}\n"), 0o755)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -392,7 +391,7 @@ func TestModuleCompletion_withValidData_tooNewVersion(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": "variable \"test\" {\n\n}\n",
 			"uri": "%s/main.tf"
 		}
@@ -523,7 +522,7 @@ func TestModuleCompletion_withValidData_tooNewVersion(t *testing.T) {
 func TestModuleCompletion_withValidDataAndSnippets(t *testing.T) {
 	tmpDir := TempDir(t)
 	InitPluginCache(t, tmpDir.Path())
-	err := ioutil.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("provider \"test\" {\n\n}\n"), 0o755)
+	err := os.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("provider \"test\" {\n\n}\n"), 0o755)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -572,7 +571,7 @@ func TestModuleCompletion_withValidDataAndSnippets(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": "provider \"test\" {\n\n}\n",
 			"uri": "%s/main.tf"
 		}
@@ -831,7 +830,7 @@ func TestVarsCompletion_withValidData(t *testing.T) {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": "variable \"test\" {\n type=string\n}\n",
 			"uri": "%s/variables.tf"
 		}
@@ -938,7 +937,7 @@ output "test" {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": %q,
 			"uri": "%s/main.tf"
 		}
@@ -1149,7 +1148,7 @@ output "test" {
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": %q,
 			"uri": "%s/main.tf"
 		}
@@ -1429,7 +1428,7 @@ variable "ccc" {}
 		ReqParams: fmt.Sprintf(`{
 		"textDocument": {
 			"version": 0,
-			"languageId": "terraform",
+			"languageId": "retab",
 			"text": "output \"test\" {\n  value = var.\n}\n",
 			"uri": "%s/outputs.tf"
 		}

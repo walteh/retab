@@ -8,10 +8,10 @@ import (
 	"fmt"
 
 	"github.com/creachadair/jrpc2"
-	lsp "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls"
 )
 
-func CancelRequest(ctx context.Context, params lsp.CancelParams) error {
+func CancelRequest(ctx context.Context, params gopls.CancelParams) error {
 	id, err := decodeRequestID(params.ID)
 	if err != nil {
 		return err
