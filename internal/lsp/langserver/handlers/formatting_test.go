@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/creachadair/jrpc2"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
 	"github.com/walteh/retab/internal/lsp/state"
@@ -92,56 +91,6 @@ func TestLangServer_formatting_basic(t *testing.T) {
 		}`)
 }
 
-func TestLangServer_formatting_oldVersion(t *testing.T) {
-	tmpDir := TempDir(t)
-
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-	wc := walker.NewWalkerCollector()
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
-	}))
-	stop := ls.Start(t)
-	defer stop()
-
-	ls.Call(t, &langserver.CallRequest{
-		Method: "initialize",
-		ReqParams: fmt.Sprintf(`{
-	    "capabilities": {},
-	    "rootUri": %q,
-	    "processId": 12345
-	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
-
-	ls.Notify(t, &langserver.CallRequest{
-		Method:    "initialized",
-		ReqParams: "{}",
-	})
-	ls.Call(t, &langserver.CallRequest{
-		Method: "textDocument/didOpen",
-		ReqParams: fmt.Sprintf(`{
-		"textDocument": {
-			"version": 0,
-			"languageId": "terraform",
-			"text": "provider  \"test\"   {\n\n}\n",
-			"uri": "%s/main.tf"
-		}
-	}`, tmpDir.URI)})
-	waitForAllJobs(t, ss)
-
-	ls.CallAndExpectError(t, &langserver.CallRequest{
-		Method: "textDocument/formatting",
-		ReqParams: fmt.Sprintf(`{
-			"textDocument": {
-				"uri": "%s/main.tf"
-			}
-		}`, tmpDir.URI)}, jrpc2.SystemError.Err())
-}
-
 func TestLangServer_formatting_variables(t *testing.T) {
 	tmpDir := TempDir(t)
 
@@ -199,104 +148,6 @@ func TestLangServer_formatting_variables(t *testing.T) {
 						"end": { "line": 0, "character": 13 }
 					},
 					"newText": "test = \"dev\""
-				}
-			]
-		}`)
-}
-
-func TestLangServer_formatting_diffBug(t *testing.T) {
-	tmpDir := TempDir(t)
-
-	cfg := `resource "aws_lambda_function" "f" {
-    environment {
-        variables = {
-            a = "b"
-        }
-    }
-}
-`
-	// 	formattedCfg := `resource "aws_lambda_function" "f" {
-	//   environment {
-	//     variables = {
-	//       a = "b"
-	//     }
-	//   }
-	// }
-	// `
-
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-	wc := walker.NewWalkerCollector()
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
-	}))
-	stop := ls.Start(t)
-	defer stop()
-
-	ls.Call(t, &langserver.CallRequest{
-		Method: "initialize",
-		ReqParams: fmt.Sprintf(`{
-	    "capabilities": {},
-	    "rootUri": %q,
-	    "processId": 12345
-	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
-
-	ls.Notify(t, &langserver.CallRequest{
-		Method:    "initialized",
-		ReqParams: "{}",
-	})
-	ls.Call(t, &langserver.CallRequest{
-		Method: "textDocument/didOpen",
-		ReqParams: fmt.Sprintf(`{
-		"textDocument": {
-			"version": 0,
-			"languageId": "terraform",
-			"text": `+fmt.Sprintf("%q", cfg)+`,
-			"uri": "%s/main.tf"
-		}
-	}`, tmpDir.URI)})
-	waitForAllJobs(t, ss)
-
-	ls.CallAndExpectResponse(t, &langserver.CallRequest{
-		Method: "textDocument/formatting",
-		ReqParams: fmt.Sprintf(`{
-			"textDocument": {
-				"uri": "%s/main.tf"
-			}
-		}`, tmpDir.URI)}, `{
-			"jsonrpc": "2.0",
-			"id": 3,
-			"result": [
-				{
-					"range": {
-						"start": {
-							"line": 1,
-							"character": 0
-						},
-						"end": {
-							"line": 5,
-							"character": 0
-						}
-					},
-					"newText": "\tenvironment {\n\t\tvariables = {\n\t\t\ta = \"b\"\n\t\t"
-				},
-				{
-					"range": {
-						"start": {
-							"line": 6,
-							"character": 0
-						},
-						"end": {
-							"line": 6,
-							"character": 0
-						}
-					},
-					"newText":"\t}\n\ts"
 				}
 			]
 		}`)

@@ -37,11 +37,6 @@ func (svc *service) TextDocumentFormatting(ctx context.Context, params lsp.Docum
 func (svc *service) formatDocument(ctx context.Context, original []byte, dh document.Handle) ([]lsp.TextEdit, error) {
 
 	startTime := time.Now()
-	// formatted, err := tfExec.Format(ctx, original)
-	// if err != nil {
-	// 	svc.logger.Printf("Failed 'terraform fmt' in %s", time.Now().Sub(startTime))
-	// 	return edits, err
-	// }
 
 	cfg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, dh.Dir.URI)
 	if err != nil {
@@ -56,7 +51,7 @@ func (svc *service) formatDocument(ctx context.Context, original []byte, dh docu
 	if err != nil {
 		return nil, err
 	}
-	svc.logger.Printf("Finished 'terraform fmt' in %s", time.Now().Sub(startTime))
+	svc.logger.Printf("Finished 'formatting' in %s", time.Now().Sub(startTime))
 
 	changes := hcl.Diff(dh, original, formatted)
 
