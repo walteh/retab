@@ -9,6 +9,7 @@ IS_LOCAL       = CI != "1" && CI != "true" ? true : false
 ROOT_DIR       = "."
 DEST_DIR       = "${ROOT_DIR}/bin"
 GEN_DIR        = "${ROOT_DIR}/gen"
+GO_MODULE      = "github.com/${DOCKER_ORG}/${DOCKER_REPO}"
 
 ##################################################################
 # INPUTS
@@ -99,6 +100,7 @@ target "_common" {
 		GOMODOUTDATED_VERSION         = "v0.8.0"
 		MOCKERY_VERSION               = "2.33.3"
 		GOPLS_VERSION                 = "0.13.2"
+		GO_MODULE                     = GO_MODULE
 		BUILDKIT_CONTEXT_KEEP_GIT_DIR = 1
 		BIN_NAME                      = BIN_NAME
 		BUILDX_EXPERIMENTAL           = 1
@@ -199,6 +201,13 @@ COMMANDS = {
 		dest       = "${GEN_DIR}/gopls"
 		globs      = ["*.go"]
 	}
+	/* tools = {
+		dockerfile = "./hack/dockerfiles/tools.Dockerfile"
+		validate   = { target = "validate" }
+		generate   = { target = "generate" }
+		dest       = "${GEN_DIR}/tools"
+		globs      = ["*.go"]
+	} */
 }
 
 ##################################################################
@@ -212,7 +221,8 @@ target "generate" {
 	}
 	name = "generate-${item.name}"
 	args = {
-		NAME = item.name
+		NAME    = item.name
+		DESTDIR = item.dest
 	}
 	output     = ["type=local,dest=${item.dest}"]
 	target     = item.generate.target
