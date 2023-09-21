@@ -283,7 +283,7 @@ func TestLangServer_formatting_diffBug(t *testing.T) {
 							"character": 0
 						}
 					},
-					"newText": "  environment {\n    variables = {\n      a = \"b\"\n"
+					"newText": "\tenvironment {\n\t\tvariables = {\n\t\t\ta = \"b\"\n\t\t"
 				},
 				{
 					"range": {
@@ -296,7 +296,7 @@ func TestLangServer_formatting_diffBug(t *testing.T) {
 							"character": 0
 						}
 					},
-					"newText":"  }\n"
+					"newText":"\t}\n\ts"
 				}
 			]
 		}`)

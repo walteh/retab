@@ -15,9 +15,9 @@ import (
 	lsctx "github.com/walteh/retab/internal/lsp/context"
 	"github.com/walteh/retab/internal/lsp/document"
 	ilsp "github.com/walteh/retab/internal/lsp/lsp"
-	"github.com/walteh/retab/internal/lsp/protocol"
 	"github.com/walteh/retab/internal/lsp/settings"
 	"github.com/walteh/retab/internal/lsp/uri"
+	"github.com/walteh/retab/internal/protocol"
 )
 
 func (svc *service) Initialize(ctx context.Context, params lsp.InitializeParams) (lsp.InitializeResult, error) {
@@ -44,7 +44,7 @@ func (svc *service) Initialize(ctx context.Context, params lsp.InitializeParams)
 	setupTelemetry(expClientCaps, svc, ctx, properties)
 	defer svc.telemetry.SendEvent(ctx, "initialize", properties)
 
-	if params.ClientInfo.Name != "" {
+	if params.ClientInfo != nil && params.ClientInfo.Name != "" {
 		err = ilsp.SetClientName(ctx, params.ClientInfo.Name)
 		if err != nil {
 			return serverCaps, err
@@ -221,6 +221,7 @@ func getTelemetryProperties(out *settings.DecodedOptions) map[string]interface{}
 
 func initializeResult(ctx context.Context) lsp.InitializeResult {
 	serverCaps := lsp.InitializeResult{
+		ServerInfo: &lsp.PServerInfoMsg_initialize{},
 		Capabilities: lsp.ServerCapabilities{
 			TextDocumentSync: lsp.TextDocumentSyncOptions{
 				OpenClose: true,

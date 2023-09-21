@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/hcl-lang/decoder"
 	"github.com/walteh/retab/internal/lsp/codelens"
 	ilsp "github.com/walteh/retab/internal/lsp/lsp"
-	lsp "github.com/walteh/retab/internal/lsp/protocol"
 	"github.com/walteh/retab/internal/lsp/utm"
+	lsp "github.com/walteh/retab/internal/protocol"
 )
 
 func DecoderContext(ctx context.Context) decoder.DecoderContext {

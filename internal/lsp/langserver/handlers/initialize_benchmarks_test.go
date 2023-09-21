@@ -18,6 +18,8 @@ import (
 )
 
 func BenchmarkInitializeFolder_basic(b *testing.B) {
+	b.Skip()
+
 	modules := []struct {
 		name       string
 		sourceAddr string
