@@ -43,23 +43,28 @@ func (svc *service) textDocumentCodeAction(ctx context.Context, params lsp.CodeA
 
 	svc.logger.Printf("Code actions supported: %v", wantedCodeActions)
 
-	// dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
+	dh := ilsp.HandleFromDocumentURI(params.TextDocument.URI)
 
-	// doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
-	// if err != nil {
-	// 	return ca, err
-	// }
+	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
+	if err != nil {
+		return ca, err
+	}
 
 	for action := range wantedCodeActions {
 		switch action {
 		case ilsp.SourceFormatAllTerraform:
+
+			edits, err := svc.formatDocument(ctx, doc.Text, dh)
+			if err != nil {
+				return ca, err
+			}
 
 			ca = append(ca, lsp.CodeAction{
 				Title: "Format Document",
 				Kind:  action,
 				Edit: &lsp.WorkspaceEdit{
 					Changes: map[lsp.DocumentURI][]lsp.TextEdit{
-						// lsp.DocumentURI(dh.FullURI()): edits,
+						lsp.DocumentURI(dh.FullURI()): edits,
 					},
 				},
 			})
