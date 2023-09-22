@@ -9,7 +9,6 @@ import (
 
 	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/langserver/diagnostics"
-	"github.com/walteh/retab/internal/lsp/settings"
 )
 
 type contextKey struct {
@@ -156,28 +155,6 @@ func ProgressToken(ctx context.Context) (gopls.ProgressToken, bool) {
 		return "", false
 	}
 	return pt, true
-}
-
-func WithExperimentalFeatures(ctx context.Context, expFeatures *settings.ExperimentalFeatures) context.Context {
-	return context.WithValue(ctx, ctxExperimentalFeatures, expFeatures)
-}
-
-func SetExperimentalFeatures(ctx context.Context, expFeatures settings.ExperimentalFeatures) error {
-	e, ok := ctx.Value(ctxExperimentalFeatures).(*settings.ExperimentalFeatures)
-	if !ok {
-		return missingContextErr(ctxExperimentalFeatures)
-	}
-
-	*e = expFeatures
-	return nil
-}
-
-func ExperimentalFeatures(ctx context.Context) (settings.ExperimentalFeatures, error) {
-	expFeatures, ok := ctx.Value(ctxExperimentalFeatures).(*settings.ExperimentalFeatures)
-	if !ok {
-		return settings.ExperimentalFeatures{}, missingContextErr(ctxExperimentalFeatures)
-	}
-	return *expFeatures, nil
 }
 
 func WithRPCContext(ctx context.Context, rpcc RPCContextData) context.Context {

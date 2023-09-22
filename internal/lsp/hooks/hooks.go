@@ -8,11 +8,8 @@ package hooks
 
 import (
 	"log"
-
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 )
 
 type Hooks struct {
-	AlgoliaClient *search.Client
-	Logger        *log.Logger
+	Logger *log.Logger
 }

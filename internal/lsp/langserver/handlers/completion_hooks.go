@@ -4,21 +4,13 @@
 package handlers
 
 import (
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/hashicorp/hcl-lang/decoder"
-	"github.com/walteh/retab/internal/lsp/algolia"
-	"github.com/walteh/retab/internal/lsp/hooks"
 )
 
 func (s *service) AppendCompletionHooks(decoderContext decoder.DecoderContext) {
-	h := hooks.Hooks{
-		Logger: s.logger,
-	}
-
-	credentials, ok := algolia.CredentialsFromContext(s.srvCtx)
-	if ok {
-		h.AlgoliaClient = search.NewClient(credentials.AppID, credentials.APIKey)
-	}
+	// h := hooks.Hooks{
+	// 	Logger: s.logger,
+	// }
 
 	// decoderContext.CompletionHooks["CompleteLocalModuleSources"] = h.LocalModuleSources
 	// decoderContext.CompletionHooks["CompleteRegistryModuleSources"] = h.RegistryModuleSources

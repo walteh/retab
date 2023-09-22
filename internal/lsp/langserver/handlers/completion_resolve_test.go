@@ -4,11 +4,9 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 
-	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
 )
@@ -27,12 +25,6 @@ func TestCompletionResolve_withoutHook(t *testing.T) {
 	tmpDir := TempDir(t)
 	InitPluginCache(t, tmpDir.Path())
 
-	var testSchema tfjson.ProviderSchemas
-	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	ls := langserver.NewLangServerMock(t, NewMockSession(nil))
 	stop := ls.Start(t)
 	defer stop()
@@ -44,22 +36,23 @@ func TestCompletionResolve_withoutHook(t *testing.T) {
 		"rootUri": %q,
 		"processId": 12345
 	}`, tmpDir.URI)})
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
 	})
 
-	ls.CallAndExpectResponse(t, &langserver.CallRequest{
-		Method: "completionItem/resolve",
-		ReqParams: fmt.Sprintf(`{
+	ls.CallAndExpectResponse(t,
+		&langserver.CallRequest{
+			Method: "completionItem/resolve",
+			ReqParams: `{
 			"label": "\"test\"",
 			"kind": 1,
 			"data": {
 				"resolve_hook": "test",
-				"path": "%s/main.tf"
-			}
-		}`, TempDir(t).URI),
-	}, fmt.Sprintf(`{
+				"path": "` + TempDir(t).URI + `/main.tf"
+			}}`,
+		}, `{
 			"jsonrpc": "2.0",
 			"id": 2,
 			"result": {
@@ -67,8 +60,8 @@ func TestCompletionResolve_withoutHook(t *testing.T) {
 				"kind": 1,
 				"data": {
 					"resolve_hook": "test",
-					"path": "%s/main.tf"
+					"path": "`+TempDir(t).URI+`/main.tf"
 				}
 			}
-	}`, TempDir(t).URI))
+	}`)
 }

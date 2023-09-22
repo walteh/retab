@@ -16,17 +16,14 @@ import (
 	"github.com/hashicorp/hcl-lang/lang"
 	"github.com/walteh/retab/gen/gopls"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
-	idecoder "github.com/walteh/retab/internal/lsp/decoder"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/filesystem"
 	"github.com/walteh/retab/internal/lsp/langserver/diagnostics"
 	"github.com/walteh/retab/internal/lsp/langserver/notifier"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
 	"github.com/walteh/retab/internal/lsp/lsp"
-	"github.com/walteh/retab/internal/lsp/settings"
 	"github.com/walteh/retab/internal/lsp/state"
 	"github.com/walteh/retab/internal/lsp/telemetry"
-	"github.com/walteh/retab/internal/protocol"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -91,7 +88,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 	rootDir := ""
 	commandPrefix := ""
 	clientName := ""
-	var expFeatures settings.ExperimentalFeatures
+	// var expFeatures settings.ExperimentalFeatures
 
 	m := map[string]rpch.Func{
 		"initialize": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
@@ -104,7 +101,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			ctx = lsctx.WithRootDirectory(ctx, &rootDir)
 			ctx = lsctx.WithCommandPrefix(ctx, &commandPrefix)
 			ctx = lsp.ContextWithClientName(ctx, &clientName)
-			ctx = lsctx.WithExperimentalFeatures(ctx, &expFeatures)
+			// ctx = lsctx.WithExperimentalFeatures(ctx, &expFeatures)
 
 			version, ok := lsctx.LanguageServerVersion(svc.srvCtx)
 			if ok {
@@ -192,7 +189,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			}
 
 			ctx = lsp.WithClientCapabilities(ctx, cc)
-			ctx = lsctx.WithExperimentalFeatures(ctx, &expFeatures)
+			// ctx = lsctx.WithExperimentalFeatures(ctx, &expFeatures)
 
 			return handle(ctx, req, svc.TextDocumentComplete)
 		},
@@ -203,7 +200,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			}
 
 			ctx = lsp.WithClientCapabilities(ctx, cc)
-			ctx = lsctx.WithExperimentalFeatures(ctx, &expFeatures)
+			// ctx = lsctx.WithExperimentalFeatures(ctx, &expFeatures)
 
 			return handle(ctx, req, svc.CompletionItemResolve)
 		},
@@ -273,7 +270,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			}
 
 			ctx = lsctx.WithDiagnosticsNotifier(ctx, svc.diagsNotifier)
-			ctx = lsctx.WithExperimentalFeatures(ctx, &expFeatures)
+			// ctx = lsctx.WithExperimentalFeatures(ctx, &expFeatures)
 
 			return handle(ctx, req, svc.TextDocumentDidSave)
 		},
@@ -360,61 +357,6 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 	}
 
 	return convertMap(m), nil
-}
-
-func (svc *service) configureSessionDependencies(ctx context.Context, cfgOpts *settings.Options) error {
-
-	if svc.stateStore == nil {
-		store, err := state.NewStateStore()
-		if err != nil {
-			return err
-		}
-		svc.stateStore = store
-	}
-
-	svc.stateStore.SetLogger(svc.logger)
-
-	moduleHooks := []notifier.Hook{
-		updateDiagnostics(svc.diagsNotifier),
-		sendModuleTelemetry(svc.stateStore, svc.telemetry),
-	}
-
-	cc, err := lsp.ClientCapabilities(ctx)
-	if err == nil {
-		if _, ok := protocol.ExperimentalClientCapabilities(cc.Experimental).ShowReferencesCommandId(); ok {
-			moduleHooks = append(moduleHooks, refreshCodeLens(svc.server))
-		}
-
-		if commandId, ok := protocol.ExperimentalClientCapabilities(cc.Experimental).RefreshModuleProvidersCommandId(); ok {
-			moduleHooks = append(moduleHooks, callRefreshClientCommand(svc.server, commandId))
-		}
-
-		if commandId, ok := protocol.ExperimentalClientCapabilities(cc.Experimental).RefreshModuleCallsCommandId(); ok {
-			moduleHooks = append(moduleHooks, callRefreshClientCommand(svc.server, commandId))
-		}
-
-		if commandId, ok := protocol.ExperimentalClientCapabilities(cc.Experimental).RefreshTerraformVersionCommandId(); ok {
-			moduleHooks = append(moduleHooks, callRefreshClientCommand(svc.server, commandId))
-		}
-
-		if cc.Workspace.SemanticTokens != nil && cc.Workspace.SemanticTokens.RefreshSupport {
-			moduleHooks = append(moduleHooks, refreshSemanticTokens(svc.server))
-		}
-	}
-
-	svc.notifier = notifier.NewNotifier(moduleHooks)
-	svc.notifier.SetLogger(svc.logger)
-	svc.notifier.Start(svc.sessCtx)
-
-	svc.fs = filesystem.NewFilesystem(svc.stateStore.DocumentStore)
-	svc.fs.SetLogger(svc.logger)
-
-	svc.decoder = decoder.NewDecoder(svc.fs)
-	decoderContext := idecoder.DecoderContext(ctx)
-	svc.AppendCompletionHooks(decoderContext)
-	svc.decoder.SetContext(decoderContext)
-
-	return nil
 }
 
 func (svc *service) setupTelemetry(version int, notifier session.ClientNotifier) error {

@@ -66,6 +66,7 @@ func NewLangServerMock(t T, sf session.SessionFactory) *langServerMock {
 	lsm.srv = NewLangServer(srvCtx, func(srvCtx context.Context) session.Session {
 		return sf(srvCtx)
 	})
+
 	if testing.Verbose() {
 		lsm.srv.SetLogger(testLogger(os.Stdout, "[SERVER] "))
 	}

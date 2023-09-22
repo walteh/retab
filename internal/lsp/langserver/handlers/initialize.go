@@ -5,17 +5,11 @@ package handlers
 
 import (
 	"context"
-	"fmt"
-	"path/filepath"
-	"strings"
 
 	"github.com/creachadair/jrpc2"
-	"github.com/mitchellh/go-homedir"
 	"github.com/walteh/retab/gen/gopls"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
-	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/lsp"
-	"github.com/walteh/retab/internal/lsp/settings"
 	"github.com/walteh/retab/internal/lsp/uri"
 	"github.com/walteh/retab/internal/protocol"
 )
@@ -23,26 +17,18 @@ import (
 func (svc *service) Initialize(ctx context.Context, params gopls.InitializeParams) (gopls.InitializeResult, error) {
 	serverCaps := initializeResult(ctx)
 
-	out, err := settings.DecodeOptions(params.InitializationOptions)
-	if err != nil {
-		return serverCaps, err
-	}
+	var err error
 
-	err = out.Options.Validate()
-	if err != nil {
-		return serverCaps, err
-	}
-
-	properties := getTelemetryProperties(out)
-	properties["lsVersion"] = serverCaps.ServerInfo.Version
+	properties := map[string]interface{}{}
+	// properties["lsVersion"] = serverCaps.ServerInfo.Version
 
 	clientCaps := params.Capabilities
 	expClientCaps := protocol.ExperimentalClientCapabilities(clientCaps.Experimental)
 
-	svc.server = jrpc2.ServerFromContext(ctx)
+	// svc.server = jrpc2.ServerFromContext(ctx)
 
-	setupTelemetry(expClientCaps, svc, ctx, properties)
-	defer svc.telemetry.SendEvent(ctx, "initialize", properties)
+	// setupTelemetry(expClientCaps, svc, ctx, properties)
+	// defer svc.telemetry.SendEvent(ctx, "initialize", properties)
 
 	if params.ClientInfo != nil && params.ClientInfo.Name != "" {
 		err = lsp.SetClientName(ctx, params.ClientInfo.Name)
@@ -72,16 +58,6 @@ func (svc *service) Initialize(ctx context.Context, params gopls.InitializeParam
 
 	serverCaps.Capabilities.Experimental = expServerCaps
 
-	err = lsp.SetClientCapabilities(ctx, &clientCaps)
-	if err != nil {
-		return serverCaps, err
-	}
-
-	err = svc.configureSessionDependencies(ctx, out.Options)
-	if err != nil {
-		return serverCaps, err
-	}
-
 	stCaps := clientCaps.TextDocument.SemanticTokens
 	caps := lsp.SemanticTokensClientCapabilities{
 		SemanticTokensClientCapabilities: clientCaps.TextDocument.SemanticTokens,
@@ -97,27 +73,6 @@ func (svc *service) Initialize(ctx context.Context, params gopls.InitializeParam
 	}
 
 	serverCaps.Capabilities.SemanticTokensProvider = semanticTokensOpts
-
-	// set commandPrefix for session
-	lsctx.SetCommandPrefix(ctx, out.Options.CommandPrefix)
-	// apply prefix to executeCommand handler names
-	serverCaps.Capabilities.ExecuteCommandProvider = &gopls.ExecuteCommandOptions{
-		Commands: cmdHandlers(svc).Names(out.Options.CommandPrefix),
-		WorkDoneProgressOptions: gopls.WorkDoneProgressOptions{
-			WorkDoneProgress: true,
-		},
-	}
-
-	// set experimental feature flags
-	lsctx.SetExperimentalFeatures(ctx, out.Options.ExperimentalFeatures)
-
-	if len(out.UnusedKeys) > 0 {
-		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
-			Type:    gopls.Warning,
-			Message: fmt.Sprintf("Unknown configuration options: %q", out.UnusedKeys),
-		})
-	}
-	cfgOpts := out.Options
 
 	if !clientCaps.Workspace.WorkspaceFolders && len(params.WorkspaceFolders) > 0 {
 		jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
@@ -157,10 +112,6 @@ func (svc *service) Initialize(ctx context.Context, params gopls.InitializeParam
 			return serverCaps, invalidUriErr
 		}
 
-		err := svc.setupWalker(ctx, params, cfgOpts)
-		if err != nil {
-			return serverCaps, err
-		}
 	}
 
 	return serverCaps, err
@@ -177,32 +128,32 @@ func setupTelemetry(expClientCaps protocol.ExpClientCapabilities, svc *service, 
 	}
 }
 
-func getTelemetryProperties(out *settings.DecodedOptions) map[string]interface{} {
-	properties := map[string]interface{}{
-		"experimentalCapabilities.referenceCountCodeLens": false,
-		"options.ignoreSingleFileWarning":                 false,
-		"options.rootModulePaths":                         false,
-		"options.excludeModulePaths":                      false,
-		"options.commandPrefix":                           false,
-		"options.indexing.ignoreDirectoryNames":           false,
-		"options.indexing.ignorePaths":                    false,
-		"options.experimentalFeatures.validateOnSave":     false,
-		"options.terraform.path":                          false,
-		"options.terraform.timeout":                       "",
-		"options.terraform.logFilePath":                   false,
-		"root_uri":                                        "dir",
-		"lsVersion":                                       "",
-	}
+// func getTelemetryProperties(out *settings.DecodedOptions) map[string]interface{} {
+// 	properties := map[string]interface{}{
+// 		"experimentalCapabilities.referenceCountCodeLens": false,
+// 		"options.ignoreSingleFileWarning":                 false,
+// 		"options.rootModulePaths":                         false,
+// 		"options.excludeModulePaths":                      false,
+// 		"options.commandPrefix":                           false,
+// 		"options.indexing.ignoreDirectoryNames":           false,
+// 		"options.indexing.ignorePaths":                    false,
+// 		"options.experimentalFeatures.validateOnSave":     false,
+// 		"options.terraform.path":                          false,
+// 		"options.terraform.timeout":                       "",
+// 		"options.terraform.logFilePath":                   false,
+// 		"root_uri":                                        "dir",
+// 		"lsVersion":                                       "",
+// 	}
 
-	properties["options.commandPrefix"] = len(out.Options.CommandPrefix) > 0
-	properties["options.indexing.ignoreDirectoryNames"] = len(out.Options.Indexing.IgnoreDirectoryNames) > 0
-	properties["options.indexing.ignorePaths"] = len(out.Options.Indexing.IgnorePaths) > 0
-	properties["options.experimentalFeatures.prefillRequiredFields"] = out.Options.ExperimentalFeatures.PrefillRequiredFields
-	properties["options.experimentalFeatures.validateOnSave"] = out.Options.ExperimentalFeatures.ValidateOnSave
-	properties["options.ignoreSingleFileWarning"] = out.Options.IgnoreSingleFileWarning
+// properties["options.commandPrefix"] = len(out.Options.CommandPrefix) > 0
+// properties["options.indexing.ignoreDirectoryNames"] = len(out.Options.Indexing.IgnoreDirectoryNames) > 0
+// properties["options.indexing.ignorePaths"] = len(out.Options.Indexing.IgnorePaths) > 0
+// properties["options.experimentalFeatures.prefillRequiredFields"] = out.Options.ExperimentalFeatures.PrefillRequiredFields
+// properties["options.experimentalFeatures.validateOnSave"] = out.Options.ExperimentalFeatures.ValidateOnSave
+// properties["options.ignoreSingleFileWarning"] = out.Options.IgnoreSingleFileWarning
 
-	return properties
-}
+// 	return properties
+// }
 
 func initializeResult(ctx context.Context) gopls.InitializeResult {
 	serverCaps := gopls.InitializeResult{
@@ -247,67 +198,4 @@ func initializeResult(ctx context.Context) gopls.InitializeResult {
 	}
 
 	return serverCaps
-}
-
-func (svc *service) setupWalker(ctx context.Context, params gopls.InitializeParams, options *settings.Options) error {
-	rootURI := string(params.RootURI)
-	root := document.DirHandleFromURI(rootURI)
-
-	err := lsctx.SetRootDirectory(ctx, root.Path())
-	if err != nil {
-		return err
-	}
-
-	var ignoredPaths []string
-	for _, rawPath := range options.Indexing.IgnorePaths {
-		modPath, err := resolvePath(root.Path(), rawPath)
-		if err != nil {
-			jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
-				Type: gopls.Warning,
-				Message: fmt.Sprintf("Unable to ignore path (unsupported or invalid URI): %s: %s",
-					rawPath, err),
-			})
-			continue
-		}
-		ignoredPaths = append(ignoredPaths, modPath)
-	}
-
-	if len(params.WorkspaceFolders) > 0 {
-		for _, folder := range params.WorkspaceFolders {
-			if !uri.IsURIValid(folder.URI) {
-				jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
-					Type: gopls.Warning,
-					Message: fmt.Sprintf("Ignoring workspace folder (unsupported or invalid URI) %s."+
-						" This is most likely bug, please report it.", folder.URI),
-				})
-				continue
-			}
-
-		}
-	}
-
-	return nil
-}
-
-func resolvePath(rootDir, rawPath string) (string, error) {
-	path, err := homedir.Expand(rawPath)
-	if err != nil {
-		return "", err
-	}
-
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(rootDir, rawPath)
-	}
-
-	return cleanupPath(path)
-}
-
-func cleanupPath(path string) (string, error) {
-	absPath, err := filepath.Abs(path)
-	return toLowerVolumePath(absPath), err
-}
-
-func toLowerVolumePath(path string) string {
-	volume := filepath.VolumeName(path)
-	return strings.ToLower(volume) + path[len(volume):]
 }

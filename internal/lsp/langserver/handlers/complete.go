@@ -7,7 +7,6 @@ import (
 	"context"
 
 	"github.com/walteh/retab/gen/gopls"
-	lsctx "github.com/walteh/retab/internal/lsp/context"
 	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
@@ -29,13 +28,6 @@ func (svc *service) TextDocumentComplete(ctx context.Context, params gopls.Compl
 	if err != nil {
 		return list, err
 	}
-
-	expFeatures, err := lsctx.ExperimentalFeatures(ctx)
-	if err != nil {
-		return list, err
-	}
-
-	d.PrefillRequiredFields = expFeatures.PrefillRequiredFields
 
 	pos, err := lsp.HCLPositionFromLspPosition(params.TextDocumentPositionParams.Position, doc)
 	if err != nil {
