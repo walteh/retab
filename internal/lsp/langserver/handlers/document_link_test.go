@@ -17,7 +17,6 @@ import (
 
 func TestDocumentLink_withValidData(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 	err := os.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("provider \"test\" {\n\n}\n"), 0o755)
 	if err != nil {
 		t.Fatal(err)

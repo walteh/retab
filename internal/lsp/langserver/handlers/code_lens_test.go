@@ -32,7 +32,6 @@ func TestCodeLens_withoutInitialization(t *testing.T) {
 
 func TestCodeLens_withoutOptIn(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 
 	var testSchema tfjson.ProviderSchemas
 	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
@@ -90,7 +89,6 @@ func TestCodeLens_withoutOptIn(t *testing.T) {
 
 func TestCodeLens_referenceCount(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 
 	// var testSchema tfjson.ProviderSchemas
 	// err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)

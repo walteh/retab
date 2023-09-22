@@ -39,7 +39,6 @@ func TestSignatureHelp_withoutInitialization(t *testing.T) {
 
 func TestSignatureHelp_withValidData(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 
 	var testSchema tfjson.ProviderSchemas
 	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)

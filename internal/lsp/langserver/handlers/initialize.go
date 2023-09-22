@@ -58,6 +58,16 @@ func (svc *service) Initialize(ctx context.Context, params gopls.InitializeParam
 
 	serverCaps.Capabilities.Experimental = expServerCaps
 
+	err = lsp.SetClientCapabilities(ctx, &clientCaps)
+	if err != nil {
+		return serverCaps, err
+	}
+
+	err = svc.configureSessionDependencies(ctx)
+	if err != nil {
+		return serverCaps, err
+	}
+
 	stCaps := clientCaps.TextDocument.SemanticTokens
 	caps := lsp.SemanticTokensClientCapabilities{
 		SemanticTokensClientCapabilities: clientCaps.TextDocument.SemanticTokens,

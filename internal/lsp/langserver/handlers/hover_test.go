@@ -34,7 +34,6 @@ func TestHover_withoutInitialization(t *testing.T) {
 
 func TestHover_withValidData(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 
 	var testSchema tfjson.ProviderSchemas
 	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
@@ -104,7 +103,6 @@ func TestHover_withValidData(t *testing.T) {
 
 func TestVarsHover_withValidData(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 
 	var testSchema tfjson.ProviderSchemas
 	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)

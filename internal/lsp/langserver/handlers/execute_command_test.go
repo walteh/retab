@@ -21,8 +21,6 @@ func TestLangServer_workspaceExecuteCommand_noCommandHandlerError(t *testing.T) 
 		t.Fatal(err)
 	}
 
-	InitPluginCache(t, tmpDir.Path())
-
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 		StateStore: ss,
 	}))

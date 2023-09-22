@@ -15,7 +15,6 @@ import (
 
 func TestSemanticTokensFull(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 
 	var testSchema tfjson.ProviderSchemas
 	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
@@ -95,7 +94,6 @@ func TestSemanticTokensFull(t *testing.T) {
 
 func TestSemanticTokensFull_clientSupportsDelta(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 
 	var testSchema tfjson.ProviderSchemas
 	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
@@ -177,7 +175,6 @@ func TestSemanticTokensFull_clientSupportsDelta(t *testing.T) {
 
 func TestVarsSemanticTokensFull(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 
 	var testSchema tfjson.ProviderSchemas
 	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
@@ -266,7 +263,6 @@ func TestVarsSemanticTokensFull(t *testing.T) {
 
 func TestVarsSemanticTokensFull_functionToken(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 
 	var testSchema tfjson.ProviderSchemas
 	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)

@@ -5,7 +5,6 @@ package handlers
 
 import (
 	"fmt"
-	"path/filepath"
 	"testing"
 
 	"github.com/creachadair/jrpc2"
@@ -114,11 +113,6 @@ func TestInitialize_multipleFolders(t *testing.T) {
 
 func TestInitialize_ignoreDirectoryNames(t *testing.T) {
 	tmpDir := TempDir(t, "plugin", "ignore")
-	pluginDir := filepath.Join(tmpDir.Path(), "plugin")
-	emptyDir := filepath.Join(tmpDir.Path(), "ignore")
-
-	InitPluginCache(t, pluginDir)
-	InitPluginCache(t, emptyDir)
 
 	ss, err := state.NewStateStore()
 	if err != nil {

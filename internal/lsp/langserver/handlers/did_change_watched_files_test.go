@@ -6,8 +6,7 @@ package handlers
 // func TestLangServer_DidChangeWatchedFiles_change_file(t *testing.T) {
 // 	tmpDir := TempDir(t)
 
-// 	InitPluginCache(t, tmpDir.Path())
-
+//
 // 	originalSrc := `variable "original" {
 //   default = "foo"
 // }
@@ -109,8 +108,7 @@ package handlers
 // func TestLangServer_DidChangeWatchedFiles_create_file(t *testing.T) {
 // 	tmpDir := TempDir(t)
 
-// 	InitPluginCache(t, tmpDir.Path())
-
+//
 // 	originalSrc := `variable "original" {
 //   default = "foo"
 // }
@@ -210,8 +208,7 @@ package handlers
 // func TestLangServer_DidChangeWatchedFiles_delete_file(t *testing.T) {
 // 	tmpDir := TempDir(t)
 
-// 	InitPluginCache(t, tmpDir.Path())
-
+//
 // 	originalSrc := `variable "original" {
 //   default = "foo"
 // }
@@ -306,8 +303,7 @@ package handlers
 // func TestLangServer_DidChangeWatchedFiles_change_dir(t *testing.T) {
 // 	tmpDir := TempDir(t)
 
-// 	InitPluginCache(t, tmpDir.Path())
-
+//
 // 	originalSrc := `variable "original" {
 //   default = "foo"
 // }
@@ -409,8 +405,7 @@ package handlers
 // func TestLangServer_DidChangeWatchedFiles_create_dir(t *testing.T) {
 // 	tmpDir := TempDir(t)
 
-// 	InitPluginCache(t, tmpDir.Path())
-
+//
 // 	originalSrc := `variable "original" {
 //   default = "foo"
 // }
@@ -474,8 +469,7 @@ package handlers
 // 	if err != nil {
 // 		t.Fatal(err)
 // 	}
-// 	InitPluginCache(t, submodHandle.Path())
-
+//
 // 	// Verify submodule was not parsed yet
 // 	mod, err = ss.Modules.ModuleByPath(submodPath)
 // 	if err == nil {
@@ -512,8 +506,7 @@ package handlers
 // func TestLangServer_DidChangeWatchedFiles_delete_dir(t *testing.T) {
 // 	tmpDir := TempDir(t)
 
-// 	InitPluginCache(t, tmpDir.Path())
-
+//
 // 	originalSrc := `variable "original" {
 //   default = "foo"
 // }

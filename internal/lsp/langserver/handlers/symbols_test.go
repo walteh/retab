@@ -13,7 +13,6 @@ import (
 
 func TestLangServer_symbols_basic(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 
 	ss, err := state.NewStateStore()
 	if err != nil {

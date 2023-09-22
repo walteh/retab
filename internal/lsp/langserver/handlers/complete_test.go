@@ -36,15 +36,8 @@ func TestModuleCompletion_withoutInitialization(t *testing.T) {
 
 func TestModuleCompletion_withValidData_basic(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 
 	err := os.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("provider \"test\" {\n\n}\n"), 0o755)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var testSchema tfjson.ProviderSchemas
-	err = json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +200,6 @@ func TestModuleCompletion_withValidData_basic(t *testing.T) {
 // verify that for old versions we serve earliest available (v0.12) schema
 func TestModuleCompletion_withValidData_tooOldVersion(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 
 	err := os.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("variable \"test\" {\n\n}\n"), 0o755)
 	if err != nil {
@@ -338,7 +330,6 @@ func TestModuleCompletion_withValidData_tooOldVersion(t *testing.T) {
 // verify that for unknown new versions we serve latest available schema
 func TestModuleCompletion_withValidData_tooNewVersion(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 
 	err := os.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("variable \"test\" {\n\n}\n"), 0o755)
 	if err != nil {
@@ -508,7 +499,6 @@ func TestModuleCompletion_withValidData_tooNewVersion(t *testing.T) {
 
 func TestModuleCompletion_withValidDataAndSnippets(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 	err := os.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("provider \"test\" {\n\n}\n"), 0o755)
 	if err != nil {
 		t.Fatal(err)
@@ -776,7 +766,6 @@ var testModuleSchemaOutput = `{
 
 func TestVarsCompletion_withValidData(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 
 	var testSchema tfjson.ProviderSchemas
 	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
@@ -1350,7 +1339,6 @@ output "test" {
 
 func TestVarReferenceCompletion_withValidData(t *testing.T) {
 	tmpDir := TempDir(t)
-	InitPluginCache(t, tmpDir.Path())
 
 	variableDecls := `variable "aaa" {}
 variable "bbb" {}
