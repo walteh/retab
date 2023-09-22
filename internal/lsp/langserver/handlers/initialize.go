@@ -163,21 +163,6 @@ func (svc *service) Initialize(ctx context.Context, params gopls.InitializeParam
 		}
 	}
 
-	// Walkers run asynchronously so we're intentionally *not*
-	// passing the request context here
-	// Static user-provided paths take precedence over dynamic discovery
-	walkerCtx := context.Background()
-	walkerCtx = lsctx.WithRPCContext(walkerCtx, lsctx.RPCContext(ctx))
-
-	err = svc.closedDirWalker.StartWalking(walkerCtx)
-	if err != nil {
-		return serverCaps, fmt.Errorf("failed to start closedDirWalker: %w", err)
-	}
-	err = svc.openDirWalker.StartWalking(walkerCtx)
-	if err != nil {
-		return serverCaps, fmt.Errorf("failed to start openDirWalker: %w", err)
-	}
-
 	return serverCaps, err
 }
 
@@ -287,11 +272,6 @@ func (svc *service) setupWalker(ctx context.Context, params gopls.InitializePara
 		ignoredPaths = append(ignoredPaths, modPath)
 	}
 
-	err = svc.stateStore.WalkerPaths.EnqueueDir(ctx, root)
-	if err != nil {
-		return err
-	}
-
 	if len(params.WorkspaceFolders) > 0 {
 		for _, folder := range params.WorkspaceFolders {
 			if !uri.IsURIValid(folder.URI) {
@@ -303,24 +283,8 @@ func (svc *service) setupWalker(ctx context.Context, params gopls.InitializePara
 				continue
 			}
 
-			modPath := document.DirHandleFromURI(folder.URI)
-
-			err := svc.stateStore.WalkerPaths.EnqueueDir(ctx, modPath)
-			if err != nil {
-				jrpc2.ServerFromContext(ctx).Notify(ctx, "window/showMessage", &gopls.ShowMessageParams{
-					Type: gopls.Warning,
-					Message: fmt.Sprintf("Ignoring workspace folder %s: %s."+
-						" This is most likely bug, please report it.", folder.URI, err),
-				})
-				continue
-			}
 		}
 	}
-
-	svc.closedDirWalker.SetIgnoredDirectoryNames(options.Indexing.IgnoreDirectoryNames)
-	svc.closedDirWalker.SetIgnoredPaths(ignoredPaths)
-	svc.openDirWalker.SetIgnoredDirectoryNames(options.Indexing.IgnoreDirectoryNames)
-	svc.openDirWalker.SetIgnoredPaths(ignoredPaths)
 
 	return nil
 }

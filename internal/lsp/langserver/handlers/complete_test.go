@@ -14,7 +14,6 @@ import (
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/walker"
 )
 
 func TestModuleCompletion_withoutInitialization(t *testing.T) {
@@ -55,11 +54,8 @@ func TestModuleCompletion_withValidData_basic(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wc := walker.NewWalkerCollector()
-
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -71,7 +67,7 @@ func TestModuleCompletion_withValidData_basic(t *testing.T) {
 		"rootUri": %q,
 		"processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -86,7 +82,6 @@ func TestModuleCompletion_withValidData_basic(t *testing.T) {
 			"uri": "%s/main.tf"
 		}
 	}`, tmpDir.URI)})
-	waitForAllJobs(t, ss)
 
 	ls.CallAndExpectResponse(t, &langserver.CallRequest{
 		Method: "textDocument/completion",
@@ -230,11 +225,8 @@ func TestModuleCompletion_withValidData_tooOldVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wc := walker.NewWalkerCollector()
-
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -246,7 +238,7 @@ func TestModuleCompletion_withValidData_tooOldVersion(t *testing.T) {
 		"rootUri": %q,
 		"processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -261,7 +253,6 @@ func TestModuleCompletion_withValidData_tooOldVersion(t *testing.T) {
 			"uri": "%s/main.tf"
 		}
 	}`, tmpDir.URI)})
-	waitForAllJobs(t, ss)
 
 	ls.CallAndExpectResponse(t, &langserver.CallRequest{
 		Method: "textDocument/completion",
@@ -365,11 +356,8 @@ func TestModuleCompletion_withValidData_tooNewVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wc := walker.NewWalkerCollector()
-
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -381,7 +369,7 @@ func TestModuleCompletion_withValidData_tooNewVersion(t *testing.T) {
 		"rootUri": %q,
 		"processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -396,7 +384,6 @@ func TestModuleCompletion_withValidData_tooNewVersion(t *testing.T) {
 			"uri": "%s/main.tf"
 		}
 	}`, tmpDir.URI)})
-	waitForAllJobs(t, ss)
 
 	ls.CallAndExpectResponse(t, &langserver.CallRequest{
 		Method: "textDocument/completion",
@@ -537,11 +524,9 @@ func TestModuleCompletion_withValidDataAndSnippets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -561,7 +546,7 @@ func TestModuleCompletion_withValidDataAndSnippets(t *testing.T) {
 		"rootUri": %q,
 		"processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -576,7 +561,6 @@ func TestModuleCompletion_withValidDataAndSnippets(t *testing.T) {
 			"uri": "%s/main.tf"
 		}
 	}`, tmpDir.URI)})
-	waitForAllJobs(t, ss)
 
 	ls.CallAndExpectResponse(t, &langserver.CallRequest{
 		Method: "textDocument/completion",
@@ -804,11 +788,9 @@ func TestVarsCompletion_withValidData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -820,7 +802,7 @@ func TestVarsCompletion_withValidData(t *testing.T) {
 		"rootUri": %q,
 		"processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -844,7 +826,6 @@ func TestVarsCompletion_withValidData(t *testing.T) {
 			"uri": "%s/terraform.tfvars"
 		}
 	}`, tmpDir.URI)})
-	waitForAllJobs(t, ss)
 
 	ls.CallAndExpectResponse(t, &langserver.CallRequest{
 		Method: "textDocument/completion",
@@ -912,10 +893,8 @@ output "test" {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wc := walker.NewWalkerCollector()
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -927,7 +906,7 @@ output "test" {
 		"rootUri": %q,
 		"processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -942,7 +921,6 @@ output "test" {
 			"uri": "%s/main.tf"
 		}
 	}`, mainCfg, tmpDir.URI)})
-	waitForAllJobs(t, ss)
 
 	ls.CallAndExpectResponse(t, &langserver.CallRequest{
 		Method: "textDocument/completion",
@@ -1122,11 +1100,9 @@ output "test" {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -1138,7 +1114,7 @@ output "test" {
 		"rootUri": %q,
 		"processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -1153,7 +1129,6 @@ output "test" {
 			"uri": "%s/main.tf"
 		}
 	}`, mainCfg, tmpDir.URI)})
-	waitForAllJobs(t, ss)
 
 	// first module
 	ls.CallAndExpectResponse(t, &langserver.CallRequest{
@@ -1401,12 +1376,10 @@ variable "ccc" {}
 	if err != nil {
 		t.Fatal(err)
 	}
-	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -1418,7 +1391,7 @@ variable "ccc" {}
 		"rootUri": %q,
 		"processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -1433,7 +1406,6 @@ variable "ccc" {}
 			"uri": "%s/outputs.tf"
 		}
 	}`, tmpDir.URI)})
-	waitForAllJobs(t, ss)
 
 	ls.CallAndExpectResponse(t, &langserver.CallRequest{
 		Method: "textDocument/completion",

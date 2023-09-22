@@ -9,7 +9,6 @@ import (
 
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/walker"
 )
 
 func TestDidChangeWorkspaceFolders(t *testing.T) {
@@ -19,11 +18,9 @@ func TestDidChangeWorkspaceFolders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -41,7 +38,7 @@ func TestDidChangeWorkspaceFolders(t *testing.T) {
 			}
 		]
 	}`, rootDir.URI, rootDir.URI)})
-	waitForWalkerPath(t, ss, wc, rootDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -58,5 +55,5 @@ func TestDidChangeWorkspaceFolders(t *testing.T) {
 			]
 		}
 	}`, rootDir.URI, rootDir.URI)})
-	waitForWalkerPath(t, ss, wc, rootDir)
+
 }

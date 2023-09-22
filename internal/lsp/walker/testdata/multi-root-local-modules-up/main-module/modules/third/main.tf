@@ -1,3 +1,0 @@
-module "third" {
-	source = "../../"
-}

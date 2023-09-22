@@ -15,7 +15,6 @@ import (
 	"github.com/creachadair/jrpc2/handler"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/walker"
 )
 
 func TestLangServer_cancelRequest(t *testing.T) {
@@ -25,7 +24,6 @@ func TestLangServer_cancelRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 		AdditionalHandlers: map[string]handler.Func{
@@ -54,8 +52,7 @@ func TestLangServer_cancelRequest(t *testing.T) {
 				return nil, ctx.Err()
 			},
 		},
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -67,7 +64,7 @@ func TestLangServer_cancelRequest(t *testing.T) {
 	    "rootUri": %q,
 	    "processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",

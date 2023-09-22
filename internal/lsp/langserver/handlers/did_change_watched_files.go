@@ -8,12 +8,10 @@ import (
 
 	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/document"
-	"github.com/walteh/retab/internal/lsp/job"
 	"github.com/walteh/retab/internal/lsp/uri"
 )
 
 func (svc *service) DidChangeWatchedFiles(ctx context.Context, params gopls.DidChangeWatchedFilesParams) error {
-	var ids job.IDs
 
 	for _, change := range params.Changes {
 		rawURI := string(change.URI)
@@ -34,11 +32,6 @@ func (svc *service) DidChangeWatchedFiles(ctx context.Context, params gopls.DidC
 
 		if change.Type == gopls.Created {
 		}
-	}
-
-	err := svc.stateStore.JobStore.WaitForJobs(ctx, ids...)
-	if err != nil {
-		return err
 	}
 
 	return nil

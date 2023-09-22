@@ -14,7 +14,6 @@ import (
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/walker"
 )
 
 func BenchmarkInitializeFolder_basic(b *testing.B) {
@@ -92,18 +91,16 @@ func BenchmarkInitializeFolder_basic(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				wc := walker.NewWalkerCollector()
 
 				b.StartTimer()
 				ls := langserver.NewLangServerMock(b, func(ctx context.Context) session.Session {
 					sessCtx, stopSession := context.WithCancel(ctx)
 					return &service{
-						logger:          discardLogs,
-						srvCtx:          ctx,
-						sessCtx:         sessCtx,
-						stopSession:     stopSession,
-						walkerCollector: wc,
-						stateStore:      ss,
+						logger:      discardLogs,
+						srvCtx:      ctx,
+						sessCtx:     sessCtx,
+						stopSession: stopSession,
+						stateStore:  ss,
 					}
 				})
 				stop := ls.Start(b)
@@ -125,7 +122,7 @@ func BenchmarkInitializeFolder_basic(b *testing.B) {
 							}
 						]
 					}`, rootDir.URI, rootDir.URI)})
-				waitForWalkerPath(b, ss, wc, rootDir)
+
 				b.StopTimer()
 
 				stop()

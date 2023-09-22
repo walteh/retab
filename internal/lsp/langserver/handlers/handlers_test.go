@@ -4,7 +4,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -17,8 +16,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/langserver"
-	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/walker"
 )
 
 func initializeResponse(t *testing.T, commandPrefix string) string {
@@ -86,34 +83,6 @@ func initializeResponse(t *testing.T, commandPrefix string) string {
 			}
 		}
 	}`, string(jsonArray))
-}
-
-func waitForWalkerPath(t testOrBench, ss *state.StateStore, wc *walker.WalkerCollector, dir document.DirHandle) {
-	ctx := context.Background()
-	err := ss.WalkerPaths.WaitForDirs(ctx, []document.DirHandle{dir})
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ss.JobStore.WaitForJobs(ctx, wc.JobIds()...)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = wc.ErrorOrNil()
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func waitForAllJobs(t testOrBench, ss *state.StateStore) {
-	ctx := context.Background()
-	ids, err := ss.JobStore.ListAllJobs()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ss.JobStore.WaitForJobs(ctx, ids...)
-	if err != nil {
-		t.Fatal(err)
-	}
 }
 
 type testOrBench interface {

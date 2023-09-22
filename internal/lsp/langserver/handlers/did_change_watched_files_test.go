@@ -21,11 +21,10 @@ package handlers
 // 	if err != nil {
 // 		t.Fatal(err)
 // 	}
-// 	wc := walker.NewWalkerCollector()
-
+//
 // 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 // 		StateStore:      ss,
-// 		WalkerCollector: wc,
+//
 // 	}))
 // 	stop := ls.Start(t)
 // 	defer stop()
@@ -37,7 +36,7 @@ package handlers
 // 	    "rootUri": %q,
 // 	    "processId": 12345
 // 	}`, tmpDir.URI)})
-// 	waitForWalkerPath(t, ss, wc, tmpDir)
+//
 // 	ls.Notify(t, &langserver.CallRequest{
 // 		Method:    "initialized",
 // 		ReqParams: "{}",
@@ -125,11 +124,10 @@ package handlers
 // 	if err != nil {
 // 		t.Fatal(err)
 // 	}
-// 	wc := walker.NewWalkerCollector()
-
+//
 // 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 // 		StateStore:      ss,
-// 		WalkerCollector: wc,
+//
 // 	}))
 // 	stop := ls.Start(t)
 // 	defer stop()
@@ -141,7 +139,7 @@ package handlers
 // 	    "rootUri": %q,
 // 	    "processId": 12345
 // 	}`, tmpDir.URI)})
-// 	waitForWalkerPath(t, ss, wc, tmpDir)
+//
 // 	ls.Notify(t, &langserver.CallRequest{
 // 		Method:    "initialized",
 // 		ReqParams: "{}",
@@ -192,7 +190,7 @@ package handlers
 //         }
 //     ]
 // }`, TempDir(t).URI)})
-// 	waitForWalkerPath(t, ss, wc, tmpDir)
+//
 
 // 	// Verify another.tf was parsed
 // 	mod, err = ss.Modules.ModuleByPath(tmpDir.Path())
@@ -227,11 +225,10 @@ package handlers
 // 	if err != nil {
 // 		t.Fatal(err)
 // 	}
-// 	wc := walker.NewWalkerCollector()
-
+//
 // 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 // 		StateStore:      ss,
-// 		WalkerCollector: wc,
+//
 // 	}))
 // 	stop := ls.Start(t)
 // 	defer stop()
@@ -243,7 +240,7 @@ package handlers
 // 	    "rootUri": %q,
 // 	    "processId": 12345
 // 	}`, tmpDir.URI)})
-// 	waitForWalkerPath(t, ss, wc, tmpDir)
+//
 // 	ls.Notify(t, &langserver.CallRequest{
 // 		Method:    "initialized",
 // 		ReqParams: "{}",
@@ -324,11 +321,10 @@ package handlers
 // 	if err != nil {
 // 		t.Fatal(err)
 // 	}
-// 	wc := walker.NewWalkerCollector()
-
+//
 // 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 // 		StateStore:      ss,
-// 		WalkerCollector: wc,
+//
 // 	}))
 // 	stop := ls.Start(t)
 // 	defer stop()
@@ -340,7 +336,7 @@ package handlers
 // 	    "rootUri": %q,
 // 	    "processId": 12345
 // 	}`, tmpDir.URI)})
-// 	waitForWalkerPath(t, ss, wc, tmpDir)
+//
 // 	ls.Notify(t, &langserver.CallRequest{
 // 		Method:    "initialized",
 // 		ReqParams: "{}",
@@ -428,11 +424,10 @@ package handlers
 // 	if err != nil {
 // 		t.Fatal(err)
 // 	}
-// 	wc := walker.NewWalkerCollector()
-
+//
 // 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 // 		StateStore:      ss,
-// 		WalkerCollector: wc,
+//
 // 	}))
 // 	stop := ls.Start(t)
 // 	defer stop()
@@ -444,7 +439,7 @@ package handlers
 // 	    "rootUri": %q,
 // 	    "processId": 12345
 // 	}`, tmpDir.URI)})
-// 	waitForWalkerPath(t, ss, wc, tmpDir)
+//
 // 	ls.Notify(t, &langserver.CallRequest{
 // 		Method:    "initialized",
 // 		ReqParams: "{}",
@@ -497,7 +492,7 @@ package handlers
 //         }
 //     ]
 // }`, submodHandle.URI)})
-// 	waitForWalkerPath(t, ss, wc, submodHandle)
+//
 
 // 	// Verify submodule was parsed
 // 	mod, err = ss.Modules.ModuleByPath(submodPath)
@@ -532,11 +527,10 @@ package handlers
 // 	if err != nil {
 // 		t.Fatal(err)
 // 	}
-// 	wc := walker.NewWalkerCollector()
-
+//
 // 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 // 		StateStore:      ss,
-// 		WalkerCollector: wc,
+//
 // 	}))
 // 	stop := ls.Start(t)
 // 	defer stop()
@@ -548,7 +542,7 @@ package handlers
 // 	    "rootUri": %q,
 // 	    "processId": 12345
 // 	}`, tmpDir.URI)})
-// 	waitForWalkerPath(t, ss, wc, tmpDir)
+//
 // 	ls.Notify(t, &langserver.CallRequest{
 // 		Method:    "initialized",
 // 		ReqParams: "{}",
@@ -626,11 +620,10 @@ package handlers
 // 	if err != nil {
 // 		t.Fatal(err)
 // 	}
-// 	wc := walker.NewWalkerCollector()
-
+//
 // 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 // 		StateStore:      ss,
-// 		WalkerCollector: wc,
+//
 // 	}))
 // 	stop := ls.Start(t)
 // 	defer stop()
@@ -642,7 +635,7 @@ package handlers
 // 	    "rootUri": %q,
 // 	    "processId": 12345
 // 	}`, testHandle.URI)})
-// 	waitForWalkerPath(t, ss, wc, testHandle)
+//
 // 	ls.Notify(t, &langserver.CallRequest{
 // 		Method:    "initialized",
 // 		ReqParams: "{}",
@@ -693,11 +686,10 @@ package handlers
 // 	if err != nil {
 // 		t.Fatal(err)
 // 	}
-// 	wc := walker.NewWalkerCollector()
-
+//
 // 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 // 		StateStore:      ss,
-// 		WalkerCollector: wc,
+//
 // 	}))
 // 	stop := ls.Start(t)
 // 	defer stop()
@@ -709,7 +701,7 @@ package handlers
 // 	    "rootUri": %q,
 // 	    "processId": 12345
 // 	}`, testHandle.URI)})
-// 	waitForWalkerPath(t, ss, wc, testHandle)
+//
 // 	ls.Notify(t, &langserver.CallRequest{
 // 		Method:    "initialized",
 // 		ReqParams: "{}",

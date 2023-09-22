@@ -16,13 +16,11 @@ import (
 	"github.com/creachadair/jrpc2/handler"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/walker"
 )
 
 type MockSessionInput struct {
 	AdditionalHandlers map[string]handler.Func
 	StateStore         *state.StateStore
-	WalkerCollector    *walker.WalkerCollector
 }
 
 type mockSession struct {
@@ -38,10 +36,8 @@ func (ms *mockSession) new(srvCtx context.Context) session.Session {
 
 	var handlers map[string]handler.Func
 	var stateStore *state.StateStore
-	var walkerCollector *walker.WalkerCollector
 	if ms.mockInput != nil {
 		stateStore = ms.mockInput.StateStore
-		walkerCollector = ms.mockInput.WalkerCollector
 		handlers = ms.mockInput.AdditionalHandlers
 	}
 
@@ -52,7 +48,6 @@ func (ms *mockSession) new(srvCtx context.Context) session.Session {
 		stopSession:        ms.stop,
 		additionalHandlers: handlers,
 		stateStore:         stateStore,
-		walkerCollector:    walkerCollector,
 	}
 
 	return svc

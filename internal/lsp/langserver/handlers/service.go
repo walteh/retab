@@ -19,17 +19,13 @@ import (
 	idecoder "github.com/walteh/retab/internal/lsp/decoder"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/filesystem"
-	"github.com/walteh/retab/internal/lsp/indexer"
-	"github.com/walteh/retab/internal/lsp/job"
 	"github.com/walteh/retab/internal/lsp/langserver/diagnostics"
 	"github.com/walteh/retab/internal/lsp/langserver/notifier"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
 	"github.com/walteh/retab/internal/lsp/lsp"
-	"github.com/walteh/retab/internal/lsp/scheduler"
 	"github.com/walteh/retab/internal/lsp/settings"
 	"github.com/walteh/retab/internal/lsp/state"
 	"github.com/walteh/retab/internal/lsp/telemetry"
-	"github.com/walteh/retab/internal/lsp/walker"
 	"github.com/walteh/retab/internal/protocol"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -46,13 +42,6 @@ type service struct {
 	sessCtx     context.Context
 	stopSession context.CancelFunc
 
-	// TODO: Rename to *scheduler to avoid confusion
-	lowPrioIndexer  *scheduler.Scheduler
-	highPrioIndexer *scheduler.Scheduler
-
-	closedDirWalker *walker.Walker
-	openDirWalker   *walker.Walker
-
 	fs            *filesystem.Filesystem
 	telemetry     telemetry.Sender
 	decoder       *decoder.Decoder
@@ -60,9 +49,7 @@ type service struct {
 	server        session.Server
 	diagsNotifier *diagnostics.Notifier
 	notifier      *notifier.Notifier
-	indexer       *indexer.Indexer
 
-	walkerCollector    *walker.WalkerCollector
 	additionalHandlers map[string]rpch.Func
 
 	singleFileMode bool
@@ -392,16 +379,6 @@ func (svc *service) configureSessionDependencies(ctx context.Context, cfgOpts *s
 		sendModuleTelemetry(svc.stateStore, svc.telemetry),
 	}
 
-	svc.lowPrioIndexer = scheduler.NewScheduler(svc.stateStore.JobStore, 1, job.LowPriority)
-	svc.lowPrioIndexer.SetLogger(svc.logger)
-	svc.lowPrioIndexer.Start(svc.sessCtx)
-	svc.logger.Printf("started low priority scheduler")
-
-	svc.highPrioIndexer = scheduler.NewScheduler(svc.stateStore.JobStore, 1, job.HighPriority)
-	svc.highPrioIndexer.SetLogger(svc.logger)
-	svc.highPrioIndexer.Start(svc.sessCtx)
-	svc.logger.Printf("started high priority scheduler")
-
 	cc, err := lsp.ClientCapabilities(ctx)
 	if err == nil {
 		if _, ok := protocol.ExperimentalClientCapabilities(cc.Experimental).ShowReferencesCommandId(); ok {
@@ -432,23 +409,10 @@ func (svc *service) configureSessionDependencies(ctx context.Context, cfgOpts *s
 	svc.fs = filesystem.NewFilesystem(svc.stateStore.DocumentStore)
 	svc.fs.SetLogger(svc.logger)
 
-	svc.indexer = indexer.NewIndexer(svc.fs.Ref(), svc.stateStore.JobStore)
-	svc.indexer.SetLogger(svc.logger)
-
 	svc.decoder = decoder.NewDecoder(svc.fs)
 	decoderContext := idecoder.DecoderContext(ctx)
 	svc.AppendCompletionHooks(decoderContext)
 	svc.decoder.SetContext(decoderContext)
-
-	closedPa := state.NewPathAwaiter(svc.stateStore.WalkerPaths, false)
-	svc.closedDirWalker = walker.NewWalker(svc.fs.Ref(), closedPa, svc.indexer.WalkedModule)
-	svc.closedDirWalker.Collector = svc.walkerCollector
-	svc.closedDirWalker.SetLogger(svc.logger)
-
-	opendPa := state.NewPathAwaiter(svc.stateStore.WalkerPaths, true)
-	svc.openDirWalker = walker.NewWalker(svc.fs.Ref(), opendPa, svc.indexer.WalkedModule)
-	svc.closedDirWalker.Collector = svc.walkerCollector
-	svc.openDirWalker.SetLogger(svc.logger)
 
 	return nil
 }
@@ -473,23 +437,7 @@ func (svc *service) Finish(_ jrpc2.Assigner, status jrpc2.ServerStatus) {
 }
 
 func (svc *service) shutdown() {
-	if svc.closedDirWalker != nil {
-		svc.logger.Printf("stopping closedDirWalker for session ...")
-		svc.closedDirWalker.Stop()
-		svc.logger.Printf("closedDirWalker stopped")
-	}
-	if svc.openDirWalker != nil {
-		svc.logger.Printf("stopping openDirWalker for session ...")
-		svc.openDirWalker.Stop()
-		svc.logger.Printf("openDirWalker stopped")
-	}
 
-	if svc.lowPrioIndexer != nil {
-		svc.lowPrioIndexer.Stop()
-	}
-	if svc.highPrioIndexer != nil {
-		svc.highPrioIndexer.Stop()
-	}
 }
 
 // convertMap is a helper function allowing us to omit the jrpc2.Func

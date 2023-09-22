@@ -14,7 +14,6 @@ import (
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/walker"
 )
 
 func TestDefinition_basic(t *testing.T) {
@@ -24,11 +23,9 @@ func TestDefinition_basic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -40,7 +37,7 @@ func TestDefinition_basic(t *testing.T) {
 			"rootUri": %q,
 			"processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -61,7 +58,6 @@ output "foo" {
 			"uri": "%s/main.tf"
 		}
 	}`, tmpDir.URI)})
-	waitForAllJobs(t, ss)
 
 	ls.CallAndExpectResponse(t, &langserver.CallRequest{
 		Method: "textDocument/definition",
@@ -111,11 +107,9 @@ func TestDefinition_withLinkToDefLessBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -133,7 +127,7 @@ func TestDefinition_withLinkToDefLessBlock(t *testing.T) {
 			"rootUri": %q,
 			"processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -158,7 +152,6 @@ output "foo" {
 			"uri": "%s/main.tf"
 		}
 	}`, tmpDir.URI)})
-	waitForAllJobs(t, ss)
 
 	ls.CallAndExpectResponse(t, &langserver.CallRequest{
 		Method: "textDocument/definition",
@@ -230,11 +223,9 @@ func TestDefinition_withLinkToDefBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -252,7 +243,7 @@ func TestDefinition_withLinkToDefBlock(t *testing.T) {
 			"rootUri": %q,
 			"processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -277,7 +268,6 @@ output "foo" {
 			"uri": "%s/main.tf"
 		}
 	}`, tmpDir.URI)})
-	waitForAllJobs(t, ss)
 
 	ls.CallAndExpectResponse(t, &langserver.CallRequest{
 		Method: "textDocument/definition",
@@ -341,11 +331,9 @@ func TestDefinition_moduleInputToVariable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -357,7 +345,7 @@ func TestDefinition_moduleInputToVariable(t *testing.T) {
 			"rootUri": %q,
 			"processId": 12345
 	}`, modHandle.URI)})
-	waitForWalkerPath(t, ss, wc, modHandle)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -379,7 +367,6 @@ func TestDefinition_moduleInputToVariable(t *testing.T) {
 			"uri": "%s/main.tf"
 		}
 	}`, modHandle.URI)})
-	waitForAllJobs(t, ss)
 
 	ls.CallAndExpectResponse(t, &langserver.CallRequest{
 		Method: "textDocument/definition",
@@ -419,11 +406,9 @@ func TestDeclaration_basic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -435,7 +420,7 @@ func TestDeclaration_basic(t *testing.T) {
 			"rootUri": %q,
 			"processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -456,7 +441,6 @@ output "foo" {
 			"uri": "%s/main.tf"
 		}
 	}`, tmpDir.URI)})
-	waitForAllJobs(t, ss)
 
 	ls.CallAndExpectResponse(t, &langserver.CallRequest{
 		Method: "textDocument/declaration",
@@ -506,11 +490,9 @@ func TestDeclaration_withLinkSupport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -528,7 +510,7 @@ func TestDeclaration_withLinkSupport(t *testing.T) {
 			"rootUri": %q,
 			"processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -553,7 +535,6 @@ output "foo" {
 			"uri": "%s/main.tf"
 		}
 	}`, tmpDir.URI)})
-	waitForAllJobs(t, ss)
 
 	ls.CallAndExpectResponse(t, &langserver.CallRequest{
 		Method: "textDocument/declaration",

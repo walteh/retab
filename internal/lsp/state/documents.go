@@ -51,15 +51,6 @@ func (s *DocumentStore) OpenDocument(dh document.Handle, langId string, version 
 		return err
 	}
 
-	err = updateJobsDirOpenMark(txn, dh.Dir, true)
-	if err != nil {
-		return err
-	}
-	err = updateWalkerDirOpenMark(txn, dh.Dir, true)
-	if err != nil {
-		return err
-	}
-
 	txn.Commit()
 	return nil
 }
@@ -131,16 +122,6 @@ func (s *DocumentStore) CloseDocument(dh document.Handle) error {
 	}
 
 	_, err = txn.DeleteAll(s.tableName, "id", dh.Dir, dh.Filename)
-	if err != nil {
-		return err
-	}
-
-	err = updateJobsDirOpenMark(txn, dh.Dir, false)
-	if err != nil {
-		return err
-	}
-
-	err = updateWalkerDirOpenMark(txn, dh.Dir, false)
 	if err != nil {
 		return err
 	}

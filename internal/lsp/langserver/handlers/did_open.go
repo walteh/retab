@@ -39,5 +39,5 @@ func (svc *service) TextDocumentDidOpen(ctx context.Context, params gopls.DidOpe
 
 	ctx = lsctx.WithLanguageId(ctx, params.TextDocument.LanguageID)
 
-	return svc.stateStore.JobStore.WaitForJobs(ctx)
+	return nil
 }

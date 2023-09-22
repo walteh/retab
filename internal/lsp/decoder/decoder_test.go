@@ -34,7 +34,8 @@ func TestDecoder_CodeLensesForFile_concurrencyBug(t *testing.T) {
 
 	ctx := context.Background()
 
-	d := decoder.NewDecoder(filesystem.NewFilesystem(filesystem.DocumentStore))
+	// TODO - fix this it will throw an error
+	d := decoder.NewDecoder(&filesystem.Filesystem{})
 
 	var wg sync.WaitGroup
 	for _, dirName := range dirNames {

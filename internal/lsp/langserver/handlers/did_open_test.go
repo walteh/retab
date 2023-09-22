@@ -13,7 +13,6 @@ import (
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/walker"
 )
 
 func TestLangServer_didOpenWithoutInitialization(t *testing.T) {
@@ -40,11 +39,9 @@ func TestLangServer_didOpenLanguageIdStored(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -56,7 +53,7 @@ func TestLangServer_didOpenLanguageIdStored(t *testing.T) {
 	    "rootUri": %q,
 	    "processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -76,7 +73,6 @@ func TestLangServer_didOpenLanguageIdStored(t *testing.T) {
         "text": %q
     }
 }`, TempDir(t).URI, originalText)})
-	waitForAllJobs(t, ss)
 
 	path := filepath.Join(TempDir(t).Path(), "main.tf")
 	dh := document.HandleFromPath(path)

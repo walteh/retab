@@ -1,3 +1,0 @@
-variable "meal" {
-  default = "delicious"
-}

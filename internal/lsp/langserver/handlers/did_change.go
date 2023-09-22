@@ -56,5 +56,5 @@ func (svc *service) TextDocumentDidChange(ctx context.Context, params gopls.DidC
 	// 	return err
 	// }
 
-	return svc.stateStore.JobStore.WaitForJobs(ctx)
+	return nil
 }

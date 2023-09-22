@@ -12,7 +12,6 @@ import (
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/state"
-	"github.com/walteh/retab/internal/lsp/walker"
 )
 
 func TestLangServer_didChange_sequenceOfPartialChanges(t *testing.T) {
@@ -22,12 +21,10 @@ func TestLangServer_didChange_sequenceOfPartialChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wc := walker.NewWalkerCollector()
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
 
-		StateStore:      ss,
-		WalkerCollector: wc,
+		StateStore: ss,
 	}))
 	stop := ls.Start(t)
 	defer stop()
@@ -39,7 +36,7 @@ func TestLangServer_didChange_sequenceOfPartialChanges(t *testing.T) {
 	    "rootUri": %q,
 	    "processId": 12345
 	}`, tmpDir.URI)})
-	waitForWalkerPath(t, ss, wc, tmpDir)
+
 	ls.Notify(t, &langserver.CallRequest{
 		Method:    "initialized",
 		ReqParams: "{}",
@@ -69,7 +66,6 @@ module "app" {
         "text": %q
     }
 }`, TempDir(t).URI, originalText)})
-	waitForAllJobs(t, ss)
 
 	ls.Call(t, &langserver.CallRequest{
 		Method: "textDocument/didChange",
