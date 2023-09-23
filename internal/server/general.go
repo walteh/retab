@@ -26,6 +26,23 @@ import (
 	"github.com/walteh/retab/internal/source"
 )
 
+func (s *Server) getSupportedCodeActions() []protocol.CodeActionKind {
+	allCodeActionKinds := make(map[protocol.CodeActionKind]struct{})
+	for _, kinds := range s.Options().SupportedCodeActions {
+		for kind := range kinds {
+			allCodeActionKinds[kind] = struct{}{}
+		}
+	}
+	var result []protocol.CodeActionKind
+	for kind := range allCodeActionKinds {
+		result = append(result, kind)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i] < result[j]
+	})
+	return result
+}
+
 func (s *Server) initialize(ctx context.Context, params *protocol.ParamInitialize) (*protocol.InitializeResult, error) {
 	ctx, done := event.Start(ctx, "lsp.Server.initialize")
 	defer done()
@@ -221,7 +238,6 @@ func (s *Server) initialized(ctx context.Context, params *protocol.InitializedPa
 		return err
 	}
 	s.pendingFolders = nil
-	s.checkViewGoVersions()
 
 	var registrations []protocol.Registration
 	if options.ConfigurationSupported && options.DynamicConfigurationSupported {
@@ -308,6 +324,23 @@ func versionMessage(goVersion int, fromBuild bool) (string, protocol.MessageType
 		}
 	}
 	return "", 0
+}
+
+// addView returns a Snapshot and a release function that must be
+// called when it is no longer needed.
+func (s *Server) addView(ctx context.Context, name string, uri span.URI) (source.Snapshot, func(), error) {
+	s.stateMu.Lock()
+	state := s.state
+	s.stateMu.Unlock()
+	if state < serverInitialized {
+		return nil, nil, fmt.Errorf("addView called before server initialized")
+	}
+	options, err := s.fetchFolderOptions(ctx, uri)
+	if err != nil {
+		return nil, nil, err
+	}
+	_, snapshot, release, err := s.session.NewView(ctx, name, uri, options)
+	return snapshot, release, err
 }
 
 func (s *Server) addFolders(ctx context.Context, folders []protocol.WorkspaceFolder) error {

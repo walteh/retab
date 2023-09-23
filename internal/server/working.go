@@ -28,15 +28,14 @@ const concurrentAnalyses = 1
 // messages on the supplied stream.
 func NewServer(session *cache.Session, client protocol.ClientCloser, options *source.Options) *Server {
 	return &Server{
-		diagnostics:           map[span.URI]*fileReports{},
-		gcOptimizationDetails: make(map[source.PackageID]struct{}),
-		watchedGlobPatterns:   nil, // empty
-		changedFiles:          make(map[span.URI]struct{}),
-		session:               session,
-		client:                client,
-		diagnosticsSema:       make(chan struct{}, concurrentAnalyses),
-		progress:              progress.NewTracker(client),
-		options:               options,
+		diagnostics:         map[span.URI]*fileReports{},
+		watchedGlobPatterns: nil, // empty
+		changedFiles:        make(map[span.URI]struct{}),
+		session:             session,
+		client:              client,
+		diagnosticsSema:     make(chan struct{}, concurrentAnalyses),
+		progress:            progress.NewTracker(client),
+		options:             options,
 	}
 }
 
@@ -175,20 +174,20 @@ func (s *Server) diagnoseFile(ctx context.Context, snapshot source.Snapshot, uri
 	if err != nil {
 		return nil, nil, err
 	}
-	pkg, _, err := source.NarrowestPackageForFile(ctx, snapshot, uri)
-	if err != nil {
-		return nil, nil, err
-	}
-	pkgDiags, err := pkg.DiagnosticsForFile(ctx, snapshot, uri)
-	if err != nil {
-		return nil, nil, err
-	}
-	adiags, err := source.Analyze(ctx, snapshot, map[source.PackageID]unit{pkg.Metadata().ID: {}}, nil /* progress tracker */)
-	if err != nil {
-		return nil, nil, err
-	}
+	// pkg, _, err := source.NarrowestPackageForFile(ctx, snapshot, uri)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
+	// pkgDiags, err := pkg.DiagnosticsForFile(ctx, snapshot, uri)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
+	// adiags, err := source.Analyze(ctx, snapshot, map[source.PackageID]unit{pkg.Metadata().ID: {}}, nil /* progress tracker */)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
 	var td, ad []*source.Diagnostic // combine load/parse/type + analysis diagnostics
-	source.CombineDiagnostics(pkgDiags, adiags[uri], &td, &ad)
+	// source.CombineDiagnostics(pkgDiags, adiags[uri], &td, &ad)
 	s.storeDiagnostics(snapshot, uri, typeCheckSource, td, true)
 	s.storeDiagnostics(snapshot, uri, analysisSource, ad, true)
 	return fh, append(td, ad...), nil

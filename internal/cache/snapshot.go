@@ -136,6 +136,152 @@ type snapshot struct {
 	options *source.Options
 }
 
+func (s *snapshot) fileWatchingGlobPatterns(ctx context.Context) map[string]struct{} {
+	extensions := "hcl,retab"
+	for _, ext := range s.Options().TemplateExtensions {
+		extensions += "," + ext
+	}
+	// Work-around microsoft/vscode#100870 by making sure that we are,
+	// at least, watching the user's entire workspace. This will still be
+	// applied to every folder in the workspace.
+	patterns := map[string]struct{}{
+		fmt.Sprintf("**/*.{%s}", extensions): {},
+	}
+
+	return patterns
+}
+
+func (s *snapshot) clone(ctx, bgCtx context.Context, changes map[span.URI]source.FileHandle, newOptions *source.Options, forceReloadMetadata bool) (*snapshot, func()) {
+	ctx, done := event.Start(ctx, "cache.snapshot.clone")
+	defer done()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	bgCtx, cancel := context.WithCancel(bgCtx)
+	result := &snapshot{
+		sequenceID:       s.sequenceID + 1,
+		globalID:         nextSnapshotID(),
+		store:            s.store,
+		view:             s.view,
+		backgroundCtx:    bgCtx,
+		cancel:           cancel,
+		builtin:          s.builtin,
+		initialized:      s.initialized,
+		initializedErr:   s.initializedErr,
+		files:            s.files.Clone(changes),
+		symbolizeHandles: cloneWithout(s.symbolizeHandles, changes),
+		unloadableFiles:  s.unloadableFiles.Clone(), // not cloneWithout: typing in a file doesn't necessarily make it loadable
+		options:          s.options,
+	}
+
+	if newOptions != nil {
+		result.options = newOptions
+	}
+
+	// Create a lease on the new snapshot.
+	// (Best to do this early in case the code below hides an
+	// incref/decref operation that might destroy it prematurely.)
+	release := result.Acquire()
+
+	reinit := false
+
+	// Changes to vendor tree may require reinitialization,
+	// either because of an initialization error
+	// (e.g. "inconsistent vendoring detected"), or because
+	// one or more modules may have moved into or out of the
+	// vendor tree after 'go mod vendor' or 'rm -fr vendor/'.
+	//
+	// TODO(rfindley): revisit the location of this check.
+	for uri := range changes {
+		if inVendor(uri) && s.initializedErr != nil ||
+			strings.HasSuffix(string(uri), "/vendor/modules.txt") {
+			reinit = true
+			break
+		}
+	}
+
+	// Collect observed file handles for changed URIs from the old snapshot, if
+	// they exist. Importantly, we don't call ReadFile here: consider the case
+	// where a file is added on disk; we don't want to read the newly added file
+	// into the old snapshot, as that will break our change detection below.
+	oldFiles := make(map[span.URI]source.FileHandle)
+	for uri := range changes {
+		if fh, ok := s.files.Get(uri); ok {
+			oldFiles[uri] = fh
+		}
+	}
+
+	// The snapshot should be initialized if either s was uninitialized, or we've
+	// detected a change that triggers reinitialization.
+	if reinit {
+		result.initialized = false
+	}
+
+	// Compute invalidations based on file changes.
+	anyImportDeleted := false      // import deletions can resolve cycles
+	anyFileOpenedOrClosed := false // opened files affect workspace packages
+	anyFileAdded := false          // adding a file can resolve missing dependencies
+
+	for uri, newFH := range changes {
+		// The original FileHandle for this URI is cached on the snapshot.
+		oldFH, _ := oldFiles[uri] // may be nil
+		_, oldOpen := oldFH.(*Overlay)
+		_, newOpen := newFH.(*Overlay)
+
+		anyFileOpenedOrClosed = anyFileOpenedOrClosed || (oldOpen != newOpen)
+		anyFileAdded = anyFileAdded || (oldFH == nil || !fileExists(oldFH)) && fileExists(newFH)
+
+		// If uri is a Go file, check if it has changed in a way that would
+		// invalidate metadata. Note that we can't use s.view.FileKind here,
+		// because the file type that matters is not what the *client* tells us,
+		// but what the Go command sees.
+		var invalidateMetadata, importDeleted bool
+		if strings.HasSuffix(uri.Filename(), ".go") {
+			invalidateMetadata, _, importDeleted = metadataChanges(ctx, s, oldFH, newFH)
+		}
+		if invalidateMetadata {
+			// If this is a metadata-affecting change, perhaps a reload will succeed.
+			result.unloadableFiles.Remove(uri)
+		}
+
+		invalidateMetadata = invalidateMetadata || forceReloadMetadata || reinit
+		anyImportDeleted = anyImportDeleted || importDeleted
+
+		// Invalidate the previous modTidyHandle if any of the files have been
+		// saved or if any of the metadata has been invalidated.
+		//
+		// TODO(rfindley): this seems like too-aggressive invalidation of mod
+		// results. We should instead thread through overlays to the Go command
+		// invocation and only run this if invalidateMetadata (and perhaps then
+		// still do it less frequently).
+		if invalidateMetadata || fileWasSaved(oldFH, newFH) {
+			// Only invalidate mod tidy results for the most relevant modfile in the
+			// workspace. This is a potentially lossy optimization for workspaces
+			// with many modules (such as google-cloud-go, which has 145 modules as
+			// of writing).
+			//
+			// While it is theoretically possible that a change in workspace module A
+			// could affect the mod-tidiness of workspace module B (if B transitively
+			// requires A), such changes are probably unlikely and not worth the
+			// penalty of re-running go mod tidy for everything. Note that mod tidy
+			// ignores GOWORK, so the two modules would have to be related by a chain
+			// of replace directives.
+			//
+			// We could improve accuracy by inspecting replace directives, using
+			// overlays in go mod tidy, and/or checking for metadata changes from the
+			// on-disk content.
+			//
+			// Note that we iterate the modTidyHandles map here, rather than e.g.
+			// using nearestModFile, because we don't have access to an accurate
+			// FileSource at this point in the snapshot clone.
+
+		}
+	}
+
+	return result, release
+}
+
 var globalSnapshotID uint64
 
 func nextSnapshotID() source.GlobalSnapshotID {

@@ -318,6 +318,26 @@ func (v *View) shutdown() {
 	v.snapshotWG.Wait()
 }
 
+func (v *View) relevantChange(c source.FileModification) bool {
+	// If the file is known to the view, the change is relevant.
+	if v.knownFile(c.URI) {
+		return true
+	}
+
+	// Note: CL 219202 filtered out on-disk changes here that were not known to
+	// the view, but this introduces a race when changes arrive before the view
+	// is initialized (and therefore, before it knows about files). Since that CL
+	// had neither test nor associated issue, and cited only emacs behavior, this
+	// logic was deleted.
+
+	snapshot, release, err := v.getSnapshot()
+	if err != nil {
+		return false // view was shut down
+	}
+	defer release()
+	return snapshot.contains(c.URI)
+}
+
 // While go list ./... skips directories starting with '.', '_', or 'testdata',
 // gopls may still load them via file queries. Explicitly filter them out.
 func (s *snapshot) IgnoredFile(uri span.URI) bool {

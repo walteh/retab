@@ -291,11 +291,11 @@ func (f *Forwarder) handler(handler jsonrpc2.Handler) jsonrpc2.Handler {
 		// Intercept certain messages to add special handling.
 		switch r.Method() {
 		case "initialize":
-			if newr, err := addGoEnvToInitializeRequest(ctx, r); err == nil {
-				r = newr
-			} else {
-				log.Printf("unable to add local env to initialize request: %v", err)
-			}
+			// if newr, err := addGoEnvToInitializeRequest(ctx, r); err == nil {
+			// 	r = newr
+			// } else {
+			// 	log.Printf("unable to add local env to initialize request: %v", err)
+			// }
 		case "workspace/executeCommand":
 			var params protocol.ExecuteCommandParams
 			if err := json.Unmarshal(r.Params(), &params); err == nil {
@@ -319,56 +319,6 @@ func (f *Forwarder) handler(handler jsonrpc2.Handler) jsonrpc2.Handler {
 		// See also golang.org/issue/37830.
 		return handler(ctx, reply, r)
 	}
-}
-
-// addGoEnvToInitializeRequest builds a new initialize request in which we set
-// any environment variables output by `go env` and not already present in the
-// request.
-//
-// It returns an error if r is not an initialize request, or is otherwise
-// malformed.
-func addGoEnvToInitializeRequest(ctx context.Context, r jsonrpc2.Request) (jsonrpc2.Request, error) {
-	var params protocol.ParamInitialize
-	if err := json.Unmarshal(r.Params(), &params); err != nil {
-		return nil, err
-	}
-	var opts map[string]interface{}
-	switch v := params.InitializationOptions.(type) {
-	case nil:
-		opts = make(map[string]interface{})
-	case map[string]interface{}:
-		opts = v
-	default:
-		return nil, fmt.Errorf("unexpected type for InitializationOptions: %T", v)
-	}
-	envOpt, ok := opts["env"]
-	if !ok {
-		envOpt = make(map[string]interface{})
-	}
-	env, ok := envOpt.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf(`env option is %T, expected a map`, envOpt)
-	}
-	goenv, err := getGoEnv(ctx, env)
-	if err != nil {
-		return nil, err
-	}
-	// We don't want to propagate GOWORK unless explicitly set since that could mess with
-	// path inference during cmd/go invocations, see golang/go#51825.
-	_, goworkSet := os.LookupEnv("GOWORK")
-	for govar, value := range goenv {
-		if govar == "GOWORK" && !goworkSet {
-			continue
-		}
-		env[govar] = value
-	}
-	opts["env"] = env
-	params.InitializationOptions = opts
-	call, ok := r.(*jsonrpc2.Call)
-	if !ok {
-		return nil, fmt.Errorf("%T is not a *jsonrpc2.Call", r)
-	}
-	return jsonrpc2.NewCall(call.ID(), "initialize", params)
 }
 
 func (f *Forwarder) replyWithDebugAddress(outerCtx context.Context, r jsonrpc2.Replier, args command.DebuggingArgs) jsonrpc2.Replier {

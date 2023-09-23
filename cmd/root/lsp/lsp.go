@@ -17,8 +17,9 @@ import (
 	"github.com/walteh/retab/gen/gopls/fakenet"
 	"github.com/walteh/retab/gen/gopls/jsonrpc2"
 	"github.com/walteh/retab/gen/gopls/tool"
+	"github.com/walteh/retab/internal/cache"
 	"github.com/walteh/retab/internal/lsprpc"
-	"github.com/walteh/retab/internal/server"
+	"github.com/walteh/retab/internal/source"
 )
 
 // Serve is a struct that exposes the configurable parts of the LSP server as
@@ -93,7 +94,10 @@ func (s *Serve) Run(ctx context.Context, args ...string) error {
 	// 		return fmt.Errorf("creating forwarder: %w", err)
 	// 	}
 	// } else {
-	ss = lsprpc.NewStreamServer(isDaemon, server.NewProtocolServer)
+	cached := cache.New(nil)
+	ss = lsprpc.NewStreamServer(cached, isDaemon, func(o *source.Options) {
+
+	})
 	// }
 
 	var network, addr string

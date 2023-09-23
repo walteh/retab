@@ -5,6 +5,7 @@
 package source
 
 import (
+	"context"
 	"go/ast"
 	"go/printer"
 	"go/token"
@@ -16,9 +17,34 @@ import (
 	"strings"
 
 	"github.com/walteh/retab/gen/gopls/protocol"
+	"github.com/walteh/retab/gen/gopls/span"
 	"github.com/walteh/retab/gen/gopls/tokeninternal"
 	"github.com/walteh/retab/gen/gopls/typeparams"
 )
+
+// IsGenerated gets and reads the file denoted by uri and reports
+// whether it contains a "generated file" comment as described at
+// https://golang.org/s/generatedcode.
+//
+// TODO(adonovan): opt: this function does too much.
+// Move snapshot.ReadFile into the caller (most of which have already done it).
+func IsGenerated(ctx context.Context, snapshot Snapshot, uri span.URI) bool {
+	fh, err := snapshot.ReadFile(ctx, uri)
+	if err != nil {
+		return false
+	}
+
+	ctn, err := fh.Content()
+	if err != nil {
+		return false
+	}
+
+	if generatedRx.Match(ctn) {
+		return true
+	}
+
+	return false
+}
 
 // adjustedObjEnd returns the end position of obj, possibly modified for
 // package names.
