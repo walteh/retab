@@ -16,25 +16,50 @@ WORKDIR /wrk
 
 # Mockery stage
 FROM tools as generator
-ARG GOPLS_VERSION
-RUN --mount=type=bind,target=.,rw \
+ARG GOPLS_VERSION GO_MODULE DESTDIR
+RUN --mount=type=bind,target=/wrk/repo,rw \
 	--mount=type=cache,target=/root/.cache \
 	--mount=type=cache,target=/go/pkg/mod <<SHELL
 	set -ex
-	function dl() {
-		local ver="$1"
-		local file="$2"
-		local dest="https://raw.githubusercontent.com/golang/tools/gopls/v$ver/gopls/internal/lsp/protocol/$file"
-		echo "Downloading $dest"
-		curl -sSL -o "/out/$file" "$dest"
-	}
-	mkdir -p /out
-	dl ${GOPLS_VERSION} tsprotocol.go
-	dl ${GOPLS_VERSION} tsdocument_changes.go
 
-	# replace the package name as gopls
-	sed -i "s|package protocol|package gopls|g" /out/tsprotocol.go
-	sed -i "s|package protocol|package gopls|g" /out/tsdocument_changes.go
+	git clone --depth=1 --no-checkout https://github.com/golang/tools.git
+	cd tools
+	git fetch --tags
+	git checkout gopls/v${GOPLS_VERSION}
+	mkdir -p /out
+
+	function copy_internal_pkg() {
+		local src=$1
+		(
+			mkdir -p /out/$src
+			cd ./internal/$src
+			find . \( -name '*.go' ! -name '*_test.go' \) -type f | tar -cf - --files-from - | tar -C /out/$src -xf -
+		)
+	}
+
+	function copy_protocol_file() {
+		local src=$1
+		(
+			cp ./gopls/internal/lsp/protocol/$src /out/$src
+			sed -i "s|package protocol|package gopls|g" /out/$src
+		)
+	}
+
+	copy_internal_pkg event
+	copy_internal_pkg jsonrpc2
+	copy_internal_pkg jsonrpc2_v2
+	copy_internal_pkg xcontext
+	copy_internal_pkg tool
+	copy_internal_pkg fakenet
+
+	copy_protocol_file tsdocument_changes.go
+	copy_protocol_file tsserver.go
+	copy_protocol_file tsjson.go
+	copy_protocol_file protocol.go
+	copy_protocol_file tsprotocol.go
+	copy_protocol_file tsclient.go
+
+	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/internal|${GO_MODULE}/${DESTDIR#./}|g" {} \;
 SHELL
 
 # Final update stage
