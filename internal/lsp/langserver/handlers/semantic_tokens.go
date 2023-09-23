@@ -8,7 +8,7 @@ import (
 
 	"github.com/creachadair/jrpc2"
 	"github.com/spf13/afero"
-	"github.com/walteh/retab/gen/gopls"
+	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/lsp"
 	"github.com/walteh/retab/internal/lsp/source"
 )

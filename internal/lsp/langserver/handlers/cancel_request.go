@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/creachadair/jrpc2"
-	"github.com/walteh/retab/gen/gopls"
+	gopls "github.com/walteh/retab/gen/gopls/protocol"
 )
 
 func CancelRequest(ctx context.Context, params gopls.CancelParams) error {

@@ -7,7 +7,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/walteh/retab/gen/gopls"
+	gopls "github.com/walteh/retab/gen/gopls/protocol"
 )
 
 type clientCapsCtxKey struct{}

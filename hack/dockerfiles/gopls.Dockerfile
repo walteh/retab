@@ -22,10 +22,12 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 	--mount=type=cache,target=/go/pkg/mod <<SHELL
 	set -ex
 
-	git clone --depth=1 --no-checkout https://github.com/golang/tools.git
-	cd tools
-	git fetch --tags
-	git checkout gopls/v${GOPLS_VERSION}
+	git clone https://github.com/golang/tools.git && cd tools
+	# put this back once "telemetry" is added to gopls
+	# git clone --depth=1 --no-checkout https://github.com/golang/tools.git && cd tools
+	# git fetch --tags
+	# git checkout gopls/v${GOPLS_VERSION}
+
 	mkdir -p /out
 
 	function copy_pkg() {
@@ -62,11 +64,11 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 	copy_pkg internal fakenet
 	copy_pkg gopls/internal/lsp progress
 	copy_pkg gopls/internal span
+	copy_pkg gopls/internal telemetry
 	copy_pkg gopls/internal/lsp safetoken
 	copy_pkg gopls/internal bug
 	copy_pkg gopls/internal/lsp protocol
-
-
+	copy_pkg internal diff
 
 	# copy_protocol_file tsdocument_changes.go
 	# copy_protocol_file tsserver.go

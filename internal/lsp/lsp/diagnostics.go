@@ -5,7 +5,7 @@ package lsp
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/walteh/retab/gen/gopls"
+	gopls "github.com/walteh/retab/gen/gopls/protocol"
 )
 
 func HCLSeverityToLSP(severity hcl.DiagnosticSeverity) gopls.DiagnosticSeverity {

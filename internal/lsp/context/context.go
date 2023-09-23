@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/walteh/retab/gen/gopls"
+	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/langserver/diagnostics"
 )
 

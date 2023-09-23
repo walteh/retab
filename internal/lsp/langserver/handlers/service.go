@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/hcl-lang/decoder"
 	"github.com/hashicorp/hcl-lang/lang"
 	"github.com/spf13/afero"
-	"github.com/walteh/retab/gen/gopls"
+	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
 	idecoder "github.com/walteh/retab/internal/lsp/decoder"
 	"github.com/walteh/retab/internal/lsp/filesystem"

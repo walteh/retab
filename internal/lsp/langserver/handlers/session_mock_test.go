@@ -74,6 +74,7 @@ func NewMockSession(input *MockSessionInput) session.SessionFactory {
 	ms := &mockSession{
 		stopCalledMu: &sync.RWMutex{},
 	}
+	srvCtx := context.Background()
 	sessCtx, stopSession := context.WithCancel(srvCtx)
 	ms.stopFunc = stopSession
 
@@ -85,5 +86,7 @@ func NewMockSession(input *MockSessionInput) session.SessionFactory {
 		fs:          nil,
 	}
 
-	return svc
+	return func(ctx context.Context) session.Session {
+		return svc
+	}
 }

@@ -46,10 +46,10 @@ const (
 
 // Diff calculates difference between Document's content
 // and after byte sequence and returns it as document.Changes
-func Diff(f document.Handle, before, after []byte) document.Changes {
-	return diffLines(f.Filename,
-		source.MakeSourceLines(f.Filename, before),
-		source.MakeSourceLines(f.Filename, after))
+func Diff(filename string, before, after []byte) document.Changes {
+	return diffLines(filename,
+		source.MakeSourceLines(filename, before),
+		source.MakeSourceLines(filename, after))
 }
 
 // diffLines calculates difference between two source.Lines

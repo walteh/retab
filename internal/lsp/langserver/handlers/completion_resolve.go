@@ -7,7 +7,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/hcl-lang/decoder"
-	"github.com/walteh/retab/gen/gopls"
+	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/lsp"
 	"github.com/walteh/retab/internal/lsp/mdplain"
 	"github.com/walteh/retab/internal/protocol"

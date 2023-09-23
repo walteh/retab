@@ -7,7 +7,7 @@ import (
 	"bytes"
 
 	"github.com/hashicorp/hcl-lang/lang"
-	"github.com/walteh/retab/gen/gopls"
+	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/lsp/semtok"
 	"github.com/walteh/retab/internal/lsp/source"
 )

@@ -6,7 +6,7 @@ package lsp
 import (
 	"sort"
 
-	"github.com/walteh/retab/gen/gopls"
+	gopls "github.com/walteh/retab/gen/gopls/protocol"
 )
 
 const (

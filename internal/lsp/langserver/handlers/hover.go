@@ -6,7 +6,7 @@ package handlers
 import (
 	"context"
 
-	"github.com/walteh/retab/gen/gopls"
+	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/lsp"
 )
 

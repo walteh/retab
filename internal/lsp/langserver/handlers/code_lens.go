@@ -7,25 +7,21 @@ import (
 	"context"
 
 	"github.com/hashicorp/hcl-lang/lang"
-	"github.com/walteh/retab/gen/gopls"
+	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
 func (svc *service) TextDocumentCodeLens(ctx context.Context, params gopls.CodeLensParams) ([]gopls.CodeLens, error) {
 	list := make([]gopls.CodeLens, 0)
 
-	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
-	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
-	if err != nil {
-		return list, err
-	}
+	filename := string(params.TextDocument.URI)
 
 	path := lang.Path{
-		Path:       doc.Dir.Path(),
-		LanguageID: doc.LanguageID,
+		Path:       filename,
+		LanguageID: lsp.Retab.String(),
 	}
 
-	lenses, err := svc.decoder.CodeLensesForFile(ctx, path, doc.Filename)
+	lenses, err := svc.decoder.CodeLensesForFile(ctx, path, filename)
 	if err != nil {
 		return nil, err
 	}

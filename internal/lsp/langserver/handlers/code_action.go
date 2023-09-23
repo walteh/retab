@@ -7,7 +7,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/walteh/retab/gen/gopls"
+	"github.com/spf13/afero"
+	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
@@ -43,9 +44,9 @@ func (svc *service) textDocumentCodeAction(ctx context.Context, params gopls.Cod
 
 	svc.logger.Printf("Code actions supported: %v", wantedCodeActions)
 
-	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
+	filename := string(params.TextDocument.URI)
 
-	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
+	text, err := afero.ReadFile(svc.fs, filename)
 	if err != nil {
 		return ca, err
 	}
@@ -54,7 +55,7 @@ func (svc *service) textDocumentCodeAction(ctx context.Context, params gopls.Cod
 		switch action {
 		case lsp.SourceFormatAllTerraform:
 
-			edits, err := svc.formatDocument(ctx, doc.Text, dh)
+			edits, err := svc.formatDocument(ctx, text, filename)
 			if err != nil {
 				return ca, err
 			}
@@ -64,7 +65,7 @@ func (svc *service) textDocumentCodeAction(ctx context.Context, params gopls.Cod
 				Kind:  action,
 				Edit: &gopls.WorkspaceEdit{
 					Changes: map[gopls.DocumentURI][]gopls.TextEdit{
-						gopls.DocumentURI(dh.FullURI()): edits,
+						gopls.DocumentURI(filename): edits,
 					},
 				},
 			})

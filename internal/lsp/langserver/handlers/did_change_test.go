@@ -126,7 +126,10 @@ module "app" {
 	path := filepath.Join(TempDir(t).Path(), "main.tf")
 	filename := string(path)
 
-	text, err := afero.ReadFile(sess, filename)
+	text, err := afero.ReadFile(afero.NewOsFs(), filename)
+	if err != nil {
+		t.Fatalf("failed to read file: %s", err)
+	}
 
 	expectedText := `variable "service_host" {
   default = "blah"
@@ -144,7 +147,7 @@ module "app" {
 }
 `
 
-	if diff := cmp.Diff(expectedText, string(doc.Text)); diff != "" {
+	if diff := cmp.Diff(expectedText, string(text)); diff != "" {
 		t.Fatalf("unexpected text: %s", diff)
 	}
 }

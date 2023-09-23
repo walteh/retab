@@ -110,6 +110,7 @@ type Server struct {
 	// terminated with the StopProfile command.
 	ongoingProfileMu sync.Mutex
 	ongoingProfile   *os.File // if non-nil, an ongoing profile is writing to this file
+
 }
 
 func (s *Server) workDoneProgressCancel(ctx context.Context, params *protocol.WorkDoneProgressCancelParams) error {

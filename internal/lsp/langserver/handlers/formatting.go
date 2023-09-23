@@ -9,8 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
-	"github.com/walteh/retab/gen/gopls"
-	"github.com/walteh/retab/internal/lsp/document"
+	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/hcl"
 	"github.com/walteh/retab/internal/lsp/lsp"
 	"github.com/walteh/retab/pkg/editorconfig"
@@ -20,8 +19,6 @@ import (
 func (svc *service) TextDocumentFormatting(ctx context.Context, params gopls.DocumentFormattingParams) ([]gopls.TextEdit, error) {
 	var edits []gopls.TextEdit
 
-	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
-
 	filename := string(params.TextDocument.URI)
 
 	text, err := afero.ReadFile(svc.fs, filename)
@@ -29,7 +26,7 @@ func (svc *service) TextDocumentFormatting(ctx context.Context, params gopls.Doc
 		return edits, err
 	}
 
-	edits, err = svc.formatDocument(ctx, text, dh)
+	edits, err = svc.formatDocument(ctx, text, filename)
 	if err != nil {
 		return edits, err
 	}
@@ -37,11 +34,11 @@ func (svc *service) TextDocumentFormatting(ctx context.Context, params gopls.Doc
 	return edits, nil
 }
 
-func (svc *service) formatDocument(ctx context.Context, original []byte, dh document.Handle) ([]gopls.TextEdit, error) {
+func (svc *service) formatDocument(ctx context.Context, original []byte, filename string) ([]gopls.TextEdit, error) {
 
 	startTime := time.Now()
 
-	cfg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, dh.Dir.URI)
+	cfg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, filename)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +53,7 @@ func (svc *service) formatDocument(ctx context.Context, original []byte, dh docu
 	}
 	svc.logger.Printf("Finished 'formatting' in %s", time.Now().Sub(startTime))
 
-	changes := hcl.Diff(dh, original, formatted)
+	changes := hcl.Diff(filename, original, formatted)
 
 	return lsp.TextEditsFromDocumentChanges(changes), nil
 }

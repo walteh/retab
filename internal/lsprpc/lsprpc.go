@@ -52,7 +52,7 @@ func NewStreamServer(isDaemon bool, builder ServerBuilder) *StreamServer {
 
 func (s *StreamServer) Binder() *ServerBinder {
 	newServer := func(ctx context.Context, client protocol.ClientCloser) protocol.Server {
-		sess := session.NewSession()
+		sess := session.NewSession(ctx)
 		server := s.serverForTest
 		if server == nil {
 			server = s.serverBuilder(ctx, sess, client)
@@ -66,7 +66,7 @@ func (s *StreamServer) Binder() *ServerBinder {
 // incoming streams using a new lsp server.
 func (s *StreamServer) ServeStream(ctx context.Context, conn jsonrpc2.Conn) error {
 	client := protocol.ClientDispatcher(conn)
-	sess := session.NewSession()
+	sess := session.NewSession(ctx)
 	server := s.serverForTest
 	if server == nil {
 		server = s.serverBuilder(ctx, sess, client)

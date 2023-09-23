@@ -6,7 +6,7 @@ package lsp
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/afero"
-	"github.com/walteh/retab/gen/gopls"
+	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/source"
 )
