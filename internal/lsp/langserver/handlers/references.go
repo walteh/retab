@@ -5,6 +5,7 @@ package handlers
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/hashicorp/hcl-lang/lang"
 	"github.com/walteh/retab/gen/gopls"
@@ -14,23 +15,19 @@ import (
 func (svc *service) References(ctx context.Context, params gopls.ReferenceParams) ([]gopls.Location, error) {
 	list := make([]gopls.Location, 0)
 
-	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
-	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
-	if err != nil {
-		return list, err
-	}
+	filename := string(params.TextDocument.URI)
 
-	pos, err := lsp.HCLPositionFromLspPosition(params.TextDocumentPositionParams.Position, doc)
+	pos, err := lsp.HCLPositionFromLspPosition(params.TextDocumentPositionParams.Position, svc.fs, filename)
 	if err != nil {
 		return list, err
 	}
 
 	path := lang.Path{
-		Path:       doc.Dir.Path(),
-		LanguageID: doc.LanguageID,
+		Path:       filepath.Dir(filename),
+		LanguageID: lsp.Retab.String(),
 	}
 
-	origins := svc.decoder.ReferenceOriginsTargetingPos(path, doc.Filename, pos)
+	origins := svc.decoder.ReferenceOriginsTargetingPos(path, filename, pos)
 
 	return lsp.RefOriginsToLocations(origins), nil
 }

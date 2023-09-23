@@ -13,20 +13,12 @@ import (
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/langserver"
-	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func TestDefinition_basic(t *testing.T) {
 	tmpDir := TempDir(t)
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -102,14 +94,7 @@ func TestDefinition_withLinkToDefLessBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -217,14 +202,7 @@ func TestDefinition_withLinkToDefBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -325,14 +303,7 @@ func TestDefinition_moduleInputToVariable(t *testing.T) {
 	}
 	modHandle := document.DirHandleFromPath(modPath)
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -400,14 +371,7 @@ func TestDefinition_moduleInputToVariable(t *testing.T) {
 func TestDeclaration_basic(t *testing.T) {
 	tmpDir := TempDir(t)
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -483,14 +447,7 @@ func TestDeclaration_withLinkSupport(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 

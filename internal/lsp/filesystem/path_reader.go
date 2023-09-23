@@ -9,52 +9,53 @@ import (
 	"github.com/hashicorp/hcl-lang/reference"
 	"github.com/hashicorp/hcl-lang/schema"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/walteh/retab/internal/lsp/document"
+	"github.com/rs/zerolog"
+	"github.com/spf13/afero"
 	"github.com/walteh/retab/internal/lsp/lsp"
 	"github.com/walteh/retab/pkg/hclread"
 )
 
 var _ decoder.PathReader = &Filesystem{}
 
-func (mr *Filesystem) Paths(ctx context.Context) []lang.Path {
+func (me *Filesystem) Paths(ctx context.Context) []lang.Path {
 	paths := make([]lang.Path, 0)
 
-	docList, err := mr.docStore.ListDocumentsInDir(document.DirHandleFromPath("."))
+	docList, err := afero.ReadDir(me, ".")
 	if err != nil {
+		zerolog.Ctx(ctx).Error().Err(err).Msg("doc FS")
 		return paths
 	}
 
-	filtered := make([]*document.Document, 0)
-	for _, doc := range docList {
-		if doc.LanguageID == lsp.Retab.String() {
-			filtered = append(filtered, doc)
-		}
-	}
+	// filtered := make([]*document.Document, 0)
+	// for _, doc := range docList {
+	// 	if doc.LanguageID == lsp.Retab.String() {
+	// 		filtered = append(filtered, doc)
+	// 	}
+	// }
 
-	for _, doc := range filtered {
+	for _, doc := range docList {
 		paths = append(paths, lang.Path{
-			Path:       doc.Dir.Path(),
-			LanguageID: doc.LanguageID,
+			Path:       doc.Name(),
+			LanguageID: lsp.Retab.String(),
 		})
 	}
 
 	return paths
 }
 
-func (fs *Filesystem) PathContext(path lang.Path) (*decoder.PathContext, error) {
+func (me *Filesystem) PathContext(path lang.Path) (*decoder.PathContext, error) {
 
-	dirHandle := document.DirHandleFromPath(path.Path)
-	docList, err := fs.docStore.ListDocumentsInDir(dirHandle)
+	docList, err := afero.ReadDir(me, path.Path)
 	if err != nil {
 		return nil, fmt.Errorf("doc FS: %w", err)
 	}
 
-	filtered := make([]*document.Document, 0)
-	for _, doc := range docList {
-		if doc.LanguageID == path.LanguageID {
-			filtered = append(filtered, doc)
-		}
-	}
+	// filtered := make([]*document.Document, 0)
+	// for _, doc := range docList {
+	// 	if doc.Name() == path.LanguageID {
+	// 		filtered = append(filtered, doc)
+	// 	}
+	// }
 
 	pathCtx := &decoder.PathContext{
 		Schema:           &schema.BodySchema{},
@@ -63,8 +64,13 @@ func (fs *Filesystem) PathContext(path lang.Path) (*decoder.PathContext, error) 
 		Files:            make(map[string]*hcl.File),
 	}
 
-	for _, doc := range filtered {
-		fle, err := doc.AsFile()
+	for _, doc := range docList {
+		// fle, err := doc.AsFile()
+		// if err != nil {
+		// 	return nil, fmt.Errorf("doc FS: %w", err)
+		// }
+
+		fle, err := me.Open(doc.Name())
 		if err != nil {
 			return nil, fmt.Errorf("doc FS: %w", err)
 		}
@@ -73,7 +79,7 @@ func (fs *Filesystem) PathContext(path lang.Path) (*decoder.PathContext, error) 
 		if err != nil {
 			return nil, fmt.Errorf("doc FS: %w", err)
 		}
-		pathCtx.Files[doc.FullPath()] = fil
+		pathCtx.Files[fle.Name()] = fil
 	}
 
 	// fmt.Errorf("unknown language ID: %q", path.LanguageID)

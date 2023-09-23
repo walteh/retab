@@ -32,14 +32,7 @@ func TestLangServer_codeActionWithoutInitialization(t *testing.T) {
 func TestLangServer_codeAction_basic(t *testing.T) {
 	tmpDir := TempDir(t)
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 

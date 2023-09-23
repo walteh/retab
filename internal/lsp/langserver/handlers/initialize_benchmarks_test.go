@@ -13,7 +13,6 @@ import (
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
-	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func BenchmarkInitializeFolder_basic(b *testing.B) {
@@ -87,10 +86,6 @@ func BenchmarkInitializeFolder_basic(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				rootDir := document.DirHandleFromPath(rootDir)
-				ss, err := state.NewStateStore()
-				if err != nil {
-					b.Fatal(err)
-				}
 
 				b.StartTimer()
 				ls := langserver.NewLangServerMock(b, func(ctx context.Context) session.Session {
@@ -100,7 +95,6 @@ func BenchmarkInitializeFolder_basic(b *testing.B) {
 						srvCtx:      ctx,
 						sessCtx:     sessCtx,
 						stopSession: stopSession,
-						stateStore:  ss,
 					}
 				})
 				stop := ls.Start(b)

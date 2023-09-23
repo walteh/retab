@@ -13,7 +13,6 @@ import (
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
-	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func TestCodeLens_withoutInitialization(t *testing.T) {
@@ -39,14 +38,7 @@ func TestCodeLens_withoutOptIn(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -96,14 +88,7 @@ func TestCodeLens_referenceCount(t *testing.T) {
 	// 	t.Fatal(err)
 	// }
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -196,13 +181,7 @@ func TestCodeLens_referenceCount_crossModule(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 

@@ -9,23 +9,16 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/walteh/retab/internal/lsp/document"
+	"github.com/spf13/afero"
 	"github.com/walteh/retab/internal/lsp/langserver"
-	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func TestLangServer_didChange_sequenceOfPartialChanges(t *testing.T) {
 	tmpDir := TempDir(t)
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
+	sess := NewMockSession(&MockSessionInput{})
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, sess)
 	stop := ls.Start(t)
 	defer stop()
 
@@ -131,11 +124,9 @@ module "app" {
 }`, TempDir(t).URI)})
 
 	path := filepath.Join(TempDir(t).Path(), "main.tf")
-	dh := document.HandleFromPath(path)
-	doc, err := ss.DocumentStore.GetDocument(dh)
-	if err != nil {
-		t.Fatal(err)
-	}
+	filename := string(path)
+
+	text, err := afero.ReadFile(sess, filename)
 
 	expectedText := `variable "service_host" {
   default = "blah"

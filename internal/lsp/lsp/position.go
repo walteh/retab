@@ -5,12 +5,22 @@ package lsp
 
 import (
 	"github.com/hashicorp/hcl/v2"
+	"github.com/spf13/afero"
 	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/document"
+	"github.com/walteh/retab/internal/lsp/source"
 )
 
-func HCLPositionFromLspPosition(pos gopls.Position, doc *document.Document) (hcl.Pos, error) {
-	byteOffset, err := document.ByteOffsetForPos(doc.Lines, lspPosToDocumentPos(pos))
+func HCLPositionFromLspPosition(pos gopls.Position, fle afero.Fs, name string) (hcl.Pos, error) {
+
+	all, err := afero.ReadFile(fle, name)
+	if err != nil {
+		return hcl.Pos{}, err
+	}
+
+	lines := source.MakeSourceLines(name, all)
+
+	byteOffset, err := document.ByteOffsetForPos(lines, lspPosToDocumentPos(pos))
 	if err != nil {
 		return hcl.Pos{}, err
 	}

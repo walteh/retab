@@ -10,7 +10,6 @@ import (
 
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/walteh/retab/internal/lsp/langserver"
-	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func TestSemanticTokensFull(t *testing.T) {
@@ -22,14 +21,7 @@ func TestSemanticTokensFull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -101,14 +93,7 @@ func TestSemanticTokensFull_clientSupportsDelta(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -182,14 +167,7 @@ func TestVarsSemanticTokensFull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -270,14 +248,7 @@ func TestVarsSemanticTokensFull_functionToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 

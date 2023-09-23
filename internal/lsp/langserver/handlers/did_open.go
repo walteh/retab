@@ -4,13 +4,13 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
 	"github.com/creachadair/jrpc2"
+	"github.com/spf13/afero"
 	"github.com/walteh/retab/gen/gopls"
-	lsctx "github.com/walteh/retab/internal/lsp/context"
-	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/uri"
 )
 
@@ -29,15 +29,16 @@ func (svc *service) TextDocumentDidOpen(ctx context.Context, params gopls.DidOpe
 		return fmt.Errorf("invalid URI: %s", docURI)
 	}
 
-	dh := document.HandleFromURI(docURI)
+	// dh := document.HandleFromURI(docURI)
 
-	err := svc.stateStore.DocumentStore.OpenDocument(dh, params.TextDocument.LanguageID,
-		int(params.TextDocument.Version), []byte(params.TextDocument.Text))
-	if err != nil {
-		return err
-	}
+	// err := svc.stateStore.DocumentStore.OpenDocument(dh, params.TextDocument.LanguageID,
+	// 	int(params.TextDocument.Version), []byte(params.TextDocument.Text))
+	// if err != nil {
+	// 	return err
+	// }
 
-	ctx = lsctx.WithLanguageId(ctx, params.TextDocument.LanguageID)
+	// ctx = lsctx.WithLanguageId(ctx, params.TextDocument.LanguageID)
 
-	return nil
+	return afero.WriteReader(svc.fs, docURI, bytes.NewReader([]byte(params.TextDocument.Text)))
+
 }

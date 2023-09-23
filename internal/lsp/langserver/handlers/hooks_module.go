@@ -10,13 +10,12 @@ import (
 	"github.com/walteh/retab/internal/lsp/langserver/diagnostics"
 	"github.com/walteh/retab/internal/lsp/langserver/notifier"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
-	"github.com/walteh/retab/internal/lsp/state"
 	"github.com/walteh/retab/internal/lsp/telemetry"
 )
 
-func sendModuleTelemetry(store *state.StateStore, telemetrySender telemetry.Sender) notifier.Hook {
+func sendModuleTelemetry(telemetrySender telemetry.Sender) notifier.Hook {
 	return func(ctx context.Context) error {
-
+		// not important since we don't have a module
 		return nil
 	}
 }
@@ -27,7 +26,7 @@ func updateDiagnostics(dNotifier *diagnostics.Notifier) notifier.Hook {
 		diags := diagnostics.NewDiagnostics()
 		diags.EmptyRootDiagnostic()
 
-		// defer dNotifier.PublishHCLDiags(ctx, mod.Path, diags)
+		defer dNotifier.PublishHCLDiags(ctx, ".", diags)
 
 		// if mod != nil {
 		// 	// diags.Append("HCL", mod.ModuleDiagnostics.AutoloadedOnly().AsMap())
@@ -63,7 +62,10 @@ func refreshCodeLens(clientRequester session.ClientCaller) notifier.Hook {
 
 func refreshSemanticTokens(clientRequester session.ClientCaller) notifier.Hook {
 	return func(ctx context.Context) error {
-
+		_, err := clientRequester.Callback(ctx, "workspace/semanticTokens/refresh", nil)
+		if err != nil {
+			return fmt.Errorf("Error refreshing semantic tokens %s", err)
+		}
 		return nil
 	}
 }

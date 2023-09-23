@@ -8,6 +8,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/spf13/afero"
 	"github.com/walteh/retab/gen/gopls"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/hcl"
@@ -21,12 +22,14 @@ func (svc *service) TextDocumentFormatting(ctx context.Context, params gopls.Doc
 
 	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
 
-	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
+	filename := string(params.TextDocument.URI)
+
+	text, err := afero.ReadFile(svc.fs, filename)
 	if err != nil {
 		return edits, err
 	}
 
-	edits, err = svc.formatDocument(ctx, doc.Text, dh)
+	edits, err = svc.formatDocument(ctx, text, dh)
 	if err != nil {
 		return edits, err
 	}

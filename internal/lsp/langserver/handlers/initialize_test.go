@@ -9,20 +9,12 @@ import (
 
 	"github.com/creachadair/jrpc2"
 	"github.com/walteh/retab/internal/lsp/langserver"
-	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func TestInitialize_twice(t *testing.T) {
 	tmpDir := TempDir(t)
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -46,14 +38,7 @@ func TestInitialize_twice(t *testing.T) {
 func TestInitialize_withIncompatibleTerraformVersion(t *testing.T) {
 	tmpDir := TempDir(t)
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -84,14 +69,7 @@ func TestInitialize_withInvalidRootURI(t *testing.T) {
 func TestInitialize_multipleFolders(t *testing.T) {
 	rootDir := TempDir(t)
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -114,14 +92,7 @@ func TestInitialize_multipleFolders(t *testing.T) {
 func TestInitialize_ignoreDirectoryNames(t *testing.T) {
 	tmpDir := TempDir(t, "plugin", "ignore")
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 

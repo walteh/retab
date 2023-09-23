@@ -5,7 +5,7 @@ package notifier
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"log"
 )
 
@@ -49,8 +49,15 @@ func (n *Notifier) Start(ctx context.Context) {
 }
 
 func (n *Notifier) notify(ctx context.Context) error {
+	for i, h := range n.hooks {
+		err := h(ctx)
+		if err != nil {
+			n.logger.Printf("hook error (%d): %s", i, err)
+			continue
+		}
+	}
 
 	return nil
 }
 
-var defaultLogger = log.New(ioutil.Discard, "", 0)
+var defaultLogger = log.New(io.Discard, "", 0)

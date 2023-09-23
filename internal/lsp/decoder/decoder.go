@@ -11,10 +11,7 @@ import (
 	"github.com/hashicorp/hcl-lang/reference"
 	"github.com/hashicorp/hcl-lang/schema"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/walteh/retab/internal/lsp/codelens"
-	"github.com/walteh/retab/internal/lsp/lsp"
 	"github.com/walteh/retab/internal/lsp/utm"
-	"github.com/walteh/retab/internal/protocol"
 )
 
 func varsPathContext(path lang.Path) (*decoder.PathContext, error) {
@@ -44,14 +41,6 @@ func DecoderContext(ctx context.Context) decoder.DecoderContext {
 	dCtx.UtmSource = utm.UtmSource
 	dCtx.UtmMedium = utm.UtmMedium(ctx)
 	dCtx.UseUtmContent = true
-
-	cc, err := lsp.ClientCapabilities(ctx)
-	if err == nil {
-		cmdId, ok := protocol.ExperimentalClientCapabilities(cc.Experimental).ShowReferencesCommandId()
-		if ok {
-			dCtx.CodeLenses = append(dCtx.CodeLenses, codelens.ReferenceCount(cmdId))
-		}
-	}
 
 	return dCtx
 }

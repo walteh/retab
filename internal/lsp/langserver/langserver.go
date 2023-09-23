@@ -119,9 +119,8 @@ func (ls *langServer) StartAndWait(reader io.Reader, writer io.WriteCloser) erro
 	return nil
 }
 
-func (ls *langServer) StartTCP(address string) error {
-	ls.logger.Printf("Starting TCP server (pid %d; concurrency: %d) at %q ...",
-		os.Getpid(), ls.srvOptions.Concurrency, address)
+func (ls *langServer) StartTCP(ctx context.Context, address string) error {
+	ls.logger.Printf("Starting TCP server (pid %d; concurrency: %d) at %q ...", os.Getpid(), ls.srvOptions.Concurrency, address)
 	lst, err := net.Listen("tcp", address)
 	if err != nil {
 		return fmt.Errorf("TCP Server failed to start: %s", err)
@@ -132,7 +131,9 @@ func (ls *langServer) StartTCP(address string) error {
 
 	go func() {
 		ls.logger.Println("Starting loop server ...")
-		err = server.Loop(context.TODO(), accepter, ls.newService, &server.LoopOptions{
+		err = server.Loop(ctx, accepter, func() server.Service {
+			return ls.newService()
+		}, &server.LoopOptions{
 			ServerOptions: ls.srvOptions,
 		})
 		if err != nil {

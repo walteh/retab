@@ -9,21 +9,13 @@ import (
 
 	"github.com/creachadair/jrpc2"
 	"github.com/walteh/retab/internal/lsp/langserver"
-	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func TestLangServer_workspaceExecuteCommand_noCommandHandlerError(t *testing.T) {
 	tmpDir := TempDir(t)
 	testFileURI := fmt.Sprintf("%s/main.tf", tmpDir.URI)
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 

@@ -3,48 +3,41 @@
 
 package filesystem
 
-import (
-	"io/fs"
+// func documentAsFile(doc *document.Document) (afero.File, error) {
 
-	"github.com/spf13/afero"
-	"github.com/walteh/retab/internal/lsp/document"
-)
+// 	fle, err := afero.NewMemMapFs().Open(doc.Filename)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-func documentAsFile(doc *document.Document) (afero.File, error) {
+// 	_, err = fle.Write(doc.Text)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	fle, err := afero.NewMemMapFs().Open(doc.Filename)
-	if err != nil {
-		return nil, err
-	}
+// 	return fle, nil
+// }
 
-	_, err = fle.Write(doc.Text)
-	if err != nil {
-		return nil, err
-	}
+// func documentAsFileInfo(doc *document.Document) fs.FileInfo {
+// 	return inMemFileInfo{
+// 		name:    doc.Filename,
+// 		size:    len(doc.Text),
+// 		modTime: doc.ModTime,
+// 		mode:    0o755,
+// 		isDir:   false,
+// 	}
+// }
 
-	return fle, nil
-}
+// func documentsAsDirEntries(docs []*document.Document) []fs.DirEntry {
+// 	entries := make([]fs.DirEntry, len(docs))
 
-func documentAsFileInfo(doc *document.Document) fs.FileInfo {
-	return inMemFileInfo{
-		name:    doc.Filename,
-		size:    len(doc.Text),
-		modTime: doc.ModTime,
-		mode:    0o755,
-		isDir:   false,
-	}
-}
+// 	for i, doc := range docs {
+// 		entries[i] = documentAsDirEntry(doc)
+// 	}
 
-func documentsAsDirEntries(docs []*document.Document) []fs.DirEntry {
-	entries := make([]fs.DirEntry, len(docs))
+// 	return entries
+// }
 
-	for i, doc := range docs {
-		entries[i] = documentAsDirEntry(doc)
-	}
-
-	return entries
-}
-
-func documentAsDirEntry(doc *document.Document) fs.DirEntry {
-	return fs.FileInfoToDirEntry(documentAsFileInfo(doc))
-}
+// func documentAsDirEntry(doc *document.Document) fs.DirEntry {
+// 	return fs.FileInfoToDirEntry(documentAsFileInfo(doc))
+// }

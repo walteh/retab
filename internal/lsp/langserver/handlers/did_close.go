@@ -7,10 +7,10 @@ import (
 	"context"
 
 	"github.com/walteh/retab/gen/gopls"
-	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
 func (svc *service) TextDocumentDidClose(ctx context.Context, params gopls.DidCloseTextDocumentParams) error {
-	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
-	return svc.stateStore.DocumentStore.CloseDocument(dh)
+	// dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
+	// return svc.stateStore.DocumentStore.CloseDocument(dh)
+	return svc.fs.Remove(string(params.TextDocument.URI))
 }

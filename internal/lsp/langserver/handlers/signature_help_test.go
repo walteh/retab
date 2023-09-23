@@ -11,7 +11,6 @@ import (
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
-	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func TestSignatureHelp_withoutInitialization(t *testing.T) {
@@ -46,14 +45,7 @@ func TestSignatureHelp_withValidData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ss, err := state.NewStateStore()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
-		StateStore: ss,
-	}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)
 	defer stop()
 

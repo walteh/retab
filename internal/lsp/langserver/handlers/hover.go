@@ -16,24 +16,20 @@ func (svc *service) TextDocumentHover(ctx context.Context, params gopls.TextDocu
 		return nil, err
 	}
 
-	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
-	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
+	filename := string(params.TextDocument.URI)
+
+	d, err := svc.decoderForDocument(ctx, filename)
 	if err != nil {
 		return nil, err
 	}
 
-	d, err := svc.decoderForDocument(ctx, doc)
+	pos, err := lsp.HCLPositionFromLspPosition(params.Position, svc.fs, filename)
 	if err != nil {
 		return nil, err
 	}
 
-	pos, err := lsp.HCLPositionFromLspPosition(params.Position, doc)
-	if err != nil {
-		return nil, err
-	}
-
-	svc.logger.Printf("Looking for hover data at %q -> %#v", doc.Filename, pos)
-	hoverData, err := d.HoverAtPos(ctx, doc.Filename, pos)
+	svc.logger.Printf("Looking for hover data at %q -> %#v", filename, pos)
+	hoverData, err := d.HoverAtPos(ctx, filename, pos)
 	svc.logger.Printf("received hover data: %#v", hoverData)
 	if err != nil {
 		return nil, err

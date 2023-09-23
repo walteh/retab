@@ -18,18 +18,14 @@ func (svc *service) TextDocumentSymbol(ctx context.Context, params gopls.Documen
 		return symbols, err
 	}
 
-	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
-	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
+	filename := string(params.TextDocument.URI)
+
+	d, err := svc.decoderForDocument(ctx, filename)
 	if err != nil {
 		return symbols, err
 	}
 
-	d, err := svc.decoderForDocument(ctx, doc)
-	if err != nil {
-		return symbols, err
-	}
-
-	sbs, err := d.SymbolsInFile(doc.Filename)
+	sbs, err := d.SymbolsInFile(filename)
 	if err != nil {
 		return symbols, err
 	}

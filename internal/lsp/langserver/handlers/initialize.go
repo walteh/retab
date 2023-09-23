@@ -23,7 +23,6 @@ func (svc *service) Initialize(ctx context.Context, params gopls.InitializeParam
 	// properties["lsVersion"] = serverCaps.ServerInfo.Version
 
 	clientCaps := params.Capabilities
-	expClientCaps := protocol.ExperimentalClientCapabilities(clientCaps.Experimental)
 
 	// svc.server = jrpc2.ServerFromContext(ctx)
 
@@ -39,23 +38,6 @@ func (svc *service) Initialize(ctx context.Context, params gopls.InitializeParam
 
 	expServerCaps := protocol.ExperimentalServerCapabilities{}
 
-	if _, ok := expClientCaps.ShowReferencesCommandId(); ok {
-		expServerCaps.ReferenceCountCodeLens = true
-		properties["experimentalCapabilities.referenceCountCodeLens"] = true
-	}
-	if _, ok := expClientCaps.RefreshModuleProvidersCommandId(); ok {
-		expServerCaps.RefreshModuleProviders = true
-		properties["experimentalCapabilities.refreshModuleProviders"] = true
-	}
-	if _, ok := expClientCaps.RefreshModuleCallsCommandId(); ok {
-		expServerCaps.RefreshModuleCalls = true
-		properties["experimentalCapabilities.refreshModuleCalls"] = true
-	}
-	if _, ok := expClientCaps.RefreshTerraformVersionCommandId(); ok {
-		expServerCaps.RefreshTerraformVersion = true
-		properties["experimentalCapabilities.refreshTerraformVersion"] = true
-	}
-
 	serverCaps.Capabilities.Experimental = expServerCaps
 
 	err = lsp.SetClientCapabilities(ctx, &clientCaps)
@@ -63,10 +45,27 @@ func (svc *service) Initialize(ctx context.Context, params gopls.InitializeParam
 		return serverCaps, err
 	}
 
-	err = svc.configureSessionDependencies(ctx)
-	if err != nil {
-		return serverCaps, err
-	}
+	//////////////////////// configureClientCapabilities ////////////////////////
+
+	// svc.diagsNotifier = diagnostics.NewNotifier(svc.server, svc.logger)
+
+	// moduleHooks := []notifier.Hook{
+	// 	updateDiagnostics(svc.diagsNotifier),
+	// 	sendModuleTelemetry(svc.telemetry),
+	// }
+
+	// cc, err := lsp.ClientCapabilities(ctx)
+	// if err == nil {
+	// 	if cc.Workspace.SemanticTokens != nil && cc.Workspace.SemanticTokens.RefreshSupport {
+	// 		moduleHooks = append(moduleHooks, refreshSemanticTokens(svc.server))
+	// 	}
+	// }
+
+	// svc.notifier = notifier.NewNotifier(moduleHooks)
+	// svc.notifier.SetLogger(svc.logger)
+	// svc.notifier.Start(svc.sessCtx)
+
+	//////////////////////// configureClientCapabilities ////////////////////////
 
 	stCaps := clientCaps.TextDocument.SemanticTokens
 	caps := lsp.SemanticTokensClientCapabilities{

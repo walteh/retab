@@ -3,10 +3,6 @@
 
 package filesystem
 
-import (
-	"github.com/spf13/afero"
-)
-
-func (me *Filesystem) Ref() afero.Fs {
-	return me.osFs
-}
+// func (me *Filesystem) Ref() afero.Fs {
+// 	return me.fls
+// }
