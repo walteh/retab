@@ -11,6 +11,7 @@ import (
 	"github.com/walteh/retab/cmd/root/generate"
 	"github.com/walteh/retab/cmd/root/hcl"
 	"github.com/walteh/retab/cmd/root/install"
+	"github.com/walteh/retab/cmd/root/lsp"
 	"github.com/walteh/snake"
 
 	"github.com/walteh/retab/version"
@@ -39,6 +40,7 @@ func (me *Root) BuildCommand(ctx context.Context) *cobra.Command {
 	snake.MustNewCommand(ctx, cmd, "hcl", &hcl.Handler{})
 	snake.MustNewCommand(ctx, cmd, "install", &install.Handler{})
 	snake.MustNewCommand(ctx, cmd, "generate", &generate.Handler{})
+	snake.MustNewCommand(ctx, cmd, "lsp", &lsp.Handler{})
 
 	return cmd
 }

@@ -5,7 +5,7 @@ package protocol
 
 import (
 	"github.com/hashicorp/hcl-lang/lang"
-	protocol "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls/protocol"
 )
 
 type CompletionItemWithResolveHook struct {

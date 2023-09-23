@@ -28,12 +28,13 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 	git checkout gopls/v${GOPLS_VERSION}
 	mkdir -p /out
 
-	function copy_internal_pkg() {
-		local src=$1
+	function copy_pkg() {
+		local from=$1
+		local name=$2
 		(
-			mkdir -p /out/$src
-			cd ./internal/$src
-			find . \( -name '*.go' ! -name '*_test.go' \) -type f | tar -cf - --files-from - | tar -C /out/$src -xf -
+			mkdir -p /out/$name
+			cd ./$from/$name
+			find . \( -name '*.go' ! -name '*_test.go'  ! -name 'generate/*' \) -type f | tar -cf - --files-from - | tar -C /out/$name -xf -
 		)
 	}
 
@@ -45,21 +46,43 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 		)
 	}
 
-	copy_internal_pkg event
-	copy_internal_pkg jsonrpc2
-	copy_internal_pkg jsonrpc2_v2
-	copy_internal_pkg xcontext
-	copy_internal_pkg tool
-	copy_internal_pkg fakenet
+	function copy_lsrpc_file() {
+		local src=$1
+		(
+			mkdir -p /out/lsprpc
+			cp ./gopls/internal/lsp/lsprpc/$src /out/lsprpc/$src
+		)
+	}
 
-	copy_protocol_file tsdocument_changes.go
-	copy_protocol_file tsserver.go
-	copy_protocol_file tsjson.go
-	copy_protocol_file protocol.go
-	copy_protocol_file tsprotocol.go
-	copy_protocol_file tsclient.go
+	copy_pkg internal event
+	copy_pkg internal jsonrpc2
+	copy_pkg internal jsonrpc2_v2
+	copy_pkg internal xcontext
+	copy_pkg internal tool
+	copy_pkg internal fakenet
+	copy_pkg gopls/internal/lsp progress
+	copy_pkg gopls/internal span
+	copy_pkg gopls/internal/lsp safetoken
+	copy_pkg gopls/internal bug
+	copy_pkg gopls/internal/lsp protocol
 
+
+
+	# copy_protocol_file tsdocument_changes.go
+	# copy_protocol_file tsserver.go
+	# copy_protocol_file tsjson.go
+	# copy_protocol_file protocol.go
+	# copy_protocol_file tsprotocol.go
+	# copy_protocol_file tsclient.go
+	# copy_protocol_file context.go
+	# copy_protocol_file log.go
+
+	# more specific are first
+	# find /out -type f -name "*.go" -exec sed -i "s|\"golang.org/x/tools/gopls/internal/lsp/protocol\"|protocol \"${GO_MODULE}/${DESTDIR#./}\"|g" {} \;
+	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/gopls/internal/lsp|${GO_MODULE}/${DESTDIR#./}|g" {} \;
+	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/gopls/internal|${GO_MODULE}/${DESTDIR#./}|g" {} \;
 	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/internal|${GO_MODULE}/${DESTDIR#./}|g" {} \;
+
 SHELL
 
 # Final update stage

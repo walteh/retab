@@ -9,7 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/hcl-lang/lang"
 	"github.com/hashicorp/hcl/v2"
-	protocol "github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/source"
 )
 

@@ -3,41 +3,38 @@ package server
 import (
 	"context"
 
-	"github.com/walteh/retab/gen/gopls"
+	"github.com/walteh/retab/gen/gopls/protocol"
 )
 
-type Server struct {
-}
-
-var _ gopls.Server = (*Server)(nil)
+var _ protocol.Server = (*Server)(nil)
 
 // CodeAction implements gopls.Server.
-func (*Server) CodeAction(context.Context, *gopls.CodeActionParams) ([]gopls.CodeAction, error) {
+func (*Server) CodeAction(context.Context, *protocol.CodeActionParams) ([]protocol.CodeAction, error) {
 	panic("unimplemented")
 }
 
 // CodeLens implements gopls.Server.
-func (*Server) CodeLens(context.Context, *gopls.CodeLensParams) ([]gopls.CodeLens, error) {
+func (*Server) CodeLens(context.Context, *protocol.CodeLensParams) ([]protocol.CodeLens, error) {
 	panic("unimplemented")
 }
 
 // ColorPresentation implements gopls.Server.
-func (*Server) ColorPresentation(context.Context, *gopls.ColorPresentationParams) ([]gopls.ColorPresentation, error) {
+func (*Server) ColorPresentation(context.Context, *protocol.ColorPresentationParams) ([]protocol.ColorPresentation, error) {
 	panic("unimplemented")
 }
 
 // Completion implements gopls.Server.
-func (*Server) Completion(context.Context, *gopls.CompletionParams) (*gopls.CompletionList, error) {
+func (*Server) Completion(context.Context, *protocol.CompletionParams) (*protocol.CompletionList, error) {
 	panic("unimplemented")
 }
 
 // Declaration implements gopls.Server.
-func (*Server) Declaration(context.Context, *gopls.DeclarationParams) (*gopls.Or_textDocument_declaration, error) {
+func (*Server) Declaration(context.Context, *protocol.DeclarationParams) (*protocol.Or_textDocument_declaration, error) {
 	panic("unimplemented")
 }
 
 // Definition implements gopls.Server.
-func (*Server) Definition(context.Context, *gopls.DefinitionParams) ([]gopls.Location, error) {
+func (*Server) Definition(context.Context, *protocol.DefinitionParams) ([]protocol.Location, error) {
 	panic("unimplemented")
 }
 
@@ -47,102 +44,102 @@ func (*Server) Diagnostic(context.Context, *string) (*string, error) {
 }
 
 // DiagnosticWorkspace implements gopls.Server.
-func (*Server) DiagnosticWorkspace(context.Context, *gopls.WorkspaceDiagnosticParams) (*gopls.WorkspaceDiagnosticReport, error) {
+func (*Server) DiagnosticWorkspace(context.Context, *protocol.WorkspaceDiagnosticParams) (*protocol.WorkspaceDiagnosticReport, error) {
 	panic("unimplemented")
 }
 
 // DidChange implements gopls.Server.
-func (*Server) DidChange(context.Context, *gopls.DidChangeTextDocumentParams) error {
+func (*Server) DidChange(context.Context, *protocol.DidChangeTextDocumentParams) error {
 	panic("unimplemented")
 }
 
 // DidChangeConfiguration implements gopls.Server.
-func (*Server) DidChangeConfiguration(context.Context, *gopls.DidChangeConfigurationParams) error {
+func (*Server) DidChangeConfiguration(context.Context, *protocol.DidChangeConfigurationParams) error {
 	panic("unimplemented")
 }
 
 // DidChangeNotebookDocument implements gopls.Server.
-func (*Server) DidChangeNotebookDocument(context.Context, *gopls.DidChangeNotebookDocumentParams) error {
+func (*Server) DidChangeNotebookDocument(context.Context, *protocol.DidChangeNotebookDocumentParams) error {
 	panic("unimplemented")
 }
 
 // DidChangeWatchedFiles implements gopls.Server.
-func (*Server) DidChangeWatchedFiles(context.Context, *gopls.DidChangeWatchedFilesParams) error {
+func (*Server) DidChangeWatchedFiles(context.Context, *protocol.DidChangeWatchedFilesParams) error {
 	panic("unimplemented")
 }
 
 // DidChangeWorkspaceFolders implements gopls.Server.
-func (*Server) DidChangeWorkspaceFolders(context.Context, *gopls.DidChangeWorkspaceFoldersParams) error {
+func (*Server) DidChangeWorkspaceFolders(context.Context, *protocol.DidChangeWorkspaceFoldersParams) error {
 	panic("unimplemented")
 }
 
 // DidClose implements gopls.Server.
-func (*Server) DidClose(context.Context, *gopls.DidCloseTextDocumentParams) error {
+func (*Server) DidClose(context.Context, *protocol.DidCloseTextDocumentParams) error {
 	panic("unimplemented")
 }
 
 // DidCloseNotebookDocument implements gopls.Server.
-func (*Server) DidCloseNotebookDocument(context.Context, *gopls.DidCloseNotebookDocumentParams) error {
+func (*Server) DidCloseNotebookDocument(context.Context, *protocol.DidCloseNotebookDocumentParams) error {
 	panic("unimplemented")
 }
 
 // DidCreateFiles implements gopls.Server.
-func (*Server) DidCreateFiles(context.Context, *gopls.CreateFilesParams) error {
+func (*Server) DidCreateFiles(context.Context, *protocol.CreateFilesParams) error {
 	panic("unimplemented")
 }
 
 // DidDeleteFiles implements gopls.Server.
-func (*Server) DidDeleteFiles(context.Context, *gopls.DeleteFilesParams) error {
+func (*Server) DidDeleteFiles(context.Context, *protocol.DeleteFilesParams) error {
 	panic("unimplemented")
 }
 
 // DidOpen implements gopls.Server.
-func (*Server) DidOpen(context.Context, *gopls.DidOpenTextDocumentParams) error {
+func (*Server) DidOpen(context.Context, *protocol.DidOpenTextDocumentParams) error {
 	panic("unimplemented")
 }
 
 // DidOpenNotebookDocument implements gopls.Server.
-func (*Server) DidOpenNotebookDocument(context.Context, *gopls.DidOpenNotebookDocumentParams) error {
+func (*Server) DidOpenNotebookDocument(context.Context, *protocol.DidOpenNotebookDocumentParams) error {
 	panic("unimplemented")
 }
 
 // DidRenameFiles implements gopls.Server.
-func (*Server) DidRenameFiles(context.Context, *gopls.RenameFilesParams) error {
+func (*Server) DidRenameFiles(context.Context, *protocol.RenameFilesParams) error {
 	panic("unimplemented")
 }
 
 // DidSave implements gopls.Server.
-func (*Server) DidSave(context.Context, *gopls.DidSaveTextDocumentParams) error {
+func (*Server) DidSave(context.Context, *protocol.DidSaveTextDocumentParams) error {
 	panic("unimplemented")
 }
 
 // DidSaveNotebookDocument implements gopls.Server.
-func (*Server) DidSaveNotebookDocument(context.Context, *gopls.DidSaveNotebookDocumentParams) error {
+func (*Server) DidSaveNotebookDocument(context.Context, *protocol.DidSaveNotebookDocumentParams) error {
 	panic("unimplemented")
 }
 
 // DocumentColor implements gopls.Server.
-func (*Server) DocumentColor(context.Context, *gopls.DocumentColorParams) ([]gopls.ColorInformation, error) {
+func (*Server) DocumentColor(context.Context, *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
 	panic("unimplemented")
 }
 
 // DocumentHighlight implements gopls.Server.
-func (*Server) DocumentHighlight(context.Context, *gopls.DocumentHighlightParams) ([]gopls.DocumentHighlight, error) {
+func (*Server) DocumentHighlight(context.Context, *protocol.DocumentHighlightParams) ([]protocol.DocumentHighlight, error) {
 	panic("unimplemented")
 }
 
 // DocumentLink implements gopls.Server.
-func (*Server) DocumentLink(context.Context, *gopls.DocumentLinkParams) ([]gopls.DocumentLink, error) {
+func (*Server) DocumentLink(context.Context, *protocol.DocumentLinkParams) ([]protocol.DocumentLink, error) {
 	panic("unimplemented")
 }
 
 // DocumentSymbol implements gopls.Server.
-func (*Server) DocumentSymbol(context.Context, *gopls.DocumentSymbolParams) ([]interface{}, error) {
+func (*Server) DocumentSymbol(context.Context, *protocol.DocumentSymbolParams) ([]interface{}, error) {
 	panic("unimplemented")
 }
 
 // ExecuteCommand implements gopls.Server.
-func (*Server) ExecuteCommand(context.Context, *gopls.ExecuteCommandParams) (interface{}, error) {
+func (*Server) ExecuteCommand(context.Context, *protocol.ExecuteCommandParams) (interface{}, error) {
 	panic("unimplemented")
 }
 
@@ -152,62 +149,62 @@ func (*Server) Exit(context.Context) error {
 }
 
 // FoldingRange implements gopls.Server.
-func (*Server) FoldingRange(context.Context, *gopls.FoldingRangeParams) ([]gopls.FoldingRange, error) {
+func (*Server) FoldingRange(context.Context, *protocol.FoldingRangeParams) ([]protocol.FoldingRange, error) {
 	panic("unimplemented")
 }
 
 // Formatting implements gopls.Server.
-func (*Server) Formatting(context.Context, *gopls.DocumentFormattingParams) ([]gopls.TextEdit, error) {
+func (*Server) Formatting(context.Context, *protocol.DocumentFormattingParams) ([]protocol.TextEdit, error) {
 	panic("unimplemented")
 }
 
 // Hover implements gopls.Server.
-func (*Server) Hover(context.Context, *gopls.HoverParams) (*gopls.Hover, error) {
+func (*Server) Hover(context.Context, *protocol.HoverParams) (*protocol.Hover, error) {
 	panic("unimplemented")
 }
 
 // Implementation implements gopls.Server.
-func (*Server) Implementation(context.Context, *gopls.ImplementationParams) ([]gopls.Location, error) {
+func (*Server) Implementation(context.Context, *protocol.ImplementationParams) ([]protocol.Location, error) {
 	panic("unimplemented")
 }
 
 // IncomingCalls implements gopls.Server.
-func (*Server) IncomingCalls(context.Context, *gopls.CallHierarchyIncomingCallsParams) ([]gopls.CallHierarchyIncomingCall, error) {
+func (*Server) IncomingCalls(context.Context, *protocol.CallHierarchyIncomingCallsParams) ([]protocol.CallHierarchyIncomingCall, error) {
 	panic("unimplemented")
 }
 
 // Initialize implements gopls.Server.
-func (*Server) Initialize(context.Context, *gopls.ParamInitialize) (*gopls.InitializeResult, error) {
+func (*Server) Initialize(context.Context, *protocol.ParamInitialize) (*protocol.InitializeResult, error) {
 	panic("unimplemented")
 }
 
 // Initialized implements gopls.Server.
-func (*Server) Initialized(context.Context, *gopls.InitializedParams) error {
+func (*Server) Initialized(context.Context, *protocol.InitializedParams) error {
 	panic("unimplemented")
 }
 
 // InlayHint implements gopls.Server.
-func (*Server) InlayHint(context.Context, *gopls.InlayHintParams) ([]gopls.InlayHint, error) {
+func (*Server) InlayHint(context.Context, *protocol.InlayHintParams) ([]protocol.InlayHint, error) {
 	panic("unimplemented")
 }
 
 // InlineCompletion implements gopls.Server.
-func (*Server) InlineCompletion(context.Context, *gopls.InlineCompletionParams) (*gopls.Or_Result_textDocument_inlineCompletion, error) {
+func (*Server) InlineCompletion(context.Context, *protocol.InlineCompletionParams) (*protocol.Or_Result_textDocument_inlineCompletion, error) {
 	panic("unimplemented")
 }
 
 // InlineValue implements gopls.Server.
-func (*Server) InlineValue(context.Context, *gopls.InlineValueParams) ([]gopls.Or_InlineValue, error) {
+func (*Server) InlineValue(context.Context, *protocol.InlineValueParams) ([]protocol.Or_InlineValue, error) {
 	panic("unimplemented")
 }
 
 // LinkedEditingRange implements gopls.Server.
-func (*Server) LinkedEditingRange(context.Context, *gopls.LinkedEditingRangeParams) (*gopls.LinkedEditingRanges, error) {
+func (*Server) LinkedEditingRange(context.Context, *protocol.LinkedEditingRangeParams) (*protocol.LinkedEditingRanges, error) {
 	panic("unimplemented")
 }
 
 // Moniker implements gopls.Server.
-func (*Server) Moniker(context.Context, *gopls.MonikerParams) ([]gopls.Moniker, error) {
+func (*Server) Moniker(context.Context, *protocol.MonikerParams) ([]protocol.Moniker, error) {
 	panic("unimplemented")
 }
 
@@ -217,107 +214,107 @@ func (*Server) NonstandardRequest(ctx context.Context, method string, params int
 }
 
 // OnTypeFormatting implements gopls.Server.
-func (*Server) OnTypeFormatting(context.Context, *gopls.DocumentOnTypeFormattingParams) ([]gopls.TextEdit, error) {
+func (*Server) OnTypeFormatting(context.Context, *protocol.DocumentOnTypeFormattingParams) ([]protocol.TextEdit, error) {
 	panic("unimplemented")
 }
 
 // OutgoingCalls implements gopls.Server.
-func (*Server) OutgoingCalls(context.Context, *gopls.CallHierarchyOutgoingCallsParams) ([]gopls.CallHierarchyOutgoingCall, error) {
+func (*Server) OutgoingCalls(context.Context, *protocol.CallHierarchyOutgoingCallsParams) ([]protocol.CallHierarchyOutgoingCall, error) {
 	panic("unimplemented")
 }
 
 // PrepareCallHierarchy implements gopls.Server.
-func (*Server) PrepareCallHierarchy(context.Context, *gopls.CallHierarchyPrepareParams) ([]gopls.CallHierarchyItem, error) {
+func (*Server) PrepareCallHierarchy(context.Context, *protocol.CallHierarchyPrepareParams) ([]protocol.CallHierarchyItem, error) {
 	panic("unimplemented")
 }
 
 // PrepareRename implements gopls.Server.
-func (*Server) PrepareRename(context.Context, *gopls.PrepareRenameParams) (*gopls.Msg_PrepareRename2Gn, error) {
+func (*Server) PrepareRename(context.Context, *protocol.PrepareRenameParams) (*protocol.Msg_PrepareRename2Gn, error) {
 	panic("unimplemented")
 }
 
 // PrepareTypeHierarchy implements gopls.Server.
-func (*Server) PrepareTypeHierarchy(context.Context, *gopls.TypeHierarchyPrepareParams) ([]gopls.TypeHierarchyItem, error) {
+func (*Server) PrepareTypeHierarchy(context.Context, *protocol.TypeHierarchyPrepareParams) ([]protocol.TypeHierarchyItem, error) {
 	panic("unimplemented")
 }
 
 // Progress implements gopls.Server.
-func (*Server) Progress(context.Context, *gopls.ProgressParams) error {
+func (*Server) Progress(context.Context, *protocol.ProgressParams) error {
 	panic("unimplemented")
 }
 
 // RangeFormatting implements gopls.Server.
-func (*Server) RangeFormatting(context.Context, *gopls.DocumentRangeFormattingParams) ([]gopls.TextEdit, error) {
+func (*Server) RangeFormatting(context.Context, *protocol.DocumentRangeFormattingParams) ([]protocol.TextEdit, error) {
 	panic("unimplemented")
 }
 
 // RangesFormatting implements gopls.Server.
-func (*Server) RangesFormatting(context.Context, *gopls.DocumentRangesFormattingParams) ([]gopls.TextEdit, error) {
+func (*Server) RangesFormatting(context.Context, *protocol.DocumentRangesFormattingParams) ([]protocol.TextEdit, error) {
 	panic("unimplemented")
 }
 
 // References implements gopls.Server.
-func (*Server) References(context.Context, *gopls.ReferenceParams) ([]gopls.Location, error) {
+func (*Server) References(context.Context, *protocol.ReferenceParams) ([]protocol.Location, error) {
 	panic("unimplemented")
 }
 
 // Rename implements gopls.Server.
-func (*Server) Rename(context.Context, *gopls.RenameParams) (*gopls.WorkspaceEdit, error) {
+func (*Server) Rename(context.Context, *protocol.RenameParams) (*protocol.WorkspaceEdit, error) {
 	panic("unimplemented")
 }
 
 // Resolve implements gopls.Server.
-func (*Server) Resolve(context.Context, *gopls.InlayHint) (*gopls.InlayHint, error) {
+func (*Server) Resolve(context.Context, *protocol.InlayHint) (*protocol.InlayHint, error) {
 	panic("unimplemented")
 }
 
 // ResolveCodeAction implements gopls.Server.
-func (*Server) ResolveCodeAction(context.Context, *gopls.CodeAction) (*gopls.CodeAction, error) {
+func (*Server) ResolveCodeAction(context.Context, *protocol.CodeAction) (*protocol.CodeAction, error) {
 	panic("unimplemented")
 }
 
 // ResolveCodeLens implements gopls.Server.
-func (*Server) ResolveCodeLens(context.Context, *gopls.CodeLens) (*gopls.CodeLens, error) {
+func (*Server) ResolveCodeLens(context.Context, *protocol.CodeLens) (*protocol.CodeLens, error) {
 	panic("unimplemented")
 }
 
 // ResolveCompletionItem implements gopls.Server.
-func (*Server) ResolveCompletionItem(context.Context, *gopls.CompletionItem) (*gopls.CompletionItem, error) {
+func (*Server) ResolveCompletionItem(context.Context, *protocol.CompletionItem) (*protocol.CompletionItem, error) {
 	panic("unimplemented")
 }
 
 // ResolveDocumentLink implements gopls.Server.
-func (*Server) ResolveDocumentLink(context.Context, *gopls.DocumentLink) (*gopls.DocumentLink, error) {
+func (*Server) ResolveDocumentLink(context.Context, *protocol.DocumentLink) (*protocol.DocumentLink, error) {
 	panic("unimplemented")
 }
 
 // ResolveWorkspaceSymbol implements gopls.Server.
-func (*Server) ResolveWorkspaceSymbol(context.Context, *gopls.WorkspaceSymbol) (*gopls.WorkspaceSymbol, error) {
+func (*Server) ResolveWorkspaceSymbol(context.Context, *protocol.WorkspaceSymbol) (*protocol.WorkspaceSymbol, error) {
 	panic("unimplemented")
 }
 
 // SelectionRange implements gopls.Server.
-func (*Server) SelectionRange(context.Context, *gopls.SelectionRangeParams) ([]gopls.SelectionRange, error) {
+func (*Server) SelectionRange(context.Context, *protocol.SelectionRangeParams) ([]protocol.SelectionRange, error) {
 	panic("unimplemented")
 }
 
 // SemanticTokensFull implements gopls.Server.
-func (*Server) SemanticTokensFull(context.Context, *gopls.SemanticTokensParams) (*gopls.SemanticTokens, error) {
+func (*Server) SemanticTokensFull(context.Context, *protocol.SemanticTokensParams) (*protocol.SemanticTokens, error) {
 	panic("unimplemented")
 }
 
 // SemanticTokensFullDelta implements gopls.Server.
-func (*Server) SemanticTokensFullDelta(context.Context, *gopls.SemanticTokensDeltaParams) (interface{}, error) {
+func (*Server) SemanticTokensFullDelta(context.Context, *protocol.SemanticTokensDeltaParams) (interface{}, error) {
 	panic("unimplemented")
 }
 
 // SemanticTokensRange implements gopls.Server.
-func (*Server) SemanticTokensRange(context.Context, *gopls.SemanticTokensRangeParams) (*gopls.SemanticTokens, error) {
+func (*Server) SemanticTokensRange(context.Context, *protocol.SemanticTokensRangeParams) (*protocol.SemanticTokens, error) {
 	panic("unimplemented")
 }
 
 // SetTrace implements gopls.Server.
-func (*Server) SetTrace(context.Context, *gopls.SetTraceParams) error {
+func (*Server) SetTrace(context.Context, *protocol.SetTraceParams) error {
 	panic("unimplemented")
 }
 
@@ -327,56 +324,56 @@ func (*Server) Shutdown(context.Context) error {
 }
 
 // SignatureHelp implements gopls.Server.
-func (*Server) SignatureHelp(context.Context, *gopls.SignatureHelpParams) (*gopls.SignatureHelp, error) {
+func (*Server) SignatureHelp(context.Context, *protocol.SignatureHelpParams) (*protocol.SignatureHelp, error) {
 	panic("unimplemented")
 }
 
 // Subtypes implements gopls.Server.
-func (*Server) Subtypes(context.Context, *gopls.TypeHierarchySubtypesParams) ([]gopls.TypeHierarchyItem, error) {
+func (*Server) Subtypes(context.Context, *protocol.TypeHierarchySubtypesParams) ([]protocol.TypeHierarchyItem, error) {
 	panic("unimplemented")
 }
 
 // Supertypes implements gopls.Server.
-func (*Server) Supertypes(context.Context, *gopls.TypeHierarchySupertypesParams) ([]gopls.TypeHierarchyItem, error) {
+func (*Server) Supertypes(context.Context, *protocol.TypeHierarchySupertypesParams) ([]protocol.TypeHierarchyItem, error) {
 	panic("unimplemented")
 }
 
 // Symbol implements gopls.Server.
-func (*Server) Symbol(context.Context, *gopls.WorkspaceSymbolParams) ([]gopls.SymbolInformation, error) {
+func (*Server) Symbol(context.Context, *protocol.WorkspaceSymbolParams) ([]protocol.SymbolInformation, error) {
 	panic("unimplemented")
 }
 
 // TypeDefinition implements gopls.Server.
-func (*Server) TypeDefinition(context.Context, *gopls.TypeDefinitionParams) ([]gopls.Location, error) {
+func (*Server) TypeDefinition(context.Context, *protocol.TypeDefinitionParams) ([]protocol.Location, error) {
 	panic("unimplemented")
 }
 
 // WillCreateFiles implements gopls.Server.
-func (*Server) WillCreateFiles(context.Context, *gopls.CreateFilesParams) (*gopls.WorkspaceEdit, error) {
+func (*Server) WillCreateFiles(context.Context, *protocol.CreateFilesParams) (*protocol.WorkspaceEdit, error) {
 	panic("unimplemented")
 }
 
 // WillDeleteFiles implements gopls.Server.
-func (*Server) WillDeleteFiles(context.Context, *gopls.DeleteFilesParams) (*gopls.WorkspaceEdit, error) {
+func (*Server) WillDeleteFiles(context.Context, *protocol.DeleteFilesParams) (*protocol.WorkspaceEdit, error) {
 	panic("unimplemented")
 }
 
 // WillRenameFiles implements gopls.Server.
-func (*Server) WillRenameFiles(context.Context, *gopls.RenameFilesParams) (*gopls.WorkspaceEdit, error) {
+func (*Server) WillRenameFiles(context.Context, *protocol.RenameFilesParams) (*protocol.WorkspaceEdit, error) {
 	panic("unimplemented")
 }
 
 // WillSave implements gopls.Server.
-func (*Server) WillSave(context.Context, *gopls.WillSaveTextDocumentParams) error {
+func (*Server) WillSave(context.Context, *protocol.WillSaveTextDocumentParams) error {
 	panic("unimplemented")
 }
 
 // WillSaveWaitUntil implements gopls.Server.
-func (*Server) WillSaveWaitUntil(context.Context, *gopls.WillSaveTextDocumentParams) ([]gopls.TextEdit, error) {
+func (*Server) WillSaveWaitUntil(context.Context, *protocol.WillSaveTextDocumentParams) ([]protocol.TextEdit, error) {
 	panic("unimplemented")
 }
 
 // WorkDoneProgressCancel implements gopls.Server.
-func (*Server) WorkDoneProgressCancel(context.Context, *gopls.WorkDoneProgressCancelParams) error {
+func (*Server) WorkDoneProgressCancel(context.Context, *protocol.WorkDoneProgressCancelParams) error {
 	panic("unimplemented")
 }
