@@ -29,7 +29,7 @@ type DocumentStore interface {
 
 func NewFilesystem(fls afero.Fs) *Filesystem {
 	return &Filesystem{
-		Fs:     afero.NewOsFs(),
+		Fs:     fls,
 		logger: log.New(io.Discard, "", 0),
 	}
 }

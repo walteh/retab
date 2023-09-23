@@ -11,6 +11,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hashicorp/hcl-lang/decoder"
+	"github.com/spf13/afero"
+	"github.com/walteh/retab/internal/lsp/filesystem"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
 )
 
@@ -78,12 +81,15 @@ func NewMockSession(input *MockSessionInput) session.SessionFactory {
 	sessCtx, stopSession := context.WithCancel(srvCtx)
 	ms.stopFunc = stopSession
 
+	fs := filesystem.NewFilesystem(afero.NewMemMapFs())
+
 	svc := &service{
 		logger:      testLogger(),
 		srvCtx:      srvCtx,
 		sessCtx:     sessCtx,
 		stopSession: ms.stop,
-		fs:          nil,
+		decoder:     decoder.NewDecoder(fs),
+		fs:          fs,
 	}
 
 	return func(ctx context.Context) session.Session {

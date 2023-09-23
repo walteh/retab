@@ -20,10 +20,10 @@ import (
 	"github.com/walteh/retab/gen/gopls/event/label"
 	"github.com/walteh/retab/gen/gopls/event/tag"
 
-	"github.com/walteh/retab/gen/gopls/progress"
 	"github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/gen/gopls/safetoken"
 	"github.com/walteh/retab/gen/gopls/span"
+	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/objectpath"
 )
 
@@ -89,84 +89,22 @@ type Snapshot interface {
 	// workspace.
 	IgnoredFile(uri span.URI) bool
 
-	// Templates returns the .tmpl files
-	Templates() map[span.URI]FileHandle
-
-	// ParseGo returns the parsed AST for the file.
-	// If the file is not available, returns nil and an error.
-	// Position information is added to FileSet().
-	ParseGo(ctx context.Context, fh FileHandle, mode parser.Mode) (*ParsedGoFile, error)
-
 	// Analyze runs the specified analyzers on the given packages at this snapshot.
 	//
 	// If the provided tracker is non-nil, it may be used to report progress of
 	// the analysis pass.
-	Analyze(ctx context.Context, pkgIDs map[PackageID]unit, analyzers []*Analyzer, tracker *progress.Tracker) ([]*Diagnostic, error)
-
-	// // RunGoCommandPiped runs the given `go` command, writing its output
-	// // to stdout and stderr. Verb, Args, and WorkingDir must be specified.
-	// //
-	// // RunGoCommandPiped runs the command serially using gocommand.RunPiped,
-	// // enforcing that this command executes exclusively to other commands on the
-	// // server.
-	// RunGoCommandPiped(ctx context.Context, mode InvocationFlags, inv *gocommand.Invocation, stdout, stderr io.Writer) error
-
-	// // RunGoCommandDirect runs the given `go` command. Verb, Args, and
-	// // WorkingDir must be specified.
-	// RunGoCommandDirect(ctx context.Context, mode InvocationFlags, inv *gocommand.Invocation) (*bytes.Buffer, error)
-
-	// RunGoCommands runs a series of `go` commands that updates the go.mod
-	// and go.sum file for wd, and returns their updated contents.
-	RunGoCommands(ctx context.Context, allowNetwork bool, wd string, run func(invoke func(...string) (*bytes.Buffer, error)) error) (bool, []byte, []byte, error)
-
-	// // RunProcessEnvFunc runs fn with the process env for this snapshot's view.
-	// // Note: the process env contains cached module and filesystem state.
-	// RunProcessEnvFunc(ctx context.Context, fn func(context.Context, *imports.Options) error) error
-
-	// ModFiles are the go.mod files enclosed in the snapshot's view and known
-	// to the snapshot.
-	ModFiles() []span.URI
-
-	// ParseMod is used to parse go.mod files.
-	ParseMod(ctx context.Context, fh FileHandle) (*ParsedModule, error)
-
-	// ModWhy returns the results of `go mod why` for the module specified by
-	// the given go.mod file.
-	ModWhy(ctx context.Context, fh FileHandle) (map[string]string, error)
-
-	// ModTidy returns the results of `go mod tidy` for the module specified by
-	// the given go.mod file.
-	ModTidy(ctx context.Context, pm *ParsedModule) (*TidiedModule, error)
-
-	// ModVuln returns import vulnerability analysis for the given go.mod URI.
-	// Concurrent requests are combined into a single command.
-	ModVuln(ctx context.Context, modURI span.URI) (*vulncheck.Result, error)
-
-	// GoModForFile returns the URI of the go.mod file for the given URI.
-	GoModForFile(uri span.URI) span.URI
-
-	// WorkFile, if non-empty, is the go.work file for the workspace.
-	WorkFile() span.URI
-
-	// ParseWork is used to parse go.work files.
-	ParseWork(ctx context.Context, fh FileHandle) (*ParsedWorkFile, error)
-
-	// BuiltinFile returns information about the special builtin package.
-	BuiltinFile(ctx context.Context) (*ParsedGoFile, error)
-
-	// IsBuiltin reports whether uri is part of the builtin package.
-	IsBuiltin(uri span.URI) bool
+	// Analyze(ctx context.Context, analyzers []*Analyzer, tracker *progress.Tracker) ([]*Diagnostic, error)
 
 	// CriticalError returns any critical errors in the workspace.
 	//
 	// A nil result may mean success, or context cancellation.
-	CriticalError(ctx context.Context) *CriticalError
+	// CriticalError(ctx context.Context) *CriticalError
 
-	// Symbols returns all symbols in the snapshot.
-	//
-	// If workspaceOnly is set, this only includes symbols from files in a
-	// workspace package. Otherwise, it returns symbols from all loaded packages.
-	Symbols(ctx context.Context, workspaceOnly bool) (map[span.URI][]Symbol, error)
+	// // Symbols returns all symbols in the snapshot.
+	// //
+	// // If workspaceOnly is set, this only includes symbols from files in a
+	// // workspace package. Otherwise, it returns symbols from all loaded packages.
+	// Symbols(ctx context.Context, workspaceOnly bool) (map[span.URI][]Symbol, error)
 
 	// -- package metadata --
 
@@ -174,7 +112,7 @@ type Snapshot interface {
 	// the ID and Metadata of each package in the workspace that
 	// directly or transitively depend on the package denoted by id,
 	// excluding id itself.
-	ReverseDependencies(ctx context.Context, id PackageID, transitive bool) (map[PackageID]*Metadata, error)
+	// ReverseDependencies(ctx context.Context, id PackageID, transitive bool) (map[PackageID]*Metadata, error)
 
 	// WorkspaceMetadata returns a new, unordered slice containing
 	// metadata for all ordinary and test packages (but not
@@ -187,7 +125,7 @@ type Snapshot interface {
 	//
 	// Operations that must inspect all the dependencies of the
 	// workspace packages should instead use AllMetadata.
-	WorkspaceMetadata(ctx context.Context) ([]*Metadata, error)
+	// WorkspaceMetadata(ctx context.Context) ([]*Metadata, error)
 
 	// AllMetadata returns a new unordered array of metadata for
 	// all packages known to this snapshot, which includes the
@@ -196,11 +134,11 @@ type Snapshot interface {
 	//
 	// It may also contain ad-hoc packages for standalone files.
 	// It includes all test variants.
-	AllMetadata(ctx context.Context) ([]*Metadata, error)
+	// AllMetadata(ctx context.Context) ([]*Metadata, error)
 
 	// Metadata returns the metadata for the specified package,
 	// or nil if it was not found.
-	Metadata(id PackageID) *Metadata
+	// Metadata(id PackageID) *Metadata
 
 	// MetadataForFile returns a new slice containing metadata for each
 	// package containing the Go file identified by uri, ordered by the
@@ -209,13 +147,13 @@ type Snapshot interface {
 	// The result may include tests and intermediate test variants of
 	// importable packages.
 	// It returns an error if the context was cancelled.
-	MetadataForFile(ctx context.Context, uri span.URI) ([]*Metadata, error)
+	// MetadataForFile(ctx context.Context, uri span.URI) ([]*Metadata, error)
 
 	// OrphanedFileDiagnostics reports diagnostics for files that have no package
 	// associations or which only have only command-line-arguments packages.
 	//
 	// The caller must not mutate the result.
-	OrphanedFileDiagnostics(ctx context.Context) (map[span.URI]*Diagnostic, error)
+	// OrphanedFileDiagnostics(ctx context.Context) (map[span.URI]*Diagnostic, error)
 
 	// -- package type-checking --
 
@@ -229,41 +167,26 @@ type Snapshot interface {
 	// Callers should apply RemoveIntermediateTestVariants (or
 	// equivalent) before this method, or any of the potentially
 	// type-checking methods below.
-	TypeCheck(ctx context.Context, ids ...PackageID) ([]Package, error)
+	// TypeCheck(ctx context.Context, ids ...PackageID) ([]Package, error)
 
 	// PackageDiagnostics returns diagnostics for files contained in specified
 	// packages.
 	//
 	// If these diagnostics cannot be loaded from cache, the requested packages
 	// may be type-checked.
-	PackageDiagnostics(ctx context.Context, ids ...PackageID) (map[span.URI][]*Diagnostic, error)
+	// PackageDiagnostics(ctx context.Context, ids ...PackageID) (map[span.URI][]*Diagnostic, error)
 
 	// References returns cross-references indexes for the specified packages.
 	//
 	// If these indexes cannot be loaded from cache, the requested packages may
 	// be type-checked.
-	References(ctx context.Context, ids ...PackageID) ([]XrefIndex, error)
+	// References(ctx context.Context, ids ...PackageID) ([]XrefIndex, error)
 
 	// // MethodSets returns method-set indexes for the specified packages.
 	// //
 	// // If these indexes cannot be loaded from cache, the requested packages may
 	// // be type-checked.
 	// MethodSets(ctx context.Context, ids ...PackageID) ([]*methodsets.Index, error)
-}
-
-// NarrowestMetadataForFile returns metadata for the narrowest package
-// (the one with the fewest files) that encloses the specified file.
-// The result may be a test variant, but never an intermediate test variant.
-func NarrowestMetadataForFile(ctx context.Context, snapshot Snapshot, uri span.URI) (*Metadata, error) {
-	metas, err := snapshot.MetadataForFile(ctx, uri)
-	if err != nil {
-		return nil, err
-	}
-	RemoveIntermediateTestVariants(&metas)
-	if len(metas) == 0 {
-		return nil, fmt.Errorf("no package metadata for file %s", uri)
-	}
-	return metas[0], nil
 }
 
 type XrefIndex interface {
@@ -293,27 +216,27 @@ func SnapshotLabels(snapshot Snapshot) []label.Label {
 //
 // Type-checking is expensive. Call snapshot.ParseGo if all you need
 // is a parse tree, or snapshot.MetadataForFile if you only need metadata.
-func NarrowestPackageForFile(ctx context.Context, snapshot Snapshot, uri span.URI) (Package, *ParsedGoFile, error) {
-	metas, err := snapshot.MetadataForFile(ctx, uri)
-	if err != nil {
-		return nil, nil, err
-	}
-	RemoveIntermediateTestVariants(&metas)
-	if len(metas) == 0 {
-		return nil, nil, fmt.Errorf("no package metadata for file %s", uri)
-	}
-	narrowest := metas[0]
-	pkgs, err := snapshot.TypeCheck(ctx, narrowest.ID)
-	if err != nil {
-		return nil, nil, err
-	}
-	pkg := pkgs[0]
-	pgf, err := pkg.File(uri)
-	if err != nil {
-		return nil, nil, err // "can't happen"
-	}
-	return pkg, pgf, err
-}
+// func NarrowestPackageForFile(ctx context.Context, snapshot Snapshot, uri span.URI) (Package, *ParsedGoFile, error) {
+// 	metas, err := snapshot.MetadataForFile(ctx, uri)
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+// 	RemoveIntermediateTestVariants(&metas)
+// 	if len(metas) == 0 {
+// 		return nil, nil, fmt.Errorf("no package metadata for file %s", uri)
+// 	}
+// 	narrowest := metas[0]
+// 	pkgs, err := snapshot.TypeCheck(ctx, narrowest.ID)
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+// 	pkg := pkgs[0]
+// 	pgf, err := pkg.File(uri)
+// 	if err != nil {
+// 		return nil, nil, err // "can't happen"
+// 	}
+// 	return pkg, pgf, err
+// }
 
 // InvocationFlags represents the settings of a particular go command invocation.
 // It is a mode, plus a set of flag bits.
@@ -364,37 +287,6 @@ type View interface {
 	// If the view is shut down, the resulting error will be non-nil, and the
 	// release function need not be called.
 	Snapshot() (Snapshot, func(), error)
-
-	// IsGoPrivatePath reports whether target is a private import path, as identified
-	// by the GOPRIVATE environment variable.
-	IsGoPrivatePath(path string) bool
-
-	// ModuleUpgrades returns known module upgrades for the dependencies of
-	// modfile.
-	ModuleUpgrades(modfile span.URI) map[string]string
-
-	// RegisterModuleUpgrades registers that upgrades exist for the given modules
-	// required by modfile.
-	RegisterModuleUpgrades(modfile span.URI, upgrades map[string]string)
-
-	// ClearModuleUpgrades clears all upgrades for the modules in modfile.
-	ClearModuleUpgrades(modfile span.URI)
-
-	// // Vulnerabilities returns known vulnerabilities for the given modfile.
-	// // TODO(suzmue): replace command.Vuln with a different type, maybe
-	// // https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck/govulnchecklib#Summary?
-	// Vulnerabilities(modfile ...span.URI) map[span.URI]*vulncheck.Result
-
-	// // SetVulnerabilities resets the list of vulnerabilities that exists for the given modules
-	// // required by modfile.
-	// SetVulnerabilities(modfile span.URI, vulncheckResult *vulncheck.Result)
-
-	// GoVersion returns the configured Go version for this view.
-	GoVersion() int
-
-	// GoVersionString returns the go version string configured for this view.
-	// Unlike [GoVersion], this encodes the minor version and commit hash information.
-	GoVersionString() string
 }
 
 // A FileSource maps URIs to FileHandles.
@@ -507,19 +399,19 @@ func (pgf *ParsedGoFile) RangePos(r protocol.Range) (token.Pos, token.Pos, error
 
 // A ParsedModule contains the results of parsing a go.mod file.
 type ParsedModule struct {
-	URI         span.URI
-	File        *modfile.File
+	URI span.URI
+	// File        *modfile.File
 	Mapper      *protocol.Mapper
 	ParseErrors []*Diagnostic
 }
 
 // A ParsedWorkFile contains the results of parsing a go.work file.
-type ParsedWorkFile struct {
-	URI         span.URI
-	File        *modfile.WorkFile
-	Mapper      *protocol.Mapper
-	ParseErrors []*Diagnostic
-}
+// type ParsedWorkFile struct {
+// 	URI         span.URI
+// 	File        *modfile.WorkFile
+// 	Mapper      *protocol.Mapper
+// 	ParseErrors []*Diagnostic
+// }
 
 // A TidiedModule contains the results of running `go mod tidy` on a module.
 type TidiedModule struct {
@@ -544,16 +436,16 @@ type Metadata struct {
 	CompiledGoFiles []span.URI
 	IgnoredFiles    []span.URI
 
-	ForTest       PackagePath // q in a "p [q.test]" package, else ""
-	TypesSizes    types.Sizes
-	Errors        []packages.Error          // must be set for packages in import cycles
+	ForTest    PackagePath // q in a "p [q.test]" package, else ""
+	TypesSizes types.Sizes
+	// Errors        []packages.Error          // must be set for packages in import cycles
 	DepsByImpPath map[ImportPath]PackageID  // may contain dups; empty ID => missing
 	DepsByPkgPath map[PackagePath]PackageID // values are unique and non-empty
-	Module        *packages.Module
-	DepsErrors    []*packagesinternal.PackageError
-	Diagnostics   []*Diagnostic // processed diagnostics from 'go list'
-	LoadDir       string        // directory from which go/packages was run
-	Standalone    bool          // package synthesized for a standalone file (e.g. ignore-tagged)
+	// Module        *packages.Module
+	// DepsErrors    []*packagesinternal.PackageError
+	Diagnostics []*Diagnostic // processed diagnostics from 'go list'
+	LoadDir     string        // directory from which go/packages was run
+	Standalone  bool          // package synthesized for a standalone file (e.g. ignore-tagged)
 }
 
 func (m *Metadata) String() string { return string(m.ID) }
@@ -733,6 +625,8 @@ var ErrNoModOnDisk = errors.New("go.mod file is not on disk")
 func IsNonFatalGoModError(err error) bool {
 	return err == ErrTmpModfileUnsupported || err == ErrNoModOnDisk
 }
+
+const SkipObjectResolution = parser.SkipObjectResolution
 
 // Common parse modes; these should be reused wherever possible to increase
 // cache hits.

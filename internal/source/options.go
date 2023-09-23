@@ -18,6 +18,8 @@ import (
 	"github.com/walteh/retab/gen/gopls/diff"
 	"github.com/walteh/retab/gen/gopls/diff/myers"
 	"github.com/walteh/retab/gen/gopls/protocol"
+	"github.com/walteh/retab/internal/command"
+	"golang.org/x/tools/go/analysis"
 )
 
 var (
@@ -31,9 +33,9 @@ var (
 func DefaultOptions(overrides ...func(*Options)) *Options {
 	optionsOnce.Do(func() {
 		var commands []string
-		// for _, c := range command.Commands {
-		// 	commands = append(commands, c.ID())
-		// }
+		for _, c := range command.Commands {
+			commands = append(commands, c.ID())
+		}
 		defaultOptions = &Options{
 			ClientOptions: ClientOptions{
 				InsertTextFormat:                           protocol.PlainTextTextFormat,
@@ -127,8 +129,12 @@ func DefaultOptions(overrides ...func(*Options)) *Options {
 				LinkifyShowMessage:          false,
 			},
 			Hooks: Hooks{
+				// TODO(adonovan): switch to new diff.Strings implementation.
 				ComputeEdits:         myers.ComputeEdits,
 				URLRegexp:            urlRegexp(),
+				DefaultAnalyzers:     defaultAnalyzers(),
+				TypeErrorAnalyzers:   typeErrorAnalyzers(),
+				ConvenienceAnalyzers: convenienceAnalyzers(),
 				StaticcheckAnalyzers: map[string]*Analyzer{},
 				GoDiff:               true,
 			},
@@ -151,6 +157,22 @@ type Options struct {
 	UserOptions
 	InternalOptions
 	Hooks
+}
+
+// IsAnalyzerEnabled reports whether an analyzer with the given name is
+// enabled.
+//
+// TODO(rfindley): refactor to simplify this function. We no longer need the
+// different categories of analyzer.
+func (opts *Options) IsAnalyzerEnabled(name string) bool {
+	for _, amap := range []map[string]*Analyzer{opts.DefaultAnalyzers, opts.TypeErrorAnalyzers, opts.ConvenienceAnalyzers, opts.StaticcheckAnalyzers} {
+		for _, analyzer := range amap {
+			if analyzer.Analyzer.Name == name && analyzer.IsEnabled(opts) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ClientOptions holds LSP-specific configuration that is provided by the
@@ -754,7 +776,7 @@ func SetOptions(options *Options, opts interface{}) OptionResults {
 		// Finally, enable any experimental features that are specified in
 		// maps, which allows users to individually toggle them on or off.
 		if enableExperiments {
-			// options.enableAllExperimentMaps()
+			options.enableAllExperimentMaps()
 		}
 	default:
 		results = append(results, OptionResult{
@@ -860,11 +882,34 @@ func (o *Options) Clone() *Options {
 	return result
 }
 
+func (o *Options) AddStaticcheckAnalyzer(a *analysis.Analyzer, enabled bool, severity protocol.DiagnosticSeverity) {
+	o.StaticcheckAnalyzers[a.Name] = &Analyzer{
+		Analyzer: a,
+		Enabled:  enabled,
+		Severity: severity,
+	}
+}
+
 // EnableAllExperiments turns on all of the experimental "off-by-default"
 // features offered by gopls. Any experimental features specified in maps
-should be enabled in enableAllExperimentMaps.
+// should be enabled in enableAllExperimentMaps.
 func (o *Options) EnableAllExperiments() {
 	o.SemanticTokens = true
+}
+
+func (o *Options) enableAllExperimentMaps() {
+	// if _, ok := o.Codelenses[string(command.GCDetails)]; !ok {
+	// 	o.Codelenses[string(command.GCDetails)] = true
+	// }
+	// if _, ok := o.Codelenses[string(command.RunGovulncheck)]; !ok {
+	// 	o.Codelenses[string(command.RunGovulncheck)] = true
+	// }
+	// if _, ok := o.Analyses[unusedparams.Analyzer.Name]; !ok {
+	// 	o.Analyses[unusedparams.Analyzer.Name] = true
+	// }
+	// if _, ok := o.Analyses[unusedvariable.Analyzer.Name]; !ok {
+	// 	o.Analyses[unusedvariable.Analyzer.Name] = true
+	// }
 }
 
 // validateDirectoryFilter validates if the filter string
@@ -1401,6 +1446,64 @@ func (r *OptionResult) setString(s *string) {
 func (r *OptionResult) setStringSlice(s *[]string) {
 	if v, ok := r.asStringSlice(); ok {
 		*s = v
+	}
+}
+
+func typeErrorAnalyzers() map[string]*Analyzer {
+	return map[string]*Analyzer{
+		// fillreturns.Analyzer.Name: {
+		// 	Analyzer: fillreturns.Analyzer,
+		// 	// TODO(rfindley): is SourceFixAll even necessary here? Is that not implied?
+		// 	ActionKind: []protocol.CodeActionKind{protocol.SourceFixAll, protocol.QuickFix},
+		// 	Enabled:    true,
+		// },
+		// nonewvars.Analyzer.Name: {
+		// 	Analyzer: nonewvars.Analyzer,
+		// 	Enabled:  true,
+		// },
+		// noresultvalues.Analyzer.Name: {
+		// 	Analyzer: noresultvalues.Analyzer,
+		// 	Enabled:  true,
+		// },
+		// undeclaredname.Analyzer.Name: {
+		// 	Analyzer: undeclaredname.Analyzer,
+		// 	Fix:      UndeclaredName,
+		// 	Enabled:  true,
+		// },
+		// unusedvariable.Analyzer.Name: {
+		// 	Analyzer: unusedvariable.Analyzer,
+		// 	Enabled:  false,
+		// },
+	}
+}
+
+// TODO(golang/go#61559): remove convenience analyzers now that they are not
+// used from the analysis framework.
+func convenienceAnalyzers() map[string]*Analyzer {
+	return map[string]*Analyzer{
+		// fillstruct.Analyzer.Name: {
+		// 	Analyzer:   fillstruct.Analyzer,
+		// 	Fix:        FillStruct,
+		// 	Enabled:    true,
+		// 	ActionKind: []protocol.CodeActionKind{protocol.RefactorRewrite},
+		// },
+		// stubmethods.Analyzer.Name: {
+		// 	Analyzer: stubmethods.Analyzer,
+		// 	Fix:      StubMethods,
+		// 	Enabled:  true,
+		// },
+		// infertypeargs.Analyzer.Name: {
+		// 	Analyzer:   infertypeargs.Analyzer,
+		// 	Enabled:    true,
+		// 	ActionKind: []protocol.CodeActionKind{protocol.RefactorRewrite},
+		// },
+	}
+}
+
+func defaultAnalyzers() map[string]*Analyzer {
+	return map[string]*Analyzer{
+		// The traditional vet suite:
+
 	}
 }
 

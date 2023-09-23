@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:generate go run ./helper -d protocol/tsserver.go -o server_gen.go -u .
+
 // Package lsp implements LSP for gopls.
 package server
 
@@ -11,33 +13,31 @@ import (
 	"os"
 	"sync"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/walteh/retab/gen/gopls/event"
 	"github.com/walteh/retab/gen/gopls/jsonrpc2"
 	"github.com/walteh/retab/gen/gopls/progress"
 	"github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/gen/gopls/span"
-	"github.com/walteh/retab/internal/session"
+	"github.com/walteh/retab/internal/cache"
+	"github.com/walteh/retab/internal/source"
 )
 
 const concurrentAnalyses = 1
 
 // NewServer creates an LSP server and binds it to handle incoming client
 // messages on the supplied stream.
-func NewServer(ctx context.Context, sess *session.Session, client protocol.ClientCloser) *Server {
+func NewServer(session *cache.Session, client protocol.ClientCloser, options *source.Options) *Server {
 	return &Server{
-		diagnostics:         map[span.URI]*hcl.Diagnostics{},
-		watchedGlobPatterns: nil, // empty
-		changedFiles:        make(map[span.URI]struct{}),
-		session:             sess,
-		client:              client,
-		diagnosticsSema:     make(chan struct{}, concurrentAnalyses),
-		progress:            progress.NewTracker(client),
+		diagnostics:           map[span.URI]*fileReports{},
+		gcOptimizationDetails: make(map[source.PackageID]struct{}),
+		watchedGlobPatterns:   nil, // empty
+		changedFiles:          make(map[span.URI]struct{}),
+		session:               session,
+		client:                client,
+		diagnosticsSema:       make(chan struct{}, concurrentAnalyses),
+		progress:              progress.NewTracker(client),
+		options:               options,
 	}
-}
-
-func NewProtocolServer(ctx context.Context, sess *session.Session, client protocol.ClientCloser) protocol.Server {
-	return NewServer(ctx, sess, client)
 }
 
 type serverState int
@@ -72,7 +72,7 @@ type Server struct {
 	// notifications generated before serverInitialized
 	notifications []*protocol.ShowMessageParams
 
-	session *session.Session
+	session *cache.Session
 
 	tempDir string
 
@@ -93,7 +93,7 @@ type Server struct {
 	watchRegistrationCount int
 
 	diagnosticsMu sync.Mutex
-	diagnostics   map[span.URI]*hcl.Diagnostics
+	diagnostics   map[span.URI]*fileReports
 
 	// diagnosticsSema limits the concurrency of diagnostics runs, which can be
 	// expensive.
@@ -111,6 +111,9 @@ type Server struct {
 	ongoingProfileMu sync.Mutex
 	ongoingProfile   *os.File // if non-nil, an ongoing profile is writing to this file
 
+	// Track most recently requested options.
+	optionsMu sync.Mutex
+	options   *source.Options
 }
 
 func (s *Server) workDoneProgressCancel(ctx context.Context, params *protocol.WorkDoneProgressCancelParams) error {
@@ -125,9 +128,70 @@ func (s *Server) nonstandardRequest(ctx context.Context, method string, params i
 	defer done()
 
 	switch method {
+	case "gopls/diagnoseFiles":
+		paramMap := params.(map[string]interface{})
+		// TODO(adonovan): opt: parallelize FileDiagnostics(URI...), either
+		// by calling it in multiple goroutines or, better, by making
+		// the relevant APIs accept a set of URIs/packages.
+		for _, file := range paramMap["files"].([]interface{}) {
+			snapshot, fh, ok, release, err := s.beginFileRequest(ctx, protocol.DocumentURI(file.(string)), source.UnknownKind)
+			defer release()
+			if !ok {
+				return nil, err
+			}
 
+			fileID, diagnostics, err := s.diagnoseFile(ctx, snapshot, fh.URI())
+			if err != nil {
+				return nil, err
+			}
+			if err := s.client.PublishDiagnostics(ctx, &protocol.PublishDiagnosticsParams{
+				URI:         protocol.URIFromSpanURI(fh.URI()),
+				Diagnostics: toProtocolDiagnostics(diagnostics),
+				Version:     fileID.Version(),
+			}); err != nil {
+				return nil, err
+			}
+		}
+		if err := s.client.PublishDiagnostics(ctx, &protocol.PublishDiagnosticsParams{
+			URI: "gopls://diagnostics-done",
+		}); err != nil {
+			return nil, err
+		}
+		return struct{}{}, nil
 	}
 	return nil, notImplemented(method)
+}
+
+// fileDiagnostics reports diagnostics in the specified file,
+// as used by the "gopls check" or "gopls fix" commands.
+//
+// TODO(adonovan): opt: this function is called in a loop from the
+// "gopls/diagnoseFiles" nonstandard request handler. It would be more
+// efficient to compute the set of packages and TypeCheck and
+// Analyze them all at once. Or instead support textDocument/diagnostic
+// (golang/go#60122).
+func (s *Server) diagnoseFile(ctx context.Context, snapshot source.Snapshot, uri span.URI) (source.FileHandle, []*source.Diagnostic, error) {
+	fh, err := snapshot.ReadFile(ctx, uri)
+	if err != nil {
+		return nil, nil, err
+	}
+	pkg, _, err := source.NarrowestPackageForFile(ctx, snapshot, uri)
+	if err != nil {
+		return nil, nil, err
+	}
+	pkgDiags, err := pkg.DiagnosticsForFile(ctx, snapshot, uri)
+	if err != nil {
+		return nil, nil, err
+	}
+	adiags, err := source.Analyze(ctx, snapshot, map[source.PackageID]unit{pkg.Metadata().ID: {}}, nil /* progress tracker */)
+	if err != nil {
+		return nil, nil, err
+	}
+	var td, ad []*source.Diagnostic // combine load/parse/type + analysis diagnostics
+	source.CombineDiagnostics(pkgDiags, adiags[uri], &td, &ad)
+	s.storeDiagnostics(snapshot, uri, typeCheckSource, td, true)
+	s.storeDiagnostics(snapshot, uri, analysisSource, ad, true)
+	return fh, append(td, ad...), nil
 }
 
 func notImplemented(method string) error {

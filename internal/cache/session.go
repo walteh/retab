@@ -1,4 +1,4 @@
-package session
+package cache
 
 import (
 	"context"
@@ -11,26 +11,26 @@ import (
 	"github.com/walteh/retab/internal/lsp/utm"
 )
 
-type Session struct {
+type Cache struct {
 	id string
 
 	decoder *decoder.Decoder
 	fs      afero.Fs
 }
 
-func (s *Session) Decoder() *decoder.Decoder {
+func (s *Cache) Decoder() *decoder.Decoder {
 	return s.decoder
 }
 
-func (s *Session) Fs() afero.Fs {
+func (s *Cache) Fs() afero.Fs {
 	return s.fs
 }
 
-func (s *Session) ID() string {
+func (s *Cache) ID() string {
 	return s.id
 }
 
-func NewSession(ctx context.Context) *Session {
+func NewCache(ctx context.Context) *Cache {
 	aferoFs := afero.NewMemMapFs()
 	fls := filesystem.NewFilesystem(aferoFs)
 	dec := decoder.NewDecoder(fls)
@@ -38,9 +38,37 @@ func NewSession(ctx context.Context) *Session {
 	dCtx.UtmSource = utm.UtmSource
 	dCtx.UtmMedium = utm.UtmMedium(ctx)
 	dCtx.UseUtmContent = true
-	return &Session{
+	return &Cache{
 		id:      strconv.FormatInt(time.Now().UnixNano(), 10),
 		decoder: dec,
 		fs:      aferoFs,
+	}
+}
+
+type Session struct {
+	id    string
+	cache *Cache
+}
+
+func (s *Session) ID() string {
+	return s.id
+}
+
+func (s *Session) Cache() *Cache {
+	return s.cache
+}
+
+func (s *Session) Views() []*View {
+	return []*View{}
+}
+
+func (s *Session) Overlays() []*Overlay {
+	return []*Overlay{}
+}
+
+func NewSession(ctx context.Context, cache *Cache) *Session {
+	return &Session{
+		id:    strconv.FormatInt(time.Now().UnixNano(), 10),
+		cache: cache,
 	}
 }

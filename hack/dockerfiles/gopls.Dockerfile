@@ -69,6 +69,14 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 	copy_pkg gopls/internal bug
 	copy_pkg gopls/internal/lsp protocol
 	copy_pkg internal diff
+	copy_pkg internal robustio
+	copy_pkg internal memoize
+	copy_pkg internal constraints
+	copy_pkg internal persistent
+	copy_pkg internal tokeninternal
+	copy_pkg internal typeparams
+
+
 
 	# copy_protocol_file tsdocument_changes.go
 	# copy_protocol_file tsserver.go
@@ -79,8 +87,16 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 	# copy_protocol_file context.go
 	# copy_protocol_file log.go
 
+	# find any lines with "vulncheck" or Vulncheck and remove them
+	# find /out -type f -name "*.go" -exec sed -i "/vulncheck/d" {} \;
+	# find /out -type f -name "*.go" -exec sed -i "/Vulncheck/d" {} \;
+
 	# more specific are first
 	# find /out -type f -name "*.go" -exec sed -i "s|\"golang.org/x/tools/gopls/internal/lsp/protocol\"|protocol \"${GO_MODULE}/${DESTDIR#./}\"|g" {} \;
+	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/internal/imports|golang.org/x/tools/imports|g" {} \;
+
+	# important extra slash after command because commandmeta needs it
+	# find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/gopls/internal/lsp/command/|${GO_MODULE}/${DESTDIR#./}/|g" {} \;
 	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/gopls/internal/lsp|${GO_MODULE}/${DESTDIR#./}|g" {} \;
 	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/gopls/internal|${GO_MODULE}/${DESTDIR#./}|g" {} \;
 	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/internal|${GO_MODULE}/${DESTDIR#./}|g" {} \;

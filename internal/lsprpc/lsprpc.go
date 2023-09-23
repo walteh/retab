@@ -23,19 +23,26 @@ import (
 	"github.com/walteh/retab/gen/gopls/event/tag"
 	"github.com/walteh/retab/gen/gopls/jsonrpc2"
 	"github.com/walteh/retab/gen/gopls/protocol"
-	"github.com/walteh/retab/internal/session"
+	"github.com/walteh/retab/internal/cache"
+	"github.com/walteh/retab/internal/command"
+	"github.com/walteh/retab/internal/debug"
+	"github.com/walteh/retab/internal/source"
 )
 
 // Unique identifiers for client/server.
 var serverIndex int64
 
-type ServerBuilder func(context.Context, *session.Session, protocol.ClientCloser) protocol.Server
+type ServerBuilder func(context.Context, *cache.Session, *source.Options, protocol.ClientCloser) protocol.Server
 
 // The StreamServer type is a jsonrpc2.StreamServer that handles incoming
 // streams as a new LSP session, using a shared cache.
 type StreamServer struct {
+	cache *cache.Cache
 	// daemon controls whether or not to log new connections.
 	daemon bool
+
+	// optionsOverrides is passed to newly created sessions.
+	optionsOverrides func(*source.Options)
 
 	// serverForTest may be set to a test fake for testing.
 	serverForTest protocol.Server
@@ -46,16 +53,17 @@ type StreamServer struct {
 // NewStreamServer creates a StreamServer using the shared cache. If
 // withTelemetry is true, each session is instrumented with telemetry that
 // records RPC statistics.
-func NewStreamServer(isDaemon bool, builder ServerBuilder) *StreamServer {
-	return &StreamServer{daemon: false, serverBuilder: builder}
+func NewStreamServer(cache *cache.Cache, daemon bool, optionsFunc func(*source.Options)) *StreamServer {
+	return &StreamServer{cache: cache, daemon: daemon, optionsOverrides: optionsFunc}
 }
 
 func (s *StreamServer) Binder() *ServerBinder {
 	newServer := func(ctx context.Context, client protocol.ClientCloser) protocol.Server {
-		sess := session.NewSession(ctx)
+		sess := cache.NewSession(ctx, s.cache)
 		server := s.serverForTest
 		if server == nil {
-			server = s.serverBuilder(ctx, sess, client)
+			opts := source.DefaultOptions(s.optionsOverrides)
+			server = s.serverBuilder(ctx, sess, opts, client)
 		}
 		return server
 	}
@@ -66,10 +74,11 @@ func (s *StreamServer) Binder() *ServerBinder {
 // incoming streams using a new lsp server.
 func (s *StreamServer) ServeStream(ctx context.Context, conn jsonrpc2.Conn) error {
 	client := protocol.ClientDispatcher(conn)
-	sess := session.NewSession(ctx)
+	sess := cache.NewSession(ctx, s.cache)
 	server := s.serverForTest
 	if server == nil {
-		server = s.serverBuilder(ctx, sess, client)
+		opts := source.DefaultOptions(s.optionsOverrides)
+		server = s.serverBuilder(ctx, sess, opts, client)
 	}
 	// Clients may or may not send a shutdown message. Make sure the server is
 	// shut down.
@@ -79,9 +88,17 @@ func (s *StreamServer) ServeStream(ctx context.Context, conn jsonrpc2.Conn) erro
 			event.Error(ctx, "error shutting down", err)
 		}
 	}()
-
+	executable, err := os.Executable()
+	if err != nil {
+		log.Printf("error getting gopls path: %v", err)
+		executable = ""
+	}
 	ctx = protocol.WithClient(ctx, client)
-	conn.Go(ctx, protocol.Handlers(handshaker(sess, s.daemon, protocol.ServerHandler(server, jsonrpc2.MethodNotFound))))
+	conn.Go(ctx,
+		protocol.Handlers(
+			handshaker(sess, executable, s.daemon,
+				protocol.ServerHandler(server,
+					jsonrpc2.MethodNotFound))))
 	if s.daemon {
 		log.Printf("Session %s: connected", sess.ID())
 		defer log.Printf("Session %s: exited", sess.ID())
@@ -121,18 +138,18 @@ func NewForwarder(rawAddr string, argFunc func(network, address string) []string
 	return fwd, nil
 }
 
-// // QueryServerState queries the server state of the current server.
-// func QueryServerState(ctx context.Context, addr string) (*ServerState, error) {
-// 	serverConn, err := dialRemote(ctx, addr)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	var state ServerState
-// 	if err := protocol.Call(ctx, serverConn, sessionsMethod, nil, &state); err != nil {
-// 		return nil, fmt.Errorf("querying server state: %w", err)
-// 	}
-// 	return &state, nil
-// }
+// QueryServerState queries the server state of the current server.
+func QueryServerState(ctx context.Context, addr string) (*ServerState, error) {
+	serverConn, err := dialRemote(ctx, addr)
+	if err != nil {
+		return nil, err
+	}
+	var state ServerState
+	if err := protocol.Call(ctx, serverConn, sessionsMethod, nil, &state); err != nil {
+		return nil, fmt.Errorf("querying server state: %w", err)
+	}
+	return &state, nil
+}
 
 // dialRemote is used for making calls into the gopls daemon. addr should be a
 // URL, possibly on the synthetic 'auto' network (e.g. tcp://..., unix://...,
@@ -155,21 +172,21 @@ func dialRemote(ctx context.Context, addr string) (jsonrpc2.Conn, error) {
 	return serverConn, nil
 }
 
-// func ExecuteCommand(ctx context.Context, addr string, id string, request, result interface{}) error {
-// 	serverConn, err := dialRemote(ctx, addr)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	args, err := command.MarshalArgs(request)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	params := protocol.ExecuteCommandParams{
-// 		Command:   id,
-// 		Arguments: args,
-// 	}
-// 	return protocol.Call(ctx, serverConn, "workspace/executeCommand", params, result)
-// }
+func ExecuteCommand(ctx context.Context, addr string, id string, request, result interface{}) error {
+	serverConn, err := dialRemote(ctx, addr)
+	if err != nil {
+		return err
+	}
+	args, err := command.MarshalArgs(request)
+	if err != nil {
+		return err
+	}
+	params := protocol.ExecuteCommandParams{
+		Command:   id,
+		Arguments: args,
+	}
+	return protocol.Call(ctx, serverConn, "workspace/executeCommand", params, result)
+}
 
 // ServeStream dials the forwarder remote and binds the remote to serve the LSP
 // on the incoming stream.
@@ -198,6 +215,7 @@ func (f *Forwarder) ServeStream(ctx context.Context, clientConn jsonrpc2.Conn) e
 	f.serverConn = serverConn
 	f.serverID = strconv.FormatInt(index, 10)
 	f.mu.Unlock()
+	f.handshake(ctx)
 	clientConn.Go(ctx,
 		protocol.Handlers(
 			f.handler(
@@ -221,6 +239,43 @@ func (f *Forwarder) ServeStream(ctx context.Context, clientConn jsonrpc2.Conn) e
 	return err
 }
 
+// TODO(rfindley): remove this handshaking in favor of middleware.
+func (f *Forwarder) handshake(ctx context.Context) {
+	// This call to os.Executable is redundant, and will be eliminated by the
+	// transition to the V2 API.
+	goplsPath, err := os.Executable()
+	if err != nil {
+		event.Error(ctx, "getting executable for handshake", err)
+		goplsPath = ""
+	}
+	var (
+		hreq = handshakeRequest{
+			ServerID:  f.serverID,
+			GoplsPath: goplsPath,
+		}
+		hresp handshakeResponse
+	)
+	if di := debug.GetInstance(ctx); di != nil {
+		hreq.Logfile = di.Logfile
+		hreq.DebugAddr = di.ListenedDebugAddress()
+	}
+	if err := protocol.Call(ctx, f.serverConn, handshakeMethod, hreq, &hresp); err != nil {
+		// TODO(rfindley): at some point in the future we should return an error
+		// here.  Handshakes have become functional in nature.
+		event.Error(ctx, "forwarder: gopls handshake failed", err)
+	}
+	if hresp.GoplsPath != goplsPath {
+		event.Error(ctx, "", fmt.Errorf("forwarder: gopls path mismatch: forwarder is %q, remote is %q", goplsPath, hresp.GoplsPath))
+	}
+	event.Log(ctx, "New server",
+		tag.NewServer.Of(f.serverID),
+		tag.Logfile.Of(hresp.Logfile),
+		tag.DebugAddress.Of(hresp.DebugAddr),
+		tag.GoplsPath.Of(hresp.GoplsPath),
+		tag.ClientID.Of(hresp.SessionID),
+	)
+}
+
 func ConnectToRemote(ctx context.Context, addr string) (net.Conn, error) {
 	dialer, err := NewAutoDialer(addr, nil)
 	if err != nil {
@@ -236,7 +291,25 @@ func (f *Forwarder) handler(handler jsonrpc2.Handler) jsonrpc2.Handler {
 		// Intercept certain messages to add special handling.
 		switch r.Method() {
 		case "initialize":
-
+			if newr, err := addGoEnvToInitializeRequest(ctx, r); err == nil {
+				r = newr
+			} else {
+				log.Printf("unable to add local env to initialize request: %v", err)
+			}
+		case "workspace/executeCommand":
+			var params protocol.ExecuteCommandParams
+			if err := json.Unmarshal(r.Params(), &params); err == nil {
+				if params.Command == command.StartDebugging.ID() {
+					var args command.DebuggingArgs
+					if err := command.UnmarshalArgs(params.Arguments, &args); err == nil {
+						reply = f.replyWithDebugAddress(ctx, reply, args)
+					} else {
+						event.Error(ctx, "unmarshaling debugging args", err)
+					}
+				}
+			} else {
+				event.Error(ctx, "intercepting executeCommand request", err)
+			}
 		}
 		// The gopls workspace environment defaults to the process environment in
 		// which gopls daemon was started. To avoid discrepancies in Go environment
@@ -245,6 +318,95 @@ func (f *Forwarder) handler(handler jsonrpc2.Handler) jsonrpc2.Handler {
 		//
 		// See also golang.org/issue/37830.
 		return handler(ctx, reply, r)
+	}
+}
+
+// addGoEnvToInitializeRequest builds a new initialize request in which we set
+// any environment variables output by `go env` and not already present in the
+// request.
+//
+// It returns an error if r is not an initialize request, or is otherwise
+// malformed.
+func addGoEnvToInitializeRequest(ctx context.Context, r jsonrpc2.Request) (jsonrpc2.Request, error) {
+	var params protocol.ParamInitialize
+	if err := json.Unmarshal(r.Params(), &params); err != nil {
+		return nil, err
+	}
+	var opts map[string]interface{}
+	switch v := params.InitializationOptions.(type) {
+	case nil:
+		opts = make(map[string]interface{})
+	case map[string]interface{}:
+		opts = v
+	default:
+		return nil, fmt.Errorf("unexpected type for InitializationOptions: %T", v)
+	}
+	envOpt, ok := opts["env"]
+	if !ok {
+		envOpt = make(map[string]interface{})
+	}
+	env, ok := envOpt.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf(`env option is %T, expected a map`, envOpt)
+	}
+	goenv, err := getGoEnv(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+	// We don't want to propagate GOWORK unless explicitly set since that could mess with
+	// path inference during cmd/go invocations, see golang/go#51825.
+	_, goworkSet := os.LookupEnv("GOWORK")
+	for govar, value := range goenv {
+		if govar == "GOWORK" && !goworkSet {
+			continue
+		}
+		env[govar] = value
+	}
+	opts["env"] = env
+	params.InitializationOptions = opts
+	call, ok := r.(*jsonrpc2.Call)
+	if !ok {
+		return nil, fmt.Errorf("%T is not a *jsonrpc2.Call", r)
+	}
+	return jsonrpc2.NewCall(call.ID(), "initialize", params)
+}
+
+func (f *Forwarder) replyWithDebugAddress(outerCtx context.Context, r jsonrpc2.Replier, args command.DebuggingArgs) jsonrpc2.Replier {
+	di := debug.GetInstance(outerCtx)
+	if di == nil {
+		event.Log(outerCtx, "no debug instance to start")
+		return r
+	}
+	return func(ctx context.Context, result interface{}, outerErr error) error {
+		if outerErr != nil {
+			return r(ctx, result, outerErr)
+		}
+		// Enrich the result with our own debugging information. Since we're an
+		// intermediary, the jsonrpc2 package has deserialized the result into
+		// maps, by default. Re-do the unmarshalling.
+		raw, err := json.Marshal(result)
+		if err != nil {
+			event.Error(outerCtx, "marshaling intermediate command result", err)
+			return r(ctx, result, err)
+		}
+		var modified command.DebuggingResult
+		if err := json.Unmarshal(raw, &modified); err != nil {
+			event.Error(outerCtx, "unmarshaling intermediate command result", err)
+			return r(ctx, result, err)
+		}
+		addr := args.Addr
+		if addr == "" {
+			addr = "localhost:0"
+		}
+		addr, err = di.Serve(outerCtx, addr)
+		if err != nil {
+			event.Error(outerCtx, "starting debug server", err)
+			return r(ctx, result, outerErr)
+		}
+		urls := []string{"http://" + addr}
+		modified.URLs = append(urls, modified.URLs...)
+		go f.handshake(ctx)
+		return r(ctx, modified, nil)
 	}
 }
 
@@ -289,6 +451,8 @@ type ClientSession struct {
 // clients.
 type ServerState struct {
 	Logfile         string          `json:"logfile"`
+	DebugAddr       string          `json:"debugAddr"`
+	GoplsPath       string          `json:"goplsPath"`
 	CurrentClientID string          `json:"currentClientID"`
 	Clients         []ClientSession `json:"clients"`
 }
@@ -298,7 +462,7 @@ const (
 	sessionsMethod  = "gopls/sessions"
 )
 
-func handshaker(sess *session.Session, logHandshakes bool, handler jsonrpc2.Handler) jsonrpc2.Handler {
+func handshaker(session *cache.Session, goplsPath string, logHandshakes bool, handler jsonrpc2.Handler) jsonrpc2.Handler {
 	return func(ctx context.Context, reply jsonrpc2.Replier, r jsonrpc2.Request) error {
 		switch r.Method() {
 		case handshakeMethod:
@@ -308,28 +472,46 @@ func handshaker(sess *session.Session, logHandshakes bool, handler jsonrpc2.Hand
 			var req handshakeRequest
 			if err := json.Unmarshal(r.Params(), &req); err != nil {
 				if logHandshakes {
-					log.Printf("Error processing handshake for session %s: %v", sess.ID(), err)
+					log.Printf("Error processing handshake for session %s: %v", session.ID(), err)
 				}
 				sendError(ctx, reply, err)
 				return nil
 			}
 			if logHandshakes {
-				log.Printf("Session %s: got handshake. Logfile: %q, Debug addr: %q", sess.ID(), req.Logfile, req.DebugAddr)
+				log.Printf("Session %s: got handshake. Logfile: %q, Debug addr: %q", session.ID(), req.Logfile, req.DebugAddr)
 			}
 			event.Log(ctx, "Handshake session update",
+				cache.KeyUpdateSession.Of(session),
 				tag.DebugAddress.Of(req.DebugAddr),
 				tag.Logfile.Of(req.Logfile),
 				tag.ServerID.Of(req.ServerID),
 				tag.GoplsPath.Of(req.GoplsPath),
 			)
 			resp := handshakeResponse{
-				SessionID: sess.ID(),
+				SessionID: session.ID(),
+				GoplsPath: goplsPath,
+			}
+			if di := debug.GetInstance(ctx); di != nil {
+				resp.Logfile = di.Logfile
+				resp.DebugAddr = di.ListenedDebugAddress()
 			}
 			return reply(ctx, resp, nil)
 
 		case sessionsMethod:
 			resp := ServerState{
-				CurrentClientID: sess.ID(),
+				GoplsPath:       goplsPath,
+				CurrentClientID: session.ID(),
+			}
+			if di := debug.GetInstance(ctx); di != nil {
+				resp.Logfile = di.Logfile
+				resp.DebugAddr = di.ListenedDebugAddress()
+				for _, c := range di.State.Clients() {
+					resp.Clients = append(resp.Clients, ClientSession{
+						SessionID: c.Session.ID(),
+						Logfile:   c.Logfile,
+						DebugAddr: c.DebugAddress,
+					})
+				}
 			}
 			return reply(ctx, resp, nil)
 		}

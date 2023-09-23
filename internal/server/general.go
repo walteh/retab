@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go/build"
 	"log"
 	"os"
 	"path"
@@ -23,6 +22,7 @@ import (
 	"github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/gen/gopls/span"
 	"github.com/walteh/retab/gen/gopls/telemetry"
+	"github.com/walteh/retab/internal/debug"
 	"github.com/walteh/retab/internal/source"
 )
 
@@ -308,43 +308,6 @@ func versionMessage(goVersion int, fromBuild bool) (string, protocol.MessageType
 		}
 	}
 	return "", 0
-}
-
-// checkViewGoVersions checks whether any Go version used by a view is too old,
-// raising a showMessage notification if so.
-//
-// It should be called after views change.
-func (s *Server) checkViewGoVersions() {
-	oldestVersion, fromBuild := go1Point(), true
-	for _, view := range s.session.Views() {
-		viewVersion := view.GoVersion()
-		if oldestVersion == -1 || viewVersion < oldestVersion {
-			oldestVersion, fromBuild = viewVersion, false
-		}
-		telemetry.RecordViewGoVersion(viewVersion)
-	}
-
-	if msg, mType := versionMessage(oldestVersion, fromBuild); msg != "" {
-		s.eventuallyShowMessage(context.Background(), &protocol.ShowMessageParams{
-			Type:    mType,
-			Message: msg,
-		})
-	}
-}
-
-// go1Point returns the x in Go 1.x. If an error occurs extracting the go
-// version, it returns -1.
-//
-// Copied from the testenv package.
-func go1Point() int {
-	for i := len(build.Default.ReleaseTags) - 1; i >= 0; i-- {
-		var version int
-		if _, err := fmt.Sscanf(build.Default.ReleaseTags[i], "go1.%d", &version); err != nil {
-			continue
-		}
-		return version
-	}
-	return -1
 }
 
 func (s *Server) addFolders(ctx context.Context, folders []protocol.WorkspaceFolder) error {
