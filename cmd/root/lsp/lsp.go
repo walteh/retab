@@ -119,7 +119,7 @@ func (s *Serve) Run(ctx context.Context, args ...string) error {
 	if s.Address != "" {
 		network, addr = lsprpc.ParseAddr(s.Address)
 	}
-	s.Port = 8090
+	// s.Port = 8090
 	if s.Port != 0 {
 		network = "tcp"
 		// TODO(adonovan): should gopls ever be listening on network

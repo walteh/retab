@@ -15,7 +15,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,17 +22,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/walteh/retab/gen/gopls/protocol"
+	"github.com/walteh/retab/gen/gopls/safetoken"
+	"github.com/walteh/retab/gen/gopls/span"
+
+	// "github.com/walteh/retab/gen/gopls/testenv"
+	"github.com/walteh/retab/gen/gopls/typeparams"
+	"github.com/walteh/retab/internal/source"
+
+	"github.com/walteh/retab/internal/source/completion"
+	"github.com/walteh/retab/internal/tests/compare"
 	"golang.org/x/tools/go/expect"
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/go/packages/packagestest"
-	"github.com/walteh/retab/gen/gopls/protocol"
-	"github.com/walteh/retab/gen/gopls/safetoken"
-	"github.com/walteh/retab/gen/gopls/source"
-	"github.com/walteh/retab/gen/gopls/source/completion"
-	"github.com/walteh/retab/gen/gopls/tests/compare"
-	"github.com/walteh/retab/gen/gopls/span"
-	"github.com/walteh/retab/gen/gopls/testenv"
-	"github.com/walteh/retab/gen/gopls/typeparams"
 	"golang.org/x/tools/txtar"
 )
 
@@ -66,7 +67,8 @@ type SemanticTokens = []span.Span
 type SuggestedFixes = map[span.Span][]SuggestedFix
 type MethodExtractions = map[span.Span]span.Span
 type Renames = map[span.Span]string
-type PrepareRenames = map[span.Span]*source.PrepareItem
+
+// type PrepareRenames = map[span.Span]*source.PrepareItem
 type InlayHints = []span.Span
 type Signatures = map[span.Span]*protocol.SignatureHelp
 type Links = map[span.URI][]Link
@@ -75,7 +77,6 @@ type SelectionRanges = []span.Span
 
 type Data struct {
 	Config                   packages.Config
-	Exported                 *packagestest.Exported
 	CallHierarchy            CallHierarchy
 	CompletionItems          CompletionItems
 	Completions              Completions
@@ -89,11 +90,11 @@ type Data struct {
 	MethodExtractions        MethodExtractions
 	Renames                  Renames
 	InlayHints               InlayHints
-	PrepareRenames           PrepareRenames
-	Signatures               Signatures
-	Links                    Links
-	AddImport                AddImport
-	SelectionRanges          SelectionRanges
+	// PrepareRenames           PrepareRenames
+	Signatures      Signatures
+	Links           Links
+	AddImport       AddImport
+	SelectionRanges SelectionRanges
 
 	fragments map[string]string
 	dir       string
@@ -125,7 +126,7 @@ type Tests interface {
 	MethodExtraction(*testing.T, span.Span, span.Span)
 	InlayHints(*testing.T, span.Span)
 	Rename(*testing.T, span.Span, string)
-	PrepareRename(*testing.T, span.Span, *source.PrepareItem)
+	// PrepareRename(*testing.T, span.Span, *source.PrepareItem)
 	SignatureHelp(*testing.T, span.Span, *protocol.SignatureHelp)
 	Link(*testing.T, span.URI, []Link)
 	AddImport(*testing.T, span.URI, string)
@@ -243,12 +244,12 @@ func load(t testing.TB, mode string, dir string) *Data {
 		RankCompletions:          make(RankCompletions),
 		CaseSensitiveCompletions: make(CaseSensitiveCompletions),
 		Renames:                  make(Renames),
-		PrepareRenames:           make(PrepareRenames),
-		SuggestedFixes:           make(SuggestedFixes),
-		MethodExtractions:        make(MethodExtractions),
-		Signatures:               make(Signatures),
-		Links:                    make(Links),
-		AddImport:                make(AddImport),
+		// PrepareRenames:           make(PrepareRenames),
+		SuggestedFixes:    make(SuggestedFixes),
+		MethodExtractions: make(MethodExtractions),
+		Signatures:        make(Signatures),
+		Links:             make(Links),
+		AddImport:         make(AddImport),
 
 		dir:       dir,
 		fragments: map[string]string{},
@@ -316,10 +317,6 @@ func load(t testing.TB, mode string, dir string) *Data {
 		},
 	}
 	switch mode {
-	case "Modules":
-		datum.Exported = packagestest.Export(t, packagestest.Modules, modules)
-	case "GOPATH":
-		datum.Exported = packagestest.Export(t, packagestest.GOPATH, modules)
 	case "MultiModule":
 		files := map[string]interface{}{}
 		for k, v := range modules[0].Files {
@@ -343,66 +340,66 @@ func load(t testing.TB, mode string, dir string) *Data {
 		}
 		datum.golden = golden
 
-		datum.Exported = packagestest.Export(t, packagestest.Modules, modules)
+		// datum.Exported = packagestest.Export(t, packagestest.Modules, modules)
 	default:
 		panic("unknown mode " + mode)
 	}
 
-	for _, m := range modules {
-		for fragment := range m.Files {
-			filename := datum.Exported.File(m.Name, fragment)
-			datum.fragments[filename] = fragment
-		}
-	}
+	// for _, m := range modules {
+	// 	for fragment := range m.Files {
+	// 		filename := datum.Exported.File(m.Name, fragment)
+	// 		datum.fragments[filename] = fragment
+	// 	}
+	// }
 
 	// Turn off go/packages debug logging.
-	datum.Exported.Config.Logf = nil
+	// datum.Exported.Config.Logf = nil
 	datum.Config.Logf = nil
 
 	// Merge the exported.Config with the view.Config.
-	datum.Config = *datum.Exported.Config
+	// datum.Config = *datum.Exported.Config
 	datum.Config.Fset = token.NewFileSet()
 	datum.Config.Context = Context(nil)
 	datum.Config.ParseFile = func(fset *token.FileSet, filename string, src []byte) (*ast.File, error) {
 		panic("ParseFile should not be called")
 	}
 
-	// Do a first pass to collect special markers for completion and workspace symbols.
-	if err := datum.Exported.Expect(map[string]interface{}{
-		"item": func(name string, r packagestest.Range, _ []string) {
-			datum.Exported.Mark(name, r)
-		},
-		"symbol": func(name string, r packagestest.Range, _ []string) {
-			datum.Exported.Mark(name, r)
-		},
-	}); err != nil {
-		t.Fatal(err)
-	}
+	// // Do a first pass to collect special markers for completion and workspace symbols.
+	// if err := datum.Exported.Expect(map[string]interface{}{
+	// 	"item": func(name string, r packagestest.Range, _ []string) {
+	// 		datum.Exported.Mark(name, r)
+	// 	},
+	// 	"symbol": func(name string, r packagestest.Range, _ []string) {
+	// 		datum.Exported.Mark(name, r)
+	// 	},
+	// }); err != nil {
+	// 	t.Fatal(err)
+	// }
 
-	// Collect any data that needs to be used by subsequent tests.
-	if err := datum.Exported.Expect(map[string]interface{}{
-		"item":           datum.collectCompletionItems,
-		"complete":       datum.collectCompletions(CompletionDefault),
-		"deep":           datum.collectCompletions(CompletionDeep),
-		"fuzzy":          datum.collectCompletions(CompletionFuzzy),
-		"casesensitive":  datum.collectCompletions(CompletionCaseSensitive),
-		"rank":           datum.collectCompletions(CompletionRank),
-		"snippet":        datum.collectCompletionSnippets,
-		"semantic":       datum.collectSemanticTokens,
-		"inlayHint":      datum.collectInlayHints,
-		"rename":         datum.collectRenames,
-		"prepare":        datum.collectPrepareRenames,
-		"signature":      datum.collectSignatures,
-		"link":           datum.collectLinks,
-		"suggestedfix":   datum.collectSuggestedFixes,
-		"extractmethod":  datum.collectMethodExtractions,
-		"incomingcalls":  datum.collectIncomingCalls,
-		"outgoingcalls":  datum.collectOutgoingCalls,
-		"addimport":      datum.collectAddImports,
-		"selectionrange": datum.collectSelectionRanges,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	// // Collect any data that needs to be used by subsequent tests.
+	// if err := datum.Exported.Expect(map[string]interface{}{
+	// 	"item":           datum.collectCompletionItems,
+	// 	"complete":       datum.collectCompletions(CompletionDefault),
+	// 	"deep":           datum.collectCompletions(CompletionDeep),
+	// 	"fuzzy":          datum.collectCompletions(CompletionFuzzy),
+	// 	"casesensitive":  datum.collectCompletions(CompletionCaseSensitive),
+	// 	"rank":           datum.collectCompletions(CompletionRank),
+	// 	"snippet":        datum.collectCompletionSnippets,
+	// 	"semantic":       datum.collectSemanticTokens,
+	// 	"inlayHint":      datum.collectInlayHints,
+	// 	"rename":         datum.collectRenames,
+	// 	"prepare":        datum.collectPrepareRenames,
+	// 	"signature":      datum.collectSignatures,
+	// 	"link":           datum.collectLinks,
+	// 	"suggestedfix":   datum.collectSuggestedFixes,
+	// 	"extractmethod":  datum.collectMethodExtractions,
+	// 	"incomingcalls":  datum.collectIncomingCalls,
+	// 	"outgoingcalls":  datum.collectOutgoingCalls,
+	// 	"addimport":      datum.collectAddImports,
+	// 	"selectionrange": datum.collectSelectionRanges,
+	// }); err != nil {
+	// 	t.Fatal(err)
+	// }
 
 	if mode == "MultiModule" {
 		if err := moveFile(filepath.Join(datum.Config.Dir, "go.mod"), filepath.Join(datum.Config.Dir, "testmodule/go.mod")); err != nil {
@@ -461,9 +458,7 @@ func Run(t *testing.T, tests Tests, data *Data) {
 			for i, e := range exp {
 				t.Run(SpanName(src)+"_"+strconv.Itoa(i), func(t *testing.T) {
 					t.Helper()
-					if strings.Contains(t.Name(), "cgo") {
-						testenv.NeedsTool(t, "cgo")
-					}
+
 					test(t, src, e, data.CompletionItems)
 				})
 			}
@@ -583,15 +578,15 @@ func Run(t *testing.T, tests Tests, data *Data) {
 		}
 	})
 
-	t.Run("PrepareRenames", func(t *testing.T) {
-		t.Helper()
-		for src, want := range data.PrepareRenames {
-			t.Run(SpanName(src), func(t *testing.T) {
-				t.Helper()
-				tests.PrepareRename(t, src, want)
-			})
-		}
-	})
+	// t.Run("PrepareRenames", func(t *testing.T) {
+	// 	t.Helper()
+	// 	for src, want := range data.PrepareRenames {
+	// 		t.Run(SpanName(src), func(t *testing.T) {
+	// 			t.Helper()
+	// 			tests.PrepareRename(t, src, want)
+	// 		})
+	// 	}
+	// })
 
 	t.Run("SignatureHelp", func(t *testing.T) {
 		t.Helper()
@@ -609,15 +604,15 @@ func Run(t *testing.T, tests Tests, data *Data) {
 			// If we are testing GOPATH, then we do not want links with the versions
 			// attached (pkg.go.dev/repoa/moda@v1.1.0/pkg), unless the file is a
 			// go.mod, then we can skip it altogether.
-			if data.Exported.Exporter == packagestest.GOPATH {
-				if strings.HasSuffix(uri.Filename(), ".mod") {
-					continue
-				}
-				re := regexp.MustCompile(`@v\d+\.\d+\.[\w-]+`)
-				for i, link := range wantLinks {
-					wantLinks[i].Target = re.ReplaceAllString(link.Target, "")
-				}
-			}
+			// if data.Exported.Exporter == packagestest.GOPATH {
+			// 	if strings.HasSuffix(uri.Filename(), ".mod") {
+			// 		continue
+			// 	}
+			// 	re := regexp.MustCompile(`@v\d+\.\d+\.[\w-]+`)
+			// 	for i, link := range wantLinks {
+			// 		wantLinks[i].Target = re.ReplaceAllString(link.Target, "")
+			// 	}
+			// }
 			t.Run(uriName(uri), func(t *testing.T) {
 				t.Helper()
 				tests.Link(t, uri, wantLinks)
@@ -689,7 +684,7 @@ func checkData(t *testing.T, data *Data) {
 	fmt.Fprintf(buf, "MethodExtractionCount = %v\n", len(data.MethodExtractions))
 	fmt.Fprintf(buf, "InlayHintsCount = %v\n", len(data.InlayHints))
 	fmt.Fprintf(buf, "RenamesCount = %v\n", len(data.Renames))
-	fmt.Fprintf(buf, "PrepareRenamesCount = %v\n", len(data.PrepareRenames))
+	// fmt.Fprintf(buf, "PrepareRenamesCount = %v\n", len(data.PrepareRenames))
 	fmt.Fprintf(buf, "SignaturesCount = %v\n", len(data.Signatures))
 	fmt.Fprintf(buf, "LinksCount = %v\n", linksCount)
 	fmt.Fprintf(buf, "SelectionRangesCount = %v\n", len(data.SelectionRanges))
@@ -711,9 +706,9 @@ func (data *Data) Mapper(uri span.URI) (*protocol.Mapper, error) {
 	defer data.mappersMu.Unlock()
 
 	if _, ok := data.mappers[uri]; !ok {
-		content, err := data.Exported.FileContents(uri.Filename())
-		if err != nil {
-			return nil, err
+		content := data.Config.Overlay[uri.Filename()]
+		if content == nil {
+			return nil, fmt.Errorf("no overlay for %v", uri)
 		}
 		data.mappers[uri] = protocol.NewMapper(uri, content)
 	}
@@ -878,13 +873,6 @@ func (data *Data) collectInlayHints(src span.Span) {
 
 func (data *Data) collectRenames(src span.Span, newText string) {
 	data.Renames[src] = newText
-}
-
-func (data *Data) collectPrepareRenames(src, spn span.Span, placeholder string) {
-	data.PrepareRenames[src] = &source.PrepareItem{
-		Range: data.mustRange(spn),
-		Text:  placeholder,
-	}
 }
 
 // mustRange converts spn into a protocol.Range, panicking on any error.

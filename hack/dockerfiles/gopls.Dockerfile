@@ -75,13 +75,13 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 	copy_pkg internal persistent
 	copy_pkg internal tokeninternal
 	copy_pkg internal typeparams
+	copy_pkg gopls/internal/lsp snippet
+	copy_pkg internal fuzzy
 	copy_pkg gopls/internal/lsp frob
+	copy_pkg gopls/internal astutil
 
 	copy_pkg gopls/internal/lsp filecache
 	copy_pkg gopls/internal/lsp lru
-	copy_pkg gopls/internal/lsp tests
-
-
 
 	# copy_protocol_file tsdocument_changes.go
 	# copy_protocol_file tsserver.go
