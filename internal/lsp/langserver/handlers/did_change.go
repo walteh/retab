@@ -4,47 +4,49 @@
 package handlers
 
 import (
-	"bytes"
 	"context"
 
-	"github.com/spf13/afero"
 	gopls "github.com/walteh/retab/gen/gopls/protocol"
+	lsctx "github.com/walteh/retab/internal/lsp/context"
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/lsp"
 )
 
 func (svc *service) TextDocumentDidChange(ctx context.Context, params gopls.DidChangeTextDocumentParams) error {
-	// p := gopls.DidChangeTextDocumentParams{
-	// 	TextDocument: gopls.VersionedTextDocumentIdentifier{
-	// 		TextDocumentIdentifier: gopls.TextDocumentIdentifier{
-	// 			URI: params.TextDocument.URI,
-	// 		},
-	// 		Version: params.TextDocument.Version,
-	// 	},
-	// 	ContentChanges: params.ContentChanges,
-	// }
+	p := gopls.DidChangeTextDocumentParams{
+		TextDocument: gopls.VersionedTextDocumentIdentifier{
+			TextDocumentIdentifier: gopls.TextDocumentIdentifier{
+				URI: params.TextDocument.URI,
+			},
+			Version: params.TextDocument.Version,
+		},
+		ContentChanges: params.ContentChanges,
+	}
 
-	filename := string(params.TextDocument.URI)
-
-	// ctx = lsctx.WithLanguageId(ctx, doc.LanguageID)
-
-	// newVersion := int(p.TextDocument.Version)
-
-	// // Versions don't have to be consecutive, but they must be increasing
-	// if newVersion <= doc.Version {
-	// 	svc.logger.Printf("Old document version (%d) received, current version is %d. "+
-	// 		"Ignoring this update for %s. This is likely a client bug, please report it.",
-	// 		newVersion, doc.Version, p.TextDocument.URI)
-	// 	return nil
-	// }
-
-	text, err := afero.ReadFile(svc.fs, filename)
+	dh := lsp.HandleFromDocumentURI(p.TextDocument.URI)
+	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return err
 	}
 
+	ctx = lsctx.WithLanguageId(ctx, doc.LanguageID)
+
+	newVersion := int(p.TextDocument.Version)
+
+	// Versions don't have to be consecutive, but they must be increasing
+	if newVersion <= doc.Version {
+		svc.logger.Printf("Old document version (%d) received, current version is %d. "+
+			"Ignoring this update for %s. This is likely a client bug, please report it.",
+			newVersion, doc.Version, p.TextDocument.URI)
+		return nil
+	}
+
 	changes := lsp.DocumentChanges(params.ContentChanges)
-	newText, err := document.ApplyChanges(text, changes)
+	newText, err := document.ApplyChanges(doc.Text, changes)
+	if err != nil {
+		return err
+	}
+	err = svc.stateStore.DocumentStore.UpdateDocument(dh, newText, newVersion)
 	if err != nil {
 		return err
 	}
@@ -54,5 +56,5 @@ func (svc *service) TextDocumentDidChange(ctx context.Context, params gopls.DidC
 	// 	return err
 	// }
 
-	return afero.WriteReader(svc.fs, filename, bytes.NewReader(newText))
+	return nil
 }

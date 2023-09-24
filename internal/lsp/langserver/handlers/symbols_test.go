@@ -8,12 +8,21 @@ import (
 	"testing"
 
 	"github.com/walteh/retab/internal/lsp/langserver"
+	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func TestLangServer_symbols_basic(t *testing.T) {
 	tmpDir := TempDir(t)
+	InitPluginCache(t, tmpDir.Path())
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 

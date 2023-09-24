@@ -13,6 +13,7 @@ import (
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
+	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func TestModuleCompletion_withoutInitialization(t *testing.T) {
@@ -35,13 +36,27 @@ func TestModuleCompletion_withoutInitialization(t *testing.T) {
 
 func TestModuleCompletion_withValidData_basic(t *testing.T) {
 	tmpDir := TempDir(t)
+	InitPluginCache(t, tmpDir.Path())
 
 	err := os.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("provider \"test\" {\n\n}\n"), 0o755)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	var testSchema tfjson.ProviderSchemas
+	err = json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -192,6 +207,7 @@ func TestModuleCompletion_withValidData_basic(t *testing.T) {
 // verify that for old versions we serve earliest available (v0.12) schema
 func TestModuleCompletion_withValidData_tooOldVersion(t *testing.T) {
 	tmpDir := TempDir(t)
+	InitPluginCache(t, tmpDir.Path())
 
 	err := os.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("variable \"test\" {\n\n}\n"), 0o755)
 	if err != nil {
@@ -204,7 +220,14 @@ func TestModuleCompletion_withValidData_tooOldVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -315,6 +338,7 @@ func TestModuleCompletion_withValidData_tooOldVersion(t *testing.T) {
 // verify that for unknown new versions we serve latest available schema
 func TestModuleCompletion_withValidData_tooNewVersion(t *testing.T) {
 	tmpDir := TempDir(t)
+	InitPluginCache(t, tmpDir.Path())
 
 	err := os.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("variable \"test\" {\n\n}\n"), 0o755)
 	if err != nil {
@@ -327,7 +351,14 @@ func TestModuleCompletion_withValidData_tooNewVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -477,6 +508,7 @@ func TestModuleCompletion_withValidData_tooNewVersion(t *testing.T) {
 
 func TestModuleCompletion_withValidDataAndSnippets(t *testing.T) {
 	tmpDir := TempDir(t)
+	InitPluginCache(t, tmpDir.Path())
 	err := os.WriteFile(filepath.Join(tmpDir.Path(), "main.tf"), []byte("provider \"test\" {\n\n}\n"), 0o755)
 	if err != nil {
 		t.Fatal(err)
@@ -488,7 +520,14 @@ func TestModuleCompletion_withValidDataAndSnippets(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -737,6 +776,7 @@ var testModuleSchemaOutput = `{
 
 func TestVarsCompletion_withValidData(t *testing.T) {
 	tmpDir := TempDir(t)
+	InitPluginCache(t, tmpDir.Path())
 
 	var testSchema tfjson.ProviderSchemas
 	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
@@ -744,7 +784,14 @@ func TestVarsCompletion_withValidData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -842,7 +889,13 @@ output "test" {
 }
 `
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -1043,7 +1096,14 @@ output "test" {
 		t.Fatal(err)
 	}
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -1290,6 +1350,7 @@ output "test" {
 
 func TestVarReferenceCompletion_withValidData(t *testing.T) {
 	tmpDir := TempDir(t)
+	InitPluginCache(t, tmpDir.Path())
 
 	variableDecls := `variable "aaa" {}
 variable "bbb" {}
@@ -1311,7 +1372,15 @@ variable "ccc" {}
 		t.Fatal(err)
 	}
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 

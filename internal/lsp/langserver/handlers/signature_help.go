@@ -16,19 +16,23 @@ func (svc *service) SignatureHelp(ctx context.Context, params gopls.SignatureHel
 		return nil, err
 	}
 
-	filename := string(params.TextDocument.URI)
-
-	d, err := svc.decoderForDocument(ctx, filename)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
+	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return nil, err
 	}
 
-	pos, err := lsp.HCLPositionFromLspPosition(params.Position, svc.fs, filename)
+	d, err := svc.decoderForDocument(ctx, doc)
 	if err != nil {
 		return nil, err
 	}
 
-	sig, err := d.SignatureAtPos(filename, pos)
+	pos, err := lsp.HCLPositionFromLspPosition(params.Position, doc)
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := d.SignatureAtPos(doc.Filename, pos)
 	if err != nil {
 		return nil, err
 	}

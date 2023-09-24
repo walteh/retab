@@ -11,6 +11,7 @@ import (
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
+	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func TestHover_withoutInitialization(t *testing.T) {
@@ -33,6 +34,7 @@ func TestHover_withoutInitialization(t *testing.T) {
 
 func TestHover_withValidData(t *testing.T) {
 	tmpDir := TempDir(t)
+	InitPluginCache(t, tmpDir.Path())
 
 	var testSchema tfjson.ProviderSchemas
 	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
@@ -40,7 +42,14 @@ func TestHover_withValidData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -95,6 +104,7 @@ func TestHover_withValidData(t *testing.T) {
 
 func TestVarsHover_withValidData(t *testing.T) {
 	tmpDir := TempDir(t)
+	InitPluginCache(t, tmpDir.Path())
 
 	var testSchema tfjson.ProviderSchemas
 	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
@@ -102,7 +112,14 @@ func TestVarsHover_withValidData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 

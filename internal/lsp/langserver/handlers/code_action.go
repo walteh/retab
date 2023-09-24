@@ -7,8 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rs/zerolog"
-	"github.com/spf13/afero"
 	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/lsp"
 )
@@ -34,10 +32,7 @@ func (svc *service) textDocumentCodeAction(ctx context.Context, params gopls.Cod
 	}
 
 	for _, o := range params.Context.Only {
-		zerolog.Ctx(ctx).Debug().
-			Str("uri", string(params.TextDocument.URI)).
-			Str("codeActionKind", string(o)).
-			Msg("code action requested")
+		svc.logger.Printf("Code actions requested: %q", o)
 	}
 
 	wantedCodeActions := lsp.SupportedCodeActions.Only(params.Context.Only)
@@ -46,14 +41,11 @@ func (svc *service) textDocumentCodeAction(ctx context.Context, params gopls.Cod
 			params.TextDocument.URI, params.Context.Only)
 	}
 
-	zerolog.Ctx(ctx).Debug().
-		Any("wantedCodeActions", wantedCodeActions).
-		Str("uri", string(params.TextDocument.URI)).
-		Msg("code action supported")
+	svc.logger.Printf("Code actions supported: %v", wantedCodeActions)
 
-	filename := string(params.TextDocument.URI)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
 
-	text, err := afero.ReadFile(svc.fs, filename)
+	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return ca, err
 	}
@@ -62,7 +54,7 @@ func (svc *service) textDocumentCodeAction(ctx context.Context, params gopls.Cod
 		switch action {
 		case lsp.SourceFormatAllTerraform:
 
-			edits, err := svc.formatDocument(ctx, text, filename)
+			edits, err := svc.formatDocument(ctx, doc.Text, dh)
 			if err != nil {
 				return ca, err
 			}
@@ -72,7 +64,7 @@ func (svc *service) textDocumentCodeAction(ctx context.Context, params gopls.Cod
 				Kind:  action,
 				Edit: &gopls.WorkspaceEdit{
 					Changes: map[gopls.DocumentURI][]gopls.TextEdit{
-						gopls.DocumentURI(filename): edits,
+						gopls.DocumentURI(dh.FullURI()): edits,
 					},
 				},
 			})

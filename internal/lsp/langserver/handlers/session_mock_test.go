@@ -7,17 +7,20 @@ import (
 	"context"
 	"io"
 	"log"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"sync"
 	"testing"
 
-	"github.com/hashicorp/hcl-lang/decoder"
-	"github.com/spf13/afero"
-	"github.com/walteh/retab/internal/lsp/filesystem"
+	"github.com/creachadair/jrpc2/handler"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
+	"github.com/walteh/retab/internal/lsp/state"
 )
 
 type MockSessionInput struct {
+	AdditionalHandlers map[string]handler.Func
+	StateStore         *state.StateStore
 }
 
 type mockSession struct {
@@ -31,15 +34,29 @@ func (ms *mockSession) new(srvCtx context.Context) session.Session {
 	sessCtx, stopSession := context.WithCancel(srvCtx)
 	ms.stopFunc = stopSession
 
+	var handlers map[string]handler.Func
+	var stateStore *state.StateStore
+	if ms.mockInput != nil {
+		stateStore = ms.mockInput.StateStore
+		handlers = ms.mockInput.AdditionalHandlers
+	}
+
 	svc := &service{
-		logger:      testLogger(),
-		srvCtx:      srvCtx,
-		sessCtx:     sessCtx,
-		stopSession: ms.stop,
-		fs:          nil,
+		logger:             testLogger(),
+		srvCtx:             srvCtx,
+		sessCtx:            sessCtx,
+		stopSession:        ms.stop,
+		additionalHandlers: handlers,
+		stateStore:         stateStore,
 	}
 
 	return svc
+}
+
+func defaultRegistryServer() *httptest.Server {
+	return httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "unexpected Registry API request", 500)
+	}))
 }
 
 func testLogger() *log.Logger {
@@ -74,25 +91,5 @@ func newMockSession(input *MockSessionInput) *mockSession {
 }
 
 func NewMockSession(input *MockSessionInput) session.SessionFactory {
-	ms := &mockSession{
-		stopCalledMu: &sync.RWMutex{},
-	}
-	srvCtx := context.Background()
-	sessCtx, stopSession := context.WithCancel(srvCtx)
-	ms.stopFunc = stopSession
-
-	fs := filesystem.NewFilesystem(afero.NewMemMapFs())
-
-	svc := &service{
-		logger:      testLogger(),
-		srvCtx:      srvCtx,
-		sessCtx:     sessCtx,
-		stopSession: ms.stop,
-		decoder:     decoder.NewDecoder(fs),
-		fs:          fs,
-	}
-
-	return func(ctx context.Context) session.Session {
-		return svc
-	}
+	return newMockSession(input).new
 }

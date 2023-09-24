@@ -9,6 +9,7 @@ import (
 
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
+	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func TestLangServer_codeActionWithoutInitialization(t *testing.T) {
@@ -31,7 +32,14 @@ func TestLangServer_codeActionWithoutInitialization(t *testing.T) {
 func TestLangServer_codeAction_basic(t *testing.T) {
 	tmpDir := TempDir(t)
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -234,8 +242,14 @@ func TestLangServer_codeAction_no_code_action_requested(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ss, err := state.NewStateStore()
+			if err != nil {
+				t.Fatal(err)
+			}
 
-			ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+			ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+				StateStore: ss,
+			}))
 			stop := ls.Start(t)
 			defer stop()
 

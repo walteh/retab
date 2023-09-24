@@ -15,11 +15,9 @@ import (
 	"syscall"
 
 	"github.com/mitchellh/cli"
-	"github.com/spf13/afero"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/handlers"
-	"github.com/walteh/retab/internal/lsp/langserver/session"
 	"github.com/walteh/retab/internal/lsp/logging"
 	"github.com/walteh/retab/internal/lsp/pathtpl"
 	"go.opentelemetry.io/otel"
@@ -130,13 +128,11 @@ func (c *ServeCommand) Run(args []string) int {
 		}
 	}()
 
-	srv := langserver.NewLangServer(ctx, func(ctx context.Context) session.Session {
-		return handlers.NewSession(ctx, afero.NewMemMapFs())
-	})
+	srv := langserver.NewLangServer(ctx, handlers.NewSession)
 	srv.SetLogger(logger)
 
 	if c.port != 0 {
-		err := srv.StartTCP(ctx, fmt.Sprintf("localhost:%d", c.port))
+		err := srv.StartTCP(fmt.Sprintf("localhost:%d", c.port))
 		if err != nil {
 			c.Ui.Error(fmt.Sprintf("Failed to start TCP server: %s", err))
 			return 1

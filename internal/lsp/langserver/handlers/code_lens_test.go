@@ -13,6 +13,7 @@ import (
 	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
+	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func TestCodeLens_withoutInitialization(t *testing.T) {
@@ -30,18 +31,16 @@ func TestCodeLens_withoutInitialization(t *testing.T) {
 }
 
 func TestCodeLens_withoutOptIn(t *testing.T) {
-
 	tmpDir := TempDir(t)
 
-	// srv := NewMockServer(&MockSessionInput{})
-
-	var testSchema tfjson.ProviderSchemas
-	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
+	ss, err := state.NewStateStore()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -84,8 +83,22 @@ func TestCodeLens_withoutOptIn(t *testing.T) {
 
 func TestCodeLens_referenceCount(t *testing.T) {
 	tmpDir := TempDir(t)
+	InitPluginCache(t, tmpDir.Path())
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	// var testSchema tfjson.ProviderSchemas
+	// err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -178,7 +191,13 @@ func TestCodeLens_referenceCount_crossModule(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 

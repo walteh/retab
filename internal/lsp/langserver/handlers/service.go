@@ -9,19 +9,20 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"path/filepath"
 
 	"github.com/creachadair/jrpc2"
 	rpch "github.com/creachadair/jrpc2/handler"
 	"github.com/hashicorp/hcl-lang/decoder"
 	"github.com/hashicorp/hcl-lang/lang"
-	"github.com/spf13/afero"
 	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
-	idecoder "github.com/walteh/retab/internal/lsp/decoder"
+	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/filesystem"
+	"github.com/walteh/retab/internal/lsp/langserver/diagnostics"
+	"github.com/walteh/retab/internal/lsp/langserver/notifier"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
 	"github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/internal/lsp/state"
 	"github.com/walteh/retab/internal/lsp/telemetry"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -31,38 +32,37 @@ import (
 )
 
 type service struct {
-	logger         *log.Logger
-	srvCtx         context.Context
-	sessCtx        context.Context
-	stopSession    context.CancelFunc
-	fs             *filesystem.Filesystem
-	telemetry      telemetry.Sender
-	decoder        *decoder.Decoder
-	server         session.Server
+	logger *log.Logger
+
+	srvCtx context.Context
+
+	sessCtx     context.Context
+	stopSession context.CancelFunc
+
+	fs            *filesystem.Filesystem
+	telemetry     telemetry.Sender
+	decoder       *decoder.Decoder
+	stateStore    *state.StateStore
+	server        session.Server
+	diagsNotifier *diagnostics.Notifier
+	notifier      *notifier.Notifier
+
+	additionalHandlers map[string]rpch.Func
+
 	singleFileMode bool
 }
 
 var discardLogs = log.New(io.Discard, "", 0)
 
-func NewSession(ctx context.Context, fls afero.Fs) session.Session {
-	sessCtx, stopSession := context.WithCancel(ctx)
-
-	svc := &service{
+func NewSession(srvCtx context.Context) session.Session {
+	sessCtx, stopSession := context.WithCancel(srvCtx)
+	return &service{
 		logger:      discardLogs,
-		srvCtx:      ctx,
+		srvCtx:      srvCtx,
 		sessCtx:     sessCtx,
 		stopSession: stopSession,
 		telemetry:   &telemetry.NoopSender{},
 	}
-
-	svc.fs = filesystem.NewFilesystem(fls)
-	svc.fs.SetLogger(svc.logger)
-	svc.decoder = decoder.NewDecoder(svc.fs)
-	decoderContext := idecoder.DecoderContext(ctx)
-	svc.AppendCompletionHooks(decoderContext)
-	svc.decoder.SetContext(decoderContext)
-
-	return svc
 }
 
 func (svc *service) SetLogger(logger *log.Logger) {
@@ -74,9 +74,9 @@ func (svc *service) SetLogger(logger *log.Logger) {
 func (svc *service) Assigner() (jrpc2.Assigner, error) {
 	svc.logger.Println("Preparing new session ...")
 
-	sess := session.NewSession(svc.stopSession)
+	session := session.NewSession(svc.stopSession)
 
-	err := sess.Prepare()
+	err := session.Prepare()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to prepare session: %w", err)
 	}
@@ -92,7 +92,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 
 	m := map[string]rpch.Func{
 		"initialize": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.Initialize(req)
+			err := session.Initialize(req)
 			if err != nil {
 				return nil, err
 			}
@@ -111,7 +111,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.Initialize)
 		},
 		"initialized": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.ConfirmInitialization(req)
+			err := session.ConfirmInitialization(req)
 			if err != nil {
 				return nil, err
 			}
@@ -121,28 +121,28 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.Initialized)
 		},
 		"textDocument/didChange": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
 			return handle(ctx, req, svc.TextDocumentDidChange)
 		},
 		"textDocument/didOpen": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
 			return handle(ctx, req, svc.TextDocumentDidOpen)
 		},
 		"textDocument/didClose": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
 			return handle(ctx, req, svc.TextDocumentDidClose)
 		},
 		"textDocument/documentSymbol": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -152,7 +152,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.TextDocumentSymbol)
 		},
 		"textDocument/documentLink": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -163,7 +163,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.TextDocumentLink)
 		},
 		"textDocument/declaration": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -173,7 +173,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.GoToDeclaration)
 		},
 		"textDocument/definition": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -183,7 +183,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.GoToDefinition)
 		},
 		"textDocument/completion": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -194,7 +194,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.TextDocumentComplete)
 		},
 		"completionItem/resolve": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -205,7 +205,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.CompletionItemResolve)
 		},
 		"textDocument/hover": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -216,7 +216,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.TextDocumentHover)
 		},
 		"textDocument/codeAction": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -226,7 +226,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.TextDocumentCodeAction)
 		},
 		"textDocument/codeLens": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -236,7 +236,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.TextDocumentCodeLens)
 		},
 		"textDocument/formatting": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -244,7 +244,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.TextDocumentFormatting)
 		},
 		"textDocument/signatureHelp": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -254,7 +254,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.SignatureHelp)
 		},
 		"textDocument/semanticTokens/full": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -264,18 +264,18 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.TextDocumentSemanticTokensFull)
 		},
 		"textDocument/didSave": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
 
-			// ctx = lsctx.WithDiagnosticsNotifier(ctx, svc.diagsNotifier)
+			ctx = lsctx.WithDiagnosticsNotifier(ctx, svc.diagsNotifier)
 			// ctx = lsctx.WithExperimentalFeatures(ctx, &expFeatures)
 
 			return handle(ctx, req, svc.TextDocumentDidSave)
 		},
 		"workspace/didChangeWorkspaceFolders": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -283,7 +283,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.DidChangeWorkspaceFolders)
 		},
 		"workspace/didChangeWatchedFiles": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -291,7 +291,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.DidChangeWatchedFiles)
 		},
 		"textDocument/references": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -299,20 +299,20 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.References)
 		},
 		"workspace/executeCommand": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
 
 			ctx = lsctx.WithCommandPrefix(ctx, &commandPrefix)
 			ctx = lsctx.WithRootDirectory(ctx, &rootDir)
-			// ctx = lsctx.WithDiagnosticsNotifier(ctx, svc.diagsNotifier)
+			ctx = lsctx.WithDiagnosticsNotifier(ctx, svc.diagsNotifier)
 			ctx = lsp.ContextWithClientName(ctx, &clientName)
 
 			return handle(ctx, req, svc.WorkspaceExecuteCommand)
 		},
 		"workspace/symbol": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
@@ -322,7 +322,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, svc.WorkspaceSymbol)
 		},
 		"shutdown": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.Shutdown(req)
+			err := session.Shutdown(req)
 			if err != nil {
 				return nil, err
 			}
@@ -330,7 +330,7 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return handle(ctx, req, Shutdown)
 		},
 		"exit": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.Exit()
+			err := session.Exit()
 			if err != nil {
 				return nil, err
 			}
@@ -340,13 +340,20 @@ func (svc *service) Assigner() (jrpc2.Assigner, error) {
 			return nil, nil
 		},
 		"$/cancelRequest": func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-			err := sess.CheckInitializationIsConfirmed()
+			err := session.CheckInitializationIsConfirmed()
 			if err != nil {
 				return nil, err
 			}
 
 			return handle(ctx, req, CancelRequest)
 		},
+	}
+
+	// For use in tests, e.g. to test request cancellation
+	if len(svc.additionalHandlers) > 0 {
+		for methodName, handlerFunc := range svc.additionalHandlers {
+			m[methodName] = handlerFunc
+		}
 	}
 
 	return convertMap(m), nil
@@ -452,9 +459,9 @@ func handle(ctx context.Context, req *jrpc2.Request, fn interface{}) (interface{
 	return result, err
 }
 
-func (svc *service) decoderForDocument(ctx context.Context, name string) (*decoder.PathDecoder, error) {
+func (svc *service) decoderForDocument(ctx context.Context, doc *document.Document) (*decoder.PathDecoder, error) {
 	return svc.decoder.Path(lang.Path{
-		Path:       filepath.Dir(name),
-		LanguageID: lsp.Retab.String(),
+		Path:       doc.Dir.Path(),
+		LanguageID: doc.LanguageID,
 	})
 }

@@ -18,20 +18,24 @@ func (svc *service) TextDocumentComplete(ctx context.Context, params gopls.Compl
 		return list, err
 	}
 
-	filename := string(params.TextDocument.URI)
-
-	d, err := svc.decoderForDocument(ctx, filename)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
+	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return list, err
 	}
 
-	pos, err := lsp.HCLPositionFromLspPosition(params.TextDocumentPositionParams.Position, svc.fs, filename)
+	d, err := svc.decoderForDocument(ctx, doc)
 	if err != nil {
 		return list, err
 	}
 
-	svc.logger.Printf("Looking for candidates at %q -> %#v", filename, pos)
-	candidates, err := d.CandidatesAtPos(ctx, filename, pos)
+	pos, err := lsp.HCLPositionFromLspPosition(params.TextDocumentPositionParams.Position, doc)
+	if err != nil {
+		return list, err
+	}
+
+	svc.logger.Printf("Looking for candidates at %q -> %#v", doc.Filename, pos)
+	candidates, err := d.CandidatesAtPos(ctx, doc.Filename, pos)
 	svc.logger.Printf("received candidates: %#v", candidates)
 	return lsp.ToCompletionList(candidates, cc.TextDocument), err
 }

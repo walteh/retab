@@ -10,6 +10,7 @@ require (
 	github.com/editorconfig/editorconfig-core-go/v2 v2.5.2
 	github.com/go-faster/errors v0.6.1
 	github.com/google/go-cmp v0.5.9
+	github.com/hashicorp/go-memdb v1.3.4
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/hcl-lang v0.0.0-20230919101450-aa9b38d58c90
@@ -27,6 +28,7 @@ require (
 	github.com/walteh/buildrc v0.14.1
 	github.com/walteh/snake v0.8.2
 	github.com/zclconf/go-cty v1.14.0
+	github.com/zclconf/go-cty-debug v0.0.0-20191215020915-b22d67c1ba0b
 	go.opentelemetry.io/otel v1.18.0
 	go.opentelemetry.io/otel/trace v1.18.0
 	go.uber.org/multierr v1.11.0
@@ -56,6 +58,8 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
+	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

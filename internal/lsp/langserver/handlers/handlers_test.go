@@ -236,3 +236,29 @@ func TempDir(t *testing.T, nested ...string) document.DirHandle {
 
 	return document.DirHandleFromPath(tmpDir)
 }
+
+func InitPluginCache(t *testing.T, dir string) {
+	pluginCacheDir := filepath.Join(dir, ".terraform", "plugins")
+	err := os.MkdirAll(pluginCacheDir, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.Create(filepath.Join(pluginCacheDir, "selections.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = f.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// create an empty file such that it's recognized as an indexable workspace
+	f, err = os.Create(filepath.Join(dir, "empty.tf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = f.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+}

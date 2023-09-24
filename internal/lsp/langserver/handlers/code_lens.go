@@ -14,14 +14,18 @@ import (
 func (svc *service) TextDocumentCodeLens(ctx context.Context, params gopls.CodeLensParams) ([]gopls.CodeLens, error) {
 	list := make([]gopls.CodeLens, 0)
 
-	filename := string(params.TextDocument.URI)
-
-	path := lang.Path{
-		Path:       filename,
-		LanguageID: lsp.Retab.String(),
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
+	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
+	if err != nil {
+		return list, err
 	}
 
-	lenses, err := svc.decoder.CodeLensesForFile(ctx, path, filename)
+	path := lang.Path{
+		Path:       doc.Dir.Path(),
+		LanguageID: doc.LanguageID,
+	}
+
+	lenses, err := svc.decoder.CodeLensesForFile(ctx, path, doc.Filename)
 	if err != nil {
 		return nil, err
 	}

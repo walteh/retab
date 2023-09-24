@@ -9,16 +9,23 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/spf13/afero"
+	"github.com/walteh/retab/internal/lsp/document"
 	"github.com/walteh/retab/internal/lsp/langserver"
+	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func TestLangServer_didChange_sequenceOfPartialChanges(t *testing.T) {
 	tmpDir := TempDir(t)
 
-	sess := NewMockSession(&MockSessionInput{})
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	ls := langserver.NewLangServerMock(t, sess)
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -124,11 +131,10 @@ module "app" {
 }`, TempDir(t).URI)})
 
 	path := filepath.Join(TempDir(t).Path(), "main.tf")
-	filename := string(path)
-
-	text, err := afero.ReadFile(afero.NewOsFs(), filename)
+	dh := document.HandleFromPath(path)
+	doc, err := ss.DocumentStore.GetDocument(dh)
 	if err != nil {
-		t.Fatalf("failed to read file: %s", err)
+		t.Fatal(err)
 	}
 
 	expectedText := `variable "service_host" {
@@ -147,7 +153,7 @@ module "app" {
 }
 `
 
-	if diff := cmp.Diff(expectedText, string(text)); diff != "" {
+	if diff := cmp.Diff(expectedText, string(doc.Text)); diff != "" {
 		t.Fatalf("unexpected text: %s", diff)
 	}
 }

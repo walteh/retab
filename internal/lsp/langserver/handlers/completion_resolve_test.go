@@ -23,6 +23,7 @@ func TestCompletionResolve_withoutInitialization(t *testing.T) {
 
 func TestCompletionResolve_withoutHook(t *testing.T) {
 	tmpDir := TempDir(t)
+	InitPluginCache(t, tmpDir.Path())
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(nil))
 	stop := ls.Start(t)

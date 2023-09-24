@@ -5,7 +5,6 @@ package handlers
 
 import (
 	"context"
-	"path/filepath"
 
 	"github.com/hashicorp/hcl-lang/decoder"
 	"github.com/hashicorp/hcl-lang/lang"
@@ -42,17 +41,21 @@ func (svc *service) GoToDeclaration(ctx context.Context, params gopls.TextDocume
 }
 
 func (svc *service) goToReferenceTarget(ctx context.Context, params gopls.TextDocumentPositionParams) (decoder.ReferenceTargets, error) {
-	filename := string(params.TextDocument.URI)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
+	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
+	if err != nil {
+		return nil, err
+	}
 
-	pos, err := lsp.HCLPositionFromLspPosition(params.Position, svc.fs, filename)
+	pos, err := lsp.HCLPositionFromLspPosition(params.Position, doc)
 	if err != nil {
 		return nil, err
 	}
 
 	path := lang.Path{
-		Path:       filepath.Dir(filename),
-		LanguageID: lsp.Retab.String(),
+		Path:       doc.Dir.Path(),
+		LanguageID: doc.LanguageID,
 	}
 
-	return svc.decoder.ReferenceTargetsForOriginAtPos(path, filename, pos)
+	return svc.decoder.ReferenceTargetsForOriginAtPos(path, doc.Filename, pos)
 }

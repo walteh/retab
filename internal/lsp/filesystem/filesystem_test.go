@@ -4,56 +4,32 @@
 package filesystem
 
 import (
+	"io/fs"
+	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/spf13/afero"
+	"github.com/google/go-cmp/cmp"
+	"github.com/walteh/retab/internal/lsp/document"
 )
 
-// func TestFilesystem_ReadFile_osOnly(t *testing.T) {
-// 	tmpDir := t.TempDir()
-// 	f, err := os.Create(filepath.Join(tmpDir, "testfile"))
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer f.Close()
-// 	content := "lorem ipsum"
-// 	_, err = f.WriteString(content)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// 	fs := NewFilesystem(testDocumentStore{})
-// 	b, err := fs.ReadFile(filepath.Join(tmpDir, "testfile"))
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	if string(b) != content {
-// 		t.Fatalf("expected content to match %q, given: %q",
-// 			content, string(b))
-// 	}
-
-// 	_, err = fs.ReadFile(filepath.Join(tmpDir, "not-existing"))
-// 	if err == nil {
-// 		t.Fatal("expected file to not exist")
-// 	}
-
-// 	if !os.IsNotExist(err) {
-// 		t.Fatalf("expected file to not exist, given error: %s", err)
-// 	}
-// }
-
-func TestFilesystem_ReadFile_memOnly(t *testing.T) {
-
-	fls := NewFilesystem(afero.NewMemMapFs())
+func TestFilesystem_ReadFile_osOnly(t *testing.T) {
+	tmpDir := t.TempDir()
+	f, err := os.Create(filepath.Join(tmpDir, "testfile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
 	content := "lorem ipsum"
-	err := afero.WriteFile(fls, "/tmp/test.tf", []byte(content), 0644)
+	_, err = f.WriteString(content)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	b, err := afero.ReadFile(fls, "/tmp/test.tf")
+	fs := NewFilesystem(testDocumentStore{})
+	b, err := fs.ReadFile(filepath.Join(tmpDir, "testfile"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +38,7 @@ func TestFilesystem_ReadFile_memOnly(t *testing.T) {
 			content, string(b))
 	}
 
-	_, err = afero.ReadFile(fls, filepath.Join("tmp", "not-existing"))
+	_, err = fs.ReadFile(filepath.Join(tmpDir, "not-existing"))
 	if err == nil {
 		t.Fatal("expected file to not exist")
 	}
@@ -72,267 +48,300 @@ func TestFilesystem_ReadFile_memOnly(t *testing.T) {
 	}
 }
 
-// func TestFilesystem_ReadFile_memAndOs(t *testing.T) {
-// 	tmpDir := t.TempDir()
-// 	testPath := filepath.Join(tmpDir, "testfile")
+func TestFilesystem_ReadFile_memOnly(t *testing.T) {
+	testHandle := document.HandleFromURI("file:///tmp/test.tf")
+	content := "test content"
 
-// 	f, err := os.Create(testPath)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer f.Close()
-// 	osContent := "os content"
-// 	_, err = f.WriteString(osContent)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	fs := NewFilesystem(testDocumentStore{
+		testHandle: &document.Document{
+			Dir:        testHandle.Dir,
+			Filename:   testHandle.Filename,
+			LanguageID: "retab",
+			Version:    0,
+			Text:       []byte(content),
+		},
+	})
 
-// 	testHandle := document.HandleFromPath(testPath)
-// 	memContent := "in-mem content"
-// 	fs := NewFilesystem(testDocumentStore{
-// 		testHandle: &document.Document{
-// 			Dir:        testHandle.Dir,
-// 			Filename:   testHandle.Filename,
-// 			LanguageID: "retab",
-// 			Version:    0,
-// 			Text:       []byte(memContent),
-// 		},
-// 	})
+	b, err := fs.ReadFile(testHandle.FullPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != content {
+		t.Fatalf("expected content to match %q, given: %q",
+			content, string(b))
+	}
 
-// 	b, err := fs.ReadFile(testPath)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	if string(b) != memContent {
-// 		t.Fatalf("expected content to match %q, given: %q",
-// 			memContent, string(b))
-// 	}
+	_, err = fs.ReadFile(filepath.Join("tmp", "not-existing"))
+	if err == nil {
+		t.Fatal("expected file to not exist")
+	}
 
-// 	_, err = fs.ReadFile(filepath.Join(tmpDir, "not-existing"))
-// 	if err == nil {
-// 		t.Fatal("expected file to not exist")
-// 	}
+	if !os.IsNotExist(err) {
+		t.Fatalf("expected file to not exist, given error: %s", err)
+	}
+}
 
-// 	if !os.IsNotExist(err) {
-// 		t.Fatalf("expected file to not exist, given error: %s", err)
-// 	}
-// }
+func TestFilesystem_ReadFile_memAndOs(t *testing.T) {
+	tmpDir := t.TempDir()
+	testPath := filepath.Join(tmpDir, "testfile")
 
-// func TestFilesystem_ReadDir_memAndOs(t *testing.T) {
-// 	tmpDir := t.TempDir()
+	f, err := os.Create(testPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	osContent := "os content"
+	_, err = f.WriteString(osContent)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	f, err := os.Create(filepath.Join(tmpDir, "osfile"))
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer f.Close()
+	testHandle := document.HandleFromPath(testPath)
+	memContent := "in-mem content"
+	fs := NewFilesystem(testDocumentStore{
+		testHandle: &document.Document{
+			Dir:        testHandle.Dir,
+			Filename:   testHandle.Filename,
+			LanguageID: "retab",
+			Version:    0,
+			Text:       []byte(memContent),
+		},
+	})
 
-// 	testHandle := document.HandleFromPath(filepath.Join(tmpDir, "memfile"))
-// 	fs := NewFilesystem(testDocumentStore{
-// 		testHandle: &document.Document{
-// 			Dir:        testHandle.Dir,
-// 			Filename:   testHandle.Filename,
-// 			LanguageID: "retab",
-// 			Version:    0,
-// 			Text:       []byte("test"),
-// 		},
-// 	})
+	b, err := fs.ReadFile(testPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != memContent {
+		t.Fatalf("expected content to match %q, given: %q",
+			memContent, string(b))
+	}
 
-// 	fis, err := fs.ReadDir(tmpDir)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	_, err = fs.ReadFile(filepath.Join(tmpDir, "not-existing"))
+	if err == nil {
+		t.Fatal("expected file to not exist")
+	}
 
-// 	expectedFis := []string{"memfile", "osfile"}
-// 	names := namesFromFileInfos(fis)
-// 	if diff := cmp.Diff(expectedFis, names); diff != "" {
-// 		t.Fatalf("file list mismatch: %s", diff)
-// 	}
-// }
+	if !os.IsNotExist(err) {
+		t.Fatalf("expected file to not exist, given error: %s", err)
+	}
+}
 
-// func TestFilesystem_ReadDir_memFsOnly(t *testing.T) {
-// 	tmpDir := t.TempDir()
+func TestFilesystem_ReadDir_memAndOs(t *testing.T) {
+	tmpDir := t.TempDir()
 
-// 	testHandle := document.HandleFromPath(filepath.Join(tmpDir, "memfile"))
-// 	fs := NewFilesystem(testDocumentStore{
-// 		testHandle: &document.Document{
-// 			Dir:        testHandle.Dir,
-// 			Filename:   testHandle.Filename,
-// 			LanguageID: "retab",
-// 			Version:    0,
-// 			Text:       []byte("test"),
-// 		},
-// 	})
+	f, err := os.Create(filepath.Join(tmpDir, "osfile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
 
-// 	fis, err := fs.ReadDir(tmpDir)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	testHandle := document.HandleFromPath(filepath.Join(tmpDir, "memfile"))
+	fs := NewFilesystem(testDocumentStore{
+		testHandle: &document.Document{
+			Dir:        testHandle.Dir,
+			Filename:   testHandle.Filename,
+			LanguageID: "retab",
+			Version:    0,
+			Text:       []byte("test"),
+		},
+	})
 
-// 	expectedFis := []string{"memfile"}
-// 	names := namesFromFileInfos(fis)
-// 	if diff := cmp.Diff(expectedFis, names); diff != "" {
-// 		t.Fatalf("file list mismatch: %s", diff)
-// 	}
-// }
+	fis, err := fs.ReadDir(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// func TestFilesystem_Open_osOnly(t *testing.T) {
-// 	tmpDir := t.TempDir()
+	expectedFis := []string{"memfile", "osfile"}
+	names := namesFromFileInfos(fis)
+	if diff := cmp.Diff(expectedFis, names); diff != "" {
+		t.Fatalf("file list mismatch: %s", diff)
+	}
+}
 
-// 	f, err := os.Create(filepath.Join(tmpDir, "testfile"))
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer f.Close()
-// 	content := "lorem ipsum"
-// 	_, err = f.WriteString(content)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+func TestFilesystem_ReadDir_memFsOnly(t *testing.T) {
+	tmpDir := t.TempDir()
 
-// 	fs := NewFilesystem(testDocumentStore{})
-// 	f1, err := fs.Open(filepath.Join(tmpDir, "testfile"))
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer f1.Close()
+	testHandle := document.HandleFromPath(filepath.Join(tmpDir, "memfile"))
+	fs := NewFilesystem(testDocumentStore{
+		testHandle: &document.Document{
+			Dir:        testHandle.Dir,
+			Filename:   testHandle.Filename,
+			LanguageID: "retab",
+			Version:    0,
+			Text:       []byte("test"),
+		},
+	})
 
-// 	f2, err := fs.Open(filepath.Join(tmpDir, "not-existing"))
-// 	if err == nil {
-// 		defer f2.Close()
-// 		t.Fatal("expected file to not exist")
-// 	}
+	fis, err := fs.ReadDir(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	if !os.IsNotExist(err) {
-// 		t.Fatalf("expected file to not exist, given error: %s", err)
-// 	}
-// }
+	expectedFis := []string{"memfile"}
+	names := namesFromFileInfos(fis)
+	if diff := cmp.Diff(expectedFis, names); diff != "" {
+		t.Fatalf("file list mismatch: %s", diff)
+	}
+}
 
-// func TestFilesystem_Open_memOnly(t *testing.T) {
-// 	tmpDir := t.TempDir()
+func TestFilesystem_Open_osOnly(t *testing.T) {
+	tmpDir := t.TempDir()
 
-// 	path := filepath.Join(tmpDir, "test.tf")
-// 	testHandle := document.HandleFromPath(path)
+	f, err := os.Create(filepath.Join(tmpDir, "testfile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	content := "lorem ipsum"
+	_, err = f.WriteString(content)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	fs := NewFilesystem(testDocumentStore{
-// 		testHandle: &document.Document{
-// 			Dir:        testHandle.Dir,
-// 			Filename:   testHandle.Filename,
-// 			LanguageID: "retab",
-// 			Version:    0,
-// 			Text:       []byte("test"),
-// 		},
-// 	})
+	fs := NewFilesystem(testDocumentStore{})
+	f1, err := fs.Open(filepath.Join(tmpDir, "testfile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f1.Close()
 
-// 	f1, err := fs.Open(path)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer f1.Close()
+	f2, err := fs.Open(filepath.Join(tmpDir, "not-existing"))
+	if err == nil {
+		defer f2.Close()
+		t.Fatal("expected file to not exist")
+	}
 
-// 	f2, err := fs.Open(filepath.Join("tmp", "not-existing"))
-// 	if err == nil {
-// 		defer f2.Close()
-// 		t.Fatal("expected file to not exist")
-// 	}
+	if !os.IsNotExist(err) {
+		t.Fatalf("expected file to not exist, given error: %s", err)
+	}
+}
 
-// 	if !os.IsNotExist(err) {
-// 		t.Fatalf("expected file to not exist, given error: %s", err)
-// 	}
-// }
+func TestFilesystem_Open_memOnly(t *testing.T) {
+	tmpDir := t.TempDir()
 
-// func TestFilesystem_Open_memAndOs(t *testing.T) {
-// 	tmpDir := t.TempDir()
-// 	testPath := filepath.Join(tmpDir, "testfile")
+	path := filepath.Join(tmpDir, "test.tf")
+	testHandle := document.HandleFromPath(path)
 
-// 	f, err := os.Create(testPath)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer f.Close()
-// 	osContent := "os content"
-// 	_, err = f.WriteString(osContent)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	fs := NewFilesystem(testDocumentStore{
+		testHandle: &document.Document{
+			Dir:        testHandle.Dir,
+			Filename:   testHandle.Filename,
+			LanguageID: "retab",
+			Version:    0,
+			Text:       []byte("test"),
+		},
+	})
 
-// 	testHandle := document.HandleFromPath(testPath)
-// 	memContent := "in-mem content"
+	f1, err := fs.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f1.Close()
 
-// 	fs := NewFilesystem(testDocumentStore{
-// 		testHandle: &document.Document{
-// 			Dir:        testHandle.Dir,
-// 			Filename:   testHandle.Filename,
-// 			LanguageID: "retab",
-// 			Version:    0,
-// 			Text:       []byte(memContent),
-// 		},
-// 	})
+	f2, err := fs.Open(filepath.Join("tmp", "not-existing"))
+	if err == nil {
+		defer f2.Close()
+		t.Fatal("expected file to not exist")
+	}
 
-// 	f1, err := fs.Open(testPath)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	fi, err := f1.Stat()
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	size := int(fi.Size())
-// 	if size != len(memContent) {
-// 		t.Fatalf("expected size to match %d, given: %d",
-// 			len(memContent), size)
-// 	}
+	if !os.IsNotExist(err) {
+		t.Fatalf("expected file to not exist, given error: %s", err)
+	}
+}
 
-// 	_, err = fs.Open(filepath.Join(tmpDir, "not-existing"))
-// 	if err == nil {
-// 		t.Fatal("expected file to not exist")
-// 	}
+func TestFilesystem_Open_memAndOs(t *testing.T) {
+	tmpDir := t.TempDir()
+	testPath := filepath.Join(tmpDir, "testfile")
 
-// 	if !os.IsNotExist(err) {
-// 		t.Fatalf("expected file to not exist, given error: %s", err)
-// 	}
-// }
+	f, err := os.Create(testPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	osContent := "os content"
+	_, err = f.WriteString(osContent)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// func namesFromFileInfos(entries []fs.DirEntry) []string {
-// 	names := make([]string, len(entries), len(entries))
-// 	for i, entry := range entries {
-// 		names[i] = entry.Name()
-// 	}
-// 	return names
-// }
+	testHandle := document.HandleFromPath(testPath)
+	memContent := "in-mem content"
 
-// type testDocumentStore map[document.Handle]*document.Document
+	fs := NewFilesystem(testDocumentStore{
+		testHandle: &document.Document{
+			Dir:        testHandle.Dir,
+			Filename:   testHandle.Filename,
+			LanguageID: "retab",
+			Version:    0,
+			Text:       []byte(memContent),
+		},
+	})
 
-// func (ds testDocumentStore) GetDocument(dh document.Handle) (*document.Document, error) {
-// 	doc, ok := ds[dh]
-// 	if !ok {
-// 		return nil, &document.DocumentNotFound{URI: dh.FullURI()}
-// 	}
-// 	return doc, nil
-// }
+	f1, err := fs.Open(testPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fi, err := f1.Stat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	size := int(fi.Size())
+	if size != len(memContent) {
+		t.Fatalf("expected size to match %d, given: %d",
+			len(memContent), size)
+	}
 
-// func (ds testDocumentStore) ListDocumentsInDir(dirHandle document.DirHandle) ([]*document.Document, error) {
-// 	docs := make([]*document.Document, 0)
+	_, err = fs.Open(filepath.Join(tmpDir, "not-existing"))
+	if err == nil {
+		t.Fatal("expected file to not exist")
+	}
 
-// 	for dh, doc := range ds {
-// 		if dh.Dir == dirHandle {
-// 			docs = append(docs, doc)
-// 		}
-// 	}
+	if !os.IsNotExist(err) {
+		t.Fatalf("expected file to not exist, given error: %s", err)
+	}
+}
 
-// 	return docs, nil
-// }
+func namesFromFileInfos(entries []fs.DirEntry) []string {
+	names := make([]string, len(entries), len(entries))
+	for i, entry := range entries {
+		names[i] = entry.Name()
+	}
+	return names
+}
 
-// func testFilesystem(docStore DocumentStore) *Filesystem {
-// 	fs := NewFilesystem(docStore)
-// 	fs.logger = testLogger()
-// 	return fs
-// }
+type testDocumentStore map[document.Handle]*document.Document
 
-// func testLogger() *log.Logger {
-// 	if testing.Verbose() {
-// 		return log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
-// 	}
+func (ds testDocumentStore) GetDocument(dh document.Handle) (*document.Document, error) {
+	doc, ok := ds[dh]
+	if !ok {
+		return nil, &document.DocumentNotFound{URI: dh.FullURI()}
+	}
+	return doc, nil
+}
 
-// 	return log.New(ioutil.Discard, "", 0)
-// }
+func (ds testDocumentStore) ListDocumentsInDir(dirHandle document.DirHandle) ([]*document.Document, error) {
+	docs := make([]*document.Document, 0)
+
+	for dh, doc := range ds {
+		if dh.Dir == dirHandle {
+			docs = append(docs, doc)
+		}
+	}
+
+	return docs, nil
+}
+
+func testFilesystem(docStore DocumentStore) *Filesystem {
+	fs := NewFilesystem(docStore)
+	fs.logger = testLogger()
+	return fs
+}
+
+func testLogger() *log.Logger {
+	if testing.Verbose() {
+		return log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
+	}
+
+	return log.New(ioutil.Discard, "", 0)
+}

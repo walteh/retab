@@ -7,10 +7,8 @@ import (
 	"context"
 
 	"github.com/creachadair/jrpc2"
-	"github.com/spf13/afero"
 	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/lsp"
-	"github.com/walteh/retab/internal/lsp/source"
 )
 
 func (svc *service) TextDocumentSemanticTokensFull(ctx context.Context, params gopls.SemanticTokensParams) (gopls.SemanticTokens, error) {
@@ -32,25 +30,24 @@ func (svc *service) TextDocumentSemanticTokensFull(ctx context.Context, params g
 		return tks, jrpc2.MethodNotFound.Err()
 	}
 
-	filename := string(params.TextDocument.URI)
-
-	d, err := svc.decoderForDocument(ctx, filename)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
+	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return tks, err
 	}
 
-	tokens, err := d.SemanticTokensInFile(ctx, filename)
+	d, err := svc.decoderForDocument(ctx, doc)
 	if err != nil {
 		return tks, err
 	}
 
-	text, err := afero.ReadFile(svc.fs, filename)
+	tokens, err := d.SemanticTokensInFile(ctx, doc.Filename)
 	if err != nil {
 		return tks, err
 	}
 
 	te := &lsp.TokenEncoder{
-		Lines:      source.MakeSourceLines(filename, text),
+		Lines:      doc.Lines,
 		Tokens:     tokens,
 		ClientCaps: cc.TextDocument.SemanticTokens,
 	}

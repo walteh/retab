@@ -9,6 +9,7 @@ import (
 
 	"github.com/walteh/retab/internal/lsp/langserver"
 	"github.com/walteh/retab/internal/lsp/langserver/session"
+	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func TestLangServer_formattingWithoutInitialization(t *testing.T) {
@@ -31,7 +32,14 @@ func TestLangServer_formattingWithoutInitialization(t *testing.T) {
 func TestLangServer_formatting_basic(t *testing.T) {
 	tmpDir := TempDir(t)
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -82,7 +90,14 @@ func TestLangServer_formatting_basic(t *testing.T) {
 func TestLangServer_formatting_variables(t *testing.T) {
 	tmpDir := TempDir(t)
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 

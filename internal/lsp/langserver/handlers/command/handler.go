@@ -5,8 +5,11 @@ package command
 
 import (
 	"log"
+
+	"github.com/walteh/retab/internal/lsp/state"
 )
 
 type CmdHandler struct {
-	Logger *log.Logger
+	StateStore *state.StateStore
+	Logger     *log.Logger
 }

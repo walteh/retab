@@ -16,18 +16,22 @@ func (svc *service) TextDocumentLink(ctx context.Context, params gopls.DocumentL
 		return nil, err
 	}
 
-	filename := string(params.TextDocument.URI)
-
-	// if doc.LanguageID != lsp.Retab.String() {
-	// 	return nil, nil
-	// }
-
-	d, err := svc.decoderForDocument(ctx, filename)
+	dh := lsp.HandleFromDocumentURI(params.TextDocument.URI)
+	doc, err := svc.stateStore.DocumentStore.GetDocument(dh)
 	if err != nil {
 		return nil, err
 	}
 
-	links, err := d.LinksInFile(filename)
+	if doc.LanguageID != lsp.Retab.String() {
+		return nil, nil
+	}
+
+	d, err := svc.decoderForDocument(ctx, doc)
+	if err != nil {
+		return nil, err
+	}
+
+	links, err := d.LinksInFile(doc.Filename)
 	if err != nil {
 		return nil, err
 	}

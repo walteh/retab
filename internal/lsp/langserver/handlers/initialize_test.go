@@ -5,16 +5,25 @@ package handlers
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/creachadair/jrpc2"
 	"github.com/walteh/retab/internal/lsp/langserver"
+	"github.com/walteh/retab/internal/lsp/state"
 )
 
 func TestInitialize_twice(t *testing.T) {
 	tmpDir := TempDir(t)
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -38,7 +47,14 @@ func TestInitialize_twice(t *testing.T) {
 func TestInitialize_withIncompatibleTerraformVersion(t *testing.T) {
 	tmpDir := TempDir(t)
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -69,7 +85,14 @@ func TestInitialize_withInvalidRootURI(t *testing.T) {
 func TestInitialize_multipleFolders(t *testing.T) {
 	rootDir := TempDir(t)
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
@@ -91,8 +114,20 @@ func TestInitialize_multipleFolders(t *testing.T) {
 
 func TestInitialize_ignoreDirectoryNames(t *testing.T) {
 	tmpDir := TempDir(t, "plugin", "ignore")
+	pluginDir := filepath.Join(tmpDir.Path(), "plugin")
+	emptyDir := filepath.Join(tmpDir.Path(), "ignore")
 
-	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
+	InitPluginCache(t, pluginDir)
+	InitPluginCache(t, emptyDir)
+
+	ss, err := state.NewStateStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{
+		StateStore: ss,
+	}))
 	stop := ls.Start(t)
 	defer stop()
 
