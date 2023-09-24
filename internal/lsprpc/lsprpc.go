@@ -89,11 +89,11 @@ func (s *StreamServer) ServeStream(ctx context.Context, conn jsonrpc2.Conn) erro
 			event.Error(ctx, "error shutting down", err)
 		}
 	}()
-	executable, err := os.Executable()
-	if err != nil {
-		log.Printf("error getting gopls path: %v", err)
-		executable = ""
-	}
+	// executable, err := os.Executable()
+	// if err != nil {
+	// 	log.Printf("error getting gopls path: %v", err)
+	// 	executable = ""
+	// }
 	ctx = protocol.WithClient(ctx, client)
 	conn.Go(ctx,
 		protocol.Handlers(

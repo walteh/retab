@@ -7,8 +7,6 @@ import (
 
 	"github.com/hashicorp/hcl-lang/decoder"
 	"github.com/spf13/afero"
-	"github.com/walteh/retab/internal/lsp/filesystem"
-	"github.com/walteh/retab/internal/lsp/utm"
 )
 
 type CacheOLD struct {
@@ -30,20 +28,20 @@ func (s *CacheOLD) ID() string {
 	return s.id
 }
 
-func NewCacheOLD(ctx context.Context) *CacheOLD {
-	aferoFs := afero.NewMemMapFs()
-	fls := filesystem.NewFilesystem(aferoFs)
-	dec := decoder.NewDecoder(fls)
-	dCtx := decoder.NewDecoderContext()
-	dCtx.UtmSource = utm.UtmSource
-	dCtx.UtmMedium = utm.UtmMedium(ctx)
-	dCtx.UseUtmContent = true
-	return &CacheOLD{
-		id:      strconv.FormatInt(time.Now().UnixNano(), 10),
-		decoder: dec,
-		fs:      aferoFs,
-	}
-}
+// func NewCacheOLD(ctx context.Context) *CacheOLD {
+// 	aferoFs := afero.NewMemMapFs()
+// 	fls := filesystem.NewFilesystem(aferoFs)
+// 	dec := decoder.NewDecoder(fls)
+// 	dCtx := decoder.NewDecoderContext()
+// 	dCtx.UtmSource = utm.UtmSource
+// 	dCtx.UtmMedium = utm.UtmMedium(ctx)
+// 	dCtx.UseUtmContent = true
+// 	return &CacheOLD{
+// 		id:      strconv.FormatInt(time.Now().UnixNano(), 10),
+// 		decoder: dec,
+// 		fs:      aferoFs,
+// 	}
+// }
 
 type SessionOLD struct {
 	id    string

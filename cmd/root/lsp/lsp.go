@@ -81,11 +81,11 @@ func (s *Serve) remoteArgs(network, address string) []string {
 
 // Run configures a server based on the flags, and then runs it.
 // It blocks until the server shuts down.
-func (s *Serve) Run(ctx context.Context, args ...string) error {
+func (s *Serve) Run(ctx context.Context, con jsonrpc2.Conn, args ...string) error {
 	if len(args) > 0 {
 		return tool.CommandLineErrorf("server does not take arguments, got %v", args)
 	}
-
+	s.Port = 8090
 	di := debug.GetInstance(ctx)
 	isDaemon := s.Address != "" || s.Port != 0
 	if di != nil {
@@ -146,12 +146,20 @@ func (s *Serve) Run(ctx context.Context, args ...string) error {
 		defer log.Printf("Gopls daemon: exiting")
 		return jsonrpc2.ListenAndServe(ctx, network, addr, ss, s.IdleTimeout)
 	}
-	stream := jsonrpc2.NewHeaderStream(fakenet.NewConn("stdio", os.Stdin, os.Stdout))
-	if s.Trace {
-		stream = protocol.LoggingStream(stream, di.LogWriter)
+
+	var conn jsonrpc2.Conn
+
+	if con == nil {
+
+		stream := jsonrpc2.NewHeaderStream(fakenet.NewConn("stdio", os.Stdin, os.Stdout))
+		if s.Trace {
+			stream = protocol.LoggingStream(stream, di.LogWriter)
+		}
+		log.Printf("Gopls daemon: serving on stdin/stdout...")
+		conn = jsonrpc2.NewConn(stream)
+	} else {
+		conn = con
 	}
-	log.Printf("Gopls daemon: serving on stdin/stdout...")
-	conn := jsonrpc2.NewConn(stream)
 	err := ss.ServeStream(ctx, conn)
 	if errors.Is(err, io.EOF) {
 		return nil

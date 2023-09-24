@@ -31,5 +31,5 @@ func (me *Handler) ParseArguments(_ context.Context, _ *cobra.Command, _ []strin
 
 func (me *Handler) Run(ctx context.Context) error {
 
-	return NewServe().Run(debug.WithInstance(ctx, "./de.bug", "serve"))
+	return NewServe().Run(debug.WithInstance(ctx, "./de.bug", "serve"), nil)
 }
