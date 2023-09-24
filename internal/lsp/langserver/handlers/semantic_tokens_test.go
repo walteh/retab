@@ -129,6 +129,7 @@ func TestSemanticTokensFull_clientSupportsDelta(t *testing.T) {
 		Method:    "initialized",
 		ReqParams: "{}",
 	})
+
 	ls.Call(t, &langserver.CallRequest{
 		Method: "textDocument/didOpen",
 		ReqParams: fmt.Sprintf(`{

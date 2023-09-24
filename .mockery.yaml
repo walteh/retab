@@ -10,5 +10,7 @@
         {
             github.com/walteh/retab/pkg/configuration:
                 { interfaces: { Provider: {} } },
+            github.com/walteh/retab/gen/gopls/protocol:
+                { interfaces: { Server: {} } },
         },
 }

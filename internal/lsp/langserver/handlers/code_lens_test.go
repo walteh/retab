@@ -30,7 +30,10 @@ func TestCodeLens_withoutInitialization(t *testing.T) {
 }
 
 func TestCodeLens_withoutOptIn(t *testing.T) {
+
 	tmpDir := TempDir(t)
+
+	// srv := NewMockServer(&MockSessionInput{})
 
 	var testSchema tfjson.ProviderSchemas
 	err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
@@ -81,12 +84,6 @@ func TestCodeLens_withoutOptIn(t *testing.T) {
 
 func TestCodeLens_referenceCount(t *testing.T) {
 	tmpDir := TempDir(t)
-
-	// var testSchema tfjson.ProviderSchemas
-	// err := json.Unmarshal([]byte(testModuleSchemaOutput), &testSchema)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
 
 	ls := langserver.NewLangServerMock(t, NewMockSession(&MockSessionInput{}))
 	stop := ls.Start(t)

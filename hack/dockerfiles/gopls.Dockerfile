@@ -79,6 +79,7 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 
 	copy_pkg gopls/internal/lsp filecache
 	copy_pkg gopls/internal/lsp lru
+	copy_pkg gopls/internal/lsp tests
 
 
 

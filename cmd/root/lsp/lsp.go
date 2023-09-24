@@ -16,8 +16,10 @@ import (
 
 	"github.com/walteh/retab/gen/gopls/fakenet"
 	"github.com/walteh/retab/gen/gopls/jsonrpc2"
+	"github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/gen/gopls/tool"
 	"github.com/walteh/retab/internal/cache"
+	"github.com/walteh/retab/internal/debug"
 	"github.com/walteh/retab/internal/lsprpc"
 	"github.com/walteh/retab/internal/source"
 )
@@ -33,9 +35,9 @@ type Serve struct {
 	Trace       bool          `flag:"rpc.trace" help:"print the full rpc trace in lsp inspector format"`
 	Debug       string        `flag:"debug" help:"serve debug information on the supplied address"`
 
-	// RemoteListenTimeout time.Duration `flag:"remote.listen.timeout" help:"when used [with] -remote=auto, the -listen.timeout value used to start the daemon"`
-	// RemoteDebug         string        `flag:"remote.debug" help:"when used [with] -remote=auto, the -debug value used to start the daemon"`
-	// RemoteLogfile       string        `flag:"remote.logfile" help:"when used [with] -remote=auto, the -logfile value used to start the daemon"`
+	RemoteListenTimeout time.Duration `flag:"remote.listen.timeout" help:"when used [with] -remote=auto, the -listen.timeout value used to start the daemon"`
+	RemoteDebug         string        `flag:"remote.debug" help:"when used [with] -remote=auto, the -debug value used to start the daemon"`
+	RemoteLogfile       string        `flag:"remote.logfile" help:"when used [with] -remote=auto, the -logfile value used to start the daemon"`
 
 	// app *Application
 }
@@ -65,15 +67,15 @@ func (s *Serve) remoteArgs(network, address string) []string {
 	args := []string{"serve",
 		"-listen", fmt.Sprintf(`%s;%s`, network, address),
 	}
-	// if s.RemoteDebug != "" {
-	// 	args = append(args, "-debug", s.RemoteDebug)
-	// }
-	// if s.RemoteListenTimeout != 0 {
-	// 	args = append(args, "-listen.timeout", s.RemoteListenTimeout.String())
-	// }
-	// if s.RemoteLogfile != "" {
-	// 	args = append(args, "-logfile", s.RemoteLogfile)
-	// }
+	if s.RemoteDebug != "" {
+		args = append(args, "-debug", s.RemoteDebug)
+	}
+	if s.RemoteListenTimeout != 0 {
+		args = append(args, "-listen.timeout", s.RemoteListenTimeout.String())
+	}
+	if s.RemoteLogfile != "" {
+		args = append(args, "-logfile", s.RemoteLogfile)
+	}
 	return args
 }
 
@@ -84,20 +86,33 @@ func (s *Serve) Run(ctx context.Context, args ...string) error {
 		return tool.CommandLineErrorf("server does not take arguments, got %v", args)
 	}
 
+	di := debug.GetInstance(ctx)
 	isDaemon := s.Address != "" || s.Port != 0
+	if di != nil {
 
+		closeLog, err := di.SetLogFile(s.Logfile, isDaemon)
+		if err != nil {
+			return err
+		}
+		defer closeLog()
+		di.ServerAddress = s.Address
+		sss, err := di.Serve(ctx, ":8091")
+		if err != nil {
+			return err
+		}
+
+		log.Println("h1", sss)
+
+	}
 	var ss jsonrpc2.StreamServer
-	// if s.Remote != "" {
+	// if s.app.Remote != "" {
 	// 	var err error
 	// 	ss, err = lsprpc.NewForwarder(s.app.Remote, s.remoteArgs)
 	// 	if err != nil {
 	// 		return fmt.Errorf("creating forwarder: %w", err)
 	// 	}
 	// } else {
-	cached := cache.New(nil)
-	ss = lsprpc.NewStreamServer(cached, isDaemon, func(o *source.Options) {
-
-	})
+	ss = lsprpc.NewStreamServer(cache.New(nil), isDaemon, func(o *source.Options) {})
 	// }
 
 	var network, addr string
@@ -133,7 +148,7 @@ func (s *Serve) Run(ctx context.Context, args ...string) error {
 	}
 	stream := jsonrpc2.NewHeaderStream(fakenet.NewConn("stdio", os.Stdin, os.Stdout))
 	if s.Trace {
-		// stream = protocol.LoggingStream(stream, di.LogWriter)
+		stream = protocol.LoggingStream(stream, di.LogWriter)
 	}
 	log.Printf("Gopls daemon: serving on stdin/stdout...")
 	conn := jsonrpc2.NewConn(stream)

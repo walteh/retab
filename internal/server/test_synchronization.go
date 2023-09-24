@@ -18,12 +18,6 @@ import (
 	"github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/gen/gopls/span"
 	"github.com/walteh/retab/internal/source"
-	// "golang.org/x/tools/gopls/internal/lsp/protocol"
-	// "golang.org/x/tools/gopls/internal/lsp/source"
-	// "golang.org/x/tools/gopls/internal/span"
-	// "golang.org/x/tools/internal/event"
-	// "golang.org/x/tools/internal/event/tag"
-	// "golang.org/x/tools/internal/jsonrpc2"
 )
 
 // ModificationSource identifies the origin of a change.

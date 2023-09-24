@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/hcl-lang/decoder"
 	"github.com/hashicorp/hcl-lang/lang"
 	"github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/lsp"
@@ -27,7 +28,7 @@ func (me *Server) CodeLens(ctx context.Context, params *protocol.CodeLensParams)
 		LanguageID: lsp.Retab.String(),
 	}
 
-	lenses, err := me.session.Decoder().CodeLensesForFile(ctx, path, filename)
+	lenses, err := decoder.NewDecoder(me.session).CodeLensesForFile(ctx, path, filename)
 	if err != nil {
 		return nil, err
 	}

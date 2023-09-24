@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
 	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/lsp"
@@ -33,7 +34,10 @@ func (svc *service) textDocumentCodeAction(ctx context.Context, params gopls.Cod
 	}
 
 	for _, o := range params.Context.Only {
-		svc.logger.Printf("Code actions requested: %q", o)
+		zerolog.Ctx(ctx).Debug().
+			Str("uri", string(params.TextDocument.URI)).
+			Str("codeActionKind", string(o)).
+			Msg("code action requested")
 	}
 
 	wantedCodeActions := lsp.SupportedCodeActions.Only(params.Context.Only)
@@ -42,7 +46,10 @@ func (svc *service) textDocumentCodeAction(ctx context.Context, params gopls.Cod
 			params.TextDocument.URI, params.Context.Only)
 	}
 
-	svc.logger.Printf("Code actions supported: %v", wantedCodeActions)
+	zerolog.Ctx(ctx).Debug().
+		Any("wantedCodeActions", wantedCodeActions).
+		Str("uri", string(params.TextDocument.URI)).
+		Msg("code action supported")
 
 	filename := string(params.TextDocument.URI)
 

@@ -26,6 +26,7 @@ import (
 	"github.com/walteh/retab/internal/cache"
 	"github.com/walteh/retab/internal/command"
 	"github.com/walteh/retab/internal/debug"
+	"github.com/walteh/retab/internal/server"
 	"github.com/walteh/retab/internal/source"
 )
 
@@ -47,7 +48,7 @@ type StreamServer struct {
 	// serverForTest may be set to a test fake for testing.
 	serverForTest protocol.Server
 
-	serverBuilder ServerBuilder
+	// serverBuilder ServerBuilder
 }
 
 // NewStreamServer creates a StreamServer using the shared cache. If
@@ -60,12 +61,12 @@ func NewStreamServer(cache *cache.Cache, daemon bool, optionsFunc func(*source.O
 func (s *StreamServer) Binder() *ServerBinder {
 	newServer := func(ctx context.Context, client protocol.ClientCloser) protocol.Server {
 		sess := cache.NewSession(ctx, s.cache)
-		server := s.serverForTest
-		if server == nil {
+		srv := s.serverForTest
+		if srv == nil {
 			opts := source.DefaultOptions(s.optionsOverrides)
-			server = s.serverBuilder(ctx, sess, opts, client)
+			srv = server.NewServer(sess, client, opts)
 		}
-		return server
+		return srv
 	}
 	return NewServerBinder(newServer)
 }
@@ -75,16 +76,16 @@ func (s *StreamServer) Binder() *ServerBinder {
 func (s *StreamServer) ServeStream(ctx context.Context, conn jsonrpc2.Conn) error {
 	client := protocol.ClientDispatcher(conn)
 	sess := cache.NewSession(ctx, s.cache)
-	server := s.serverForTest
-	if server == nil {
+	srv := s.serverForTest
+	if srv == nil {
 		opts := source.DefaultOptions(s.optionsOverrides)
-		server = s.serverBuilder(ctx, sess, opts, client)
+		srv = server.NewServer(sess, client, opts)
 	}
 	// Clients may or may not send a shutdown message. Make sure the server is
 	// shut down.
 	// TODO(rFindley): this shutdown should perhaps be on a disconnected context.
 	defer func() {
-		if err := server.Shutdown(ctx); err != nil {
+		if err := srv.Shutdown(ctx); err != nil {
 			event.Error(ctx, "error shutting down", err)
 		}
 	}()
@@ -97,7 +98,7 @@ func (s *StreamServer) ServeStream(ctx context.Context, conn jsonrpc2.Conn) erro
 	conn.Go(ctx,
 		protocol.Handlers(
 			handshaker(sess, executable, s.daemon,
-				protocol.ServerHandler(server,
+				protocol.ServerHandler(srv,
 					jsonrpc2.MethodNotFound))))
 	if s.daemon {
 		log.Printf("Session %s: connected", sess.ID())

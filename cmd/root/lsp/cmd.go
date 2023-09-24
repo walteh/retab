@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"github.com/walteh/retab/internal/debug"
 	"github.com/walteh/snake"
 )
 
@@ -29,5 +30,6 @@ func (me *Handler) ParseArguments(_ context.Context, _ *cobra.Command, _ []strin
 }
 
 func (me *Handler) Run(ctx context.Context) error {
-	return NewServe().Run(ctx, []string{}...)
+
+	return NewServe().Run(debug.WithInstance(ctx, "./de.bug", "serve"))
 }
