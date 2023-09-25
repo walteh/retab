@@ -26,23 +26,6 @@ import (
 	"github.com/walteh/retab/internal/source"
 )
 
-func (s *Server) getSupportedCodeActions() []protocol.CodeActionKind {
-	allCodeActionKinds := make(map[protocol.CodeActionKind]struct{})
-	for _, kinds := range s.Options().SupportedCodeActions {
-		for kind := range kinds {
-			allCodeActionKinds[kind] = struct{}{}
-		}
-	}
-	var result []protocol.CodeActionKind
-	for kind := range allCodeActionKinds {
-		result = append(result, kind)
-	}
-	sort.Slice(result, func(i, j int) bool {
-		return result[i] < result[j]
-	})
-	return result
-}
-
 func (s *Server) initialize(ctx context.Context, params *protocol.ParamInitialize) (*protocol.InitializeResult, error) {
 	ctx, done := event.Start(ctx, "lsp.Server.initialize")
 	defer done()

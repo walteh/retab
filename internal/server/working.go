@@ -94,6 +94,12 @@ type Server struct {
 	diagnosticsMu sync.Mutex
 	diagnostics   map[span.URI]*fileReports
 
+	// gcOptimizationDetails describes the packages for which we want
+	// optimization details to be included in the diagnostics. The key is the
+	// ID of the package.
+	gcOptimizationDetailsMu sync.Mutex
+	gcOptimizationDetails   map[source.PackageID]struct{}
+
 	// diagnosticsSema limits the concurrency of diagnostics runs, which can be
 	// expensive.
 	diagnosticsSema chan struct{}

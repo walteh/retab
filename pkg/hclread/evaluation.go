@@ -2,6 +2,7 @@ package hclread
 
 import (
 	"context"
+	"io"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/userfunc"
@@ -12,15 +13,21 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 )
 
+// old implementation, for backwards compatibility
 func NewEvaluation(ctx context.Context, fle afero.File) (*hcl.File, *hcl.EvalContext, *hclsyntax.Body, error) {
 	defer fle.Close()
+
+	return NewEvaluationReadCloser(ctx, fle, fle.Name())
+}
+
+func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*hcl.File, *hcl.EvalContext, *hclsyntax.Body, error) {
 
 	all, err := afero.ReadAll(fle)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	hcldata, errd := hclsyntax.ParseConfig(all, fle.Name(), hcl.InitialPos)
+	hcldata, errd := hclsyntax.ParseConfig(all, name, hcl.InitialPos)
 	if errd.HasErrors() {
 		return nil, nil, nil, errd
 	}

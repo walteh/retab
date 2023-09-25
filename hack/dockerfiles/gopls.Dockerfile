@@ -36,7 +36,8 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 		(
 			mkdir -p /out/$name
 			cd ./$from/$name
-			find . \( -name '*.go' ! -name '*_test.go'  ! -path '*/generate/*' ! -path '*/testdata/*'  \) -type f | tar -cf - --files-from - | tar -C /out/$name -xf -
+			# find . \( -name '*.go' ! -name '*_test.go'  ! -path '*/generate/*' ! -path '*/testdata/*'  \) -type f | tar -cf - --files-from - | tar -C /out/$name -xf -
+			find . \( -name '*.go' ! -path '*/generate/*'  \) -type f | tar -cf - --files-from - | tar -C /out/$name -xf -
 		)
 	}
 
@@ -62,13 +63,6 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 	copy_pkg internal xcontext
 	copy_pkg internal tool
 	copy_pkg internal fakenet
-	copy_pkg gopls/internal/lsp progress
-	copy_pkg gopls/internal span
-	copy_pkg gopls/internal telemetry
-	copy_pkg gopls/internal/lsp safetoken
-	copy_pkg gopls/internal/lsp glob
-	copy_pkg gopls/internal bug
-	copy_pkg gopls/internal/lsp protocol
 	copy_pkg internal diff
 	copy_pkg internal gcimporter
 	copy_pkg internal pkgbits
@@ -78,17 +72,9 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 	copy_pkg internal gocommand
 	copy_pkg internal fastwalk
 	copy_pkg internal facts
+	copy_pkg internal stack
 	copy_pkg internal typesinternal
 	copy_pkg internal packagesinternal
-	copy_pkg gopls/internal vulncheck
-	copy_pkg internal goroot
-	copy_pkg internal analysisinternal
-	copy_pkg gopls/internal/lsp lsprpc
-	copy_pkg gopls/internal/lsp debug
-	copy_pkg gopls/internal/lsp tests
-	copy_pkg gopls/internal/lsp analysis
-	copy_pkg gopls/internal/lsp cache
-
 	copy_pkg internal refactor
 	copy_pkg internal robustio
 	copy_pkg internal memoize
@@ -96,19 +82,49 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 	copy_pkg internal persistent
 	copy_pkg internal tokeninternal
 	copy_pkg internal typeparams
-	copy_pkg gopls/internal/lsp snippet
+	copy_pkg internal packagesinternal
+	copy_pkg internal goroot
+	copy_pkg internal analysisinternal
 	copy_pkg internal fuzzy
-	copy_pkg gopls/internal/lsp frob
-	copy_pkg gopls/internal astutil
+	copy_pkg internal apidiff
+	copy_pkg internal proxydir
+	copy_pkg gopls/internal/lsp fake
 
+	copy_pkg gopls/internal span
+	copy_pkg gopls/internal telemetry
+	copy_pkg gopls/internal bug
+	copy_pkg gopls/internal vulncheck
+	copy_pkg gopls/internal astutil
+	copy_pkg gopls/internal hooks
+
+	copy_pkg gopls/internal/lsp snippet
+	copy_pkg gopls/internal/lsp frob
+	copy_pkg gopls/internal/lsp lsprpc
+	copy_pkg gopls/internal/lsp debug
+	copy_pkg gopls/internal/lsp tests
+	copy_pkg gopls/internal/lsp analysis
+	copy_pkg gopls/internal/lsp cache
+	copy_pkg gopls/internal/lsp progress
 	copy_pkg gopls/internal/lsp filecache
 	copy_pkg gopls/internal/lsp lru
+	copy_pkg gopls/internal/lsp safetoken
+	copy_pkg gopls/internal/lsp glob
+	copy_pkg gopls/internal/lsp protocol
+	copy_pkg gopls/internal/lsp regtest
+	copy_pkg gopls/internal/lsp template
+	copy_pkg gopls/internal/lsp mod
+
+	rm -rf /out/mod/code_lens.go
+
+
+
 
 
 	# find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/internal/imports|golang.org/x/tools/imports|g" {} \;
 	find /out -type f -name "*.go" -exec sed -i "s|\"golang.org/x/tools/gopls/internal/lsp\"|lsp \"github.com/walteh/retab/internal/server\"|g" {} \;
 	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/gopls/internal/lsp/source|github.com/walteh/retab/internal/source|g" {} \;
 	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/gopls/internal/lsp/command|github.com/walteh/retab/internal/command|g" {} \;
+	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/gopls/internal/lsp/cmd|github.com/walteh/retab/internal/cmd|g" {} \;
 
 	find /out -type f -name '*.go' -exec sed -i 's|command.New[^\(]*Command|command.NewNoopCommand|g' {} \;
 

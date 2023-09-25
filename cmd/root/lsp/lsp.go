@@ -14,13 +14,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/walteh/retab/gen/gopls/cache"
+	"github.com/walteh/retab/gen/gopls/debug"
 	"github.com/walteh/retab/gen/gopls/fakenet"
 	"github.com/walteh/retab/gen/gopls/jsonrpc2"
+	"github.com/walteh/retab/gen/gopls/lsprpc"
 	"github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/gen/gopls/tool"
-	"github.com/walteh/retab/internal/cache"
-	"github.com/walteh/retab/internal/debug"
-	"github.com/walteh/retab/internal/lsprpc"
+
 	"github.com/walteh/retab/internal/source"
 )
 

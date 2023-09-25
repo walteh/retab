@@ -5,11 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/k0kubun/pp/v3"
+	"github.com/walteh/retab/gen/gopls/debug"
 	"github.com/walteh/retab/gen/gopls/fakenet"
 	"github.com/walteh/retab/gen/gopls/jsonrpc2"
 	"github.com/walteh/retab/gen/gopls/protocol"
-	"github.com/walteh/retab/internal/debug"
 )
 
 func TestFull(t *testing.T) {
@@ -43,9 +42,9 @@ func TestFull(t *testing.T) {
 			}
 		}()
 
-		conn.Go()
+		// conn.Go()
 
-		pp.Println(resp)
+		// pp.Println(resp)
 
 		<-ctx.Done()
 
