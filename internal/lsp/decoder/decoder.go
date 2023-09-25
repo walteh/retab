@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/walteh/retab/internal/lsp/codelens"
 	"github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/internal/lsp/protocol"
 	"github.com/walteh/retab/internal/lsp/utm"
-	"github.com/walteh/retab/internal/protocol"
 )
 
 func varsPathContext(path lang.Path) (*decoder.PathContext, error) {

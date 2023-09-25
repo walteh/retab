@@ -10,8 +10,8 @@ import (
 	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	lsctx "github.com/walteh/retab/internal/lsp/context"
 	"github.com/walteh/retab/internal/lsp/lsp"
+	"github.com/walteh/retab/internal/lsp/protocol"
 	"github.com/walteh/retab/internal/lsp/uri"
-	"github.com/walteh/retab/internal/protocol"
 )
 
 func (svc *service) Initialize(ctx context.Context, params gopls.InitializeParams) (gopls.InitializeResult, error) {

@@ -17,12 +17,12 @@ import (
 	"sync"
 
 	"github.com/walteh/retab/gen/gopls/bug"
+	"github.com/walteh/retab/gen/gopls/debug"
 	"github.com/walteh/retab/gen/gopls/event"
 	"github.com/walteh/retab/gen/gopls/jsonrpc2"
 	"github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/gen/gopls/span"
 	"github.com/walteh/retab/gen/gopls/telemetry"
-	"github.com/walteh/retab/internal/debug"
 	"github.com/walteh/retab/internal/source"
 )
 

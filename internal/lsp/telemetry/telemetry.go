@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/walteh/retab/internal/protocol"
+	"github.com/walteh/retab/internal/lsp/protocol"
 )
 
 type Telemetry struct {

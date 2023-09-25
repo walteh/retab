@@ -10,7 +10,7 @@ import (
 	gopls "github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/lsp"
 	"github.com/walteh/retab/internal/lsp/mdplain"
-	"github.com/walteh/retab/internal/protocol"
+	"github.com/walteh/retab/internal/lsp/protocol"
 )
 
 func (svc *service) CompletionItemResolve(ctx context.Context, params protocol.CompletionItemWithResolveHook) (protocol.CompletionItemWithResolveHook, error) {
