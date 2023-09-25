@@ -36,7 +36,7 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 		(
 			mkdir -p /out/$name
 			cd ./$from/$name
-			find . \( -name '*.go' ! -name '*_test.go'  ! -name 'generate/*' \) -type f | tar -cf - --files-from - | tar -C /out/$name -xf -
+			find . \( -name '*.go' ! -name '*_test.go'  ! -path '*/generate/*' ! -path '*/testdata/*'  \) -type f | tar -cf - --files-from - | tar -C /out/$name -xf -
 		)
 	}
 
@@ -70,6 +70,21 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 	copy_pkg gopls/internal bug
 	copy_pkg gopls/internal/lsp protocol
 	copy_pkg internal diff
+	copy_pkg internal gcimporter
+	copy_pkg internal pkgbits
+	copy_pkg internal imports
+	copy_pkg internal testenv
+	copy_pkg internal gopathwalk
+	copy_pkg internal gocommand
+	copy_pkg internal fastwalk
+	copy_pkg internal facts
+	copy_pkg internal typesinternal
+	copy_pkg internal packagesinternal
+	copy_pkg gopls/internal vulncheck
+	copy_pkg internal goroot
+	copy_pkg internal analysisinternal
+
+	copy_pkg gopls/internal/lsp cache
 
 	copy_pkg internal robustio
 	copy_pkg internal memoize
@@ -85,22 +100,11 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 	copy_pkg gopls/internal/lsp filecache
 	copy_pkg gopls/internal/lsp lru
 
-	# copy_protocol_file tsdocument_changes.go
-	# copy_protocol_file tsserver.go
-	# copy_protocol_file tsjson.go
-	# copy_protocol_file protocol.go
-	# copy_protocol_file tsprotocol.go
-	# copy_protocol_file tsclient.go
-	# copy_protocol_file context.go
-	# copy_protocol_file log.go
 
-	# find any lines with "vulncheck" or Vulncheck and remove them
-	# find /out -type f -name "*.go" -exec sed -i "/vulncheck/d" {} \;
-	# find /out -type f -name "*.go" -exec sed -i "/Vulncheck/d" {} \;
+	# find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/internal/imports|golang.org/x/tools/imports|g" {} \;
+	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/gopls/internal/lsp/source|github.com/walteh/retab/internal/source|g" {} \;
+	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/gopls/internal/lsp/command|github.com/walteh/retab/internal/command|g" {} \;
 
-	# more specific are first
-	# find /out -type f -name "*.go" -exec sed -i "s|\"golang.org/x/tools/gopls/internal/lsp/protocol\"|protocol \"${GO_MODULE}/${DESTDIR#./}\"|g" {} \;
-	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/internal/imports|golang.org/x/tools/imports|g" {} \;
 
 	# important extra slash after command because commandmeta needs it
 	# find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/gopls/internal/lsp/command/|${GO_MODULE}/${DESTDIR#./}/|g" {} \;

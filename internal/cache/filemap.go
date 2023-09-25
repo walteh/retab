@@ -21,13 +21,6 @@ type fileMap struct {
 	dirs     *persistent.Set[string]             // all dirs containing files; if nil, dirs have not been initialized
 }
 
-// fileExists reports whether the file has a Content (which may be empty).
-// An overlay exists even if it is not reflected in the file system.
-func fileExists(fh source.FileHandle) bool {
-	_, err := fh.Content()
-	return err == nil
-}
-
 func newFileMap() *fileMap {
 	return &fileMap{
 		files:    new(persistent.Map[span.URI, source.FileHandle]),

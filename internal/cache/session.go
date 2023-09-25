@@ -471,44 +471,6 @@ func (s *Session) DidModifyFiles(ctx context.Context, changes []source.FileModif
 	return snapshotURIs, release, nil
 }
 
-// invalidateContent invalidates the content of a Go file,
-// including any position and type information that depends on it.
-//
-// invalidateContent returns a non-nil snapshot for the new content, along with
-// a callback which the caller must invoke to release that snapshot.
-//
-// newOptions may be nil, in which case options remain unchanged.
-func (v *View) invalidateContent(ctx context.Context, changes map[span.URI]source.FileHandle, newOptions *source.Options, forceReloadMetadata bool) (*snapshot, func()) {
-	// Detach the context so that content invalidation cannot be canceled.
-	ctx = xcontext.Detach(ctx)
-
-	// This should be the only time we hold the view's snapshot lock for any period of time.
-	v.snapshotMu.Lock()
-	defer v.snapshotMu.Unlock()
-
-	prevSnapshot, prevReleaseSnapshot := v.snapshot, v.releaseSnapshot
-
-	if prevSnapshot == nil {
-		panic("invalidateContent called after shutdown")
-	}
-
-	// Cancel all still-running previous requests, since they would be
-	// operating on stale data.
-	prevSnapshot.cancel()
-
-	// Do not clone a snapshot until its view has finished initializing.
-	prevSnapshot.AwaitInitialized(ctx)
-
-	// Save one lease of the cloned snapshot in the view.
-	v.snapshot, v.releaseSnapshot = prevSnapshot.clone(ctx, v.baseCtx, changes, newOptions, forceReloadMetadata)
-
-	prevReleaseSnapshot()
-	v.destroy(prevSnapshot, "View.invalidateContent")
-
-	// Return a second lease to the caller.
-	return v.snapshot, v.snapshot.Acquire()
-}
-
 // ExpandModificationsToDirectories returns the set of changes with the
 // directory changes removed and expanded to include all of the files in
 // the directory.
