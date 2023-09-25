@@ -381,6 +381,7 @@ func (s *Server) addFolders(ctx context.Context, folders []protocol.WorkspaceFol
 		initialized := make(chan struct{})
 		nsnapshots.Add(1)
 		go func() {
+			// this is broken, it blocks forever
 			snapshot.AwaitInitialized(ctx)
 			work.End(ctx, "Finished loading packages.")
 			nsnapshots.Done()
@@ -636,6 +637,8 @@ func (s *Server) beginFileRequest(ctx context.Context, pURI protocol.DocumentURI
 func (s *Server) shutdown(ctx context.Context) error {
 	ctx, done := event.Start(ctx, "lsp.Server.shutdown")
 	defer done()
+
+	log.Print("shutting down")
 
 	s.stateMu.Lock()
 	defer s.stateMu.Unlock()

@@ -2,7 +2,6 @@ package lsp
 
 import (
 	"context"
-	"net/http"
 	"os"
 	"testing"
 
@@ -21,7 +20,9 @@ func TestFull(t *testing.T) {
 
 		srv := NewServe()
 
-		stream := jsonrpc2.NewHeaderStream(fakenet.NewConn("stdio", os.Stdin, os.Stdout))
+		con := fakenet.NewConn("stdio", os.Stdin, os.Stdout)
+
+		stream := jsonrpc2.NewHeaderStream(con)
 		// if s.Trace {
 		// 	stream = protocol.LoggingStream(stream, di.LogWriter)
 		// }
@@ -38,14 +39,11 @@ func TestFull(t *testing.T) {
 
 		go func() {
 			if err := srv.Run(ctx, conn); err != nil {
-				t.Fatal(err)
+				t.Log(err)
 			}
 		}()
 
-		resp, err := http.Post("http://localhost:8090", "application/json", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		conn.Go()
 
 		pp.Println(resp)
 

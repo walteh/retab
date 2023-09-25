@@ -1,11 +1,10 @@
-package server
+package lsp
 
 import (
 	"context"
 	"fmt"
-	"log"
+	"path/filepath"
 
-	"github.com/hashicorp/hcl-lang/decoder"
 	"github.com/hashicorp/hcl-lang/lang"
 	"github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/internal/lsp/lsp"
@@ -29,7 +28,7 @@ func (me *Server) CodeLens(ctx context.Context, params *protocol.CodeLensParams)
 		LanguageID: lsp.Retab.String(),
 	}
 
-	lenses, err := decoder.NewDecoder(me.session).CodeLensesForFile(ctx, path, filename)
+	lenses, err := me.DecoderForURI(params.TextDocument).CodeLensesForFile(ctx, path, filepath.Base(filename))
 	if err != nil {
 		return nil, err
 	}
@@ -176,8 +175,8 @@ func (*Server) ExecuteCommand(context.Context, *protocol.ExecuteCommandParams) (
 }
 
 // Exit implements protocol.Server.
-func (me *Server) Exit(ctx context.Context) error {
-	return me.exit(ctx)
+func (*Server) Exit(context.Context) error {
+	panic("unimplemented")
 }
 
 // FoldingRange implements protocol.Server.
@@ -206,15 +205,13 @@ func (*Server) IncomingCalls(context.Context, *protocol.CallHierarchyIncomingCal
 }
 
 // Initialize implements protocol.Server.
-func (me *Server) Initialize(ctx context.Context, params *protocol.ParamInitialize) (*protocol.InitializeResult, error) {
-	log.Println("initializing")
-	return me.initialize(ctx, params)
+func (*Server) Initialize(context.Context, *protocol.ParamInitialize) (*protocol.InitializeResult, error) {
+	panic("unimplemented")
 }
 
 // Initialized implements protocol.Server.
-func (me *Server) Initialized(ctx context.Context, params *protocol.InitializedParams) error {
-	log.Println("initialized")
-	return me.initialized(ctx, params)
+func (*Server) Initialized(context.Context, *protocol.InitializedParams) error {
+	panic("unimplemented")
 }
 
 // InlayHint implements protocol.Server.
@@ -353,9 +350,9 @@ func (*Server) SetTrace(context.Context, *protocol.SetTraceParams) error {
 }
 
 // Shutdown implements protocol.Server.
-func (me *Server) Shutdown(ctx context.Context) error {
+func (*Server) Shutdown(context.Context) error {
 	fmt.Println("shutting down")
-	return me.shutdown(ctx)
+	return nil
 }
 
 // SignatureHelp implements protocol.Server.

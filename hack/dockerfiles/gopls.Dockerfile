@@ -66,9 +66,11 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 	copy_pkg gopls/internal span
 	copy_pkg gopls/internal telemetry
 	copy_pkg gopls/internal/lsp safetoken
+	copy_pkg gopls/internal/lsp glob
 	copy_pkg gopls/internal bug
 	copy_pkg gopls/internal/lsp protocol
 	copy_pkg internal diff
+
 	copy_pkg internal robustio
 	copy_pkg internal memoize
 	copy_pkg internal constraints

@@ -95,11 +95,9 @@ func (s *StreamServer) ServeStream(ctx context.Context, conn jsonrpc2.Conn) erro
 	// 	executable = ""
 	// }
 	ctx = protocol.WithClient(ctx, client)
-	conn.Go(ctx,
-		protocol.Handlers(
-			handshaker(sess, executable, s.daemon,
-				protocol.ServerHandler(srv,
-					jsonrpc2.MethodNotFound))))
+	conn.Go(ctx, protocol.Handlers(
+		handshaker(sess, "", s.daemon, protocol.ServerHandler(srv, jsonrpc2.MethodNotFound)),
+	))
 	if s.daemon {
 		log.Printf("Session %s: connected", sess.ID())
 		defer log.Printf("Session %s: exited", sess.ID())
