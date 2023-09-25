@@ -25,16 +25,16 @@ import (
 	"time"
 	"unicode"
 
+	goplsastutil "github.com/walteh/retab/gen/gopls/astutil"
 	"github.com/walteh/retab/gen/gopls/event"
 	"github.com/walteh/retab/gen/gopls/fuzzy"
 	"github.com/walteh/retab/gen/gopls/imports"
 	"github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/gen/gopls/safetoken"
 	"github.com/walteh/retab/gen/gopls/snippet"
-	"github.com/walteh/retab/internal/source"
-
 	"github.com/walteh/retab/gen/gopls/span"
 	"github.com/walteh/retab/gen/gopls/typeparams"
+	"github.com/walteh/retab/internal/source"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/tools/go/ast/astutil"
 )

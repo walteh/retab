@@ -17,6 +17,7 @@ import (
 	"text/template"
 
 	"github.com/walteh/retab/gen/gopls/event"
+	"github.com/walteh/retab/gen/gopls/imports"
 	"github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/gen/gopls/safetoken"
 	"github.com/walteh/retab/gen/gopls/snippet"

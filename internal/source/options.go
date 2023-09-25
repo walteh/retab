@@ -15,6 +15,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/walteh/retab/gen/gopls/analysis/fillreturns"
+	"github.com/walteh/retab/gen/gopls/analysis/fillstruct"
+	"github.com/walteh/retab/gen/gopls/analysis/infertypeargs"
+	"github.com/walteh/retab/gen/gopls/analysis/nonewvars"
+	"github.com/walteh/retab/gen/gopls/analysis/noresultvalues"
+	"github.com/walteh/retab/gen/gopls/analysis/stubmethods"
+	"github.com/walteh/retab/gen/gopls/analysis/undeclaredname"
+	"github.com/walteh/retab/gen/gopls/analysis/unusedparams"
+	"github.com/walteh/retab/gen/gopls/analysis/unusedvariable"
 	"github.com/walteh/retab/gen/gopls/diff"
 	"github.com/walteh/retab/gen/gopls/diff/myers"
 	"github.com/walteh/retab/gen/gopls/protocol"
@@ -105,8 +114,8 @@ func DefaultOptions(overrides ...func(*Options)) *Options {
 						ExperimentalPostfixCompletions: true,
 					},
 					Codelenses: map[string]bool{
-						// string(command.Generate):          true,
-						// string(command.RegenerateCgo):     true,
+						string(command.Noop):          true,
+						string(command.NoopThreeArgs): true,
 						// string(command.Tidy):              true,
 						// string(command.GCDetails):         false,
 						// string(command.UpgradeDependency): true,
@@ -898,18 +907,18 @@ func (o *Options) EnableAllExperiments() {
 }
 
 func (o *Options) enableAllExperimentMaps() {
-	// if _, ok := o.Codelenses[string(command.GCDetails)]; !ok {
-	// 	o.Codelenses[string(command.GCDetails)] = true
-	// }
-	// if _, ok := o.Codelenses[string(command.RunGovulncheck)]; !ok {
-	// 	o.Codelenses[string(command.RunGovulncheck)] = true
-	// }
-	// if _, ok := o.Analyses[unusedparams.Analyzer.Name]; !ok {
-	// 	o.Analyses[unusedparams.Analyzer.Name] = true
-	// }
-	// if _, ok := o.Analyses[unusedvariable.Analyzer.Name]; !ok {
-	// 	o.Analyses[unusedvariable.Analyzer.Name] = true
-	// }
+	if _, ok := o.Codelenses[string(command.Noop)]; !ok {
+		o.Codelenses[string(command.Noop)] = true
+	}
+	if _, ok := o.Codelenses[string(command.NoopThreeArgs)]; !ok {
+		o.Codelenses[string(command.NoopThreeArgs)] = true
+	}
+	if _, ok := o.Analyses[unusedparams.Analyzer.Name]; !ok {
+		o.Analyses[unusedparams.Analyzer.Name] = true
+	}
+	if _, ok := o.Analyses[unusedvariable.Analyzer.Name]; !ok {
+		o.Analyses[unusedvariable.Analyzer.Name] = true
+	}
 }
 
 // validateDirectoryFilter validates if the filter string
@@ -1451,29 +1460,29 @@ func (r *OptionResult) setStringSlice(s *[]string) {
 
 func typeErrorAnalyzers() map[string]*Analyzer {
 	return map[string]*Analyzer{
-		// fillreturns.Analyzer.Name: {
-		// 	Analyzer: fillreturns.Analyzer,
-		// 	// TODO(rfindley): is SourceFixAll even necessary here? Is that not implied?
-		// 	ActionKind: []protocol.CodeActionKind{protocol.SourceFixAll, protocol.QuickFix},
-		// 	Enabled:    true,
-		// },
-		// nonewvars.Analyzer.Name: {
-		// 	Analyzer: nonewvars.Analyzer,
-		// 	Enabled:  true,
-		// },
-		// noresultvalues.Analyzer.Name: {
-		// 	Analyzer: noresultvalues.Analyzer,
-		// 	Enabled:  true,
-		// },
-		// undeclaredname.Analyzer.Name: {
-		// 	Analyzer: undeclaredname.Analyzer,
-		// 	Fix:      UndeclaredName,
-		// 	Enabled:  true,
-		// },
-		// unusedvariable.Analyzer.Name: {
-		// 	Analyzer: unusedvariable.Analyzer,
-		// 	Enabled:  false,
-		// },
+		fillreturns.Analyzer.Name: {
+			Analyzer: fillreturns.Analyzer,
+			// TODO(rfindley): is SourceFixAll even necessary here? Is that not implied?
+			ActionKind: []protocol.CodeActionKind{protocol.SourceFixAll, protocol.QuickFix},
+			Enabled:    true,
+		},
+		nonewvars.Analyzer.Name: {
+			Analyzer: nonewvars.Analyzer,
+			Enabled:  true,
+		},
+		noresultvalues.Analyzer.Name: {
+			Analyzer: noresultvalues.Analyzer,
+			Enabled:  true,
+		},
+		undeclaredname.Analyzer.Name: {
+			Analyzer: undeclaredname.Analyzer,
+			Fix:      UndeclaredName,
+			Enabled:  true,
+		},
+		unusedvariable.Analyzer.Name: {
+			Analyzer: unusedvariable.Analyzer,
+			Enabled:  false,
+		},
 	}
 }
 
@@ -1481,22 +1490,22 @@ func typeErrorAnalyzers() map[string]*Analyzer {
 // used from the analysis framework.
 func convenienceAnalyzers() map[string]*Analyzer {
 	return map[string]*Analyzer{
-		// fillstruct.Analyzer.Name: {
-		// 	Analyzer:   fillstruct.Analyzer,
-		// 	Fix:        FillStruct,
-		// 	Enabled:    true,
-		// 	ActionKind: []protocol.CodeActionKind{protocol.RefactorRewrite},
-		// },
-		// stubmethods.Analyzer.Name: {
-		// 	Analyzer: stubmethods.Analyzer,
-		// 	Fix:      StubMethods,
-		// 	Enabled:  true,
-		// },
-		// infertypeargs.Analyzer.Name: {
-		// 	Analyzer:   infertypeargs.Analyzer,
-		// 	Enabled:    true,
-		// 	ActionKind: []protocol.CodeActionKind{protocol.RefactorRewrite},
-		// },
+		fillstruct.Analyzer.Name: {
+			Analyzer:   fillstruct.Analyzer,
+			Fix:        FillStruct,
+			Enabled:    true,
+			ActionKind: []protocol.CodeActionKind{protocol.RefactorRewrite},
+		},
+		stubmethods.Analyzer.Name: {
+			Analyzer: stubmethods.Analyzer,
+			Fix:      StubMethods,
+			Enabled:  true,
+		},
+		infertypeargs.Analyzer.Name: {
+			Analyzer:   infertypeargs.Analyzer,
+			Enabled:    true,
+			ActionKind: []protocol.CodeActionKind{protocol.RefactorRewrite},
+		},
 	}
 }
 

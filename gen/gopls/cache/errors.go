@@ -171,7 +171,7 @@ func goGetQuickFixes(moduleMode bool, uri span.URI, pkg string) ([]source.Sugges
 		return nil, nil
 	}
 	title := fmt.Sprintf("go get package %v", pkg)
-	cmd, err := command.NewGoGetPackageCommand(title, command.GoGetPackageArgs{
+	cmd, err := command.NewNoopCommand(title, command.GoGetPackageArgs{
 		URI:        protocol.URIFromSpanURI(uri),
 		AddRequire: true,
 		Pkg:        pkg,
@@ -188,7 +188,7 @@ func editGoDirectiveQuickFix(moduleMode bool, uri span.URI, version string) ([]s
 		return nil, nil
 	}
 	title := fmt.Sprintf("go mod edit -go=%s", version)
-	cmd, err := command.NewEditGoDirectiveCommand(title, command.EditGoDirectiveArgs{
+	cmd, err := command.NewNoopCommand(title, command.EditGoDirectiveArgs{
 		URI:     protocol.URIFromSpanURI(uri),
 		Version: version,
 	})
@@ -319,7 +319,7 @@ func toSourceDiagnostic(srcAnalyzer *source.Analyzer, gobDiag *gobDiagnostic) *s
 	}
 	fixes := suggestedAnalysisFixes(gobDiag, kinds)
 	if srcAnalyzer.Fix != "" {
-		cmd, err := command.NewApplyFixCommand(gobDiag.Message, command.ApplyFixArgs{
+		cmd, err := command.NewNoopCommand(gobDiag.Message, command.ApplyFixArgs{
 			URI:   gobDiag.Location.URI,
 			Range: gobDiag.Location.Range,
 			Fix:   srcAnalyzer.Fix,

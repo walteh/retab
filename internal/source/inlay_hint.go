@@ -5,6 +5,7 @@
 package source
 
 import (
+	"context"
 	"fmt"
 	"go/ast"
 	"go/constant"
@@ -12,6 +13,7 @@ import (
 	"go/types"
 	"strings"
 
+	"github.com/walteh/retab/gen/gopls/event"
 	"github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/gen/gopls/typeparams"
 )
@@ -76,57 +78,57 @@ var AllInlayHints = map[string]*Hint{
 	},
 }
 
-// func InlayHint(ctx context.Context, snapshot Snapshot, fh FileHandle, pRng protocol.Range) ([]protocol.InlayHint, error) {
-// 	ctx, done := event.Start(ctx, "source.InlayHint")
-// 	defer done()
+func InlayHint(ctx context.Context, snapshot Snapshot, fh FileHandle, pRng protocol.Range) ([]protocol.InlayHint, error) {
+	ctx, done := event.Start(ctx, "source.InlayHint")
+	defer done()
 
-// 	// pkg, pgf, err := NarrowestPackageForFile(ctx, snapshot, fh.URI())
-// 	// if err != nil {
-// 	// 	return nil, fmt.Errorf("getting file for InlayHint: %w", err)
-// 	// }
+	pkg, pgf, err := NarrowestPackageForFile(ctx, snapshot, fh.URI())
+	if err != nil {
+		return nil, fmt.Errorf("getting file for InlayHint: %w", err)
+	}
 
-// 	// Collect a list of the inlay hints that are enabled.
-// 	inlayHintOptions := snapshot.Options().InlayHintOptions
-// 	var enabledHints []InlayHintFunc
-// 	for hint, enabled := range inlayHintOptions.Hints {
-// 		if !enabled {
-// 			continue
-// 		}
-// 		if h, ok := AllInlayHints[hint]; ok {
-// 			enabledHints = append(enabledHints, h.Run)
-// 		}
-// 	}
-// 	if len(enabledHints) == 0 {
-// 		return nil, nil
-// 	}
+	// Collect a list of the inlay hints that are enabled.
+	inlayHintOptions := snapshot.Options().InlayHintOptions
+	var enabledHints []InlayHintFunc
+	for hint, enabled := range inlayHintOptions.Hints {
+		if !enabled {
+			continue
+		}
+		if h, ok := AllInlayHints[hint]; ok {
+			enabledHints = append(enabledHints, h.Run)
+		}
+	}
+	if len(enabledHints) == 0 {
+		return nil, nil
+	}
 
-// 	// info := pkg.GetTypesInfo()
-// 	// q := Qualifier(pgf.File, pkg.GetTypes(), info)
+	info := pkg.GetTypesInfo()
+	q := Qualifier(pgf.File, pkg.GetTypes(), info)
 
-// 	// Set the range to the full file if the range is not valid.
-// 	start, end := pgf.File.Pos(), pgf.File.End()
-// 	if pRng.Start.Line < pRng.End.Line || pRng.Start.Character < pRng.End.Character {
-// 		// Adjust start and end for the specified range.
-// 		var err error
-// 		start, end, err = pgf.RangePos(pRng)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 	}
+	// Set the range to the full file if the range is not valid.
+	start, end := pgf.File.Pos(), pgf.File.End()
+	if pRng.Start.Line < pRng.End.Line || pRng.Start.Character < pRng.End.Character {
+		// Adjust start and end for the specified range.
+		var err error
+		start, end, err = pgf.RangePos(pRng)
+		if err != nil {
+			return nil, err
+		}
+	}
 
-// 	var hints []protocol.InlayHint
-// 	ast.Inspect(pgf.File, func(node ast.Node) bool {
-// 		// If not in range, we can stop looking.
-// 		if node == nil || node.End() < start || node.Pos() > end {
-// 			return false
-// 		}
-// 		for _, fn := range enabledHints {
-// 			hints = append(hints, fn(node, pgf.Mapper, pgf.Tok, info, &q)...)
-// 		}
-// 		return true
-// 	})
-// 	return hints, nil
-// }
+	var hints []protocol.InlayHint
+	ast.Inspect(pgf.File, func(node ast.Node) bool {
+		// If not in range, we can stop looking.
+		if node == nil || node.End() < start || node.Pos() > end {
+			return false
+		}
+		for _, fn := range enabledHints {
+			hints = append(hints, fn(node, pgf.Mapper, pgf.Tok, info, &q)...)
+		}
+		return true
+	})
+	return hints, nil
+}
 
 func parameterNames(node ast.Node, m *protocol.Mapper, tf *token.File, info *types.Info, _ *types.Qualifier) []protocol.InlayHint {
 	callExpr, ok := node.(*ast.CallExpr)

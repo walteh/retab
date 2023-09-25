@@ -19,8 +19,10 @@ import (
 	"time"
 
 	"github.com/walteh/retab/gen/gopls/astutil"
+	"github.com/walteh/retab/gen/gopls/cache"
+	"github.com/walteh/retab/gen/gopls/packagesinternal"
 	"github.com/walteh/retab/gen/gopls/span"
-	"github.com/walteh/retab/internal/cache"
+	"github.com/walteh/retab/gen/gopls/testenv"
 	"github.com/walteh/retab/internal/source"
 	"github.com/walteh/retab/internal/source/typerefs"
 	"golang.org/x/tools/go/gcexportdata"

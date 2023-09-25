@@ -2,6 +2,8 @@ module github.com/walteh/retab
 
 go 1.21.0
 
+replace golang.org/x/tools => golang.org/x/tools v0.13.1-0.20230924193802-ebe11dfa2751
+
 require (
 	github.com/apparentlymart/go-textseg v1.0.0
 	github.com/apparentlymart/go-textseg/v13 v13.0.0
@@ -36,7 +38,9 @@ require (
 	golang.org/x/sync v0.3.0
 	golang.org/x/sys v0.12.0
 	golang.org/x/telemetry v0.0.0-20230923135512-f45a5404d02c
-	golang.org/x/tools v0.13.0
+	golang.org/x/text v0.13.0
+	golang.org/x/tools v0.13.1-0.20230924193802-ebe11dfa2751
+	golang.org/x/vuln v1.0.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -79,7 +83,6 @@ require (
 	golang.org/x/crypto v0.13.0 // indirect
 	golang.org/x/net v0.15.0 // indirect
 	golang.org/x/oauth2 v0.9.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

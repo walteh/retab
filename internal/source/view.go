@@ -16,19 +16,23 @@ import (
 	"go/scanner"
 	"go/token"
 	"go/types"
+	"io"
 
 	"github.com/walteh/retab/gen/gopls/event/label"
 	"github.com/walteh/retab/gen/gopls/event/tag"
+	"github.com/walteh/retab/gen/gopls/gocommand"
+	"github.com/walteh/retab/gen/gopls/imports"
+	"github.com/walteh/retab/gen/gopls/packagesinternal"
 	"github.com/walteh/retab/gen/gopls/progress"
 	"github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/gen/gopls/safetoken"
 	"github.com/walteh/retab/gen/gopls/span"
+	"github.com/walteh/retab/gen/gopls/vulncheck"
 	"github.com/walteh/retab/internal/source/methodsets"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/go/types/objectpath"
-	"golang.org/x/tools/imports"
 )
 
 // A GlobalSnapshotID uniquely identifies a snapshot within this process and
@@ -107,6 +111,18 @@ type Snapshot interface {
 	// the analysis pass.
 	Analyze(ctx context.Context, pkgIDs map[PackageID]unit, analyzers []*Analyzer, tracker *progress.Tracker) ([]*Diagnostic, error)
 
+	// RunGoCommandPiped runs the given `go` command, writing its output
+	// to stdout and stderr. Verb, Args, and WorkingDir must be specified.
+	//
+	// RunGoCommandPiped runs the command serially using gocommand.RunPiped,
+	// enforcing that this command executes exclusively to other commands on the
+	// server.
+	RunGoCommandPiped(ctx context.Context, mode InvocationFlags, inv *gocommand.Invocation, stdout, stderr io.Writer) error
+
+	// RunGoCommandDirect runs the given `go` command. Verb, Args, and
+	// WorkingDir must be specified.
+	RunGoCommandDirect(ctx context.Context, mode InvocationFlags, inv *gocommand.Invocation) (*bytes.Buffer, error)
+
 	// RunGoCommands runs a series of `go` commands that updates the go.mod
 	// and go.sum file for wd, and returns their updated contents.
 	RunGoCommands(ctx context.Context, allowNetwork bool, wd string, run func(invoke func(...string) (*bytes.Buffer, error)) error) (bool, []byte, []byte, error)
@@ -129,6 +145,10 @@ type Snapshot interface {
 	// ModTidy returns the results of `go mod tidy` for the module specified by
 	// the given go.mod file.
 	ModTidy(ctx context.Context, pm *ParsedModule) (*TidiedModule, error)
+
+	// ModVuln returns import vulnerability analysis for the given go.mod URI.
+	// Concurrent requests are combined into a single command.
+	ModVuln(ctx context.Context, modURI span.URI) (*vulncheck.Result, error)
 
 	// GoModForFile returns the URI of the go.mod file for the given URI.
 	GoModForFile(uri span.URI) span.URI
@@ -368,6 +388,15 @@ type View interface {
 	// ClearModuleUpgrades clears all upgrades for the modules in modfile.
 	ClearModuleUpgrades(modfile span.URI)
 
+	// Vulnerabilities returns known vulnerabilities for the given modfile.
+	// TODO(suzmue): replace command.Vuln with a different type, maybe
+	// https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck/govulnchecklib#Summary?
+	Vulnerabilities(modfile ...span.URI) map[span.URI]*vulncheck.Result
+
+	// SetVulnerabilities resets the list of vulnerabilities that exists for the given modules
+	// required by modfile.
+	SetVulnerabilities(modfile span.URI, vulncheckResult *vulncheck.Result)
+
 	// GoVersion returns the configured Go version for this view.
 	GoVersion() int
 
@@ -529,10 +558,10 @@ type Metadata struct {
 	DepsByImpPath map[ImportPath]PackageID  // may contain dups; empty ID => missing
 	DepsByPkgPath map[PackagePath]PackageID // values are unique and non-empty
 	Module        *packages.Module
-	// DepsErrors    []*packagesinternal.PackageError
-	Diagnostics []*Diagnostic // processed diagnostics from 'go list'
-	LoadDir     string        // directory from which go/packages was run
-	Standalone  bool          // package synthesized for a standalone file (e.g. ignore-tagged)
+	DepsErrors    []*packagesinternal.PackageError
+	Diagnostics   []*Diagnostic // processed diagnostics from 'go list'
+	LoadDir       string        // directory from which go/packages was run
+	Standalone    bool          // package synthesized for a standalone file (e.g. ignore-tagged)
 }
 
 func (m *Metadata) String() string { return string(m.ID) }

@@ -83,9 +83,13 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 	copy_pkg gopls/internal vulncheck
 	copy_pkg internal goroot
 	copy_pkg internal analysisinternal
-
+	copy_pkg gopls/internal/lsp lsprpc
+	copy_pkg gopls/internal/lsp debug
+	copy_pkg gopls/internal/lsp tests
+	copy_pkg gopls/internal/lsp analysis
 	copy_pkg gopls/internal/lsp cache
 
+	copy_pkg internal refactor
 	copy_pkg internal robustio
 	copy_pkg internal memoize
 	copy_pkg internal constraints
@@ -102,8 +106,11 @@ RUN --mount=type=bind,target=/wrk/repo,rw \
 
 
 	# find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/internal/imports|golang.org/x/tools/imports|g" {} \;
+	find /out -type f -name "*.go" -exec sed -i "s|\"golang.org/x/tools/gopls/internal/lsp\"|lsp \"github.com/walteh/retab/internal/server\"|g" {} \;
 	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/gopls/internal/lsp/source|github.com/walteh/retab/internal/source|g" {} \;
 	find /out -type f -name "*.go" -exec sed -i "s|golang.org/x/tools/gopls/internal/lsp/command|github.com/walteh/retab/internal/command|g" {} \;
+
+	find /out -type f -name '*.go' -exec sed -i 's|command.New[^\(]*Command|command.NewNoopCommand|g' {} \;
 
 
 	# important extra slash after command because commandmeta needs it

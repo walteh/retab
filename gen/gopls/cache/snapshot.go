@@ -1710,7 +1710,7 @@ searchOverlays:
 				if s.view.goversion >= 18 {
 					if s.view.gowork != "" {
 						fix = fmt.Sprintf("To fix this problem, you can add this module to your go.work file (%s)", s.view.gowork)
-						if cmd, err := command.NewRunGoWorkCommandCommand("Run `go work use`", command.RunGoWorkArgs{
+						if cmd, err := command.NewNoopCommand("Run `go work use`", command.RunGoWorkArgs{
 							ViewID: s.view.ID(),
 							Args:   []string{"use", modDir},
 						}); err == nil {
@@ -1722,7 +1722,7 @@ searchOverlays:
 						}
 
 						if inDir {
-							if cmd, err := command.NewRunGoWorkCommandCommand("Run `go work use -r`", command.RunGoWorkArgs{
+							if cmd, err := command.NewNoopCommand("Run `go work use -r`", command.RunGoWorkArgs{
 								ViewID: s.view.ID(),
 								Args:   []string{"use", "-r", "."},
 							}); err == nil {
@@ -1736,7 +1736,7 @@ searchOverlays:
 					} else {
 						fix = "To fix this problem, you can add a go.work file that uses this directory."
 
-						if cmd, err := command.NewRunGoWorkCommandCommand("Run `go work init && go work use`", command.RunGoWorkArgs{
+						if cmd, err := command.NewNoopCommand("Run `go work init && go work use`", command.RunGoWorkArgs{
 							ViewID:    s.view.ID(),
 							InitFirst: true,
 							Args:      []string{"use", modDir},
@@ -1751,7 +1751,7 @@ searchOverlays:
 						}
 
 						if inDir {
-							if cmd, err := command.NewRunGoWorkCommandCommand("Run `go work init && go work use -r`", command.RunGoWorkArgs{
+							if cmd, err := command.NewNoopCommand("Run `go work init && go work use -r`", command.RunGoWorkArgs{
 								ViewID:    s.view.ID(),
 								InitFirst: true,
 								Args:      []string{"use", "-r", "."},

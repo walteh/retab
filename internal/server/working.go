@@ -13,12 +13,12 @@ import (
 	"os"
 	"sync"
 
+	"github.com/walteh/retab/gen/gopls/cache"
 	"github.com/walteh/retab/gen/gopls/event"
 	"github.com/walteh/retab/gen/gopls/jsonrpc2"
 	"github.com/walteh/retab/gen/gopls/progress"
 	"github.com/walteh/retab/gen/gopls/protocol"
 	"github.com/walteh/retab/gen/gopls/span"
-	"github.com/walteh/retab/internal/cache"
 	"github.com/walteh/retab/internal/source"
 )
 

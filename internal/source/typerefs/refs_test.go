@@ -12,8 +12,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/walteh/retab/gen/gopls/cache"
 	"github.com/walteh/retab/gen/gopls/span"
-	"github.com/walteh/retab/internal/cache"
+	"github.com/walteh/retab/gen/gopls/testenv"
 	"github.com/walteh/retab/internal/source"
 	"github.com/walteh/retab/internal/source/typerefs"
 )
@@ -508,6 +509,9 @@ type Z map[ext.A]ext.B
 
 	for _, test := range tests {
 		t.Run(test.label, func(t *testing.T) {
+			if test.go118 {
+				testenv.NeedsGo1Point(t, 18)
+			}
 
 			var pgfs []*source.ParsedGoFile
 			for i, src := range test.srcs {

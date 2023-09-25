@@ -46,16 +46,16 @@ func Analyze(ctx context.Context, snapshot Snapshot, pkgIDs map[PackageID]unit, 
 		}
 	}
 
-	// analysisDiagnostics, err := snapshot.Analyze(ctx, pkgIDs, analyzers, tracker)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	analysisDiagnostics, err := snapshot.Analyze(ctx, pkgIDs, analyzers, tracker)
+	if err != nil {
+		return nil, err
+	}
 
 	// Report diagnostics and errors from root analyzers.
 	reports := make(map[span.URI][]*Diagnostic)
-	// for _, diag := range analysisDiagnostics {
-	// 	reports[diag.URI] = append(reports[diag.URI], diag)
-	// }
+	for _, diag := range analysisDiagnostics {
+		reports[diag.URI] = append(reports[diag.URI], diag)
+	}
 	return reports, nil
 }
 

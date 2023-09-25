@@ -8,7 +8,6 @@ import (
 	"go/ast"
 
 	"github.com/walteh/retab/gen/gopls/protocol"
-
 	"github.com/walteh/retab/internal/source"
 )
 

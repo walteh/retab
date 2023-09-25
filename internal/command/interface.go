@@ -76,6 +76,9 @@ type Interface interface {
 	// the user to ask if they want to enable Go telemetry uploading. If the user
 	// responds 'Yes', the telemetry mode is set to "on".
 	MaybePromptForTelemetry(context.Context) error
+
+	Noop(context.Context, any) error
+	NoopThreeArgs(context.Context, any, any, any) error
 }
 
 type RunTestsArgs struct {

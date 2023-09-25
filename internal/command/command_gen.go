@@ -23,6 +23,8 @@ const (
 	ApplyFix                Command = "apply_fix"
 	MaybePromptForTelemetry Command = "maybe_prompt_for_telemetry"
 	MemStats                Command = "mem_stats"
+	Noop                    Command = "noop"
+	NoopThreeArgs           Command = "noop_three_args"
 	StartDebugging          Command = "start_debugging"
 	StartProfile            Command = "start_profile"
 	StopProfile             Command = "stop_profile"
@@ -33,6 +35,8 @@ var Commands = []Command{
 	ApplyFix,
 	MaybePromptForTelemetry,
 	MemStats,
+	Noop,
+	NoopThreeArgs,
 	StartDebugging,
 	StartProfile,
 	StopProfile,
@@ -56,6 +60,20 @@ func Dispatch(ctx context.Context, params *protocol.ExecuteCommandParams, s Inte
 		return nil, s.MaybePromptForTelemetry(ctx)
 	case "retab.mem_stats":
 		return s.MemStats(ctx)
+	case "retab.noop":
+		var a0 any
+		if err := UnmarshalArgs(params.Arguments, &a0); err != nil {
+			return nil, err
+		}
+		return nil, s.Noop(ctx, a0)
+	case "retab.noop_three_args":
+		var a0 any
+		var a1 any
+		var a2 any
+		if err := UnmarshalArgs(params.Arguments, &a0, &a1, &a2); err != nil {
+			return nil, err
+		}
+		return nil, s.NoopThreeArgs(ctx, a0, a1, a2)
 	case "retab.start_debugging":
 		var a0 DebuggingArgs
 		if err := UnmarshalArgs(params.Arguments, &a0); err != nil {
@@ -122,6 +140,30 @@ func NewMemStatsCommand(title string) (protocol.Command, error) {
 	return protocol.Command{
 		Title:     title,
 		Command:   "retab.mem_stats",
+		Arguments: args,
+	}, nil
+}
+
+func NewNoopCommand(title string, a0 any) (protocol.Command, error) {
+	args, err := MarshalArgs(a0)
+	if err != nil {
+		return protocol.Command{}, err
+	}
+	return protocol.Command{
+		Title:     title,
+		Command:   "retab.noop",
+		Arguments: args,
+	}, nil
+}
+
+func NewNoopThreeArgsCommand(title string, a0 any, a1 any, a2 any) (protocol.Command, error) {
+	args, err := MarshalArgs(a0, a1, a2)
+	if err != nil {
+		return protocol.Command{}, err
+	}
+	return protocol.Command{
+		Title:     title,
+		Command:   "retab.noop_three_args",
 		Arguments: args,
 	}, nil
 }

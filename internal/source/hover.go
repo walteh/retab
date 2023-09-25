@@ -28,6 +28,7 @@ import (
 	"github.com/walteh/retab/gen/gopls/typeparams"
 	"golang.org/x/text/unicode/runenames"
 	"golang.org/x/tools/go/ast/astutil"
+	"golang.org/x/tools/go/types/typeutil"
 )
 
 // HoverJSON contains information used by hover. It is also the JSON returned

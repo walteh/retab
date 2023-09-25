@@ -427,7 +427,7 @@ func (s *snapshot) goCommandDiagnostic(pm *source.ParsedModule, loc protocol.Loc
 
 	switch {
 	case strings.Contains(goCmdError, "inconsistent vendoring"):
-		cmd, err := command.NewVendorCommand("Run go mod vendor", command.URIArg{URI: protocol.URIFromSpanURI(pm.URI)})
+		cmd, err := command.NewNoopCommand("Run go mod vendor", command.URIArg{URI: protocol.URIFromSpanURI(pm.URI)})
 		if err != nil {
 			return nil, err
 		}
@@ -446,11 +446,11 @@ See https://github.com/golang/go/issues/39164 for more detail on this issue.`,
 		for _, uri := range s.ModFiles() {
 			args = append(args, protocol.URIFromSpanURI(uri))
 		}
-		tidyCmd, err := command.NewTidyCommand("Run go mod tidy", command.URIArgs{URIs: args})
+		tidyCmd, err := command.NewNoopCommand("Run go mod tidy", command.URIArgs{URIs: args})
 		if err != nil {
 			return nil, err
 		}
-		updateCmd, err := command.NewUpdateGoSumCommand("Update go.sum", command.URIArgs{URIs: args})
+		updateCmd, err := command.NewNoopCommand("Update go.sum", command.URIArgs{URIs: args})
 		if err != nil {
 			return nil, err
 		}
@@ -471,7 +471,7 @@ See https://github.com/golang/go/issues/39164 for more detail on this issue.`,
 		}, nil
 	case strings.Contains(goCmdError, "disabled by GOPROXY=off") && innermost != nil:
 		title := fmt.Sprintf("Download %v@%v", innermost.Path, innermost.Version)
-		cmd, err := command.NewAddDependencyCommand(title, command.DependencyArgs{
+		cmd, err := command.NewNoopCommand(title, command.DependencyArgs{
 			URI:        protocol.URIFromSpanURI(pm.URI),
 			AddRequire: false,
 			GoCmdArgs:  []string{fmt.Sprintf("%v@%v", innermost.Path, innermost.Version)},
