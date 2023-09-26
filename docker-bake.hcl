@@ -165,6 +165,7 @@ COMMANDS = {
 		generate   = null
 		dest       = "${ROOT_DIR}"
 		globs      = []
+		args       = {}
 	}
 	vendor = {
 		dockerfile = "./hack/dockerfiles/vendor.Dockerfile"
@@ -172,6 +173,7 @@ COMMANDS = {
 		generate   = { target = "generate" }
 		dest       = "${ROOT_DIR}"
 		globs      = ["go.mod", "go.sum", "vendor/**"]
+		args       = {}
 	}
 	docs = {
 		dockerfile = "./hack/dockerfiles/docs.Dockerfile"
@@ -179,6 +181,7 @@ COMMANDS = {
 		generate   = { target = "generate" }
 		dest       = "${ROOT_DIR}/docs/reference"
 		globs      = ["**/*.md"]
+		args       = {}
 	}
 	mockery = {
 		dockerfile = "./hack/dockerfiles/mockery.Dockerfile"
@@ -186,6 +189,7 @@ COMMANDS = {
 		generate   = { target = "generate" }
 		dest       = "${GEN_DIR}/mockery"
 		globs      = ["**/*.mockery.go"]
+		args       = {}
 	}
 	buf = {
 		dockerfile = "./hack/dockerfiles/buf.Dockerfile"
@@ -193,6 +197,7 @@ COMMANDS = {
 		generate   = { target = "generate" }
 		dest       = "${GEN_DIR}/buf"
 		globs      = ["**/*.proto"]
+		args       = {}
 	}
 	gopls = {
 		dockerfile = "./hack/dockerfiles/gopls.Dockerfile"
@@ -200,14 +205,33 @@ COMMANDS = {
 		generate   = { target = "generate" }
 		dest       = "${GEN_DIR}/gopls"
 		globs      = ["*.go"]
+		args       = {}
 	}
-	/* tools = {
-		dockerfile = "./hack/dockerfiles/tools.Dockerfile"
+	borrow = {
+		dockerfile = "./hack/dockerfiles/borrow.Dockerfile"
 		validate   = { target = "validate" }
 		generate   = { target = "generate" }
-		dest       = "${GEN_DIR}/tools"
+		dest       = "${GEN_DIR}/borrow"
 		globs      = ["*.go"]
-	} */
+		args = {
+			REPOS = jsonencode([
+				{
+					repo    = "github.com/hashicorp/terraform-ls"
+					commit  = "94e47bd3a6371c6d56c2ab92d0d33b1ce84e9c0d"
+					include = ["internal/**/*"]
+					exclude = [
+						"internal/hooks/*.go",
+						"internal/langserver/handlers/completion_hooks.go",
+						/* "internal/terraform/*", */
+					]
+					replacements = {
+						"github.com/hashicorp/terraform-schema/schema" = "${GO_MODULE}/pkg/hclschema"
+						"svc.AppendCompletionHooks(decoderContext)"    = "// svc.AppendCompletionHooks(decoderContext)"
+					}
+				}
+			])
+		}
+	}
 }
 
 ##################################################################
@@ -220,10 +244,10 @@ target "generate" {
 		item = [for name, item in COMMANDS : merge(item, { name = name }) if item.generate != null]
 	}
 	name = "generate-${item.name}"
-	args = {
+	args = merge(item.args, {
 		NAME    = item.name
 		DESTDIR = item.dest
-	}
+	})
 	output     = ["type=local,dest=${item.dest}"]
 	target     = item.generate.target
 	dockerfile = item.dockerfile
