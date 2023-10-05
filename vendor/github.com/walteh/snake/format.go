@@ -17,5 +17,4 @@ func FormatCaller(path string, number int) string {
 	} else {
 		return fmt.Sprintf("%s:%d", path, number)
 	}
-
 }

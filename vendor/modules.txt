@@ -303,7 +303,7 @@ github.com/stretchr/testify/require
 ## explicit; go 1.21.0
 github.com/walteh/buildrc/pkg/file
 github.com/walteh/buildrc/pkg/install
-# github.com/walteh/snake v0.8.2
+# github.com/walteh/snake v0.12.0
 ## explicit; go 1.21.0
 github.com/walteh/snake
 # github.com/zclconf/go-cty v1.14.0
@@ -363,6 +363,10 @@ golang.org/x/crypto/hkdf
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/scrypt
 golang.org/x/crypto/sha3
+# golang.org/x/exp v0.0.0-20230905200255-921286631fa9
+## explicit; go 1.20
+golang.org/x/exp/constraints
+golang.org/x/exp/slices
 # golang.org/x/exp/typeparams v0.0.0-20221208152030-732eee02a75a
 ## explicit; go 1.18
 golang.org/x/exp/typeparams
