@@ -68,18 +68,18 @@
 		"[terraform]": {
 			"editor.formatOnSave": false,
 		},
-		"emeraldwalk.runonsave": {
-			"commands": [
-				{
-					"match": "\\.tf$|\\.tfvars$|\\.hcl$|\\.hclvars$|\\.hcl2$",
-					"cmd": "~/.retab/retab hcl \"${file}\""
-				},
-				{
-					"match": "\\.proto$|\\.proto3$",
-					"cmd": "~/.retab/retab buf \"${file}\""
-				}
-			]
-		},
+		// "emeraldwalk.runonsave": {
+		// 	"commands": [
+		// 		{
+		// 			"match": "\\.tf$|\\.tfvars$|\\.hcl$|\\.hclvars$|\\.hcl2$",
+		// 			"cmd": "~/.retab/retab hcl \"${file}\""
+		// 		},
+		// 		{
+		// 			"match": "\\.proto$|\\.proto3$",
+		// 			"cmd": "~/.retab/retab buf \"${file}\""
+		// 		}
+		// 	]
+		// },
 		"[dockerfile]": {
 			"editor.semanticHighlighting.enabled": false,
 		},

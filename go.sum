@@ -342,8 +342,8 @@ github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXl
 github.com/vmihailenco/msgpack v3.3.3+incompatible/go.mod h1:fy3FlTQTDXWkZ7Bh6AcGMlsjHatGryHQYUTf1ShIgkk=
 github.com/walteh/buildrc v0.14.1 h1:tVoRXDYLJ7fZpOsT9uHO/X1eTSYJi4iRR2qlakPQVwY=
 github.com/walteh/buildrc v0.14.1/go.mod h1:sBTXr+0T8q3wEWLqmP4rTpnyPB81C6Z614ymNKsQK6c=
-github.com/walteh/snake v0.12.0 h1:kB+U5ph++TlI1MbBZa8NAOBDMHW8CY4Mxn6ZF48H0aE=
-github.com/walteh/snake v0.12.0/go.mod h1:A4lNNHlrLwCsKzp01YV1WHdzg/JbrJDM6dLaRsOwIhw=
+github.com/walteh/snake v0.12.11 h1:gtpqP34jtj6kBXfwvM5/DVRz7iBHROK/3MpTu9UhxJw=
+github.com/walteh/snake v0.12.11/go.mod h1:A4lNNHlrLwCsKzp01YV1WHdzg/JbrJDM6dLaRsOwIhw=
 github.com/xanzy/ssh-agent v0.3.3 h1:+/15pJfg/RsTxqYcX6fHqOXZwwMP+2VyYWJeWM2qQFM=
 github.com/xanzy/ssh-agent v0.3.3/go.mod h1:6dzNDKs0J9rVPHPhaGCukekBHKqfl+L3KghI1Bc68Uw=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=

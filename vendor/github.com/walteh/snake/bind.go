@@ -128,6 +128,16 @@ func listOfArgs(typ reflect.Type) []reflect.Type {
 	return args
 }
 
+func listOfReturns(typ reflect.Type) []reflect.Type {
+	var args []reflect.Type
+
+	for i := 0; i < typ.NumOut(); i++ {
+		args = append(args, typ.Out(i))
+	}
+
+	return args
+}
+
 func callRunMethod(cmd *cobra.Command, f reflect.Value, t reflect.Type) error {
 
 	in := []reflect.Value{}

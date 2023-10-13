@@ -7,6 +7,10 @@ import (
 	"github.com/spf13/pflag"
 )
 
+var (
+	ErrMissingResolver = errors.New("missing resolver")
+)
+
 type HasRunArgs interface{ RunArgs() []reflect.Type }
 
 type IsRunnable interface {
@@ -17,17 +21,17 @@ type IsRunnable interface {
 
 type FMap[G any] func(string) G
 
-func (fmap *Ctx) FlagsFor(str Method) (*pflag.FlagSet, error) {
-	return fmap.FlagsForString(str.Name())
+func (me *Ctx) FlagsFor(str Method) (*pflag.FlagSet, error) {
+	return me.FlagsForString(str.Name())
 }
 
-func (fmap *Ctx) FlagsForString(str string) (*pflag.FlagSet, error) {
-	if _, ok := fmap.resolvers[str]; !ok {
+func (me *Ctx) FlagsForString(str string) (*pflag.FlagSet, error) {
+	if _, ok := me.resolvers[str]; !ok {
 		return nil, errors.Wrapf(ErrMissingResolver, "missing resolver for %q", str)
 	}
 
 	mapa, err := findBrothers(str, func(s string) HasRunArgs {
-		return fmap.resolvers[s]
+		return me.resolvers[s]
 	})
 	if err != nil {
 		return nil, err
@@ -36,19 +40,23 @@ func (fmap *Ctx) FlagsForString(str string) (*pflag.FlagSet, error) {
 	flgs := &pflag.FlagSet{}
 
 	for _, f := range mapa {
-		fmap.resolvers[f].Flags(flgs)
+		if z, ok := me.resolvers[f]; !ok {
+			return nil, errors.Wrapf(ErrMissingResolver, "missing resolver for %q", f)
+		} else {
+			z.Flags(flgs)
+		}
 	}
 
 	return flgs, nil
 }
 
-func (fmap *Ctx) Run(str Method) error {
-	return fmap.RunString(str.Name())
+func (me *Ctx) Run(str Method) error {
+	return me.RunString(str.Name())
 }
 
-func (fmap *Ctx) RunString(str string) error {
+func (me *Ctx) RunString(str string) error {
 	args, err := findArgumentsRaw(str, func(s string) IsRunnable {
-		return fmap.resolvers[s]
+		return me.resolvers[s]
 	}, nil)
 	if err != nil {
 		return err
@@ -66,8 +74,8 @@ func (fmap *Ctx) RunString(str string) error {
 
 }
 
-func findBrothers(str string, fmap FMap[HasRunArgs]) ([]string, error) {
-	raw, err := findBrothersRaw(str, fmap, nil)
+func findBrothers(str string, me FMap[HasRunArgs]) ([]string, error) {
+	raw, err := findBrothersRaw(str, me, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -78,10 +86,14 @@ func findBrothers(str string, fmap FMap[HasRunArgs]) ([]string, error) {
 	return resp, nil
 }
 
+var Defaults = []string{"context.Context", "*cobra.Command"}
+
 func findBrothersRaw(str string, fmap FMap[HasRunArgs], rmap map[string]bool) (map[string]bool, error) {
 	var err error
 	if rmap == nil {
 		rmap = make(map[string]bool)
+		rmap["context.Context"] = true
+		// rmap["*cobra.Command"] = true
 	}
 
 	var curr HasRunArgs
@@ -120,8 +132,16 @@ func findArguments(str string, fmap FMap[IsRunnable]) ([]reflect.Value, error) {
 	return resp, nil
 }
 
-func runResolvingArguments(str string, fmap FMap[IsRunnable]) error {
-	args, err := findArgumentsRaw(str, fmap, nil)
+func valueToIsRunnable(v reflect.Value) IsRunnable {
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	return v.Interface().(IsRunnable)
+}
+
+func runResolvingArguments(str string, fmap FMap[IsRunnable], bmap map[string]*reflect.Value) error {
+
+	args, err := findArgumentsRaw(str, fmap, bmap)
 	if err != nil {
 		return err
 	}
@@ -139,7 +159,7 @@ func runResolvingArguments(str string, fmap FMap[IsRunnable]) error {
 }
 
 func reflectTypeString(typ reflect.Type) string {
-	return "reflect.Type(" + typ.String() + ")"
+	return typ.String()
 }
 
 func findArgumentsRaw(str string, fmap FMap[IsRunnable], wrk map[string]*reflect.Value) (map[string]*reflect.Value, error) {
@@ -172,7 +192,7 @@ func findArgumentsRaw(str string, fmap FMap[IsRunnable], wrk map[string]*reflect
 	resp := curr.Run().Call(tmp)
 	out, err := curr.HandleResponse(resp)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	wrk[str] = out

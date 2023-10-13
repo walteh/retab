@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/go-faster/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +41,7 @@ type DecorateOptions struct {
 func DecorateTemplate(ctx context.Context, root *cobra.Command, cfg *DecorateOptions) (string, error) {
 
 	if root == nil || cfg == nil {
-		return "", ErrInvalidArguments
+		return "", errors.New("root command and config must be provided")
 	}
 
 	// Get usage template

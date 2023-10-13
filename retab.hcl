@@ -35,6 +35,7 @@ file "default.yaml" {
 						SHELL
 					},
 				]
+
 			}
 		}
 	}

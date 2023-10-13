@@ -36,9 +36,10 @@ require (
 	github.com/sergi/go-diff v1.3.1
 	github.com/spf13/afero v1.9.5
 	github.com/spf13/cobra v1.7.0
+	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
 	github.com/walteh/buildrc v0.14.1
-	github.com/walteh/snake v0.12.0
+	github.com/walteh/snake v0.12.11
 	github.com/zclconf/go-cty v1.14.0
 	github.com/zclconf/go-cty-debug v0.0.0-20191215020915-b22d67c1ba0b
 	go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace v0.44.0
@@ -98,7 +99,6 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	go.opentelemetry.io/otel/metric v1.18.0 // indirect
 	golang.org/x/crypto v0.13.0 // indirect

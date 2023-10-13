@@ -303,7 +303,7 @@ github.com/stretchr/testify/require
 ## explicit; go 1.21.0
 github.com/walteh/buildrc/pkg/file
 github.com/walteh/buildrc/pkg/install
-# github.com/walteh/snake v0.12.0
+# github.com/walteh/snake v0.12.11
 ## explicit; go 1.21.0
 github.com/walteh/snake
 # github.com/zclconf/go-cty v1.14.0

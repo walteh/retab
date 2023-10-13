@@ -16,14 +16,14 @@ import (
 	"github.com/walteh/snake"
 )
 
-var _ snake.Snakeable = (*Handler)(nil)
+var _ snake.Cobrad = (*Handler)(nil)
 
 type Handler struct {
 	File       string `arg:"" default:" " name:"file" help:"The hcl file to format."`
 	WorkingDir string `name:"working-dir" help:"The working directory to use. Defaults to the current directory."`
 }
 
-func (me *Handler) BuildCommand(_ context.Context) *cobra.Command {
+func (me *Handler) Cobra() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "fmt",
 		Short: "format hcl files with the official hcl2 library, but with tabs",

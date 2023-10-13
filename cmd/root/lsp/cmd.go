@@ -4,15 +4,20 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/walteh/snake"
 )
 
-var _ snake.Snakeable = (*Handler)(nil)
+var _ snake.Cobrad = (*Handler)(nil)
+var _ snake.Flagged = (*Handler)(nil)
 
 type Handler struct {
 }
 
-func (me *Handler) BuildCommand(_ context.Context) *cobra.Command {
+func (*Handler) Flags(*pflag.FlagSet) {
+}
+
+func (me *Handler) Cobra() *cobra.Command {
 	cmd := &cobra.Command{
 		Short: "run a server for retab code using the Language Server Protocol",
 	}
