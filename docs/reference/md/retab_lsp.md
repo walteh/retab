@@ -9,13 +9,8 @@ retab lsp [flags]
 ### Options
 
 ```
-  -h, --help   help for lsp
-```
-
-### Options inherited from parent commands
-
-```
   -d, --debug     Print debug output
+  -h, --help      help for lsp
   -q, --quiet     Do not print any output
   -v, --version   Print version and exit
 ```

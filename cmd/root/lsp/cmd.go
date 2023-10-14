@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"github.com/walteh/retab/pkg/lsp"
 	"github.com/walteh/snake"
 )
 
@@ -14,6 +15,7 @@ type Handler struct {
 
 func (me *Handler) Cobra() *cobra.Command {
 	cmd := &cobra.Command{
+		Use:   "lsp",
 		Short: "run a server for retab code using the Language Server Protocol",
 	}
 
@@ -23,6 +25,6 @@ func (me *Handler) Cobra() *cobra.Command {
 }
 
 func (me *Handler) Run(ctx context.Context) error {
-	return nil
-	// return NewServe().Run(debug.WithInstance(ctx, "./de.bug", "serve"), nil)
+	serv := lsp.NewServer()
+	return serv.RunStdio()
 }

@@ -21,13 +21,13 @@ type IsRunnable interface {
 
 type FMap[G any] func(string) G
 
-func FlagsFor(str string, method FMap[Method]) (*pflag.FlagSet, error) {
-	if ok := method(str); ok == nil {
+func FlagsFor(str string, m FMap[Method]) (*pflag.FlagSet, error) {
+	if ok := m(str); ok == nil {
 		return nil, errors.Wrapf(ErrMissingResolver, "missing resolver for %q", str)
 	}
 
 	mapa, err := findBrothers(str, func(s string) HasRunArgs {
-		return method(s)
+		return m(s)
 	})
 	if err != nil {
 		return nil, err
@@ -36,13 +36,12 @@ func FlagsFor(str string, method FMap[Method]) (*pflag.FlagSet, error) {
 	flgs := &pflag.FlagSet{}
 
 	for _, f := range mapa {
-		if f == str {
-			continue
-		}
-		if z, err := FlagsFor(f, method); err != nil {
+		if z := m(f); z == nil {
 			return nil, errors.Wrapf(ErrMissingResolver, "missing resolver for %q", f)
 		} else {
-			z.AddFlagSet(flgs)
+			if z, ok := z.(Flagged); ok {
+				z.Flags(flgs)
+			}
 		}
 	}
 

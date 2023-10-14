@@ -29,17 +29,18 @@ func (me *Handler) Cobra() *cobra.Command {
 
 	cmd.Flags().StringVar(&me.WorkingDir, "working-dir", "", "The working directory to use. Defaults to the current directory.")
 
-	cmd.Args = cobra.ExactArgs(1)
+	cmd.Args = func(cmd *cobra.Command, args []string) error {
+
+		if len(args) != 1 {
+			return cmd.Usage()
+		}
+
+		me.File = args[0]
+
+		return nil
+	}
 
 	return cmd
-}
-
-func (me *Handler) ParseArguments(_ context.Context, _ *cobra.Command, file []string) error {
-
-	me.File = file[0]
-
-	return nil
-
 }
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
