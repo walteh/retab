@@ -25,22 +25,24 @@ type Handler struct {
 
 func (me *Handler) Cobra() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "fmt",
+		Use:   "fmt <file>",
 		Short: "format hcl files with the official hcl2 library, but with tabs",
 	}
-	cmd.Args = cobra.ExactArgs(1)
+
+	cmd.Args = func(cmd *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return errors.New("requires a file argument")
+		}
+		me.File = args[0]
+		if me.File == "" {
+			return errors.New("no file provided")
+		}
+		return nil
+	}
 
 	cmd.Flags().StringVar(&me.WorkingDir, "working-dir", "", "The working directory to use. Defaults to the current directory.")
 
 	return cmd
-}
-
-func (me *Handler) ParseArguments(_ context.Context, _ *cobra.Command, file []string) error {
-
-	me.File = file[0]
-
-	return nil
-
 }
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {

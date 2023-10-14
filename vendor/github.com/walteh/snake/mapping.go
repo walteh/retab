@@ -36,6 +36,9 @@ func FlagsFor(str string, method FMap[Method]) (*pflag.FlagSet, error) {
 	flgs := &pflag.FlagSet{}
 
 	for _, f := range mapa {
+		if f == str {
+			continue
+		}
 		if z, err := FlagsFor(f, method); err != nil {
 			return nil, errors.Wrapf(ErrMissingResolver, "missing resolver for %q", f)
 		} else {

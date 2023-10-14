@@ -27,12 +27,6 @@ func (me *Handler) Cobra() *cobra.Command {
 	return cmd
 }
 
-func (me *Handler) ParseArguments(_ context.Context, _ *cobra.Command, file []string) error {
-
-	return nil
-
-}
-
 func (me *Handler) Run(ctx context.Context, fs afero.Fs, cmd *cobra.Command) error {
 
 	body, err := hclread.Process(ctx, fs, me.File)
