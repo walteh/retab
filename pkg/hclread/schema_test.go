@@ -72,8 +72,10 @@ func TestValidHCLDecoding(t *testing.T) {
 		}
 
 		if blk.Validation != nil {
-			for _, err := range blk.Validation.Problems {
-				pp.Println(err)
+			for _, v := range blk.Validation {
+				for _, err := range v.Problems {
+					pp.Println(err)
+				}
 			}
 			t.Fatal(blk.Validation)
 		}

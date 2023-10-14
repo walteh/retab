@@ -14,17 +14,31 @@ import (
 
 const lsName = "retab"
 
-var handler protocol.Handler
+type Handler struct {
+	protocol.Handler
+	files map[string]string
+}
+
+var handler Handler
 
 func NewServer() *server.Server {
 	// This increases logging verbosity (optional)
 	commonlog.Configure(1, nil)
 
-	handler = protocol.Handler{
-		Initialize:  initialize,
-		Initialized: initialized,
-		Shutdown:    shutdown,
-		SetTrace:    setTrace,
+	handler = Handler{
+		Handler: protocol.Handler{
+			Initialize:  initialize,
+			Initialized: initialized,
+			Shutdown:    shutdown,
+			SetTrace:    setTrace,
+			TextDocumentDidOpen: func(context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
+				handler.files[params.TextDocument.URI] = params.TextDocument.Text
+				return nil
+			},
+			TextDocumentDidChange: func(context *glsp.Context, params *protocol.DidChangeTextDocumentParams) error {
+				return nil
+			},
+		},
 	}
 
 	return server.NewServer(&handler, lsName, false)

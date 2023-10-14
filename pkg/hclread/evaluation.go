@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/go-faster/errors"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/userfunc"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -24,12 +25,12 @@ func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*
 
 	all, err := afero.ReadAll(fle)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, errors.Wrapf(err, "failed to read %q", name)
 	}
 
 	hcldata, errd := hclsyntax.ParseConfig(all, name, hcl.InitialPos)
 	if errd.HasErrors() {
-		return nil, nil, nil, errd
+		return nil, nil, nil, errors.Wrapf(errd, "failed to parse %q", name)
 	}
 
 	ectx := &hcl.EvalContext{
@@ -42,7 +43,7 @@ func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*
 
 	userfuncs, rbdy, diag := userfunc.DecodeUserFunctions(hcldata.Body, "func", func() *hcl.EvalContext { return ectx })
 	if diag.HasErrors() {
-		return nil, nil, nil, diag
+		return nil, nil, nil, errors.Wrapf(diag, "failed to decode user functions")
 	}
 
 	for k, v := range userfuncs {
@@ -67,9 +68,42 @@ func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*
 	for _, v := range bdy.Attributes {
 		val, diag := v.Expr.Value(ectx)
 		if diag.HasErrors() {
-			return nil, nil, nil, diag
+			return nil, nil, nil, errors.Wrapf(diag, "failed to evaluate %q", v.Name)
 		}
 		ectx.Variables[v.Name] = val
+	}
+
+	custvars := map[string]map[string]cty.Value{}
+
+	for _, v := range bdy.Blocks {
+		if v.Type == "file" {
+			continue
+		}
+
+		if _, ok := custvars[v.Type]; !ok {
+			custvars[v.Type] = map[string]cty.Value{}
+		}
+
+		if len(v.Labels) != 1 {
+			return nil, nil, nil, errors.Errorf("expected exactly one label, got %d", len(v.Labels))
+		}
+
+		mapper := map[string]cty.Value{}
+
+		for _, attr := range v.Body.Attributes {
+			val, diag := attr.Expr.Value(ectx)
+			if diag.HasErrors() {
+				return nil, nil, nil, errors.Wrapf(diag, "failed to evaluate %q", attr.Name)
+			}
+			mapper[attr.Name] = val
+		}
+
+		custvars[v.Type][v.Labels[0]] = cty.ObjectVal(mapper)
+
+	}
+
+	for k, v := range custvars {
+		ectx.Variables[k] = cty.ObjectVal(v)
 	}
 
 	bdy.Attributes = nil
