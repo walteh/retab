@@ -247,9 +247,6 @@ github.com/mitchellh/reflectwalk
 # github.com/otiai10/copy v1.12.0
 ## explicit; go 1.18
 github.com/otiai10/copy
-# github.com/pkg/errors v0.9.1
-## explicit
-github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 ## explicit
 github.com/pmezard/go-difflib/difflib
@@ -303,7 +300,7 @@ github.com/stretchr/testify/require
 ## explicit; go 1.21.0
 github.com/walteh/buildrc/pkg/file
 github.com/walteh/buildrc/pkg/install
-# github.com/walteh/snake v0.12.11
+# github.com/walteh/snake v0.13.0
 ## explicit; go 1.21.0
 github.com/walteh/snake
 # github.com/zclconf/go-cty v1.14.0

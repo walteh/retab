@@ -7,8 +7,9 @@ import (
 )
 
 type method struct {
-	name               string
-	method             reflect.Value
+	name   string
+	method reflect.Value
+
 	flags              func(*pflag.FlagSet)
 	validationStrategy func([]reflect.Type) error
 	responseStrategy   func([]reflect.Value) (*reflect.Value, error)

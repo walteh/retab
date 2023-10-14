@@ -25,20 +25,20 @@ func NewCommand(ctx context.Context) (*cobra.Command, error) {
 		},
 	}
 
-	snake.NewCmd(&fmt.Handler{})
-	snake.NewCmd(&buf.Handler{})
-	snake.NewCmd(&hcl.Handler{})
-	snake.NewCmd(&install.Handler{})
-	snake.NewCmd(&generate.Handler{})
-	snake.NewCmd(&lsp.Handler{})
+	return snake.NewSnake(&snake.NewSnakeOpts{
+		Root: cmd,
+		Resolvers: []snake.Method{
+			snake.NewArgumentMethod[context.Context](&resolvers.ContextResolver{}),
+			snake.NewArgumentMethod[afero.Fs](&resolvers.AferoResolver{}),
+		},
+		Commands: []snake.Method{
+			snake.NewCommandMethod(&fmt.Handler{}),
+			snake.NewCommandMethod(&buf.Handler{}),
+			snake.NewCommandMethod(&hcl.Handler{}),
+			snake.NewCommandMethod(&install.Handler{}),
+			snake.NewCommandMethod(&generate.Handler{}),
+			snake.NewCommandMethod(&lsp.Handler{}),
+		},
+	})
 
-	snake.NewArgument[context.Context](&resolvers.ContextResolver{})
-	snake.NewArgument[afero.Fs](&resolvers.AferoResolver{})
-
-	err := snake.Apply(ctx, cmd)
-	if err != nil {
-		return nil, err
-	}
-
-	return cmd, nil
 }

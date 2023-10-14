@@ -21,17 +21,13 @@ type IsRunnable interface {
 
 type FMap[G any] func(string) G
 
-func (me *Ctx) FlagsFor(str Method) (*pflag.FlagSet, error) {
-	return me.FlagsForString(str.Name())
-}
-
-func (me *Ctx) FlagsForString(str string) (*pflag.FlagSet, error) {
-	if _, ok := me.resolvers[str]; !ok {
+func FlagsFor(str string, method FMap[Method]) (*pflag.FlagSet, error) {
+	if ok := method(str); ok == nil {
 		return nil, errors.Wrapf(ErrMissingResolver, "missing resolver for %q", str)
 	}
 
 	mapa, err := findBrothers(str, func(s string) HasRunArgs {
-		return me.resolvers[s]
+		return method(s)
 	})
 	if err != nil {
 		return nil, err
@@ -40,21 +36,24 @@ func (me *Ctx) FlagsForString(str string) (*pflag.FlagSet, error) {
 	flgs := &pflag.FlagSet{}
 
 	for _, f := range mapa {
-		if z, ok := me.resolvers[f]; !ok {
+		if z, err := FlagsFor(f, method); err != nil {
 			return nil, errors.Wrapf(ErrMissingResolver, "missing resolver for %q", f)
 		} else {
-			z.Flags(flgs)
+			z.AddFlagSet(flgs)
 		}
 	}
 
 	return flgs, nil
 }
 
-func (me *Ctx) Run(str Method) error {
+func (me *Snake) Run(str Method) error {
 	return me.RunString(str.Name())
 }
 
-func (me *Ctx) RunString(str string) error {
+var end_of_chain = reflect.ValueOf("end_of_chain")
+var end_of_chain_ptr = &end_of_chain
+
+func (me *Snake) RunString(str string) error {
 	args, err := findArgumentsRaw(str, func(s string) IsRunnable {
 		return me.resolvers[s]
 	}, nil)
@@ -86,14 +85,10 @@ func findBrothers(str string, me FMap[HasRunArgs]) ([]string, error) {
 	return resp, nil
 }
 
-var Defaults = []string{"context.Context", "*cobra.Command"}
-
 func findBrothersRaw(str string, fmap FMap[HasRunArgs], rmap map[string]bool) (map[string]bool, error) {
 	var err error
 	if rmap == nil {
 		rmap = make(map[string]bool)
-		rmap["context.Context"] = true
-		// rmap["*cobra.Command"] = true
 	}
 
 	var curr HasRunArgs
