@@ -44,7 +44,7 @@ func NewServer() *server.Server {
 	return server.NewServer(&handler, lsName, false)
 }
 
-func initialize(context *glsp.Context, params *protocol.InitializeParams) (any, error) {
+func initialize(_ *glsp.Context, _ *protocol.InitializeParams) (any, error) {
 	capabilities := handler.CreateServerCapabilities()
 
 	return protocol.InitializeResult{
@@ -56,16 +56,16 @@ func initialize(context *glsp.Context, params *protocol.InitializeParams) (any, 
 	}, nil
 }
 
-func initialized(context *glsp.Context, params *protocol.InitializedParams) error {
+func initialized(_ *glsp.Context, _ *protocol.InitializedParams) error {
 	return nil
 }
 
-func shutdown(context *glsp.Context) error {
+func shutdown(_ *glsp.Context) error {
 	protocol.SetTraceValue(protocol.TraceValueOff)
 	return nil
 }
 
-func setTrace(context *glsp.Context, params *protocol.SetTraceParams) error {
+func setTrace(_ *glsp.Context, params *protocol.SetTraceParams) error {
 	protocol.SetTraceValue(params.Value)
 	return nil
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/walteh/snake"
 )
 
-func NewCommand(ctx context.Context) (*cobra.Command, error) {
+func NewCommand() (*cobra.Command, error) {
 
 	cmd := &cobra.Command{
 		Use:   "retab",

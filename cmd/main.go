@@ -11,7 +11,7 @@ func main() {
 
 	ctx := context.Background()
 
-	cmd, err := root.NewCommand(ctx)
+	cmd, err := root.NewCommand()
 	if err != nil {
 		log.Fatalf("ERROR: %+v", err)
 	}

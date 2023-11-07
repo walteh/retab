@@ -3,7 +3,6 @@ package hclread
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/go-faster/errors"
@@ -95,6 +94,13 @@ func (me *BlockEvaluation) ValidateJSONSchemaProperty(ctx context.Context, prop 
 
 func getAllDefs(parent string, schema *jsonschema.Schema, defs map[string]*jsonschema.Schema) {
 
+	////////////////////////////////////////
+	// not sure if this is needed or not
+	if defs[parent] != nil {
+		return
+	}
+	////////////////////////////////////////
+
 	if schema == nil {
 		return
 	}
@@ -164,7 +170,7 @@ func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsynt
 	}
 
 	if fle == nil {
-		return nil, fmt.Errorf("no file block found")
+		return nil, errors.Errorf("no file block found")
 	}
 
 	for _, block := range file.Blocks {
@@ -179,11 +185,11 @@ func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsynt
 
 			err := fle.ValidateJSONSchemaProperty(ctx, block.Type)
 			if err != nil {
-				if lerr, ok := LoadValidationErrors(ctx, attr.Expr, ectx, err); !ok {
+				lerr, ok := LoadValidationErrors(ctx, attr.Expr, ectx, err)
+				if ok {
 					continue
-				} else {
-					fle.Validation = append(fle.Validation, lerr...)
 				}
+				fle.Validation = append(fle.Validation, lerr...)
 			}
 		}
 
@@ -226,7 +232,7 @@ func (me *BlockEvaluation) PropertyEvaluation(ctx context.Context, ectx *hcl.Eva
 func NewBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (res *BlockEvaluation, err error) {
 
 	if block.Type != "file" {
-		return nil, fmt.Errorf("invalid block type %q", block.Type)
+		return nil, errors.Errorf("invalid block type %q", block.Type)
 	}
 
 	blk := &BlockEvaluation{
@@ -286,7 +292,7 @@ func (me *BlockEvaluation) HasValidationErrors() bool {
 func (me *BlockEvaluation) Encode() ([]byte, error) {
 	arr := strings.Split(me.Name, ".")
 	if len(arr) < 2 {
-		return nil, fmt.Errorf("invalid file name [%s] - missing extension", me.Name)
+		return nil, errors.Errorf("invalid file name [%s] - missing extension", me.Name)
 	}
 	switch arr[len(arr)-1] {
 	case "json":
@@ -301,6 +307,6 @@ func (me *BlockEvaluation) Encode() ([]byte, error) {
 	// case "hcl":
 	// 	return
 	default:
-		return nil, fmt.Errorf("unknown file extension [%s] in %s", arr[len(arr)-1], me.Name)
+		return nil, errors.Errorf("unknown file extension [%s] in %s", arr[len(arr)-1], me.Name)
 	}
 }

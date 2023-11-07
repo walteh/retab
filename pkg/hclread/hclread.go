@@ -53,7 +53,7 @@ func (me *BlockEvaluation) WriteToFile(ctx context.Context, fs afero.Fs) error {
 	return nil
 }
 
-func (me *BlockEvaluation) WriteToReader(ctx context.Context) (io.Reader, error) {
+func (me *BlockEvaluation) WriteToReader(_ context.Context) (io.Reader, error) {
 	out, erry := me.Encode()
 	if erry != nil {
 		return nil, errors.Wrapf(erry, "failed to encode block %q", me.Name)

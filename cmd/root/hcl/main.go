@@ -43,7 +43,7 @@ func (me *Handler) Cobra() *cobra.Command {
 	return cmd
 }
 
-func (me *Handler) Run(ctx context.Context, fs afero.Fs, file []string) error {
+func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
 
 	fourmatter := hclwrite.NewHclFormatter()
 

@@ -27,7 +27,7 @@ func (me *Handler) Cobra() *cobra.Command {
 	return cmd
 }
 
-func (me *Handler) Run(ctx context.Context, fs afero.Fs, cmd *cobra.Command) error {
+func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
 
 	body, err := hclread.Process(ctx, fs, me.File)
 	if err != nil {

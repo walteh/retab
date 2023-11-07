@@ -111,9 +111,13 @@ func InstanceLocationToHCLRange(splt []string, cnt hcl.Expression, ectx *hcl.Eva
 		}
 	case *hclsyntax.IndexExpr:
 		{
+			// TODO: this is just a placeholder, not the right way to do this
+			return &t.SrcRange, nil
 		}
 	case *hclsyntax.TemplateExpr:
 		{
+			// TODO: this is just a placeholder, not the right way to do this
+			return &t.SrcRange, nil
 		}
 	}
 

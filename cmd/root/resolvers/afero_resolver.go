@@ -11,7 +11,7 @@ var _ snake.Flagged = (*AferoResolver)(nil)
 type AferoResolver struct {
 }
 
-func (me *AferoResolver) Flags(flgs *pflag.FlagSet) {
+func (me *AferoResolver) Flags(_ *pflag.FlagSet) {
 }
 
 func (me *AferoResolver) Run() (afero.Fs, error) {

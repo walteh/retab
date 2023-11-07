@@ -31,7 +31,7 @@ func TestNewCommand(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewCommand(tt.args.ctx)
+			got, err := NewCommand()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCommand() error = %v, wantErr %v", err, tt.wantErr)
 				return

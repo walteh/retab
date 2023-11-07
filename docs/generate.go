@@ -10,10 +10,10 @@ import (
 	"github.com/walteh/retab/cmd/root"
 )
 
-func run(ctx context.Context, ref string) error {
+func run(_ context.Context, ref string) error {
 	log.SetFlags(0)
 
-	cmd, err := root.NewCommand(ctx)
+	cmd, err := root.NewCommand()
 	if err != nil {
 		return err
 	}

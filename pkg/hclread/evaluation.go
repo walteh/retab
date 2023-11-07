@@ -21,7 +21,7 @@ func NewEvaluation(ctx context.Context, fle afero.File) (*hcl.File, *hcl.EvalCon
 	return NewEvaluationReadCloser(ctx, fle, fle.Name())
 }
 
-func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*hcl.File, *hcl.EvalContext, *hclsyntax.Body, error) {
+func NewEvaluationReadCloser(_ context.Context, fle io.Reader, name string) (*hcl.File, *hcl.EvalContext, *hclsyntax.Body, error) {
 
 	all, err := afero.ReadAll(fle)
 	if err != nil {

@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+
+	"github.com/go-faster/errors"
 )
 
 func DownloadJSONSchema(ctx context.Context, schema string) ([]byte, error) {
@@ -29,7 +31,7 @@ func DownloadJSONSchema(ctx context.Context, schema string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s returned status code %d", schema, resp.StatusCode)
+		return nil, errors.Errorf("%s returned status code %d", schema, resp.StatusCode)
 	}
 
 	all, err := io.ReadAll(resp.Body)
@@ -56,7 +58,7 @@ func DownloadAllJSONSchemas(ctx context.Context) error {
 
 			schemaData, err := DownloadJSONSchema(ctx, schema)
 			if err != nil {
-				errChan <- fmt.Errorf("Failed to download schema %s: %v", schema, err)
+				errChan <- errors.Errorf("Failed to download schema %s: %v", schema, err)
 				return
 			}
 
@@ -67,14 +69,14 @@ func DownloadAllJSONSchemas(ctx context.Context) error {
 			// Create the directory if it doesn't exist
 			err = os.MkdirAll(destinationDir, os.ModePerm)
 			if err != nil {
-				errChan <- fmt.Errorf("Failed to create directory: %v", err)
+				errChan <- errors.Errorf("Failed to create directory: %v", err)
 				return
 			}
 
 			// Write schema data to file
 			err = os.WriteFile(destinationPath, schemaData, 0644)
 			if err != nil {
-				errChan <- fmt.Errorf("Failed to write schema to file: %v", err)
+				errChan <- errors.Errorf("Failed to write schema to file: %v", err)
 			}
 		}(schema)
 	}
@@ -85,13 +87,13 @@ func DownloadAllJSONSchemas(ctx context.Context) error {
 	}()
 
 	// Collect any errors that occurred during downloading
-	var errs []error
+	errs := make([]error, 0)
 	for err := range errChan {
 		errs = append(errs, err)
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("Encountered multiple errors: %v", errs)
+		return errors.Errorf("Encountered multiple errors: %v", errs)
 	}
 
 	return nil
