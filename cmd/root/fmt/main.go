@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/walteh/retab/pkg/bufwrite"
+	"github.com/walteh/retab/pkg/configuration"
 	"github.com/walteh/retab/pkg/format"
 	"github.com/walteh/retab/pkg/hclwrite"
 	"github.com/walteh/snake"
@@ -45,7 +46,7 @@ func (me *Handler) Cobra() *cobra.Command {
 	return cmd
 }
 
-func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
+func (me *Handler) Run(ctx context.Context, fs afero.Fs, ecfg configuration.Provider) error {
 
 	fmtr := hclwrite.NewHclFormatter()
 	bufr := bufwrite.NewBufFormatter()
@@ -61,7 +62,7 @@ func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
 			continue
 		}
 
-		return format.Format(ctx, bufr, fs, me.File, me.WorkingDir)
+		return format.Format(ctx, bufr, ecfg, fs, me.File, me.WorkingDir)
 	}
 
 	for _, target := range fmtr.Targets() {
@@ -75,7 +76,7 @@ func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
 			continue
 		}
 
-		return format.Format(ctx, fmtr, fs, me.File, me.WorkingDir)
+		return format.Format(ctx, fmtr, ecfg, fs, me.File, me.WorkingDir)
 	}
 
 	return errors.New("no targets found")

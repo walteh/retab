@@ -8,6 +8,50 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const sample1 = `
+BRANCH = "main"
+
+func "leggo" {
+	params = [abc, def]
+	result = abc + def
+}
+
+file "default.yaml" {
+	dir    = "./.github/workflows"
+	schema = "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json"
+	data = {
+		name = "test"
+
+		on = {
+			push = {
+				branches = [BRANCH]
+			}
+		}
+		jobs = {
+			build = {
+				runs-on = "ubuntu-latest"
+				steps = [
+					{
+						name = "Checkout"
+						uses = "actions/checkout@v2"
+						with = {
+							fetch-depth = leggo(1, 2)
+						}
+					},
+					{
+						name = "Run tests"
+						run  = <<SHELL
+							echo "Hello world"
+						SHELL
+					},
+				]
+
+			}
+		}
+	}
+}
+`
+
 func TestNewCommand(t *testing.T) {
 	type args struct {
 		ctx context.Context
@@ -36,7 +80,25 @@ func TestNewCommand(t *testing.T) {
 				t.Errorf("NewCommand() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			os.Args = []string{"retab", "hcl", "../../retab.hcl"}
+
+			// save sample 1 to a temp file
+			f, err := os.CreateTemp("", "retab.hcl")
+			if err != nil {
+				t.Errorf("NewCommand() error = %v", err)
+				return
+			}
+
+			_, err = f.WriteString(sample1)
+			if err != nil {
+				t.Errorf("NewCommand() error = %v", err)
+				return
+			}
+
+			t.Cleanup(func() {
+				os.Remove(f.Name())
+			})
+
+			os.Args = []string{"retab", "hcl", f.Name()}
 			err = got.ExecuteContext(tt.args.ctx)
 			if err != nil {
 				t.Errorf("NewCommand() error = %v", err)
