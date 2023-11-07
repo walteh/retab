@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
 	"github.com/walteh/retab/pkg/configuration"
-	"github.com/walteh/retab/pkg/editorconfig"
 )
 
 type Provider interface {
@@ -18,7 +17,7 @@ type Provider interface {
 	Targets() []string
 }
 
-func Format(ctx context.Context, provider Provider, fs afero.Fs, path string, working string) error {
+func Format(ctx context.Context, provider Provider, cfg configuration.Provider, fs afero.Fs, path string, working string) error {
 
 	isDir, err := afero.IsDir(fs, path)
 	if err != nil {
@@ -27,10 +26,10 @@ func Format(ctx context.Context, provider Provider, fs afero.Fs, path string, wo
 
 	// handle when option specifies a particular file
 	if !isDir {
-		cfg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, path)
-		if err != nil {
-			return err
-		}
+		// cfg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, path)
+		// if err != nil {
+		// 	return err
+		// }
 
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(working, path)
@@ -75,12 +74,12 @@ func Format(ctx context.Context, provider Provider, fs afero.Fs, path string, wo
 
 	var formatErrors *multierror.Error
 	for _, filename := range files {
-		cfg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, filename)
-		if err != nil {
-			formatErrors = multierror.Append(formatErrors, err)
-			continue
-		}
-		fle, err := fs.Open(path)
+		// cfg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, filename)
+		// if err != nil {
+		// 	formatErrors = multierror.Append(formatErrors, err)
+		// 	continue
+		// }
+		fle, err := fs.Open(filename)
 		if err != nil {
 			formatErrors = multierror.Append(formatErrors, err)
 			continue

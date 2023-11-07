@@ -9,6 +9,7 @@ IS_LOCAL       = CI != "1" && CI != "true" ? true : false
 ROOT_DIR       = "."
 DEST_DIR       = "${ROOT_DIR}/bin"
 GEN_DIR        = "${ROOT_DIR}/gen"
+GO_MODULE      = "github.com/${DOCKER_ORG}/${DOCKER_REPO}"
 
 ##################################################################
 # INPUTS
@@ -98,6 +99,8 @@ target "_common" {
 		GOLANGCI_LINT_VERSION         = "v1.54.2"
 		GOMODOUTDATED_VERSION         = "v0.8.0"
 		MOCKERY_VERSION               = "2.33.3"
+		GOPLS_VERSION                 = "0.13.2"
+		GO_MODULE                     = GO_MODULE
 		BUILDKIT_CONTEXT_KEEP_GIT_DIR = 1
 		BIN_NAME                      = BIN_NAME
 		BUILDX_EXPERIMENTAL           = 1
@@ -117,18 +120,18 @@ target "_cross" {
 		"darwin/amd64",
 		"darwin/arm64",
 		"linux/amd64",
-		"linux/arm/v6",
-		"linux/arm/v7",
 		"linux/arm64",
-		"linux/ppc64le",
-		"linux/riscv64",
-		"linux/s390x",
-		"freebsd/amd64",
-		"freebsd/arm64",
-		"openbsd/amd64",
-		"openbsd/arm64",
-		"netbsd/amd64",
-		"netbsd/arm64",
+		# "linux/arm/v6",
+		# "linux/arm/v7",
+		# "linux/ppc64le",
+		# "linux/riscv64",
+		# "linux/s390x",
+		# "freebsd/amd64",
+		# "freebsd/arm64",
+		# "openbsd/amd64",
+		# "openbsd/arm64",
+		# "netbsd/amd64",
+		# "netbsd/arm64",
 		"windows/amd64",
 		"windows/arm64",
 	]
@@ -162,6 +165,7 @@ COMMANDS = {
 		generate   = null
 		dest       = "${ROOT_DIR}"
 		globs      = []
+		args       = {}
 	}
 	vendor = {
 		dockerfile = "./hack/dockerfiles/vendor.Dockerfile"
@@ -169,6 +173,7 @@ COMMANDS = {
 		generate   = { target = "generate" }
 		dest       = "${ROOT_DIR}"
 		globs      = ["go.mod", "go.sum", "vendor/**"]
+		args       = {}
 	}
 	docs = {
 		dockerfile = "./hack/dockerfiles/docs.Dockerfile"
@@ -176,6 +181,7 @@ COMMANDS = {
 		generate   = { target = "generate" }
 		dest       = "${ROOT_DIR}/docs/reference"
 		globs      = ["**/*.md"]
+		args       = {}
 	}
 	mockery = {
 		dockerfile = "./hack/dockerfiles/mockery.Dockerfile"
@@ -183,6 +189,7 @@ COMMANDS = {
 		generate   = { target = "generate" }
 		dest       = "${GEN_DIR}/mockery"
 		globs      = ["**/*.mockery.go"]
+		args       = {}
 	}
 	buf = {
 		dockerfile = "./hack/dockerfiles/buf.Dockerfile"
@@ -190,6 +197,7 @@ COMMANDS = {
 		generate   = { target = "generate" }
 		dest       = "${GEN_DIR}/buf"
 		globs      = ["**/*.proto"]
+		args       = {}
 	}
 }
 
@@ -203,9 +211,10 @@ target "generate" {
 		item = [for name, item in COMMANDS : merge(item, { name = name }) if item.generate != null]
 	}
 	name = "generate-${item.name}"
-	args = {
-		NAME = item.name
-	}
+	args = merge(item.args, {
+		NAME    = item.name
+		DESTDIR = item.dest
+	})
 	output     = ["type=local,dest=${item.dest}"]
 	target     = item.generate.target
 	dockerfile = item.dockerfile
