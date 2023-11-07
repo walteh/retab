@@ -8,6 +8,7 @@ require (
 	github.com/apparentlymart/go-textseg/v13 v13.0.0
 	github.com/bufbuild/protocompile v0.6.0
 	github.com/editorconfig/editorconfig-core-go/v2 v2.5.2
+	github.com/fatih/color v1.15.0
 	github.com/go-faster/errors v0.6.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/hcl/v2 v2.18.0
@@ -22,7 +23,7 @@ require (
 	github.com/tliron/commonlog v0.2.3
 	github.com/tliron/glsp v0.2.0
 	github.com/walteh/buildrc v0.14.1
-	github.com/walteh/snake v0.13.3
+	github.com/walteh/snake v0.15.0
 	github.com/zclconf/go-cty v1.14.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/mod v0.12.0
@@ -36,7 +37,6 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.6.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/fatih/color v1.15.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect

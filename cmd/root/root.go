@@ -39,6 +39,7 @@ func NewCommand() (*cobra.Command, error) {
 			snake.NewCommandMethod(&generate.Handler{}),
 			snake.NewCommandMethod(&lsp.Handler{}),
 		},
+		GlobalContextResolverFlags: true,
 	})
 
 }

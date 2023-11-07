@@ -17,6 +17,7 @@ type Handler struct {
 
 func (me *Handler) Cobra() *cobra.Command {
 	cmd := &cobra.Command{
+		Use:   "install",
 		Short: "install buildrc",
 	}
 

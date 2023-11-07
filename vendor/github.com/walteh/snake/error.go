@@ -43,11 +43,11 @@ func FormatError(cmd *cobra.Command, err error) string {
 		}
 	})
 	caller := ""
-	if frm, ok := errors.Cause(err); ok {
+	// the way go-faster/errors works is that you need to wrap to get the frame, so we do that here in case it has not been wrapped
+	if frm, ok := errors.Cause(errors.Wrap(err, "tmp")); ok {
 		_, filestr, linestr := frm.Location()
 		caller = FormatCaller(filestr, linestr)
 		caller = caller + " - "
-
 	}
 	str := fmt.Sprintf("%+s", err)
 	prev := ""

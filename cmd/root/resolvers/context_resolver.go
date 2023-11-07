@@ -27,6 +27,11 @@ func (me *ContextResolver) Flags(flgs *pflag.FlagSet) {
 
 func (me *ContextResolver) Run(cmd *cobra.Command) (context.Context, error) {
 
+	if me.Version {
+		cmd.Printf("%s %s %s\n", version.Package, version.Version, version.Revision)
+		os.Exit(0)
+	}
+
 	var level zerolog.Level
 	if me.Debug {
 		level = zerolog.TraceLevel
@@ -39,11 +44,6 @@ func (me *ContextResolver) Run(cmd *cobra.Command) (context.Context, error) {
 	ctx := context.Background()
 
 	ctx = zerolog.New(zerolog.NewConsoleWriter()).With().Timestamp().Logger().Level(level).WithContext(ctx)
-
-	if me.Version {
-		cmd.Printf("%s %s %s\n", version.Package, version.Version, version.Revision)
-		os.Exit(0)
-	}
 
 	return ctx, nil
 }
