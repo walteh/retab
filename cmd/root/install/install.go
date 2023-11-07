@@ -9,14 +9,15 @@ import (
 	"github.com/walteh/snake"
 )
 
-var _ snake.Snakeable = (*Handler)(nil)
+var _ snake.Cobrad = (*Handler)(nil)
 
 type Handler struct {
 	Latest bool
 }
 
-func (me *Handler) BuildCommand(_ context.Context) *cobra.Command {
+func (me *Handler) Cobra() *cobra.Command {
 	cmd := &cobra.Command{
+		Use:   "install",
 		Short: "install buildrc",
 	}
 
@@ -25,12 +26,6 @@ func (me *Handler) BuildCommand(_ context.Context) *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(&me.Latest, "latest", "l", false, "Install the latest version")
 
 	return cmd
-}
-
-func (me *Handler) ParseArguments(_ context.Context, _ *cobra.Command, _ []string) error {
-
-	return nil
-
 }
 
 func (me *Handler) Run(ctx context.Context) error {

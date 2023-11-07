@@ -3,14 +3,17 @@
 format proto files with the official buf library, but with tabs
 
 ```
-retab buf [flags]
+retab buf [file] [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help                 help for buf
-      --working-dir string   The working directory to use. Defaults to the current directory.
+  -h, --help                        help for buf
+      --indent-size int             Number of spaces or tabs to use for indentation (default 4)
+      --trim-multiple-empty-lines   Trim multiple empty lines (default true)
+      --use-tabs                    Use tabs instead of spaces (default true)
+      --working-dir string          The working directory to use. Defaults to the current directory.
 ```
 
 ### Options inherited from parent commands
