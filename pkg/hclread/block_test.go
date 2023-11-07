@@ -244,20 +244,16 @@ func TestParseBlocksWithReference(t *testing.T) {
 
 			resp := make([]*BlockEvaluation, 0)
 
-			for _, block := range got.Blocks {
-				if block.Type != "file" {
-					continue
-				}
-				be, err := NewBlockEvaluation(ctx, ectx, block)
-				if tt.wantErr == nil {
-					require.NoError(t, err)
-					resp = append(resp, be)
-				} else {
-					assert.Error(t, err)
-				}
-
-				pp.Println(be.Validation)
+			be, err := NewFullEvaluation(ctx, ectx, got)
+			if tt.wantErr == nil {
+				require.NoError(t, err)
+				resp = append(resp, be.File)
+			} else {
+				assert.Error(t, err)
 			}
+
+			pp.SetDefaultMaxDepth(20)
+			pp.Println(be.File.Validation)
 
 			assert.Equal(t, tt.want, resp)
 		})

@@ -21,7 +21,7 @@ type ValidationError struct {
 	Range    *hcl.Range
 }
 
-func LoadValidationErrors(ctx context.Context, cnt hcl.Expression, ectx *hcl.EvalContext, errv error) ([]*ValidationError, hcl.Diagnostics) {
+func LoadValidationErrors(ctx context.Context, cnt hcl.Expression, ectx *hcl.EvalContext, errv error) ([]*ValidationError, bool) {
 
 	berr := errv
 	for errors.Unwrap(berr) != nil {
@@ -41,7 +41,7 @@ func LoadValidationErrors(ctx context.Context, cnt hcl.Expression, ectx *hcl.Eva
 
 		rng, err := InstanceLocationStringToHCLRange(verr.InstanceLocation, cnt, ectx)
 		if err != nil {
-			return vers, nil
+			return vers, true
 		}
 
 		validationErr := &ValidationError{
@@ -49,16 +49,10 @@ func LoadValidationErrors(ctx context.Context, cnt hcl.Expression, ectx *hcl.Eva
 			Range:           rng,
 		}
 
-		return append(vers, validationErr), nil
+		return append(vers, validationErr), true
 	}
 
-	return nil, hcl.Diagnostics{
-		&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "Invalid expression",
-			Detail:   "unable to find instance location",
-		},
-	}
+	return nil, false
 
 }
 

@@ -9,7 +9,6 @@ import (
 	"github.com/go-faster/errors"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/k0kubun/pp/v3"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/walteh/retab/schemas"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
@@ -68,8 +67,6 @@ func (me *BlockEvaluation) GetProperties(ctx context.Context) (map[string]*jsons
 
 	getAllDefs("root", schema, m)
 
-	pp.Println(m)
-
 	return m, nil
 }
 
@@ -89,7 +86,7 @@ func (me *BlockEvaluation) ValidateJSONSchemaProperty(ctx context.Context, prop 
 	}
 
 	if schema[prop] == nil {
-		return fmt.Errorf("property %q not found", prop)
+		return errors.Errorf("property %q not found", prop)
 	}
 
 	return schema[prop].Validate(me.Content)
@@ -97,9 +94,6 @@ func (me *BlockEvaluation) ValidateJSONSchemaProperty(ctx context.Context, prop 
 }
 
 func getAllDefs(parent string, schema *jsonschema.Schema, defs map[string]*jsonschema.Schema) {
-	if schema.String() == "permissions" {
-		fmt.Println(parent)
-	}
 
 	if schema == nil {
 		return
@@ -145,67 +139,143 @@ func getAllDefs(parent string, schema *jsonschema.Schema, defs map[string]*jsons
 			getAllDefs(parent, v, defs)
 		}
 	}
+}
+
+type FullEvaluation struct {
+	File *BlockEvaluation
+}
+
+func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsyntax.Body) (res *FullEvaluation, err error) {
+
+	var fle *BlockEvaluation
+
+	for _, block := range file.Blocks {
+		if block.Type != "file" {
+			continue
+		}
+
+		blk, err := NewBlockEvaluation(ctx, ectx, block)
+		if err != nil {
+			return nil, err
+		}
+
+		fle = blk
+		break
+	}
+
+	if fle == nil {
+		return nil, fmt.Errorf("no file block found")
+	}
+
+	for _, block := range file.Blocks {
+		if block.Type == "file" {
+			continue
+		}
+
+		for _, attr := range block.Body.Attributes {
+			if attr.Name != "file" {
+				continue
+			}
+
+			err := fle.ValidateJSONSchemaProperty(ctx, block.Type)
+			if err != nil {
+				if lerr, ok := LoadValidationErrors(ctx, attr.Expr, ectx, err); !ok {
+					continue
+				} else {
+					fle.Validation = append(fle.Validation, lerr...)
+				}
+			}
+		}
+
+	}
+
+	return &FullEvaluation{
+		File: fle,
+	}, nil
+}
+
+func (me *BlockEvaluation) PropertyEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) ([]*ValidationError, error) {
+
+	schema, err := me.GetProperties(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	errs := make([]*ValidationError, 0)
+
+	if schema[block.Labels[0]] == nil {
+		// return nil, errors.Errorf("property %q not found", schema[block.Labels[0]])
+		return errs, nil
+	}
+
+	for _, attr := range block.Body.Attributes {
+		vld, ok := LoadValidationErrors(ctx, attr.Expr, ectx, nil)
+		if !ok {
+			continue
+		}
+
+		if vld != nil {
+			errs = append(errs, vld...)
+		}
+	}
+
+	return errs, nil
 
 }
 
 func NewBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (res *BlockEvaluation, err error) {
-	switch block.Type {
-	case "file":
-		{
-			blk := &BlockEvaluation{
-				Name: block.Labels[0],
-			}
 
-			var dataAttr hcl.Expression
-
-			for _, attr := range block.Body.Attributes {
-
-				// Evaluate the attribute's expression to get a cty.Value
-				val, err := attr.Expr.Value(ectx)
-				if err.HasErrors() {
-					return nil, errors.Wrapf(err, "failed to evaluate %q", attr.Name)
-				}
-
-				switch attr.Name {
-				case "dir":
-					blk.Dir = val.AsString()
-				case "schema":
-					blk.Schema = val.AsString()
-				case "data":
-					wrk, err := stdlib.JSONEncode(val)
-					if err != nil {
-						return nil, errors.Wrapf(err, "failed to encode %q", attr.Name)
-					}
-
-					err = json.Unmarshal([]byte(wrk.AsString()), &blk.Content)
-					if err != nil {
-						return nil, errors.Wrapf(err, "failed to decode %q", attr.Name)
-					}
-
-					dataAttr = attr.Expr
-
-				default:
-					// ignore unknown attributes
-					continue
-				}
-
-			}
-
-			// Validate the block body against the schema
-			if errv := blk.ValidateJSONSchema(ctx); errv != nil {
-				if lerr, err := LoadValidationErrors(ctx, dataAttr, ectx, errv); err != nil {
-					return nil, err
-				} else {
-					blk.Validation = lerr
-				}
-			}
-
-			return blk, nil
-		}
-	default:
-
-		return nil, fmt.Errorf("unknown block type %s", block.Type)
+	if block.Type != "file" {
+		return nil, fmt.Errorf("invalid block type %q", block.Type)
 	}
+
+	blk := &BlockEvaluation{
+		Name: block.Labels[0],
+	}
+
+	var dataAttr hcl.Expression
+
+	for _, attr := range block.Body.Attributes {
+
+		// Evaluate the attribute's expression to get a cty.Value
+		val, err := attr.Expr.Value(ectx)
+		if err.HasErrors() {
+			return nil, errors.Wrapf(err, "failed to evaluate %q", attr.Name)
+		}
+
+		switch attr.Name {
+		case "dir":
+			blk.Dir = val.AsString()
+		case "schema":
+			blk.Schema = val.AsString()
+		case "data":
+			wrk, err := stdlib.JSONEncode(val)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to encode %q", attr.Name)
+			}
+
+			err = json.Unmarshal([]byte(wrk.AsString()), &blk.Content)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to decode %q", attr.Name)
+			}
+
+			dataAttr = attr.Expr
+
+		default:
+			// ignore unknown attributes
+			continue
+		}
+
+	}
+
+	// Validate the block body against the schema
+	if errv := blk.ValidateJSONSchema(ctx); errv != nil {
+		if lerr, ok := LoadValidationErrors(ctx, dataAttr, ectx, errv); ok {
+			blk.Validation = lerr
+		}
+	}
+
+	return blk, nil
 
 }
 
