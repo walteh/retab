@@ -10,7 +10,6 @@ require (
 	github.com/editorconfig/editorconfig-core-go/v2 v2.5.2
 	github.com/go-faster/errors v0.6.1
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/hcl-lang v0.0.0-20230919101450-aa9b38d58c90
 	github.com/hashicorp/hcl/v2 v2.18.0
 	github.com/k0kubun/pp/v3 v3.2.0
 	github.com/mattn/go-zglob v0.0.4

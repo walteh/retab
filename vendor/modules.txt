@@ -54,9 +54,6 @@ github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.1.1
 ## explicit; go 1.13
 github.com/hashicorp/go-multierror
-# github.com/hashicorp/hcl-lang v0.0.0-20230919101450-aa9b38d58c90
-## explicit; go 1.21.0
-github.com/hashicorp/hcl-lang/lang
 # github.com/hashicorp/hcl/v2 v2.18.0
 ## explicit; go 1.18
 github.com/hashicorp/hcl/v2
