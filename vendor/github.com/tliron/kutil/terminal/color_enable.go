@@ -3,16 +3,14 @@
 package terminal
 
 import (
+	"os"
+
 	"github.com/muesli/termenv"
 )
 
-func EnableColor(force bool) (Cleanup, error) {
-	if force {
-		Colorize = true
-	} else {
-		Colorize = termenv.EnvColorProfile() != termenv.Ascii
-	}
-
-	DefaultStylist = NewStylist(Colorize)
-	return nil, nil
+// Returns true if the file supports colorization.
+func EnableColor(file *os.File) (bool, CleanupFunc, error) {
+	output := termenv.NewOutput(file)
+	colorize := output.EnvColorProfile() != termenv.Ascii
+	return colorize, nil, nil
 }

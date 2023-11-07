@@ -227,7 +227,7 @@ func (self *Table) Write(writer io.Writer, stylist *Stylist) {
 }
 
 func (self *Table) Print() {
-	self.Write(os.Stdout, DefaultStylist)
+	self.Write(os.Stdout, StdoutStylist)
 }
 
 // Utils

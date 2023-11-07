@@ -94,15 +94,18 @@ func ToStrings(values []any) []string {
 	if length == 0 {
 		return nil
 	}
+
 	strings := make([]string, length)
 	for index, value := range values {
 		strings[index] = ToString(value)
 	}
+
 	return strings
 }
 
 func JoinQuote(strings []string, separator string) string {
 	var builder stringspkg.Builder
+
 	ultimateIndex := len(strings) - 1
 	for index, value := range strings {
 		builder.WriteString(strconv.Quote(value))
@@ -110,11 +113,13 @@ func JoinQuote(strings []string, separator string) string {
 			builder.WriteString(separator)
 		}
 	}
+
 	return builder.String()
 }
 
 func JoinQuoteL(strings []string, separator string, lastSeparator string, coupleSeparator string) string {
 	var builder stringspkg.Builder
+
 	if len(strings) == 2 {
 		builder.WriteString(strconv.Quote(strings[0]))
 		builder.WriteString(coupleSeparator)
@@ -122,6 +127,7 @@ func JoinQuoteL(strings []string, separator string, lastSeparator string, couple
 	} else {
 		ultimateIndex := len(strings) - 1
 		penultimateIndex := ultimateIndex - 1
+
 		for index, value := range strings {
 			builder.WriteString(strconv.Quote(value))
 			if index != ultimateIndex {
@@ -133,5 +139,6 @@ func JoinQuoteL(strings []string, separator string, lastSeparator string, couple
 			}
 		}
 	}
+
 	return builder.String()
 }

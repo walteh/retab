@@ -45,13 +45,13 @@ func (self Level) String() string {
 // Translates a verbosity number to a maximum loggable level as
 // follows:
 //
-// -4 and below: [None]
-// -3: [Critical]
-// -2: [Error]
-// -1: [Warning]
-// 0: [Notice]
-// 1: [Info]
-// 2 and above: [Debug]
+//   - -4 and below: [None]
+//   - -3: [Critical]
+//   - -2: [Error]
+//   - -1: [Warning]
+//   - 0: [Notice]
+//   - 1: [Info]
+//   - 2 and above: [Debug]
 func VerbosityToMaxLevel(verbosity int) Level {
 	if verbosity < -4 {
 		return None

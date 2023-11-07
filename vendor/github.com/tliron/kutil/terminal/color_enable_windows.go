@@ -3,27 +3,26 @@
 package terminal
 
 import (
+	"os"
+
 	"github.com/muesli/termenv"
 )
 
-func EnableColor(force bool) (Cleanup, error) {
-	if force {
-		Colorize = true
-	} else {
-		Colorize = termenv.EnvColorProfile() != termenv.Ascii
-	}
-
-	if Colorize {
-		DefaultStylist = NewStylist(true)
-		if mode, err := termenv.EnableWindowsANSIConsole(); err == nil {
-			return func() error {
-				return termenv.RestoreWindowsConsole(mode)
+// Checks if the file supports colorization, and if it does then will
+// attempt to enable ANSI on it, returning an error if it fails. If it
+// succeeds will return a [CleanupFunc] that restores the file to its
+// original state.
+func EnableColor(file *os.File) (bool, CleanupFunc, error) {
+	output := termenv.NewOutput(file)
+	if output.EnvColorProfile() != termenv.Ascii {
+		if mode, err := output.EnableWindowsANSIConsole(); err == nil {
+			return true, func() error {
+				return output.RestoreWindowsConsole(mode)
 			}, nil
 		} else {
-			return nil, err
+			return false, nil, err
 		}
 	} else {
-		DefaultStylist = NewStylist(false)
-		return nil, nil
+		return false, nil, nil
 	}
 }

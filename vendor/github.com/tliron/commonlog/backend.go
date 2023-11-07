@@ -9,10 +9,19 @@ import (
 //
 
 type Backend interface {
-	// If "path" is nil will log to stdout, colorized if possible
-	// The default "verbosity" 0 will log criticals, errors, warnings, and notices.
-	// "verbosity" 1 will add infos. "verbosity" 2 will add debugs.
-	// Set "verbostiy" to -1 to disable the log.
+	// Configures the backend. Verbosity is mapped to maximum
+	// loggable level as follows:
+	//
+	//   - -4 and below: [None]
+	//   - -3: [Critical]
+	//   - -2: [Error]
+	//   - -1: [Warning]
+	//   - 0: [Notice]
+	//   - 1: [Info]
+	//   - 2 and above: [Debug]
+	//
+	// Note that -4 ([None]) is a special case that is often optimized to turn
+	// off as much processing as possible.
 	Configure(verbosity int, path *string)
 
 	// Gets the backend's [io.Writer]. Can be nil if unsupported.

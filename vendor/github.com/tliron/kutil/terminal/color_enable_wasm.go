@@ -2,11 +2,11 @@
 
 package terminal
 
-func EnableColor(force bool) (Cleanup, error) {
-	if force {
-		Colorize = true
-	}
+import (
+	"os"
+)
 
-	DefaultStylist = NewStylist(Colorize)
-	return nil, nil
+// Returns false.
+func EnableColor(file *os.File) (bool, CleanupFunc, error) {
+	return false, nil, nil
 }

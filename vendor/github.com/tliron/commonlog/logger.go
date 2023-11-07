@@ -81,7 +81,7 @@ func (self BackendLogger) SetMaxLevel(level Level) {
 
 // ([Logger] interface)
 func (self BackendLogger) GetMaxLevel() Level {
-	return GetMaxLevel(self.name)
+	return GetMaxLevel(self.name...)
 }
 
 // ([Logger] interface)

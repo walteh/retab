@@ -21,13 +21,13 @@ func SetBackend(backend_ Backend) {
 // Configures the current backend. Verbosity is mapped to maximum
 // loggable level as follows:
 //
-// -4 and below: [None]
-// -3: [Critical]
-// -2: [Error]
-// -1: [Warning]
-// 0: [Notice]
-// 1: [Info]
-// 2 and above: [Debug]
+//   - -4 and below: [None]
+//   - -3: [Critical]
+//   - -2: [Error]
+//   - -1: [Warning]
+//   - 0: [Notice]
+//   - 1: [Info]
+//   - 2 and above: [Debug]
 //
 // Note that -4 ([None]) is a special case that is often optimized to turn
 // off as much processing as possible.
@@ -96,7 +96,7 @@ func SetMaxLevel(level Level, name ...string) {
 // current backend.
 //
 // Returns [None] if no backend was set.
-func GetMaxLevel(name []string) Level {
+func GetMaxLevel(name ...string) Level {
 	if backend != nil {
 		return backend.GetMaxLevel(name...)
 	} else {
@@ -169,4 +169,12 @@ func CallAndLogError(f func() error, task string, log Logger) {
 	if err := f(); err != nil {
 		log.Errorf("%s: %s", task, err.Error())
 	}
+}
+
+func PathToName(path string) []string {
+	name := strings.Split(path, ".")
+	if len(name) == 0 {
+		name = nil
+	}
+	return name
 }

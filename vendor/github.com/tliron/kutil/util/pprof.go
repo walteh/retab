@@ -6,11 +6,14 @@ import (
 )
 
 func InitializeCPUProfiling(path string) {
-	if path != "" {
-		cpuProfile, err := os.Create(path)
-		FailOnError(err)
-		err = pprof.StartCPUProfile(cpuProfile)
-		FailOnError(err)
-		OnExit(pprof.StopCPUProfile)
+	if path == "" {
+		return
 	}
+
+	cpuProfile, err := os.Create(path)
+	FailOnError(err)
+	OnExitError(cpuProfile.Close)
+	err = pprof.StartCPUProfile(cpuProfile)
+	FailOnError(err)
+	OnExit(pprof.StopCPUProfile)
 }
