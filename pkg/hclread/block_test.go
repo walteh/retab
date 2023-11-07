@@ -163,8 +163,8 @@ file "default.yaml" {
 }
 
 step "checkout" {
-	namd = "Checkout"
-	useg = "actions/checkout@v2"
+	name = "Checkout"
+	uses = "actions/checkout@v2"
 }
 `
 

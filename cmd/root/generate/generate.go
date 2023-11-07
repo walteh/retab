@@ -35,9 +35,10 @@ func (me *Handler) Run(ctx context.Context, fs afero.Fs, cmd *cobra.Command) err
 	}
 
 	for _, blk := range body {
-		if blk.Validation != nil {
-			return blk.Validation
-		}
+		// if blk.Validation != nil {
+		// 	errors.Join(blk.Validation...)
+		// 	return blk.Validation
+		// }
 
 		err := blk.WriteToFile(ctx, fs)
 		if err != nil {
