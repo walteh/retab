@@ -1,4 +1,4 @@
-package dartwrite_test
+package externalwrite_test
 
 import (
 	"bytes"
