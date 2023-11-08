@@ -29,7 +29,7 @@ func (me *Formatter) Format(_ context.Context, cfg configuration.Provider, read 
 
 	// dart format --output show --summary none
 
-	cmd := exec.Command("dart", "format", "--output", "show", "--summary", "none")
+	cmd := exec.Command("dart", "format", "--output", "show", "--summary", "none", "--fix")
 	cmd.Stdin = read
 
 	read2, write := io.Pipe()

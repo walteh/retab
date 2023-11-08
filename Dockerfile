@@ -9,12 +9,14 @@ ARG XX_VERSION=
 ARG GOTESTSUM_VERSION=
 ARG BUILDRC_VERSION=
 ARG BIN_NAME=
+ARG DART_VERSION=
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS golatest
 FROM --platform=$BUILDPLATFORM walteh/buildrc:${BUILDRC_VERSION} as buildrc
 FROM --platform=$BUILDPLATFORM alpine:latest AS alpinelatest
 FROM --platform=$BUILDPLATFORM busybox:musl AS musl
+FROM --platform=$BUILDPLATFORM dart:${DART_VERSION} as dart
 
 FROM golatest AS gobase
 COPY --from=xx / /
@@ -150,6 +152,7 @@ FROM alpinelatest AS test
 RUN	apk add --no-cache jq
 COPY --from=case /bins /usr/bin
 COPY --from=case /dat /dat
+COPY --from=dart /usr/lib/dart/bin/dart /usr/bin/
 COPY <<-"SHELL" /usr/bin/run
 	#!/bin/sh
 	set -e -o pipefail
