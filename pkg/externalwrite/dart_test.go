@@ -1,16 +1,17 @@
-package dartwrite_test
+package externalwrite_test
 
 import (
 	"bytes"
 	"context"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/walteh/retab/gen/mockery"
-	"github.com/walteh/retab/pkg/dartwrite"
+	"github.com/walteh/retab/pkg/externalwrite"
 )
 
-func TestFormatUnit(t *testing.T) {
+func TestDartIntegration(t *testing.T) {
 	tests := []struct {
 		name                   string
 		useTabs                bool
@@ -20,7 +21,7 @@ func TestFormatUnit(t *testing.T) {
 		expected               []byte
 	}{
 		{
-			name:                   "Use Tabs with IndentSize 1",
+			name:                   "tabs small",
 			useTabs:                true,
 			trimMultipleEmptyLines: true,
 			indentSize:             1,
@@ -39,7 +40,7 @@ void main() {
 `),
 		},
 		{
-			name:                   "Use Spaces with IndentSize 4",
+			name:                   "spaces small",
 			useTabs:                false,
 			indentSize:             4,
 			trimMultipleEmptyLines: true,
@@ -54,7 +55,7 @@ void main() {
 `),
 		},
 		{
-			name:                   "big",
+			name:                   "tabs large",
 			useTabs:                true,
 			indentSize:             1,
 			trimMultipleEmptyLines: true,
@@ -324,9 +325,42 @@ class _MyHomePageState extends State<MyHomePage> {
 			cfg.EXPECT().IndentSize().Return(tt.indentSize)
 			cfg.EXPECT().TrimMultipleEmptyLines().Return(tt.trimMultipleEmptyLines)
 
-			// Call the Format function with the provided configuration and source
-			result, err := dartwrite.NewFormatter().Format(ctx, cfg, bytes.NewReader(tt.src))
+			// make a new temporary file with the source
+			fle, err := os.CreateTemp("", "retab-test-*.dart")
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
 
+			t.Cleanup(func() {
+				// remove the temporary file
+				err := os.Remove(fle.Name())
+				if err != nil {
+					t.Fatalf("Unexpected error: %v", err)
+				}
+			})
+
+			// write the source to the file
+			_, err = fle.Write(tt.src)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			// close the file
+			err = fle.Close()
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			// check that the file exists
+			_, err = os.Stat(fle.Name())
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			// Call the Format function with the provided configuration and source
+			result, err := externalwrite.NewDartFileFormatter("/dart/main.dart", "docker", "run",
+				"-v", fle.Name()+":/dart/main.dart",
+				"-t", "dart:stable", "dart").Format(ctx, cfg, bytes.NewReader(tt.src))
 			// Check for errors
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)

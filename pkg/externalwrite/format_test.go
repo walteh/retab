@@ -7,10 +7,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/walteh/retab/gen/mockery"
-	"github.com/walteh/retab/pkg/dartwrite"
+	"github.com/walteh/retab/pkg/externalwrite"
 )
 
-func TestFormatUnit(t *testing.T) {
+func TestPreFormattedDartUnit(t *testing.T) {
 	tests := []struct {
 		name                   string
 		useTabs                bool
@@ -20,15 +20,14 @@ func TestFormatUnit(t *testing.T) {
 		expected               []byte
 	}{
 		{
-			name:                   "Use Tabs with IndentSize 1",
+			name:                   "tabs small",
 			useTabs:                true,
 			trimMultipleEmptyLines: true,
 			indentSize:             1,
-			src: []byte(`
-void main() {
+			src: []byte(`void main() {
   if (true) {
-   runApp(const MyApp());
- }
+    runApp(const MyApp());
+  }
 }
 `),
 			expected: []byte(`void main() {
@@ -39,12 +38,11 @@ void main() {
 `),
 		},
 		{
-			name:                   "Use Spaces with IndentSize 4",
+			name:                   "spaces small",
 			useTabs:                false,
 			indentSize:             4,
 			trimMultipleEmptyLines: true,
-			src: []byte(`
-void main() {
+			src: []byte(`void main() {
   runApp(const MyApp());
 }
 `),
@@ -54,12 +52,11 @@ void main() {
 `),
 		},
 		{
-			name:                   "big",
+			name:                   "tabs big",
 			useTabs:                true,
 			indentSize:             1,
 			trimMultipleEmptyLines: true,
-			src: []byte(`
-import 'package:flutter/material.dart';
+			src: []byte(`import 'package:flutter/material.dart';
 
 void main() {
 	runApp(const MyApp());
@@ -325,7 +322,7 @@ class _MyHomePageState extends State<MyHomePage> {
 			cfg.EXPECT().TrimMultipleEmptyLines().Return(tt.trimMultipleEmptyLines)
 
 			// Call the Format function with the provided configuration and source
-			result, err := dartwrite.NewFormatter().Format(ctx, cfg, bytes.NewReader(tt.src))
+			result, err := externalwrite.NewNoopExternalFormatProvider().Format(ctx, cfg, bytes.NewReader(tt.src))
 
 			// Check for errors
 			if err != nil {

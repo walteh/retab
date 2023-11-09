@@ -11,8 +11,13 @@ import (
 	"github.com/walteh/retab/pkg/format"
 )
 
+type ExternalFormatterConfig struct {
+	Indentation string
+	Targets     []string
+}
+
 type ExternalFormatter interface {
-	Format(ctx context.Context, reader io.Reader, writer io.Writer) func() error
+	Format(ctx context.Context, reader io.Reader) (io.Reader, func() error)
 	Indent() string
 	Targets() []string
 }
@@ -30,21 +35,13 @@ func ExternalFormatterToProvider(ext ExternalFormatter) format.Provider {
 }
 
 func (me *externalFormatter) Format(ctx context.Context, cfg configuration.Provider, input io.Reader) (io.Reader, error) {
-	read, write := io.Pipe()
 
-	f := me.internal.Format(ctx, input, write)
+	read, f := me.internal.Format(ctx, input)
 
 	var rerr error
 
 	go func() {
 		if err := f(); err != nil {
-			err := write.CloseWithError(err)
-			if err != nil {
-				rerr = err
-			}
-			return
-		}
-		if err := write.Close(); err != nil {
 			rerr = err
 		}
 	}()
