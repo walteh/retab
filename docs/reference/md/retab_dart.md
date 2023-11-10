@@ -1,15 +1,15 @@
-## retab hcl
+## retab dart
 
-format hcl files with the official hcl2 library, but with tabs
+format dart files with your local version of dart, but with tabs
 
 ```
-retab hcl <file> [flags]
+retab dart <file> [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help                        help for hcl
+  -h, --help                        help for dart
       --indent-size int             Number of spaces or tabs to use for indentation (default 4)
       --trim-multiple-empty-lines   Trim multiple empty lines (default true)
       --use-tabs                    Use tabs instead of spaces (default true)

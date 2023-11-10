@@ -3,7 +3,7 @@
 format proto files with the official buf library, but with tabs
 
 ```
-retab buf [file] [flags]
+retab buf <file> [flags]
 ```
 
 ### Options
