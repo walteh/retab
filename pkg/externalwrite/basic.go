@@ -28,9 +28,11 @@ func NewExecFormatter(opts *BasicExternalFormatterOpts, cmds ...string) format.P
 				return errors.New("no command specified")
 			}
 		}
+		// fmt.Println("cmds:", cmds)
 		cmd := exec.Command(cmds[0], cmds[1:]...)
 		cmd.Stdin = r
 		cmd.Stdout = w
+		cmd.Stderr = w
 		return cmd.Run
 	}})
 }

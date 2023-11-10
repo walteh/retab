@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/go-faster/errors"
 	"github.com/walteh/retab/pkg/configuration"
 	"github.com/walteh/retab/pkg/format"
 )
@@ -22,24 +23,23 @@ type ExternalFormatter interface {
 	Targets() []string
 }
 
-type externalFormatter struct {
+type externalStdinFormatter struct {
 	internal ExternalFormatter
 }
 
-func (me *externalFormatter) Targets() []string {
+func (me *externalStdinFormatter) Targets() []string {
 	return me.internal.Targets()
 }
 
 func ExternalFormatterToProvider(ext ExternalFormatter) format.Provider {
-	return &externalFormatter{ext}
+	return &externalStdinFormatter{ext}
 }
 
-func (me *externalFormatter) Format(ctx context.Context, cfg configuration.Provider, input io.Reader) (io.Reader, error) {
+func (me *externalStdinFormatter) Format(ctx context.Context, cfg configuration.Provider, input io.Reader) (io.Reader, error) {
 
 	read, f := me.internal.Format(ctx, input)
 
 	var rerr error
-
 	go func() {
 		if err := f(); err != nil {
 			rerr = err
@@ -48,15 +48,28 @@ func (me *externalFormatter) Format(ctx context.Context, cfg configuration.Provi
 
 	output, err := applyConfiguration(ctx, me.internal, cfg, read)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to apply configuration")
 	}
 
 	if rerr != nil {
-		return nil, rerr
+		return nil, errors.Wrap(rerr, "failed to format")
 	}
 
 	return output, nil
 }
+
+// type externalFileFormatter struct {
+// 	internal ExternalFileFormatter
+// 	fmter    ExternalFormatter
+// }
+
+// func (me *externalFileFormatter) Targets() []string {
+// 	return me.internal.Targets()
+// }
+
+// func ExternalFileFormatterToProvider(ext ExternalFormatter) format.Provider {
+// 	return &externalStdinFormatter{ext}
+// }
 
 func applyConfiguration(ctx context.Context, ext ExternalFormatter, cfg configuration.Provider, input io.Reader) (io.Reader, error) {
 	var output bytes.Buffer
@@ -67,8 +80,13 @@ func applyConfiguration(ctx context.Context, ext ExternalFormatter, cfg configur
 	}
 
 	previousLineWasEmpty := false
+	// someOutput := false
 	for scanner.Scan() {
 		line := scanner.Text()
+
+		// if !someOutput && line != "" {
+		// 	someOutput = true
+		// }
 
 		// Apply indentation preference.
 		line = strings.Replace(line, ext.Indent(), indentation, -1)
@@ -88,12 +106,21 @@ func applyConfiguration(ctx context.Context, ext ExternalFormatter, cfg configur
 		// Write the modified line to the output buffer.
 		_, err := output.WriteString(line + "\n")
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to write to output buffer")
 		}
 	}
 
+	// if !someOutput {
+	// 	return nil, errors.Errorf("no output from external formatter")
+	// }
+
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		failString := "failed to read output from external formatter"
+		outputStr := output.String()
+		if outputStr != "" {
+			failString = failString + ": " + outputStr
+		}
+		return nil, errors.Wrap(err, failString)
 	}
 
 	return &output, nil

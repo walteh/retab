@@ -137,7 +137,6 @@ COPY --from=test-build /tests /bins
 COPY --from=test-build /bins /bins
 COPY --from=build . /bins
 COPY --from=gotestsum /out /bins
-COPY --from=dart /usr/lib/dart/bin/dart /bins
 RUN <<SHELL
 	#!/bin/sh
 	set -e -o pipefail
@@ -149,18 +148,7 @@ RUN <<SHELL
 	echo "${E2E}" > /dat/e2e
 SHELL
 
-# FROM alpinelatest AS dartstyle
-# RUN apk add --no-cache dart git
-# RUN <<SHELL
-# 	#!/bin/sh
-# 	set -e -o pipefail
-# 	git clone git://github.com/dart-lang/dart_style.git
-# 	cd dart_style
-# 	dart compile exe bin/format.dart -o dart_format
-# SHELL
-
-
-FROM alpinelatest AS test
+FROM docker:dind AS test
 RUN	apk add --no-cache jq
 COPY --from=case /bins /usr/bin
 COPY --from=case /dat /dat
@@ -170,8 +158,6 @@ COPY <<-"SHELL" /xxx/run
 
 	PKGS=$1
 	GOVERSION=$2
-
-	ls -la /usr/bin
 
 	for PKG in $(echo "${PKGS}" | jq -r '.[]' || echo "$PKGS"); do
 		export E2E=$(cat /dat/e2e)
