@@ -100,6 +100,7 @@ target "_common" {
 		GOMODOUTDATED_VERSION         = "v0.8.0"
 		MOCKERY_VERSION               = "2.33.3"
 		GOPLS_VERSION                 = "0.13.2"
+		DART_VERSION = "3"
 		GO_MODULE                     = GO_MODULE
 		BUILDKIT_CONTEXT_KEEP_GIT_DIR = 1
 		BIN_NAME                      = BIN_NAME
@@ -199,6 +200,14 @@ COMMANDS = {
 		globs      = ["**/*.proto"]
 		args       = {}
 	}
+	# dart = {
+	# 	dockerfile = "./hack/dockerfiles/dart.Dockerfile"
+	# 	validate   = { target = "validate" }
+	# 	generate   = { target = "generate" }
+	# 	dest       = "${GEN_DIR}/dart"
+	# 	globs      = ["*"]
+	# 	args       = {}
+	# }
 }
 
 ##################################################################

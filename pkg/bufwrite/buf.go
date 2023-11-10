@@ -26,7 +26,7 @@ func (me *Formatter) Targets() []string {
 
 func (me *Formatter) Format(_ context.Context, cfg configuration.Provider, read io.Reader) (io.Reader, error) {
 
-	fileNode, err := parser.Parse("idk", read, reporter.NewHandler(nil))
+	fileNode, err := parser.Parse("retab.protobuf-parser", read, reporter.NewHandler(nil))
 	if err != nil {
 		return nil, err
 	}

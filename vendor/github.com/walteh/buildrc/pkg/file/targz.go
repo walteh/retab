@@ -4,12 +4,12 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
-	"errors"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/go-faster/errors"
 	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
 )
@@ -166,7 +166,10 @@ func Untargz(ctx context.Context, fs afero.Fs, pth string) (afero.File, error) {
 			return nil, wrap(ctx, err)
 		}
 
-		destPath := filepath.Join(dest, hdr.Name) // Update the destination directory as needed
+		destPath, err := SanitizeArchivePath(dest, hdr.Name) // Update the destination directory as needed
+		if err != nil {
+			return nil, wrap(ctx, err)
+		}
 		if hdr.Typeflag == tar.TypeDir {
 			if err := fs.MkdirAll(destPath, 0755); err != nil {
 
@@ -195,7 +198,7 @@ func Untargz(ctx context.Context, fs afero.Fs, pth string) (afero.File, error) {
 			}
 		}
 
-		_, err = io.Copy(destFile, tr)
+		_, err = io.CopyN(destFile, tr, hdr.Size)
 		if err != nil {
 			return nil, wrap(ctx, err)
 		}
@@ -214,6 +217,17 @@ func Untargz(ctx context.Context, fs afero.Fs, pth string) (afero.File, error) {
 	}
 
 	return dst, nil
+}
+
+// Sanitize archive file pathing from "G305: Zip Slip vulnerability"
+// https://security.snyk.io/research/zip-slip-vulnerability
+func SanitizeArchivePath(d, t string) (v string, err error) {
+	v = filepath.Join(d, t)
+	if strings.HasPrefix(v, filepath.Clean(d)) {
+		return v, nil
+	}
+
+	return "", errors.Errorf("%s: %s", "content filepath is tainted", t)
 }
 
 // func Untargz(ctx context.Context, fls afero.Fs, pth string) (afero.File, error) {

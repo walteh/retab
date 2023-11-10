@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/walteh/retab/pkg/bufwrite"
 	"github.com/walteh/retab/pkg/configuration"
+	"github.com/walteh/retab/pkg/externalwrite"
 	"github.com/walteh/retab/pkg/format"
 	"github.com/walteh/retab/pkg/hclwrite"
 	"github.com/walteh/snake"
@@ -48,35 +49,26 @@ func (me *Handler) Cobra() *cobra.Command {
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs, ecfg configuration.Provider) error {
 
-	fmtr := hclwrite.NewHclFormatter()
-	bufr := bufwrite.NewBufFormatter()
-
-	for _, target := range bufr.Targets() {
-		// targets are glob patterns
-		matches, err := zglob.Glob(target)
-		if err != nil {
-			return err
-		}
-
-		if len(matches) == 0 {
-			continue
-		}
-
-		return format.Format(ctx, bufr, ecfg, fs, me.File, me.WorkingDir)
+	fmtrs := []format.Provider{
+		hclwrite.NewHclFormatter(),
+		bufwrite.NewBufFormatter(),
+		externalwrite.NewDartFormatter(),
 	}
 
-	for _, target := range fmtr.Targets() {
-		// targets are glob patterns
-		matches, err := zglob.Glob(target)
-		if err != nil {
-			return err
-		}
+	for _, fmtr := range fmtrs {
+		for _, target := range fmtr.Targets() {
+			// targets are glob patterns
+			matches, err := zglob.Glob(target)
+			if err != nil {
+				return err
+			}
 
-		if len(matches) == 0 {
-			continue
-		}
+			if len(matches) == 0 {
+				continue
+			}
 
-		return format.Format(ctx, fmtr, ecfg, fs, me.File, me.WorkingDir)
+			return format.Format(ctx, fmtr, ecfg, fs, me.File, me.WorkingDir)
+		}
 	}
 
 	return errors.New("no targets found")

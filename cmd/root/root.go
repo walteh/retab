@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/walteh/retab/cmd/root/buf"
+	"github.com/walteh/retab/cmd/root/dart"
 	"github.com/walteh/retab/cmd/root/fmt"
 	"github.com/walteh/retab/cmd/root/generate"
 	"github.com/walteh/retab/cmd/root/hcl"
@@ -40,6 +41,7 @@ func NewCommand() (*cobra.Command, error) {
 			snake.NewCommandMethod(&install.Handler{}),
 			snake.NewCommandMethod(&generate.Handler{}),
 			snake.NewCommandMethod(&lsp.Handler{}),
+			snake.NewCommandMethod(&dart.Handler{}),
 		},
 		GlobalContextResolverFlags: true,
 	})

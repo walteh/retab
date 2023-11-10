@@ -123,19 +123,19 @@ jobs:
               uses: lewagon/wait-on-check-action@v1.3.1
               with:
                   ref: ${{ github.ref }}
-                  check-name: "build (${{ env.MAIN_PLATFORM }})"
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
                   running-workflow-name: ${{ github.workflow }}
                   allowed-conclusions: success
+                  check-regexp: "(^build \\(${{ env.MAIN_PLATFORM }}\\)$)|(^build$)"
             - name: wait on e2e build (if pull request)
               if: "${{ matrix.case == 'e2e' && github.event_name == 'pull_request' }}"
               uses: lewagon/wait-on-check-action@v1.3.1
               with:
                   ref: ${{ github.event.pull_request.head.sha }}
-                  check-name: "build (${{ env.MAIN_PLATFORM }})"
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
                   running-workflow-name: ${{ github.workflow }}
                   allowed-conclusions: success
+                  check-regexp: "(^build \\(${{ env.MAIN_PLATFORM }}\\)$)|(^build$)"
             - name: download build
               if: "${{ matrix.case == 'e2e' }}"
               uses: actions/download-artifact@v3

@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/go-faster/errors"
 	"github.com/spf13/afero"
 )
 
@@ -116,7 +117,7 @@ func InstallAs(ctx context.Context, fls afero.Fs, path string, name string) erro
 		}
 
 		if ref == "" {
-			return fmt.Errorf("could not find %s.exe in %s", name, path)
+			return errors.Errorf("could not find %s.exe in %s", name, path)
 		}
 
 		err = fls.Rename(path, "$LOCALAPPDATA\\Microsoft\\WindowsApps\\"+name+".exe")
@@ -134,7 +135,7 @@ func InstallAs(ctx context.Context, fls afero.Fs, path string, name string) erro
 
 }
 
-func updateRc(ctx context.Context, afos afero.Fs, rcfile string, homeDir string, nameDir string) error {
+func updateRc(_ context.Context, afos afero.Fs, rcfile string, homeDir string, nameDir string) error {
 
 	ok, err := afero.Exists(afos, filepath.Join(homeDir, rcfile))
 	if err != nil {

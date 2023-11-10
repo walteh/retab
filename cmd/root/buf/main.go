@@ -24,7 +24,7 @@ type Handler struct {
 func (me *Handler) Cobra() *cobra.Command {
 
 	cmd := &cobra.Command{
-		Use:   "buf [file]",
+		Use:   "buf <file>",
 		Short: "format proto files with the official buf library, but with tabs",
 	}
 

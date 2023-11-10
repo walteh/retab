@@ -24,7 +24,7 @@ var _ snake.Cobrad = (*Handler)(nil)
 
 func (me *Handler) Cobra() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "hcl [file]",
+		Use:   "hcl <file>",
 		Short: "format hcl files with the official hcl2 library, but with tabs",
 	}
 
@@ -46,7 +46,7 @@ func (me *Handler) Cobra() *cobra.Command {
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs, ecfg configuration.Provider) error {
 
-	fourmatter := hclwrite.NewHclFormatter()
+	fmtr := hclwrite.NewHclFormatter()
 
-	return format.Format(ctx, fourmatter, ecfg, fs, me.File, me.WorkingDir)
+	return format.Format(ctx, fmtr, ecfg, fs, me.File, me.WorkingDir)
 }
