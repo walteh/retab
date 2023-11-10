@@ -9,12 +9,14 @@ ARG XX_VERSION=
 ARG GOTESTSUM_VERSION=
 ARG BUILDRC_VERSION=
 ARG BIN_NAME=
+ARG DART_VERSION=
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:${XX_VERSION} AS xx
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS golatest
 FROM --platform=$BUILDPLATFORM walteh/buildrc:${BUILDRC_VERSION} as buildrc
 FROM --platform=$BUILDPLATFORM alpine:latest AS alpinelatest
 FROM --platform=$BUILDPLATFORM busybox:musl AS musl
+FROM --platform=$BUILDPLATFORM dart:${DART_VERSION} as dart
 
 FROM golatest AS gobase
 COPY --from=xx / /
@@ -146,11 +148,11 @@ RUN <<SHELL
 	echo "${E2E}" > /dat/e2e
 SHELL
 
-FROM alpinelatest AS test
+FROM docker:dind AS test
 RUN	apk add --no-cache jq
 COPY --from=case /bins /usr/bin
 COPY --from=case /dat /dat
-COPY <<-"SHELL" /usr/bin/run
+COPY <<-"SHELL" /xxx/run
 	#!/bin/sh
 	set -e -o pipefail
 
@@ -182,11 +184,11 @@ COPY <<-"SHELL" /usr/bin/run
 
 	echo ""
 SHELL
-RUN chmod +x /usr/bin/run
+RUN chmod +x /xxx/run
 ARG GO_VERSION
 ENV GOVERSION=${GO_VERSION}
 ENV PKGS=
-ENTRYPOINT /usr/bin/run "${PKGS}" "${GOVERSION}"
+ENTRYPOINT /xxx/run "${PKGS}" "${GOVERSION}"
 
 ##################################################################
 # RELEASE

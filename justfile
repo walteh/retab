@@ -62,7 +62,7 @@ test-pkg PACKAGE:
 test CASE PACKAGE:
 	docker buildx bake test-{{CASE}} && \
 	docker load -i ./bin/test-{{CASE}}.tar && \
-	docker run -e PKGS='{{PACKAGE}}'  --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/test-reports:/out test-{{CASE}}:latest  && \
+	docker run -e PKGS='{{PACKAGE}}' --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/test-reports:/out test-{{CASE}}:latest  && \
 	echo "test-{{CASE}}: {{PACKAGE}}"
 
 test-all:

@@ -3,7 +3,7 @@
 format hcl files with the official hcl2 library, but with tabs
 
 ```
-retab hcl [file] [flags]
+retab hcl <file> [flags]
 ```
 
 ### Options

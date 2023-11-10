@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"github.com/walteh/retab/pkg/lsp"
 	"github.com/walteh/snake"
 )
 
@@ -26,6 +25,7 @@ func (me *Handler) Cobra() *cobra.Command {
 }
 
 func (me *Handler) Run(_ context.Context) error {
-	serv := lsp.NewServer()
-	return serv.RunStdio()
+	// serv := lsp.NewServer()
+	// return serv.RunStdio()
+	return nil
 }
