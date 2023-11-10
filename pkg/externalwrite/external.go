@@ -71,7 +71,7 @@ func (me *externalStdinFormatter) Format(ctx context.Context, cfg configuration.
 // 	return &externalStdinFormatter{ext}
 // }
 
-func applyConfiguration(ctx context.Context, ext ExternalFormatter, cfg configuration.Provider, input io.Reader) (io.Reader, error) {
+func applyConfiguration(_ context.Context, ext ExternalFormatter, cfg configuration.Provider, input io.Reader) (io.Reader, error) {
 	var output bytes.Buffer
 	scanner := bufio.NewScanner(input)
 	indentation := "\t"

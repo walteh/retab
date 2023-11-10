@@ -52,7 +52,7 @@ func NewNoopBasicExternalFormatProvider() format.Provider {
 var _ ExternalFormatter = (*basicExternalFormatter)(nil)
 
 // Format implements format.ExternalFormatter.
-func (me *basicExternalFormatter) Format(ctx context.Context, reader io.Reader) (io.Reader, func() error) {
+func (me *basicExternalFormatter) Format(_ context.Context, reader io.Reader) (io.Reader, func() error) {
 	pipr, pipw := io.Pipe()
 	cmd := me.f(reader, pipw)
 	return pipr, func() error {
