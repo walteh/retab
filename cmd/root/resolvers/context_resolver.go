@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/walteh/retab/version"
 	"github.com/walteh/snake"
+	szerolog "github.com/walteh/snake/zerolog"
 )
 
 var _ snake.Flagged = (*ContextResolver)(nil)
@@ -41,9 +42,9 @@ func (me *ContextResolver) Run(cmd *cobra.Command) (context.Context, error) {
 		level = zerolog.InfoLevel
 	}
 
-	ctx := context.Background()
+	ctx := cmd.Context()
 
-	ctx = zerolog.New(zerolog.NewConsoleWriter()).With().Timestamp().Logger().Level(level).WithContext(ctx)
+	ctx = szerolog.NewVerboseConsoleLogger().Level(level).WithContext(ctx)
 
 	return ctx, nil
 }

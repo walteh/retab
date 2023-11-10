@@ -44,9 +44,9 @@ func (me *Handler) Cobra() *cobra.Command {
 	return cmd
 }
 
-func (me *Handler) Run(ctx context.Context, fs afero.Fs, ecfg configuration.Provider) error {
+func (me *Handler) Run(ctx context.Context, fs afero.Fs, fle afero.File, ecfg configuration.Provider) error {
 
 	fmtr := bufwrite.NewBufFormatter()
 
-	return format.Format(ctx, fmtr, ecfg, fs, me.File, me.WorkingDir)
+	return format.Format(ctx, fmtr, ecfg, fs, fle)
 }

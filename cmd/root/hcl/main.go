@@ -5,7 +5,6 @@ package hcl
 
 import (
 	"context"
-	"errors"
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -16,37 +15,22 @@ import (
 )
 
 type Handler struct {
-	WorkingDir string
-	File       string
 }
 
 var _ snake.Cobrad = (*Handler)(nil)
 
 func (me *Handler) Cobra() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "hcl <file>",
+		Use:   "hcl",
 		Short: "format hcl files with the official hcl2 library, but with tabs",
 	}
-
-	cmd.Args = func(cmd *cobra.Command, args []string) error {
-		if len(args) != 1 {
-			return errors.New("requires a file argument")
-		}
-		me.File = args[0]
-		if me.File == "" {
-			return errors.New("no file provided")
-		}
-		return nil
-	}
-
-	cmd.Flags().StringVar(&me.WorkingDir, "working-dir", "", "The working directory to use. Defaults to the current directory.")
 
 	return cmd
 }
 
-func (me *Handler) Run(ctx context.Context, fs afero.Fs, ecfg configuration.Provider) error {
+func (me *Handler) Run(ctx context.Context, fs afero.Fs, fle afero.File, ecfg configuration.Provider) error {
 
 	fmtr := hclwrite.NewHclFormatter()
 
-	return format.Format(ctx, fmtr, ecfg, fs, me.File, me.WorkingDir)
+	return format.Format(ctx, fmtr, ecfg, fs, fle)
 }
