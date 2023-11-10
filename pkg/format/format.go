@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"path/filepath"
+	"sync"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/mattn/go-zglob"
@@ -26,10 +27,6 @@ func Format(ctx context.Context, provider Provider, cfg configuration.Provider, 
 
 	// handle when option specifies a particular file
 	if !isDir {
-		// cfg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, path)
-		// if err != nil {
-		// 	return err
-		// }
 
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(working, path)
@@ -72,31 +69,35 @@ func Format(ctx context.Context, provider Provider, cfg configuration.Provider, 
 		files = append(files, matches...)
 	}
 
+	grp := sync.WaitGroup{}
+
 	var formatErrors *multierror.Error
 	for _, filename := range files {
-		// cfg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, filename)
-		// if err != nil {
-		// 	formatErrors = multierror.Append(formatErrors, err)
-		// 	continue
-		// }
-		fle, err := fs.Open(filename)
-		if err != nil {
-			formatErrors = multierror.Append(formatErrors, err)
-			continue
-		}
+		grp.Add(1)
+		go func(filename string) {
+			defer grp.Done()
 
-		r, err := provider.Format(ctx, cfg, fle)
-		if err != nil {
-			formatErrors = multierror.Append(formatErrors, err)
-			continue
-		}
+			fle, err := fs.Open(filename)
+			if err != nil {
+				formatErrors = multierror.Append(formatErrors, err)
+				return
+			}
 
-		err = afero.WriteReader(fs, path, r)
-		if err != nil {
-			formatErrors = multierror.Append(formatErrors, err)
-			continue
-		}
+			r, err := provider.Format(ctx, cfg, fle)
+			if err != nil {
+				formatErrors = multierror.Append(formatErrors, err)
+				return
+			}
+
+			err = afero.WriteReader(fs, path, r)
+			if err != nil {
+				formatErrors = multierror.Append(formatErrors, err)
+				return
+			}
+		}(filename)
 	}
+
+	grp.Wait()
 
 	return formatErrors.ErrorOrNil()
 }
