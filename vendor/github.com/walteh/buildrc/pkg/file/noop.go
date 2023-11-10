@@ -9,10 +9,10 @@ func NewNoopClient() *NoopClient {
 	return &NoopClient{}
 }
 
-func (m *NoopClient) Get(ctx context.Context) (res []byte, err error) {
+func (m *NoopClient) Get(_ context.Context) (_ []byte, _ error) {
 	return nil, nil
 }
 
-func (m *NoopClient) Put(ctx context.Context, data []byte) error {
+func (m *NoopClient) Put(_ context.Context, _ []byte) error {
 	return nil
 }
