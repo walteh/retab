@@ -109,10 +109,9 @@ func TestRootUnit(t *testing.T) {
 
 func TestRootE2E(t *testing.T) {
 
-	if os.Getenv("E2E") != "true" {
-		t.Skip("skipping e2e test")
+	if os.Getenv("E2E") != "1" {
+		t.SkipNow()
 	}
-
 	ctx := context.Background()
 
 	for _, tt := range tests {
