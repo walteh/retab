@@ -52,7 +52,7 @@ func (me *Handler) Run(ctx context.Context, fs afero.Fs, ecfg configuration.Prov
 	fmtrs := []format.Provider{
 		hclwrite.NewHclFormatter(),
 		bufwrite.NewBufFormatter(),
-		externalwrite.NewDartFormatter(),
+		externalwrite.NewDartFormatter("dart"),
 	}
 
 	for _, fmtr := range fmtrs {

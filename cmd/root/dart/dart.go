@@ -43,7 +43,7 @@ func (me *Handler) Cobra() *cobra.Command {
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs, ecfg configuration.Provider) error {
 
-	fourmatter := externalwrite.NewDartFormatter()
+	fourmatter := externalwrite.NewDartFormatter("dart")
 
 	return format.Format(ctx, fourmatter, ecfg, fs, me.File, me.WorkingDir)
 }
