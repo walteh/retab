@@ -362,6 +362,8 @@ jobs:
               run: |
                   # get version from the name of the first file in the package-output directory
                   echo "version=$(ls ./package-output | tail -n 1 | cut -d'_' -f2)" >> $GITHUB_OUTPUT
+            - name: check out tag
+              run: git checkout ${{ steps.meta.outputs.version }}
             - name: github release
               uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v0.1.15
               env:
@@ -370,8 +372,8 @@ jobs:
                   draft: false
                   prerelease: true
                   files: ./package-output/*
-                  tag_name: ${{ steps.meta.outputs.version }}
-                  target_commitish: ${{ steps.meta.outputs.version }}
+                  #   tag_name: ${{ steps.meta.outputs.version }}
+                  #   target_commitish: ${{ steps.meta.outputs.version }}
                   name: ${{ steps.meta.outputs.version }}
 
     validate:
