@@ -346,7 +346,6 @@ jobs:
                   files: ./docker-bake.hcl
                   targets: package
                   set: |
-                      *.contexts.meta=./meta-output
                       *.contexts.build=./build-output
                       *.output=./package-output
             - name: list artifacts
@@ -388,19 +387,8 @@ jobs:
               with:
                   version: ${{ env.BUILDX_VERSION }}
                   driver-opts: image=${{ env.BUILDKIT_IMAGE }}
-            - name: download meta
-              uses: actions/download-artifact@v3
-              with:
-                  name: meta
-                  path: .
-            - name: extract meta
-              run: |
-                  mkdir -p ./meta-output
-                  tar -xzvf ./meta.tar.gz -C ./meta-output
             - name: bake ${{ matrix.target }}
               uses: docker/bake-action@v4
               with:
                   files: ./docker-bake.hcl
                   targets: validate-${{ matrix.target }}
-                  set: |
-                      *.contexts.meta=./meta-output
