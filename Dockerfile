@@ -44,7 +44,8 @@ RUN --mount=type=bind,target=/src,readonly <<SHELL
 	fi
 
 	echo "$(git describe "$(cat /meta/revision)" --tags || echo "v0.0.0-local+$(git rev-parse --short HEAD)")$(git diff --quiet || echo '.dirty')" > /meta/version
-	echo "${BIN_NAME}-$(cat /meta/version)-${TARGETPLATFORM}" | sed -e 's|/|-|g' > /meta/executable
+	echo "${BIN_NAME}-$(cat /meta/version)-${TARGETPLATFORM}" | sed -e 's|/|-|g' > /meta/artifact
+	echo "${BIN_NAME}" > /meta/executable
 	echo "$(go list -m)" > /meta/go-pkg
 
 	# if target contains  windows, then add .exe
@@ -103,7 +104,6 @@ COPY --from=symlink /out /
 FROM build-$TARGETOS AS build
 # enable scanning for this stage
 ARG BUILDKIT_SBOM_SCAN_STAGE=true
-COPY --from=meta /buildrc.json /
 
 
 ##################################################################
