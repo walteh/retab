@@ -361,7 +361,7 @@ jobs:
               id: meta
               run: |
                   # get version from the name of the first file in the package-output directory
-                  echo "version=$(ls ./package-output | head -n 1 | cut -d'_' -f2)" >> $GITHUB_OUTPUT
+                  echo "version=$(ls ./package-output | tail -n 1 | cut -d'_' -f2)" >> $GITHUB_OUTPUT
             - name: github release
               uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v0.1.15
               env:

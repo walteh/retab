@@ -44,7 +44,7 @@ RUN --mount=type=bind,target=/src,readonly <<SHELL
 	fi
 
 	echo "$(git describe "$(cat /meta/revision)" --tags || echo "v0.0.0-local+$(git rev-parse --short HEAD)")$(git diff --quiet || echo '.dirty')" > /meta/version
-	echo "${BIN_NAME}-$(cat /meta/version)-${TARGETPLATFORM}" | sed -e 's|/|-|g' > /meta/artifact
+	echo "${BIN_NAME}_$(cat /meta/version)_${TARGETPLATFORM}" | sed -e 's|/|-|g' > /meta/artifact
 	echo "${BIN_NAME}" > /meta/executable
 	echo "$(go list -m)" > /meta/go-pkg
 
