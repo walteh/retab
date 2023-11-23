@@ -148,13 +148,13 @@ SHELL
 FROM scratch AS test-build
 COPY --from=test-builder /out /tests
 COPY --from=test2json /out /bins
+COPY --from=gotestsum /go/bin /bins
 
 FROM alpinelatest AS case
 ARG NAME= ARGS= E2E= FUZZ= TARGETARCH
 COPY --from=test-build /tests /bins
 COPY --from=test-build /bins /bins
 COPY --from=build . /bins
-COPY --from=gotestsum /go/bin /bins
 RUN <<SHELL
 	#!/bin/sh
 	set -e -o pipefail
