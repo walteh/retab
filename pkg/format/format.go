@@ -3,11 +3,9 @@ package format
 import (
 	"context"
 	"io"
-	"path/filepath"
 	"sync"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/mattn/go-zglob"
 	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
 	"github.com/walteh/retab/pkg/configuration"
@@ -18,56 +16,73 @@ type Provider interface {
 	Targets() []string
 }
 
-func Format(ctx context.Context, provider Provider, cfg configuration.Provider, fs afero.Fs, path string, working string) error {
+func Format(ctx context.Context, provider Provider, cfg configuration.Provider, fls afero.Fs, fle afero.File) error {
 
-	isDir, err := afero.IsDir(fs, path)
+	isdir, err := afero.IsDir(fls, fle.Name())
 	if err != nil {
 		return err
 	}
 
-	// handle when option specifies a particular file
-	if !isDir {
+	files := []string{}
 
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(working, path)
+	if isdir {
+		fls = afero.NewBasePathFs(fls, fle.Name())
+		for _, ext := range provider.Targets() {
+			glb, err := afero.Glob(fls, ext)
+			if err != nil {
+				return err
+			}
+			files = append(files, glb...)
 		}
-
-		zerolog.Ctx(ctx).Debug().Msgf("Formatting hcl file at: %s.", path)
-
-		fle, err := fs.Open(path)
-		if err != nil {
-			return err
-		}
-
-		r, err := provider.Format(ctx, cfg, fle)
-		if err != nil {
-			return err
-		}
-
-		err = afero.WriteReader(fs, path, r)
-		if err != nil {
-			return err
-		}
-
-		zerolog.Ctx(ctx).Debug().Msgf("Formatted file at: %s.", path)
-
-		return nil
-
+	} else {
+		files = append(files, fle.Name())
 	}
 
-	zerolog.Ctx(ctx).Debug().Msgf("Formatting hcl files from the directory tree %s %s", working, path)
+	// // handle when option specifies a particular file
+	// if !isDir {
 
-	// zglob normalizes paths to "/"
-	var files []string
+	// 	if !filepath.IsAbs(path) {
+	// 		path = filepath.Join(working, path)
+	// 	}
 
-	for _, ext := range provider.Targets() {
-		pattern := filepath.Join(working, path, "**", ext)
-		matches, err := zglob.Glob(pattern)
-		if err != nil {
-			return err
-		}
-		files = append(files, matches...)
-	}
+	// 	zerolog.Ctx(ctx).Debug().Msgf("Formatting hcl file at: %s.", path)
+
+	// 	fle, err := fs.Open(path)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	r, err := provider.Format(ctx, cfg, fle)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	err = afero.WriteReader(fs, path, r)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	zerolog.Ctx(ctx).Debug().Msgf("Formatted file at: %s.", path)
+
+	// 	return nil
+
+	// }
+
+	zerolog.Ctx(ctx).Debug().Any("files", files).Msg("Formatting files.")
+
+	// afero.Glob(fls, path)
+
+	// // zglob normalizes paths to "/"
+	// var files []string
+
+	// for _, ext := range provider.Targets() {
+	// 	pattern := filepath.Join(working, path, "**", ext)
+	// 	matches, err := zglob.Glob(pattern)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	files = append(files, matches...)
+	// }
 
 	grp := sync.WaitGroup{}
 
@@ -77,7 +92,7 @@ func Format(ctx context.Context, provider Provider, cfg configuration.Provider, 
 		go func(filename string) {
 			defer grp.Done()
 
-			fle, err := fs.Open(filename)
+			fle, err := fls.Open(filename)
 			if err != nil {
 				formatErrors = multierror.Append(formatErrors, err)
 				return
@@ -89,7 +104,7 @@ func Format(ctx context.Context, provider Provider, cfg configuration.Provider, 
 				return
 			}
 
-			err = afero.WriteReader(fs, path, r)
+			err = afero.WriteReader(fls, filename, r)
 			if err != nil {
 				formatErrors = multierror.Append(formatErrors, err)
 				return

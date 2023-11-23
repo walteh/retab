@@ -23,5 +23,5 @@ retab generate [flags]
 
 ### SEE ALSO
 
-* [retab](retab.md)	 - retab brings tabs to terraform
+* [retab](retab.md)	 - retab brings tabs to your code
 

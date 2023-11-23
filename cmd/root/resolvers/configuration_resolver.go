@@ -3,6 +3,7 @@ package resolvers
 import (
 	"context"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/walteh/retab/pkg/configuration"
@@ -24,9 +25,9 @@ func (me *ConfigurationResolver) Flags(flgs *pflag.FlagSet) {
 	flgs.BoolVar(&me.trimMultipleEmptyLines, "trim-multiple-empty-lines", true, "Trim multiple empty lines")
 }
 
-func (me *ConfigurationResolver) Run(ctx context.Context, cmd *cobra.Command) (configuration.Provider, error) {
+func (me *ConfigurationResolver) Run(ctx context.Context, cmd *cobra.Command, fle afero.File) (configuration.Provider, error) {
 
-	efg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, ".")
+	efg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, fle.Name())
 	if err != nil {
 		cmd.Println("No .editorconfig file found, using default configuration")
 		return configuration.NewBasicConfigurationProvider(me.useTabs, me.indentSize, me.trimMultipleEmptyLines), nil

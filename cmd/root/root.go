@@ -21,7 +21,7 @@ func NewCommand() (*cobra.Command, error) {
 
 	cmd := &cobra.Command{
 		Use:   "retab",
-		Short: "retab brings tabs to terraform",
+		Short: "retab brings tabs to your code",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return nil
 		},
@@ -31,8 +31,9 @@ func NewCommand() (*cobra.Command, error) {
 		Root: cmd,
 		Resolvers: []snake.Method{
 			snake.NewArgumentMethod[context.Context](&resolvers.ContextResolver{}),
-			snake.NewArgumentMethod[afero.Fs](&resolvers.AferoResolver{}),
+			snake.NewArgumentMethod[afero.Fs](&resolvers.FSResolver{}),
 			snake.NewArgumentMethod[configuration.Provider](&resolvers.ConfigurationResolver{}),
+			snake.NewArgumentMethod[afero.File](&resolvers.FileResolver{}),
 		},
 		Commands: []snake.Method{
 			snake.NewCommandMethod(&fmt.Handler{}),

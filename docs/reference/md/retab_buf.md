@@ -9,6 +9,7 @@ retab buf <file> [flags]
 ### Options
 
 ```
+  -f, --file string                 path of the file/directory to process
   -h, --help                        help for buf
       --indent-size int             Number of spaces or tabs to use for indentation (default 4)
       --trim-multiple-empty-lines   Trim multiple empty lines (default true)
@@ -26,5 +27,5 @@ retab buf <file> [flags]
 
 ### SEE ALSO
 
-* [retab](retab.md)	 - retab brings tabs to terraform
+* [retab](retab.md)	 - retab brings tabs to your code
 

@@ -264,6 +264,7 @@ github.com/walteh/buildrc/pkg/install
 # github.com/walteh/snake v0.15.0
 ## explicit; go 1.21.0
 github.com/walteh/snake
+github.com/walteh/snake/zerolog
 # github.com/xanzy/ssh-agent v0.3.3
 ## explicit; go 1.16
 github.com/xanzy/ssh-agent

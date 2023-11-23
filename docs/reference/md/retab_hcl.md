@@ -3,17 +3,17 @@
 format hcl files with the official hcl2 library, but with tabs
 
 ```
-retab hcl <file> [flags]
+retab hcl [flags]
 ```
 
 ### Options
 
 ```
+  -f, --file string                 path of the file/directory to process
   -h, --help                        help for hcl
       --indent-size int             Number of spaces or tabs to use for indentation (default 4)
       --trim-multiple-empty-lines   Trim multiple empty lines (default true)
       --use-tabs                    Use tabs instead of spaces (default true)
-      --working-dir string          The working directory to use. Defaults to the current directory.
 ```
 
 ### Options inherited from parent commands
@@ -26,5 +26,5 @@ retab hcl <file> [flags]
 
 ### SEE ALSO
 
-* [retab](retab.md)	 - retab brings tabs to terraform
+* [retab](retab.md)	 - retab brings tabs to your code
 

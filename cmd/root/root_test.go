@@ -3,107 +3,155 @@ package root
 import (
 	"context"
 	"os"
+	"os/exec"
 	"testing"
 
-	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 )
 
-const sample1 = `
-BRANCH = "main"
-
-func "leggo" {
-	params = [abc, def]
-	result = abc + def
+type args struct {
+	data     string
+	filename string
 }
 
-file "default.yaml" {
-	dir    = "./.github/workflows"
-	schema = "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json"
-	data = {
-		name = "test"
-
-		on = {
-			push = {
-				branches = [BRANCH]
-			}
-		}
-		jobs = {
-			build = {
-				runs-on = "ubuntu-latest"
-				steps = [
-					{
-						name = "Checkout"
-						uses = "actions/checkout@v2"
-						with = {
-							fetch-depth = leggo(1, 2)
-						}
-					},
-					{
-						name = "Run tests"
-						run  = <<SHELL
-							echo "Hello world"
-						SHELL
-					},
-				]
-
-			}
-		}
-	}
+type test struct {
+	name    string
+	args    args
+	want    string
+	wantErr bool
 }
-`
 
-func TestNewCommand(t *testing.T) {
-	type args struct {
-		ctx context.Context
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    *cobra.Command
-		wantErr bool
-	}{
-		{
-			name: "test",
-			args: args{
-				ctx: context.Background(),
-			},
-			want: &cobra.Command{
-				Use:   "retab",
-				Short: "retab brings tabs to terraform",
-			},
+var tests = []test{
+	{
+		name: "test",
+		args: args{
+			data: `
+resource "aws_s3_bucket" "b" {
+bucket = "my-tf-test-bucket"
+acl = "private"
+}`,
+			filename: "test.tf",
 		},
+		want: `
+resource "aws_s3_bucket" "b" {
+	bucket = "my-tf-test-bucket"
+	acl    = "private"
+}`,
+	},
+}
+
+func (tr *test) run(ctx context.Context, t *testing.T, runner func(ctx context.Context, strs ...string) error) {
+	t.Helper()
+
+	d := os.TempDir()
+
+	// save sample 1 to a temp file
+	f, err := os.CreateTemp(d, tr.args.filename)
+	if err != nil {
+		t.Errorf("CreateTemp() error = %v", err)
+		return
 	}
+
+	// 	c, err :=
+
+	// 	// make tmp editorconfig
+	// 	def := `
+	// root = true
+
+	// [*]
+	// indent_style = tabs
+	// indent_size = 4
+	// trim_trailing_whitespace = true
+	// trim_multiple_empty_lines = true
+	// `
+
+	// 	// write editorconfig
+	// 	err = os.WriteFile(".editorconfig", []byte(def), 0644)
+
+	_, err = f.WriteString(tr.args.data)
+	if err != nil {
+		t.Errorf("WriteString() error = %v", err)
+		return
+	}
+
+	err = f.Close()
+	if err != nil {
+		t.Errorf("Close() error = %v", err)
+		return
+	}
+
+	t.Cleanup(func() {
+		os.Remove(f.Name())
+	})
+
+	err = runner(ctx, "retab", "hcl", "--file", f.Name(), "--debug")
+	if err != nil {
+		t.Errorf("runner() error = %v", err)
+		return
+	}
+
+	// read the file back
+	b, err := os.ReadFile(f.Name())
+	if err != nil {
+		t.Errorf("ReadFile() error = %v", err)
+		return
+	}
+
+	assert.Equal(t, tr.want, string(b))
+}
+
+func TestRootUnit(t *testing.T) {
+
+	ctx := context.Background()
+
 	for _, tt := range tests {
+
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewCommand()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCommand() error = %v, wantErr %v", err, tt.wantErr)
-				return
+
+			runner := func(ctx context.Context, strs ...string) error {
+				got, err := NewCommand()
+				if (err != nil) != tt.wantErr {
+					t.Errorf("NewCommand() error = %v, wantErr %v", err, tt.wantErr)
+					return err
+				}
+
+				os.Args = strs
+				err = got.ExecuteContext(ctx)
+				if err != nil {
+					t.Errorf("ExecuteContext() error = %v", err)
+					return err
+				}
+
+				return nil
 			}
 
-			// save sample 1 to a temp file
-			f, err := os.CreateTemp("", "retab.hcl")
-			if err != nil {
-				t.Errorf("NewCommand() error = %v", err)
-				return
-			}
+			tt.run(ctx, t, runner)
 
-			_, err = f.WriteString(sample1)
-			if err != nil {
-				t.Errorf("NewCommand() error = %v", err)
-				return
-			}
-
-			t.Cleanup(func() {
-				os.Remove(f.Name())
-			})
-
-			os.Args = []string{"retab", "hcl", f.Name()}
-			err = got.ExecuteContext(tt.args.ctx)
-			if err != nil {
-				t.Errorf("NewCommand() error = %v", err)
-				return
-			}
 		})
 	}
+}
+
+func TestRootE2E(t *testing.T) {
+
+	if os.Getenv("E2E") != "1" {
+		t.SkipNow()
+	}
+	ctx := context.Background()
+
+	for _, tt := range tests {
+
+		t.Run(tt.name, func(t *testing.T) {
+
+			runner := func(ctx context.Context, strs ...string) error {
+				cmd := exec.CommandContext(ctx, strs[0], strs[1:]...)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				return cmd.Run()
+			}
+
+			tt.run(ctx, t, runner)
+
+		})
+	}
+
 }
