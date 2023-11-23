@@ -20,7 +20,7 @@ FROM --platform=$BUILDPLATFORM dart:${DART_VERSION} as dart
 
 FROM golatest AS gobase
 COPY --from=xx / /
-COPY --from=buildrc /usr/bin/ /usr/bin/
+# COPY --from=buildrc /usr/bin/ /usr/bin/
 RUN apk add --no-cache file git bash
 ENV GOFLAGS=-mod=vendor
 ENV CGO_ENABLED=0
@@ -104,6 +104,7 @@ COPY --from=symlink /out /
 FROM build-$TARGETOS AS build
 # enable scanning for this stage
 ARG BUILDKIT_SBOM_SCAN_STAGE=true
+COPY --from=metarc /meta/artifact /artifact
 
 
 ##################################################################
@@ -122,13 +123,9 @@ SHELL
 
 FROM gobase AS gotestsum
 ARG GOTESTSUM_VERSION
-ARG BUILDPLATFORM
-RUN --mount=target=/root/.cache,type=cache set -e && buildrc binary-download \
-	--repository=gotestsum \
-	--organization=gotestyourself \
-	--version=${GOTESTSUM_VERSION} \
-	--outfile=/out/gotestsum \
-	--platform=${BUILDPLATFORM}
+ENV GOFLAGS=
+RUN --mount=target=/root/.cache,type=cache \
+	go install gotest.tools/gotestsum@${GOTESTSUM_VERSION}
 
 FROM gobase AS test-builder
 ARG BIN_NAME
@@ -157,7 +154,7 @@ ARG NAME= ARGS= E2E= FUZZ= TARGETARCH
 COPY --from=test-build /tests /bins
 COPY --from=test-build /bins /bins
 COPY --from=build . /bins
-COPY --from=gotestsum /out /bins
+COPY --from=gotestsum /go/bin /bins
 RUN <<SHELL
 	#!/bin/sh
 	set -e -o pipefail
@@ -222,7 +219,7 @@ RUN <<SHELL
 	#!/bin/sh
 	set -e -o pipefail
 
-	if [ -f /src/buildrc.json ]; then
+	if [ -f /src/artifact ]; then
 		searchdir="/src/"
 	else
 		searchdir="/src/*/"
@@ -231,7 +228,7 @@ RUN <<SHELL
 	for pdir in ${searchdir}; do
 		(
 			cd "${pdir}"
-			artifact="$(jq -r '.artifact' ./buildrc.json)"
+			artifact="$(cat ./artifact)"
 			tar -czvf "/out/${artifact}.tar.gz" .
 		)
 	done
