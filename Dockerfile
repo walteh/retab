@@ -31,9 +31,30 @@ WORKDIR /src
 ##################################################################
 
 FROM gobase AS metarc
-ARG TARGETPLATFORM BUILDPLATFORM
-RUN --mount=type=bind,target=/src,readonly buildrc full --git-dir=/src --files-dir=/meta
+ARG TARGETPLATFORM BUILDPLATFORM BIN_NAME
+RUN --mount=type=bind,target=/src,readonly <<SHELL
 
+	mkdir -p /meta
+
+	echo "$(git rev-list HEAD -1)" > /meta/revision
+
+	# if we are detached, then rev list -2 (git symbolic-ref -q HEAD)
+	if [ "$(git symbolic-ref -q HEAD || echo "d")" != "" ]; then
+		echo "$(git rev-list HEAD -2 | tail -n 1)" > /meta/revision
+	fi
+
+	echo "$(git describe "$(cat /meta/revision)" --tags || echo "v0.0.0-local+$(git rev-parse --short HEAD)")$(git diff --quiet || echo '.dirty')" > /meta/version
+	echo "${BIN_NAME}-$(cat /meta/version)-${TARGETPLATFORM}" | sed -e 's|/|-|g' > /meta/executable
+	echo "$(go list -m)" > /meta/go-pkg
+
+	# if target contains  windows, then add .exe
+	if [ "$(echo ${TARGETPLATFORM} | grep -i windows)" != "" ]; then
+		echo "$(cat /meta/executable).exe" > /meta/executable
+	fi
+
+	echo "========== [meta] =========="
+	cat /meta/*
+SHELL
 FROM scratch AS meta
 COPY --link --from=metarc /meta /
 

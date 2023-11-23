@@ -43,16 +43,40 @@ resource "aws_s3_bucket" "b" {
 func (tr *test) run(t *testing.T, ctx context.Context, runner func(ctx context.Context, strs ...string) error) {
 	t.Helper()
 
+	d := os.TempDir()
+
 	// save sample 1 to a temp file
-	f, err := os.CreateTemp("", tr.args.filename)
+	f, err := os.CreateTemp(d, tr.args.filename)
 	if err != nil {
-		t.Errorf("NewCommand() error = %v", err)
+		t.Errorf("CreateTemp() error = %v", err)
 		return
 	}
 
+	// 	c, err :=
+
+	// 	// make tmp editorconfig
+	// 	def := `
+	// root = true
+
+	// [*]
+	// indent_style = tabs
+	// indent_size = 4
+	// trim_trailing_whitespace = true
+	// trim_multiple_empty_lines = true
+	// `
+
+	// 	// write editorconfig
+	// 	err = os.WriteFile(".editorconfig", []byte(def), 0644)
+
 	_, err = f.WriteString(tr.args.data)
 	if err != nil {
-		t.Errorf("NewCommand() error = %v", err)
+		t.Errorf("WriteString() error = %v", err)
+		return
+	}
+
+	err = f.Close()
+	if err != nil {
+		t.Errorf("Close() error = %v", err)
 		return
 	}
 
@@ -62,14 +86,14 @@ func (tr *test) run(t *testing.T, ctx context.Context, runner func(ctx context.C
 
 	err = runner(ctx, "retab", "hcl", "--file", f.Name(), "--debug")
 	if err != nil {
-		t.Errorf("NewCommand() error = %v", err)
+		t.Errorf("runner() error = %v", err)
 		return
 	}
 
 	// read the file back
 	b, err := os.ReadFile(f.Name())
 	if err != nil {
-		t.Errorf("NewCommand() error = %v", err)
+		t.Errorf("ReadFile() error = %v", err)
 		return
 	}
 
@@ -94,7 +118,7 @@ func TestRootUnit(t *testing.T) {
 				os.Args = strs
 				err = got.ExecuteContext(ctx)
 				if err != nil {
-					t.Errorf("NewCommand() error = %v", err)
+					t.Errorf("ExecuteContext() error = %v", err)
 					return err
 				}
 
