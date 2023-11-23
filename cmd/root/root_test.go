@@ -40,7 +40,7 @@ resource "aws_s3_bucket" "b" {
 	},
 }
 
-func (tr *test) run(t *testing.T, ctx context.Context, runner func(ctx context.Context, strs ...string) error) {
+func (tr *test) run(ctx context.Context, t *testing.T, runner func(ctx context.Context, strs ...string) error) {
 	t.Helper()
 
 	d := os.TempDir()
@@ -125,7 +125,7 @@ func TestRootUnit(t *testing.T) {
 				return nil
 			}
 
-			tt.run(t, ctx, runner)
+			tt.run(ctx, t, runner)
 
 		})
 	}
@@ -143,13 +143,13 @@ func TestRootE2E(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			runner := func(ctx context.Context, strs ...string) error {
-				cmd := exec.Command(strs[0], strs[1:]...)
+				cmd := exec.CommandContext(ctx, strs[0], strs[1:]...)
 				cmd.Stdout = os.Stdout
 				cmd.Stderr = os.Stderr
 				return cmd.Run()
 			}
 
-			tt.run(t, ctx, runner)
+			tt.run(ctx, t, runner)
 
 		})
 	}
