@@ -1,5 +1,5 @@
 name: build
-concurrency: { group: simver, cancel-in-progress: false }
+concurrency: { group: retab, cancel-in-progress: false }
 permissions:
     {
         id-token: write,
