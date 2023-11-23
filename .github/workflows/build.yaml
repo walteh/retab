@@ -28,7 +28,7 @@ env:
 
 jobs:
     simver:
-        uses: walteh/simver/.github/workflows/simver.yaml@v0.23.0-gha
+        uses: walteh/simver/.github/workflows/simver.yaml@v0.22.0-gha
         secrets: inherit
     test-prep:
         needs: [simver]
