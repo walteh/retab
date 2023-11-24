@@ -33,59 +33,43 @@ jobs:
     simver:
         uses: walteh/simver/.github/workflows/wait-on-simver.yaml@wait-on-simver-test-c
         secrets: inherit
-    # test-prep:
-    #     runs-on: ubuntu-22.04
-    #     outputs:
-    #         case_matrix: ${{ steps.matrix.outputs.case_matrix }}
-    #         package_matrix: ${{ steps.matrix.outputs.package_matrix }}
-    #     steps:
-    #         - name: checkout
-    #           uses: actions/checkout@v4
-    #           with:
-    #               fetch-depth: 0
-    #         - name: bin
-    #           run: mkdir -p ./bin
-    #         - name: set up qemu
-    #           uses: docker/setup-qemu-action@v3
-    #         - name: set up buildx
-    #           uses: docker/setup-buildx-action@v3
-    #           with:
-    #               version: ${{ env.BUILDX_VERSION }}
-    #               driver-opts: image=${{ env.BUILDKIT_IMAGE }}
-    #         - name: setup go
-    #           uses: actions/setup-go@v4
-    #           with:
-    #               go-version: 1.21.0 # needs 1.21.0 to parse go.mod
-    #         - name: make test matrix
-    #           id: matrix
-    #           run: |
-    #               echo "package_matrix=$(go list -test ./... | grep "\.test$" | jq -R -c -s 'split("\n") | map(select(. != "")) | map(split("/")[-1]) | map(split(".")[0])')" >>${GITHUB_OUTPUT}
-    #               echo "case_matrix=$(docker buildx bake test --print | jq -cr '.group.test.targets | map(split("-")[1]) | map(select(. != "all"))')" >>${GITHUB_OUTPUT}
-    #         - name: show test matrix
-    #           run: |
-    #               echo "package_matrix = ${{ steps.matrix.outputs.package_matrix }}"
-    #               echo "case_matrix = ${{ steps.matrix.outputs.case_matrix }}"
-    #         - name: bake test-build
-    #           uses: docker/bake-action@v4
-    #           with:
-    #               files: ./docker-bake.hcl
-    #               targets: test-build
-    #               set: |
-    #                   *.platform=${{ env.MAIN_PLATFORM }}
-    #         - name: tar gzip test-build
-    #           run: |
-    #               mkdir -p ./bin/out
-    #               tar -czvf ./bin/out/test-build.tar.gz -C ./bin/test-build .
-    #         - name: upload test-build artifacts
-    #           uses: actions/upload-artifact@v3
-    #           with:
-    #               name: test-build
-    #               path: ./bin/out/*
-    #               if-no-files-found: error
+    test-build:
+        runs-on: ubuntu-22.04
+        steps:
+            - name: checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+            - name: bin
+              run: mkdir -p ./bin
+            - name: set up qemu
+              uses: docker/setup-qemu-action@v3
+            - name: set up buildx
+              uses: docker/setup-buildx-action@v3
+              with:
+                  version: ${{ env.BUILDX_VERSION }}
+                  driver-opts: image=${{ env.BUILDKIT_IMAGE }}
+            - name: bake test-build
+              uses: docker/bake-action@v4
+              with:
+                  files: ./docker-bake.hcl
+                  targets: test-build
+                  set: |
+                      *.platform=${{ env.MAIN_PLATFORM }}
+            - name: tar gzip test-build
+              run: |
+                  mkdir -p ./bin/out
+                  tar -czvf ./bin/out/test-build.tar.gz -C ./bin/test-build .
+            - name: upload test-build artifacts
+              uses: actions/upload-artifact@v3
+              with:
+                  name: test-build
+                  path: ./bin/out/*
+                  if-no-files-found: error
 
     test:
         runs-on: ubuntu-22.04
-        needs: [build, build-prep]
+        needs: [build-prep, test-build]
         strategy:
             fail-fast: false
             matrix:
@@ -264,26 +248,6 @@ jobs:
               with:
                   name: e2e
                   path: ./bin/*
-                  if-no-files-found: error
-            - name: bake test-build
-              uses: docker/bake-action@v4
-              if: ${{ matrix.platform == env.MAIN_PLATFORM }}
-              with:
-                  files: ./docker-bake.hcl
-                  targets: test-build
-                  set: |
-                      *.platform=${{ env.MAIN_PLATFORM }}
-            - name: tar gzip test-build
-              if: ${{ matrix.platform == env.MAIN_PLATFORM }}
-              run: |
-                  mkdir -p ./bin/out
-                  tar -czvf ./bin/out/test-build.tar.gz -C ./bin/test-build .
-            - name: upload test-build artifacts
-              uses: actions/upload-artifact@v3
-              if: ${{ matrix.platform == env.MAIN_PLATFORM }}
-              with:
-                  name: test-build
-                  path: ./bin/out/*
                   if-no-files-found: error
 
     registry:
