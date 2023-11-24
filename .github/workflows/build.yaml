@@ -31,10 +31,9 @@ env:
 
 jobs:
     simver:
-        uses: walteh/simver/.github/workflows/simver.yaml@v0.22.0-gha
+        uses: walteh/simver/.github/workflows/wait-on-simver.yaml@wait-on-simver-test-a
         secrets: inherit
     test-prep:
-        needs: [simver]
         runs-on: ubuntu-22.04
         outputs:
             case_matrix: ${{ steps.matrix.outputs.case_matrix }}
