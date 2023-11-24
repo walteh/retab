@@ -295,41 +295,48 @@ target "test-build" {
 	output   = ["type=local,dest=${DEST_DIR}/test-build"]
 }
 
+TEST_CASES = [
+	{
+		name = "unit"
+		args = "-test.skip=Integration -test.skip=E2E"
+	},
+	{
+		name = "integration"
+		args = "-test.run=Integration"
+	},
+	{
+		name = "e2e"
+		args = "-test.run=E2E"
+	},
+	{
+		name = "fuzz",
+		args = "-test.fuzztime=10s -test.fuzzcachedir=${DEST_DIR}/fuzz-cache"
+	}
+]
+
 target "test" {
 	inherits = ["_common"]
 	target   = "test"
-	matrix = {
-		item = [
-			{
-				name = "unit"
-				args = "-test.skip=Integration -test.skip=E2E"
-			},
-			{
-				name = "integration"
-				args = "-test.run=Integration"
-			},
-			{
-				name = "e2e"
-				args = "-test.run=E2E"
-			},
-			{
-				name = "all"
-				args = ""
-			},
-			{
-				name = "fuzz",
-				args = "-test.fuzztime=10s -test.fuzzcachedir=${DEST_DIR}/fuzz-cache"
-			}
-		]
-	}
-	name = "test-${item.name}"
 	args = {
-		ARGS = item.args
-		NAME = item.name
-		E2E  = item.name == "e2e" || item.name == "all" ? 1 : 0
+		CASE_INFOS = jsonencode(TEST_CASES)
 	}
-	output = ["type=docker,dest=${DEST_DIR}/test-${item.name}.tar,name=test-${item.name}"]
+	output = ["type=docker,dest=${DEST_DIR}/test.tar,name=test"]
 }
+
+
+
+# target "test" {
+# 	inherits = ["_common"]
+# 	target   = "test"
+# 	name = "test-${item.name}"
+# 	args = {
+# 		ARGS = item.args
+# 		NAME = item.name
+# 		E2E  = item.name == "e2e" || item.name == "all" ? 1 : 0
+# 		ITEMS = jsonencode(TEST_CASES)
+# 	}
+# 	output = ["type=docker,dest=${DEST_DIR}/test-${item.name}.tar,name=test-${item.name}"]
+# }
 
 ##################################################################
 # IMAGE
