@@ -69,7 +69,7 @@ jobs:
 
     test:
         runs-on: ubuntu-22.04
-        needs: [build-prep, test-build]
+        needs: [build-prep, test-build, build, validate]
         strategy:
             fail-fast: false
             matrix:
