@@ -188,11 +188,17 @@ jobs:
               uses: actions/checkout@v4
               with:
                   fetch-depth: 0
+            - name: bin
+              run: mkdir -p ./bin
             - name: set up buildx
               uses: docker/setup-buildx-action@v3
               with:
                   version: ${{ env.BUILDX_VERSION }}
                   driver-opts: image=${{ env.BUILDKIT_IMAGE }}
+            - name: setup go
+              uses: actions/setup-go@v4
+              with:
+                  go-version: 1.21.0 # needs 1.21.0 to parse go.mod
             - name: create matrix
               id: platforms
               run: |
