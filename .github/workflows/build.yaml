@@ -33,64 +33,64 @@ jobs:
     simver:
         uses: walteh/simver/.github/workflows/wait-on-simver.yaml@wait-on-simver-test-c
         secrets: inherit
-    test-prep:
-        runs-on: ubuntu-22.04
-        outputs:
-            case_matrix: ${{ steps.matrix.outputs.case_matrix }}
-            package_matrix: ${{ steps.matrix.outputs.package_matrix }}
-        steps:
-            - name: checkout
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
-            - name: bin
-              run: mkdir -p ./bin
-            - name: set up qemu
-              uses: docker/setup-qemu-action@v3
-            - name: set up buildx
-              uses: docker/setup-buildx-action@v3
-              with:
-                  version: ${{ env.BUILDX_VERSION }}
-                  driver-opts: image=${{ env.BUILDKIT_IMAGE }}
-            - name: setup go
-              uses: actions/setup-go@v4
-              with:
-                  go-version: 1.21.0 # needs 1.21.0 to parse go.mod
-            - name: make test matrix
-              id: matrix
-              run: |
-                  echo "package_matrix=$(go list -test ./... | grep "\.test$" | jq -R -c -s 'split("\n") | map(select(. != "")) | map(split("/")[-1]) | map(split(".")[0])')" >>${GITHUB_OUTPUT}
-                  echo "case_matrix=$(docker buildx bake test --print | jq -cr '.group.test.targets | map(split("-")[1]) | map(select(. != "all"))')" >>${GITHUB_OUTPUT}
-            - name: show test matrix
-              run: |
-                  echo "package_matrix = ${{ steps.matrix.outputs.package_matrix }}"
-                  echo "case_matrix = ${{ steps.matrix.outputs.case_matrix }}"
-            - name: bake test-build
-              uses: docker/bake-action@v4
-              with:
-                  files: ./docker-bake.hcl
-                  targets: test-build
-                  set: |
-                      *.platform=${{ env.MAIN_PLATFORM }}
-            - name: tar gzip test-build
-              run: |
-                  mkdir -p ./bin/out
-                  tar -czvf ./bin/out/test-build.tar.gz -C ./bin/test-build .
-            - name: upload test-build artifacts
-              uses: actions/upload-artifact@v3
-              with:
-                  name: test-build
-                  path: ./bin/out/*
-                  if-no-files-found: error
+    # test-prep:
+    #     runs-on: ubuntu-22.04
+    #     outputs:
+    #         case_matrix: ${{ steps.matrix.outputs.case_matrix }}
+    #         package_matrix: ${{ steps.matrix.outputs.package_matrix }}
+    #     steps:
+    #         - name: checkout
+    #           uses: actions/checkout@v4
+    #           with:
+    #               fetch-depth: 0
+    #         - name: bin
+    #           run: mkdir -p ./bin
+    #         - name: set up qemu
+    #           uses: docker/setup-qemu-action@v3
+    #         - name: set up buildx
+    #           uses: docker/setup-buildx-action@v3
+    #           with:
+    #               version: ${{ env.BUILDX_VERSION }}
+    #               driver-opts: image=${{ env.BUILDKIT_IMAGE }}
+    #         - name: setup go
+    #           uses: actions/setup-go@v4
+    #           with:
+    #               go-version: 1.21.0 # needs 1.21.0 to parse go.mod
+    #         - name: make test matrix
+    #           id: matrix
+    #           run: |
+    #               echo "package_matrix=$(go list -test ./... | grep "\.test$" | jq -R -c -s 'split("\n") | map(select(. != "")) | map(split("/")[-1]) | map(split(".")[0])')" >>${GITHUB_OUTPUT}
+    #               echo "case_matrix=$(docker buildx bake test --print | jq -cr '.group.test.targets | map(split("-")[1]) | map(select(. != "all"))')" >>${GITHUB_OUTPUT}
+    #         - name: show test matrix
+    #           run: |
+    #               echo "package_matrix = ${{ steps.matrix.outputs.package_matrix }}"
+    #               echo "case_matrix = ${{ steps.matrix.outputs.case_matrix }}"
+    #         - name: bake test-build
+    #           uses: docker/bake-action@v4
+    #           with:
+    #               files: ./docker-bake.hcl
+    #               targets: test-build
+    #               set: |
+    #                   *.platform=${{ env.MAIN_PLATFORM }}
+    #         - name: tar gzip test-build
+    #           run: |
+    #               mkdir -p ./bin/out
+    #               tar -czvf ./bin/out/test-build.tar.gz -C ./bin/test-build .
+    #         - name: upload test-build artifacts
+    #           uses: actions/upload-artifact@v3
+    #           with:
+    #               name: test-build
+    #               path: ./bin/out/*
+    #               if-no-files-found: error
 
     test:
         runs-on: ubuntu-22.04
-        needs: [test-prep, build-prep]
+        needs: [build, build-prep]
         strategy:
             fail-fast: false
             matrix:
-                case: ${{ fromJson(needs.test-prep.outputs.case_matrix) }}
-                package: ${{ fromJson(needs.test-prep.outputs.package_matrix) }}
+                case: ${{ fromJson(needs.build-prep.outputs.case_matrix) }}
+                package: ${{ fromJson(needs.build-prep.outputs.package_matrix) }}
         env:
             GITHUB_JOB_NAME: "${{ github.job }}_${{ matrix.case }}_${{ matrix.package }}"
         steps:
@@ -116,19 +116,10 @@ jobs:
                   mkdir -p ./test-build
                   tar -xzvf ./test-build.tar.gz -C ./test-build
             - name: wait on e2e build (not pull request)
-              if: "${{ matrix.case == 'e2e' && github.event_name != 'pull_request' }}"
+              if: "${{ matrix.case == 'e2e' }}"
               uses: lewagon/wait-on-check-action@v1.3.1
               with:
                   ref: ${{ github.ref }}
-                  repo-token: ${{ secrets.GITHUB_TOKEN }}
-                  running-workflow-name: ${{ github.workflow }}
-                  allowed-conclusions: success
-                  check-regexp: "(^build \\(${{ env.MAIN_PLATFORM }}\\)$)|(^build$)"
-            - name: wait on e2e build (if pull request)
-              if: "${{ matrix.case == 'e2e' && github.event_name == 'pull_request' }}"
-              uses: lewagon/wait-on-check-action@v1.3.1
-              with:
-                  ref: ${{ github.event.pull_request.head.sha }}
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
                   running-workflow-name: ${{ github.workflow }}
                   allowed-conclusions: success
@@ -191,6 +182,7 @@ jobs:
             build_matrix: ${{ steps.platforms.outputs.build_matrix }}
             validate_matrix: ${{ steps.platforms.outputs.validate_matrix }}
             package_matrix: ${{ steps.platforms.outputs.package_matrix }}
+            case_matrix: ${{ steps.platforms.outputs.case_matrix }}
         steps:
             - name: checkout
               uses: actions/checkout@v4
@@ -204,14 +196,16 @@ jobs:
             - name: create matrix
               id: platforms
               run: |
+                  echo "package_matrix=$(go list -test ./... | grep "\.test$" | jq -R -c -s 'split("\n") | map(select(. != "")) | map(split("/")[-1]) | map(split(".")[0])')" >>${GITHUB_OUTPUT}
                   echo "build_matrix=$(docker buildx bake build --print | jq -cr '.target.build.platforms')" >>${GITHUB_OUTPUT}
                   echo "validate_matrix=$(docker buildx bake validate --print | jq -cr '.group.validate.targets | map(split("-")[1])')" >>${GITHUB_OUTPUT}
-                  echo "case_matrix=$(docker buildx bake case --print | jq -cr '.group.case.targets')" >>${GITHUB_OUTPUT}
+                  echo "case_matrix=$(docker buildx bake test --print | jq -cr '.group.test.targets | map(split("-")[1]) | map(select(. != "all"))')" >>${GITHUB_OUTPUT}
             - name: show matrix
               run: |
                   echo "build_matrix = ${{ steps.platforms.outputs.build_matrix }}"
                   echo "validate_matrix = ${{ steps.platforms.outputs.validate_matrix }}"
                   echo "case_matrix = ${{ steps.platforms.outputs.case_matrix }}"
+                  echo "package_matrix = ${{ steps.platforms.outputs.package_matrix }}"
 
     build:
         runs-on: ubuntu-22.04
@@ -265,6 +259,26 @@ jobs:
                   name: e2e
                   path: ./bin/*
                   if-no-files-found: error
+            - name: bake test-build
+              uses: docker/bake-action@v4
+              if: ${{ matrix.platform == env.MAIN_PLATFORM }}
+              with:
+                  files: ./docker-bake.hcl
+                  targets: test-build
+                  set: |
+                      *.platform=${{ env.MAIN_PLATFORM }}
+            - name: tar gzip test-build
+              if: ${{ matrix.platform == env.MAIN_PLATFORM }}
+              run: |
+                  mkdir -p ./bin/out
+                  tar -czvf ./bin/out/test-build.tar.gz -C ./bin/test-build .
+            - name: upload test-build artifacts
+              uses: actions/upload-artifact@v3
+              if: ${{ matrix.platform == env.MAIN_PLATFORM }}
+              with:
+                  name: test-build
+                  path: ./bin/out/*
+                  if-no-files-found: error
 
     registry:
         runs-on: ubuntu-22.04
@@ -307,6 +321,8 @@ jobs:
                   password: ${{ secrets.GITHUB_TOKEN }}
             - name: bake registry and push
               uses: docker/bake-action@v4
+              env:
+                  VERSION_TAG: ${{ needs.release.outputs.version }}
               with:
                   files: ./docker-bake.hcl
                   targets: registry
@@ -322,6 +338,8 @@ jobs:
             - test
             - build
             - validate
+        outputs:
+            version: ${{ steps.meta.outputs.version }}
         steps:
             - name: checkout
               uses: actions/checkout@v4
