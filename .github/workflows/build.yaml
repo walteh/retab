@@ -115,16 +115,20 @@ jobs:
                       *.contexts.test-build=./test-build
                       *.contexts.build=./build-output
                       *.platform=${{ env.MAIN_PLATFORM }}
+
             - name: tar gzip test
               run: |
+                  mkdir -p ./bin/test-output
+                  mv ./bin/test.tar ./bin/test-output/test.tar
                   mkdir -p ./bin/out
-                  tar -czvf ./bin/out/test.tar.gz -C ./bin/test .
+                  tar -czvf ./bin/out/test.tar.gz -C ./bin/test-output .
             - name: upload test artifacts
               uses: actions/upload-artifact@v3
               with:
                   name: test
                   path: ./bin/out/*
                   if-no-files-found: error
+
     test:
         runs-on: ubuntu-22.04
         needs: [test-prep, build-prep]
