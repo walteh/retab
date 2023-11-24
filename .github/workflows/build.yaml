@@ -153,7 +153,7 @@ jobs:
             - name: extract test artifacts
               run: |
                   mkdir -p ./test
-                  tar -xzvf ./test.tar.gz -C ./test
+                  tar -xzvf ./test.tar.gz -C ./bin
             - name: run test
               run: |
                   docker load -i ./bin/test.tar
