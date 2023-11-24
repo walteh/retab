@@ -35,6 +35,7 @@ jobs:
         secrets: inherit
     test-build:
         runs-on: ubuntu-22.04
+        needs: [build-prep]
         steps:
             - name: checkout
               uses: actions/checkout@v4
