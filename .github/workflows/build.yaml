@@ -31,7 +31,7 @@ env:
 
 jobs:
     simver:
-        uses: walteh/simver/.github/workflows/wait-on-simver.yaml@wait-on-simver-test-b
+        uses: walteh/simver/.github/workflows/wait-on-simver.yaml@wait-on-simver-test-c
         secrets: inherit
     test-prep:
         runs-on: ubuntu-22.04
