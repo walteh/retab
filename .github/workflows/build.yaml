@@ -85,7 +85,7 @@ jobs:
 
     test:
         runs-on: ubuntu-22.04
-        needs: [test-prep, simver]
+        needs: [test-prep, build-prep]
         strategy:
             fail-fast: false
             matrix:
