@@ -35,7 +35,7 @@ jobs:
         secrets: inherit
     test-build:
         runs-on: ubuntu-22.04
-        needs: [build-prep]
+        needs: []
         steps:
             - name: checkout
               uses: actions/checkout@v4
@@ -210,7 +210,7 @@ jobs:
                   echo "package_matrix=$(go list -test ./... | grep "\.test$" | jq -R -c -s 'split("\n") | map(select(. != "")) | map(split("/")[-1]) | map(split(".")[0])')" >>${GITHUB_OUTPUT}
                   echo "build_matrix=$(docker buildx bake build --print | jq -cr '.target.build.platforms')" >>${GITHUB_OUTPUT}
                   echo "validate_matrix=$(docker buildx bake validate --print | jq -cr '.group.validate.targets | map(split("-")[1])')" >>${GITHUB_OUTPUT}
-                  echo "case_matrix=$(docker buildx bake test --print | jq -cr '.group.test.targets | map(split("-")[1]) | map(select(. != "all"))')" >>${GITHUB_OUTPUT}
+                  echo "case_matrix=$(docker buildx bake test --print | jq -cr '.target.test.args.CASE_INFOS'  | jq 'map(.name)')" >>${GITHUB_OUTPUT}
             - name: show matrix
               run: |
                   echo "build_matrix = ${{ steps.platforms.outputs.build_matrix }}"
