@@ -38,8 +38,9 @@ RUN --mount=type=bind,target=/src,readonly <<SHELL
 
 	echo "$(git rev-list HEAD -1)" > /meta/revision
 
-	# if we are detached, then rev list -2 (git symbolic-ref -q HEAD)
-	if [ "$(git symbolic-ref -q HEAD || echo "d")" != "" ]; then
+	git symbolic-ref HEAD &>/dev/null
+	if [ $? -ne 0 ]; then
+	    echo "Detached HEAD"
 		echo "$(git rev-list HEAD -2 | tail -n 1)" > /meta/revision
 	fi
 
