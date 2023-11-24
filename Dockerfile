@@ -150,53 +150,70 @@ COPY --from=test-builder /out /tests
 COPY --from=test2json /out /bins
 COPY --from=gotestsum /go/bin /bins
 
-FROM alpinelatest AS case
-ARG NAME= ARGS= E2E= FUZZ= TARGETARCH
-COPY --from=test-build /tests /bins
-COPY --from=test-build /bins /bins
-COPY --from=build . /bins
-RUN <<SHELL
-	#!/bin/sh
-	set -e -o pipefail
-
-	mkdir -p /dat
-
-	echo "${NAME}" > /dat/name
-	echo "${ARGS}" > /dat/args
-	echo "${E2E}" > /dat/e2e
-SHELL
-
 FROM docker:dind AS test
+ARG CASE_INFOS
 RUN	apk add --no-cache jq
-COPY --from=case /bins /usr/bin
-COPY --from=case /dat /dat
+RUN mkdir -p /dat/case_info
+RUN echo "${CASE_INFOS}" | jq -r '.[] | @base64' | while read case; do \
+	echo ${case} | base64 -d > /dat/case_info/$(echo ${case} | base64 -d | jq -r '.name'); \
+	done
+COPY --from=test-build /tests /usr/bin/
+COPY --from=test-build /bins /usr/bin/
+COPY --from=build . /usr/bin/
+
 COPY <<-"SHELL" /xxx/run
 	#!/bin/sh
 	set -e -o pipefail
 
-	PKGS=$1
-	GOVERSION=$2
+	GOVERSION=$1
+	PKGS=$2
+	CASES=$3
 
-	for PKG in $(echo "${PKGS}" | jq -r '.[]' || echo "$PKGS"); do
-		export E2E=$(cat /dat/e2e)
-		name=$(cat /dat/name)
-		funcs=$(if [ "${name}" = "fuzz" ]; then "/usr/bin/${PKG}.test" -test.list=Fuzz 2> /dev/null; else echo "-"; fi)
-		for FUNC in $funcs; do
-			echo ""
-			if [ "${name}" = "fuzz" ] && [ "${FUNC}" = "-" ]; then continue; fi
-			n=$(if [ "${name}" = "fuzz" ]; then echo "[fuzz:${FUNC}] "; else echo ""; fi)
-			echo "========= [pkg:${PKG}] [type:$(cat /dat/name)] $n=========="
+	# if pkgs = "empty" then use default
+	if [ "${PKGS}" = "empty" ]; then
+		# find all executables in /usr/bin that end with .test, remove the .test
+		PKGS=$(find /usr/bin -maxdepth 1 -type f -name '*.test' -exec basename {} \; | sed -e 's/\.test//g' | sort | uniq | jq -R . | jq -s .)
+	fi
 
-			filename=$(if [ "${name}" = "fuzz" ]; then echo "${PKG}-fuzz-${FUNC}"; else echo "${PKG}-${name}"; fi)
+	# if cases = "empty" then use default
+	if [ "${CASES}" = "empty" ]; then
+		# find all the non executable files in /dat/case_info
+		CASES=all
+		echo "{\"name\":\"all\",\"args\":\"\"}" > "/dat/case_info/all"
+	fi
 
-			fuzzfunc=$(if [ "${name}" = "fuzz" ]; then echo "-test.fuzz=${FUNC} -test.run=${FUNC}"; fi)
+	for CASE in $(echo "${CASES}" | jq -r '.[]' || echo "$CASES"); do
 
-			/usr/bin/gotestsum --format=standard-verbose \
-				--jsonfile=/out/go-test-report-${filename}.json \
-				--junitfile=/out/junit-report-${filename}.xml \
-				--raw-command -- /usr/bin/test2json -t -p ${PKG}  /usr/bin/${PKG}.test $(cat /dat/args) -test.bench=. -test.timeout=10m  ${fuzzfunc} \
-				-test.v=test2json -test.coverprofile=/out/coverage-report-${filename}.txt \
-				-test.outputdir=/out;
+		case_info=$(cat /dat/case_info/${CASE})
+
+		if [ "${case_info}" = "" ]; then
+			echo "case not found"
+			exit 1
+		fi
+
+		export NAME=$(echo "${case_info}" | jq -r '.name' > /dat/name)
+		export ARGS=$(echo "${case_info}" | jq -r '.args' > /dat/args)
+
+		for PKG in $(echo "${PKGS}" | jq -r '.[]' || echo "$PKGS"); do
+			name=$(cat /dat/name)
+			funcs=$(if [ "${name}" = "fuzz" ]; then "/usr/bin/${PKG}.test" -test.list=Fuzz 2> /dev/null; else echo "-"; fi)
+			for FUNC in $funcs; do
+				echo ""
+				if [ "${name}" = "fuzz" ] && [ "${FUNC}" = "-" ]; then continue; fi
+				n=$(if [ "${name}" = "fuzz" ]; then echo "[fuzz:${FUNC}] "; else echo ""; fi)
+				echo "========= [pkg:${PKG}] [case:$(cat /dat/name)] $n=========="
+
+				filename=$(if [ "${name}" = "fuzz" ]; then echo "${PKG}-fuzz-${FUNC}"; else echo "${PKG}-${name}"; fi)
+
+				fuzzfunc=$(if [ "${name}" = "fuzz" ]; then echo "-test.fuzz=${FUNC} -test.run=${FUNC}"; fi)
+
+				/usr/bin/gotestsum --format=standard-verbose \
+					--jsonfile=/out/go-test-report-${filename}.json \
+					--junitfile=/out/junit-report-${filename}.xml \
+					--raw-command -- /usr/bin/test2json -t -p ${PKG}  /usr/bin/${PKG}.test $(cat /dat/args) -test.bench=. -test.timeout=10m  ${fuzzfunc} \
+					-test.v=test2json -test.coverprofile=/out/coverage-report-${filename}.txt \
+					-test.outputdir=/out;
+			done;
 		done;
 	done;
 
@@ -205,8 +222,8 @@ SHELL
 RUN chmod +x /xxx/run
 ARG GO_VERSION
 ENV GOVERSION=${GO_VERSION}
-ENV PKGS=
-ENTRYPOINT /xxx/run "${PKGS}" "${GOVERSION}"
+ENV PKGS=empty CASES=empty
+ENTRYPOINT /xxx/run "${GOVERSION}" "${PKGS}" ${CASES}
 
 ##################################################################
 # RELEASE

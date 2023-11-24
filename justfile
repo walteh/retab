@@ -60,9 +60,9 @@ test-pkg PACKAGE:
 	just test all {{PACKAGE}}
 
 test CASE PACKAGE:
-	docker buildx bake test-{{CASE}} && \
-	docker load -i ./bin/test-{{CASE}}.tar && \
-	docker run -e PKGS='{{PACKAGE}}' --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/test-reports:/out test-{{CASE}}:latest  && \
+	docker buildx bake test && \
+	docker load -i ./bin/test.tar && \
+	docker run --network host -v /var/run/docker.sock:/var/run/docker.sock -v ./bin/test-reports:/out test:latest  && \
 	echo "test-{{CASE}}: {{PACKAGE}}"
 
 test-all:
