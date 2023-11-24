@@ -15,9 +15,7 @@ permissions:
 on:
     workflow_dispatch:
     push:
-        branches: [main]
-    pull_request:
-        types: [opened, synchronize, reopened, closed]
+        branches: "*"
 env:
     BUILDX_VERSION: "latest"
     BUILDKIT_IMAGE: "moby/buildkit:master"
