@@ -73,52 +73,48 @@ func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*
 		ectx.Variables[v.Name] = val
 	}
 
-	custvars := map[string]map[string]cty.Value{}
+	custvars := map[string]cty.Value{}
 
-	// custvars[blkd.Type] = cty.ObjectVal(blks.Content)
-
-	// for _, v := range blks.Content {
-	// 	custvars[blkd.Type] = cty.ObjectVal(v)
-	// }
-	// }
+	combos := make(map[string][]cty.Value, 0)
 
 	for _, v := range bdy.Blocks {
 		if v.Type == "file" {
 			continue
 		}
 
-		if _, ok := custvars[v.Type]; !ok {
-			custvars[v.Type] = map[string]cty.Value{}
+		key, blks, err := NewAnyBlockEvaluation(ctx, ectx, v)
+		if err != nil {
+			return nil, nil, nil, err
 		}
 
-		if len(v.Labels) != 1 {
-			return nil, nil, nil, errors.Errorf("expected exactly one label, got %d", len(v.Labels))
+		if combos[key] == nil {
+			combos[key] = make([]cty.Value, 0)
 		}
 
-		mapper := map[string]cty.Value{}
-
-		for _, attr := range v.Body.Attributes {
-			val, diag := attr.Expr.Value(ectx)
-			if diag.HasErrors() {
-				return nil, nil, nil, errors.Wrapf(diag, "failed to evaluate %q", attr.Name)
-			}
-			mapper[attr.Name] = val
-		}
-
-		custvars[v.Type][v.Labels[0]] = cty.ObjectVal(mapper)
-
-		// for _, blkd := range bdy.Blocks {
-
-		// 	blks, err := NewAnyBlockEvaluation(ctx, ectx, blkd)
-		// 	if err != nil {
-		// 		return nil, nil, nil, err
-		// 	}
-		// }
+		combos[key] = append(combos[key], blks)
 
 	}
 
+	for k, v := range combos {
+		for _, v2 := range v {
+			if custvars[k] == cty.NilVal {
+				custvars[k] = cty.ObjectVal(map[string]cty.Value{})
+			}
+			wrk := custvars[k].AsValueMap()
+			for k2, v3 := range v2.AsValueMap() {
+				if wrk == nil {
+					wrk = map[string]cty.Value{}
+				}
+
+				wrk[k2] = v3
+			}
+			custvars[k] = cty.ObjectVal(wrk)
+		}
+	}
+
 	for k, v := range custvars {
-		ectx.Variables[k] = cty.ObjectVal(v)
+
+		ectx.Variables[k] = v
 	}
 
 	bdy.Attributes = nil

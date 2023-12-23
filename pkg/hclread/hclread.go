@@ -81,9 +81,10 @@ func (me *FullEvaluation) Encode() ([]byte, error) {
 			return nil, err
 		}
 
-		return buf.Bytes(), nil
-	// case "hcl":
-	// 	return
+		strWithTabsRemovedFromHeredoc := strings.ReplaceAll(buf.String(), "\t", "")
+
+		return []byte(strWithTabsRemovedFromHeredoc), nil
+
 	default:
 		return nil, errors.Errorf("unknown file extension [%s] in %s", arr[len(arr)-1], me.File.Name)
 	}

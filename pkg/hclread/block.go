@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/walteh/retab/schemas"
+	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 )
 
@@ -49,7 +50,7 @@ var (
 
 type AnyBlockEvaluation struct {
 	Name       string
-	Content    map[string]any
+	Content    map[string]cty.Value
 	Validation []*ValidationError
 }
 
@@ -169,7 +170,6 @@ func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsynt
 	other := make([]*AnyBlockEvaluation, 0)
 
 	for _, block := range file.Blocks {
-		fmt.Println(block.Type)
 		switch block.Type {
 		case "file":
 			blk, err := NewFileBlockEvaluation(ctx, ectx, block)
@@ -180,11 +180,11 @@ func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsynt
 			fle = blk
 			break
 		default:
-			blk, err := NewAnyBlockEvaluation(ctx, ectx, block)
-			if err != nil {
-				return nil, err
-			}
-			other = append(other, blk)
+			// blk, err := NewAnyBlockEvaluation(ctx, ectx, block)
+			// if err != nil {
+			// 	return nil, err
+			// }
+			// other = append(other, blk)
 		}
 
 	}
@@ -249,59 +249,50 @@ func (me *FileBlockEvaluation) PropertyEvaluation(ctx context.Context, ectx *hcl
 
 }
 
-func NewAnyBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (res *AnyBlockEvaluation, err error) {
+func NewAnyBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (key string, res cty.Value, err error) {
 
-	blk := &AnyBlockEvaluation{
-		Name:    block.Type,
-		Content: make(map[string]any),
-	}
-
-	for _, lab := range block.Labels {
-		ex := &AnyBlockEvaluation{
-			Name:    lab,
-			Content: make(map[string]any),
-		}
-		blk.Content[lab] = *ex
-		blk = ex
-	}
+	tmp := make(map[string]cty.Value)
 
 	for _, attr := range block.Body.Attributes {
 		// Evaluate the attribute's expression to get a cty.Value
 		val, err := attr.Expr.Value(ectx)
 		if err.HasErrors() {
-			return nil, errors.Wrapf(err, "failed to evaluate %q", attr.Name)
+			return "", cty.Value{}, errors.Wrapf(err, "failed to evaluate %q", attr.Name)
 		}
 
-		wrk, err2 := stdlib.JSONEncode(val)
-		if err2 != nil {
-			return nil, errors.Wrapf(err2, "failed to encode %q", attr.Name)
-		}
-
-		an := new(any)
-
-		err2 = json.Unmarshal([]byte(wrk.AsString()), an)
-		if err2 != nil {
-			return nil, errors.Wrapf(err2, "failed to decode %q", attr.Name)
-		}
-
-		blk.Content[attr.Name] = *an
+		tmp[attr.Name] = val
 	}
 
 	for _, blkd := range block.Body.Blocks {
 
-		blks, err := NewAnyBlockEvaluation(ctx, ectx, blkd)
+		key, blks, err := NewAnyBlockEvaluation(ctx, ectx, blkd)
 		if err != nil {
-			return nil, err
+			return "", cty.Value{}, err
 		}
 
-		if blk.Content[blks.Name] == nil {
-			blk.Content[blks.Name] = make(map[string]any)
+		if tmp[key] == cty.NilVal {
+			tmp[key] = cty.ObjectVal(map[string]cty.Value{})
 		}
 
-		blk.Content[blks.Name] = blks.Content
+		wrk := tmp[key].AsValueMap()
+		if wrk == nil {
+			wrk = map[string]cty.Value{}
+		}
+
+		for k, v := range blks.AsValueMap() {
+			wrk[k] = v
+		}
+
+		tmp[key] = cty.ObjectVal(wrk)
 	}
 
-	return blk, nil
+	for _, lab := range block.Labels {
+		tmp = map[string]cty.Value{
+			lab: cty.ObjectVal(tmp),
+		}
+	}
+
+	return block.Type, cty.ObjectVal(tmp), nil
 
 }
 
@@ -322,6 +313,9 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *h
 		// Evaluate the attribute's expression to get a cty.Value
 		val, err := attr.Expr.Value(ectx)
 		if err.HasErrors() {
+			for _, diag := range err.Errs() {
+				fmt.Println(diag)
+			}
 			return nil, errors.Wrapf(err, "failed to evaluate %q", attr.Name)
 		}
 

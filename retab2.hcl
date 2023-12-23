@@ -5,10 +5,12 @@ file "codecatalyst-deployment-pipeline.yaml" {
 		Name          = "deployment-pipeline"
 		RunMode       = "SUPERSEDED"
 		SchemaVersion = "1.0"
-		Triggers = {
-			Branches = ["revamp", "main"]
-			Type     = "PUSH"
-		}
+		Triggers = [
+			{
+				Branches = ["revamp", "main"]
+				Type     = "PUSH"
+			}
+		]
 		Actions = {
 			Beta            = Actions.Beta
 			Build           = Actions.Build
@@ -30,10 +32,12 @@ Actions "Beta" {
 		}
 		DependsOn = ["Build"]
 		Environment = {
-			Connections = {
-				Name = "main"
-				Role = "CodeCatalystWorkflowDevelopmentRole-nugg.xyz"
-			}
+			Connections = [
+				{
+					Name = "main"
+					Role = "CodeCatalystWorkflowDevelopmentRole-nugg.xyz"
+				}
+			]
 			Name = "beta"
 		}
 		Identifier = "aws/cdk-deploy@v1"
@@ -43,12 +47,16 @@ Actions "Beta" {
 	}
 	Actions "Test" {
 		Configuration = {
-			Steps = {
-				Run = "mvn --batch-mode --no-transfer-progress soapui:test -Dsoapui.endpoint=$${endpointUrl}"
-			}
-			Steps = {
-				Run = "mvn --batch-mode --no-transfer-progress compile jmeter:jmeter jmeter:results -Djmeter.endpoint=$${endpointUrl} -Djmeter.threads=300 -Djmeter.duration=300 -Djmeter.throughput=6000"
-			}
+			Steps = [
+				{
+					Run = "mvn --batch-mode --no-transfer-progress soapui:test -Dsoapui.endpoint=$${endpointUrl}"
+				},
+				{
+					Run = <<EOT
+					mvn --batch-mode --no-transfer-progress compile jmeter:jmeter jmeter:results -Djmeter.endpoint=$${endpointUrl} -Djmeter.threads=300 -Djmeter.duration=300 -Djmeter.throughput=6000
+				EOT
+				}
+			]
 		}
 		Identifier = "aws/managed-test@v1"
 		Inputs = {
@@ -77,28 +85,32 @@ Actions "Build" {
 			Type  = "EC2"
 		}
 		Configuration = {
-			Steps = {
-				Run = "cd /root/.goenv/plugins/go-build/../.. \u0026\u0026 git pull \u0026\u0026 cd - \u0026\u0026 goenv install 1.21.5 \u0026\u0026 goenv global 1.21.5"
-			}
-			Steps = {
-				Run = "npm install -g @go-task/cli"
-			}
-			Steps = {
-				Run = "task test-ci"
-			}
-			Steps = {
-				Run = "go build -o ./bin/out ./cmd"
-			}
+			Steps = [
+				{
+					Run = <<EOT
+						cd /root/.goenv/plugins/go-build/../.. && git pull && cd - && goenv install 1.21.5 && goenv global 1.21.5
+					EOT
+				},
+				{
+					Run = "npm install -g @go-task/cli"
+				},
+				{
+					Run = "task test-ci"
+				},
+				{
+					Run = "go build -o ./bin/out ./cmd"
+				}
+			]
 		}
 		Identifier = "aws/build@v1"
 		Inputs = {
 			Sources = ["WorkflowSource"]
 		}
 		Outputs = {
-			Artifacts = {
+			Artifacts = [{
 				Files = ["./bin/out"]
 				Name  = "package"
-			}
+			}]
 			AutoDiscoverReports = {
 				Enabled          = true
 				ReportNamePrefix = "build"
@@ -114,34 +126,36 @@ Actions "Build" {
 			Type  = "EC2"
 		}
 		Configuration = {
-			Steps = {
-				Run = "cd /root/.goenv/plugins/go-build/../.. \u0026\u0026 git pull \u0026\u0026 cd - \u0026\u0026 goenv install 1.21.5 \u0026\u0026 goenv global 1.21.5"
-			}
-			Steps = {
-				Run = "npm install -g @go-task/cli"
-			}
-			Steps = {
-				Run = "task test-cdk-ci"
-			}
-			Steps = {
-				Run = "task cdk-synth"
-			}
-			Steps = {
-				Run = "mv infrastructure/cdk.out ."
-			}
-			Steps = {
-				Run = "mv infrastructure/cdk.json ."
-			}
+			Steps = [
+				{
+					Run = "cd /root/.goenv/plugins/go-build/../.. && git pull && cd - && goenv install 1.21.5 && goenv global 1.21.5"
+				},
+				{
+					Run = "npm install -g @go-task/cli"
+				},
+				{
+					Run = "task test-cdk-ci"
+				},
+				{
+					Run = "task cdk-synth"
+				},
+				{
+					Run = "mv infrastructure/cdk.out ."
+				},
+				{
+					Run = "mv infrastructure/cdk.json ."
+				}
+			]
 		}
 		Identifier = "aws/build@v1"
 		Inputs = {
 			Sources = ["WorkflowSource"]
 		}
 		Outputs = {
-			Artifacts = {
+			Artifacts = [{
 				Files = ["cdk.out/**/*", "cdk.json"]
 				Name  = "synth"
-			}
+			}]
 			AutoDiscoverReports = {
 				Enabled          = true
 				IncludePaths     = ["test-reports/*"]
@@ -153,6 +167,7 @@ Actions "Build" {
 		}
 	}
 }
+
 Actions "Gamma-us-east-1" {
 	Actions "Deploy" {
 		Configuration = {
@@ -163,10 +178,12 @@ Actions "Gamma-us-east-1" {
 		}
 		DependsOn = ["Beta"]
 		Environment = {
-			Connections = {
-				Name = "gamma"
-				Role = "codecatalyst"
-			}
+			Connections = [
+				{
+					Name = "gamma"
+					Role = "codecatalyst"
+				}
+			]
 			Name = "Gamma"
 		}
 		Identifier = "aws/cdk-deploy@v1"
@@ -176,12 +193,14 @@ Actions "Gamma-us-east-1" {
 	}
 	Actions "Test" {
 		Configuration = {
-			Steps = {
-				Run = "mvn --batch-mode --no-transfer-progress soapui:test -Dsoapui.endpoint=$${endpointUrl}"
-			}
-			Steps = {
-				Run = "mvn --batch-mode --no-transfer-progress compile jmeter:jmeter jmeter:results -Djmeter.endpoint=$${endpointUrl} -Djmeter.threads=300 -Djmeter.duration=300 -Djmeter.throughput=6000"
-			}
+			Steps = [
+				{
+					Run = "mvn --batch-mode --no-transfer-progress soapui:test -Dsoapui.endpoint=$${endpointUrl}"
+				},
+				{
+					Run = "mvn --batch-mode --no-transfer-progress compile jmeter:jmeter jmeter:results -Djmeter.endpoint=$${endpointUrl} -Djmeter.threads=300 -Djmeter.duration=300 -Djmeter.throughput=6000"
+				}
+			]
 		}
 		Identifier = "aws/managed-test@v1"
 		Inputs = {
@@ -212,10 +231,12 @@ Actions "Gamma-us-west-2" {
 		}
 		DependsOn = ["Beta"]
 		Environment = {
-			Connections = {
-				Name = "gamma"
-				Role = "codecatalyst"
-			}
+			Connections = [
+				{
+					Name = "gamma"
+					Role = "codecatalyst"
+				}
+			]
 			Name = "Gamma"
 		}
 		Identifier = "aws/cdk-deploy@v1"
@@ -225,12 +246,14 @@ Actions "Gamma-us-west-2" {
 	}
 	Actions "Test" {
 		Configuration = {
-			Steps = {
-				Run = "mvn --batch-mode --no-transfer-progress soapui:test -Dsoapui.endpoint=$${endpointUrl}"
-			}
-			Steps = {
-				Run = "mvn --batch-mode --no-transfer-progress compile jmeter:jmeter jmeter:results -Djmeter.endpoint=$${endpointUrl} -Djmeter.threads=300 -Djmeter.duration=300 -Djmeter.throughput=6000"
-			}
+			Steps = [
+				{
+					Run = "mvn --batch-mode --no-transfer-progress soapui:test -Dsoapui.endpoint=$${endpointUrl}"
+				},
+				{
+					Run = "mvn --batch-mode --no-transfer-progress compile jmeter:jmeter jmeter:results -Djmeter.endpoint=$${endpointUrl} -Djmeter.threads=300 -Djmeter.duration=300 -Djmeter.throughput=6000"
+				}
+			]
 		}
 		Identifier = "aws/managed-test@v1"
 		Inputs = {
@@ -251,6 +274,7 @@ Actions "Gamma-us-west-2" {
 	}
 	DependsOn = ["Beta"]
 }
+
 Actions "Prod-us-east-1" {
 	Actions "Deploy" {
 		Configuration = {
@@ -261,10 +285,12 @@ Actions "Prod-us-east-1" {
 		}
 		DependsOn = ["Gamma-us-west-2", "Gamma-us-east-1"]
 		Environment = {
-			Connections = {
-				Name = "prod"
-				Role = "codecatalyst"
-			}
+			Connections = [
+				{
+					Name = "prod"
+					Role = "codecatalyst"
+				}
+			]
 			Name = "Production"
 		}
 		Identifier = "aws/cdk-deploy@v1"
@@ -274,6 +300,7 @@ Actions "Prod-us-east-1" {
 	}
 	DependsOn = ["Gamma-us-west-2", "Gamma-us-east-1"]
 }
+
 Actions "Prod-us-west-2" {
 	Actions "Deploy" {
 		Configuration = {
@@ -284,10 +311,12 @@ Actions "Prod-us-west-2" {
 		}
 		DependsOn = ["Gamma-us-west-2", "Gamma-us-east-1"]
 		Environment = {
-			Connections = {
-				Name = "prod"
-				Role = "codecatalyst"
-			}
+			Connections = [
+				{
+					Name = "prod"
+					Role = "codecatalyst"
+				}
+			]
 			Name = "Production"
 		}
 		Identifier = "aws/cdk-deploy@v1"
