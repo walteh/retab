@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
@@ -79,32 +78,12 @@ func (me *FullEvaluation) Encode() ([]byte, error) {
 		// enc.SetIndent(4)
 		defer enc.Close()
 
-		// slc := make(yaml.MapSlice, 0, len(me.File.DataOrder))
-
-		// var again func(yaml.MapItem)
-
-		// again = func(v yaml.MapItem) {
-		// 	if v.Value == nil {
-		// 		v.Value = content[v.Key.(string)]
-		// 	} else {
-		// 		if r, ok := v.Value.(yaml.MapItem); ok {
-		// 			again(r)
-		// 		}
-		// 	}
-		// }
-		// fmt.Println(me.File.DataOrder)
-
-		// for _, v := range me.File.DataOrder {
-		// 	again(v)
-		// }
-
-		fmt.Println(content)
 		err := enc.Encode(content)
 		if err != nil {
 			return nil, err
 		}
 
-		strWithTabsRemovedFromHeredoc := strings.ReplaceAll(buf.String(), "\\t", "")
+		strWithTabsRemovedFromHeredoc := strings.ReplaceAll(buf.String(), "\t", "")
 
 		return []byte(strWithTabsRemovedFromHeredoc), nil
 
