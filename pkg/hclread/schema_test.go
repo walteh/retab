@@ -66,7 +66,7 @@ func TestValidHCLDecoding(t *testing.T) {
 
 	for _, b := range got.Blocks {
 
-		blk, err := NewBlockEvaluation(ctx, ectx, b)
+		blk, err := NewFileBlockEvaluation(ctx, ectx, b)
 		if err != nil {
 			t.Fatal(err)
 		}

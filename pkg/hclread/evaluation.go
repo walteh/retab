@@ -21,7 +21,7 @@ func NewEvaluation(ctx context.Context, fle afero.File) (*hcl.File, *hcl.EvalCon
 	return NewEvaluationReadCloser(ctx, fle, fle.Name())
 }
 
-func NewEvaluationReadCloser(_ context.Context, fle io.Reader, name string) (*hcl.File, *hcl.EvalContext, *hclsyntax.Body, error) {
+func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*hcl.File, *hcl.EvalContext, *hclsyntax.Body, error) {
 
 	all, err := afero.ReadAll(fle)
 	if err != nil {
@@ -75,6 +75,13 @@ func NewEvaluationReadCloser(_ context.Context, fle io.Reader, name string) (*hc
 
 	custvars := map[string]map[string]cty.Value{}
 
+	// custvars[blkd.Type] = cty.ObjectVal(blks.Content)
+
+	// for _, v := range blks.Content {
+	// 	custvars[blkd.Type] = cty.ObjectVal(v)
+	// }
+	// }
+
 	for _, v := range bdy.Blocks {
 		if v.Type == "file" {
 			continue
@@ -99,6 +106,14 @@ func NewEvaluationReadCloser(_ context.Context, fle io.Reader, name string) (*hc
 		}
 
 		custvars[v.Type][v.Labels[0]] = cty.ObjectVal(mapper)
+
+		// for _, blkd := range bdy.Blocks {
+
+		// 	blks, err := NewAnyBlockEvaluation(ctx, ectx, blkd)
+		// 	if err != nil {
+		// 		return nil, nil, nil, err
+		// 	}
+		// }
 
 	}
 
