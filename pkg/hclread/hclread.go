@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
 
 	"github.com/go-faster/errors"
 	"github.com/spf13/afero"
-	"gopkg.in/yaml.v3"
+	"github.com/walteh/yaml"
 )
 
 func Process(ctx context.Context, fs afero.Fs, file string) (*FullEvaluation, error) {
@@ -65,9 +66,9 @@ func (me *FullEvaluation) Encode() ([]byte, error) {
 	}
 
 	content := me.File.Content
-	for _, blk := range me.Other {
-		content[blk.Name] = blk.Content
-	}
+	// for _, blk := range me.Other {
+	// 	content = append(content, blk.Content)
+	// }
 
 	switch arr[len(arr)-1] {
 	case "json":
@@ -75,13 +76,35 @@ func (me *FullEvaluation) Encode() ([]byte, error) {
 	case "yaml":
 		buf := bytes.NewBuffer(nil)
 		enc := yaml.NewEncoder(buf)
-		enc.SetIndent(4)
+		// enc.SetIndent(4)
+		defer enc.Close()
+
+		// slc := make(yaml.MapSlice, 0, len(me.File.DataOrder))
+
+		// var again func(yaml.MapItem)
+
+		// again = func(v yaml.MapItem) {
+		// 	if v.Value == nil {
+		// 		v.Value = content[v.Key.(string)]
+		// 	} else {
+		// 		if r, ok := v.Value.(yaml.MapItem); ok {
+		// 			again(r)
+		// 		}
+		// 	}
+		// }
+		// fmt.Println(me.File.DataOrder)
+
+		// for _, v := range me.File.DataOrder {
+		// 	again(v)
+		// }
+
+		fmt.Println(content)
 		err := enc.Encode(content)
 		if err != nil {
 			return nil, err
 		}
 
-		strWithTabsRemovedFromHeredoc := strings.ReplaceAll(buf.String(), "\t", "")
+		strWithTabsRemovedFromHeredoc := strings.ReplaceAll(buf.String(), "\\t", "")
 
 		return []byte(strWithTabsRemovedFromHeredoc), nil
 
@@ -89,3 +112,38 @@ func (me *FullEvaluation) Encode() ([]byte, error) {
 		return nil, errors.Errorf("unknown file extension [%s] in %s", arr[len(arr)-1], me.File.Name)
 	}
 }
+
+type content struct {
+	Content map[string]any
+	Order   []string
+	root    string
+}
+
+// func (me *content) MarshalYAML() (interface{}, error) {
+
+// 	ordered := make(map[string]any)
+// 	unordered := make(map[string]any)
+
+// 	for _, v := range me.Order {
+// 		if !strings.HasPrefix(v, me.root) {
+// 			unordered[v] = me.Content[v]
+// 			continue
+// 		}
+// 		ordered[v] = me.Content[v]
+// 	}
+
+// 	buf := bytes.NewBuffer(nil)
+
+// 	for _, v := range me.Order {
+// 		resp, err := yaml.Marshal(ordered[v])
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		buf.WriteString(v + ": ")
+// 		buf.Write(resp)
+// 		buf.WriteString("\n")
+// 	}
+
+// 	return json.Marshal(me.value)
+// }

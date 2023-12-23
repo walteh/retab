@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/walteh/retab/schemas"
+	"github.com/walteh/yaml"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 )
@@ -48,6 +49,8 @@ var (
 // _ ValidationBlock = (*AnyBlockEvaluation)(nil)
 )
 
+// TODO do the brace thing
+
 type AnyBlockEvaluation struct {
 	Name       string
 	Content    map[string]cty.Value
@@ -59,8 +62,28 @@ type FileBlockEvaluation struct {
 	Schema string
 	Dir    string
 	// ContentRaw cty.Value
-	Content    map[string]any
+	Content    any
 	Validation []*ValidationError
+	DataOrder  yaml.MapSlice
+}
+
+type SliceWrapper yaml.MapSlice
+
+func (me *SliceWrapper) Append(item yaml.MapItem) {
+	*me = append(*me, item)
+}
+
+func (me *SliceWrapper) UnmarshalJSON(b []byte) error {
+	mapper := make(map[string]interface{})
+	err := json.Unmarshal(b, &mapper)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range mapper {
+		me.Append(yaml.MapItem{Key: k, Value: v})
+	}
+	return nil
 }
 
 func (me *FileBlockEvaluation) GetJSONSchema(ctx context.Context) (*jsonschema.Schema, error) {
@@ -296,6 +319,74 @@ func NewAnyBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hc
 
 }
 
+func addVarToDorder(abc hcl.Traversal, val cty.Value) yaml.MapItem {
+	str := yaml.MapItem{Key: abc.RootName()}
+	for _, v := range abc {
+		if _, ok := v.(hcl.TraverseRoot); ok {
+			continue
+		} else if a, ok := v.(hcl.TraverseAttr); ok {
+			ok, err := v.TraversalStep(val)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			str.Value = yaml.MapItem{Key: a.Name, Value: ok}
+		}
+	}
+	return str
+}
+
+func roll(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, error) {
+
+	if x, ok := e.(*hclsyntax.ObjectConsExpr); ok {
+		group := make(yaml.MapSlice, 0)
+		for _, rr := range x.Items {
+			kvf, err := rr.KeyExpr.Value(ectx)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to evaluate %q", rr.KeyExpr)
+			}
+			rz, errd := roll(rr.ValueExpr, ectx)
+			if errd != nil {
+				return nil, errd
+			}
+			if rz == nil {
+				continue
+			}
+			group = append(group, yaml.MapItem{Key: kvf.AsString(), Value: rz})
+		}
+		return group, nil
+	} else if x, ok := e.(*hclsyntax.TupleConsExpr); ok {
+		wrk := make([]any, 0)
+		for _, exp := range x.Exprs {
+			r, err := roll(exp, ectx)
+			if err != nil {
+				return nil, err
+			}
+			if r == nil {
+				continue
+			}
+			wrk = append(wrk, r)
+		}
+		return wrk, nil
+	} else {
+		evaled, errd := e.Value(ectx)
+		if errd != nil {
+			return nil, errors.Wrapf(errd, "failed to evaluate %q", e)
+		}
+
+		ok, err := stdlib.JSONEncode(evaled)
+		if err != nil {
+			return nil, err
+		}
+		var ok2 interface{}
+		err = json.Unmarshal([]byte(ok.AsString()), &ok2)
+		if err != nil {
+			return nil, err
+		}
+		return ok2, nil
+	}
+}
+
 func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (res *FileBlockEvaluation, err error) {
 
 	if block.Type != "file" {
@@ -325,15 +416,38 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *h
 		case "schema":
 			blk.Schema = val.AsString()
 		case "data":
-			wrk, err := stdlib.JSONEncode(val)
+
+			cnt := yaml.MapSlice{}
+
+			slc, err := roll(attr.Expr, ectx)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to encode %q", attr.Name)
+				return nil, err
 			}
 
-			err = json.Unmarshal([]byte(wrk.AsString()), &blk.Content)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to decode %q", attr.Name)
+			if x, ok := slc.(yaml.MapSlice); ok {
+				cnt = append(cnt, x...)
 			}
+			if x, ok := slc.(yaml.MapItem); ok {
+				cnt = append(cnt, x)
+			}
+
+			blk.Content = cnt
+
+			// this is more generic, but it doesn't preserve the order
+
+			// wrk, err := stdlib.JSONEncode(val)
+			// if err != nil {
+			// 	return nil, errors.Wrapf(err, "failed to encode %q", attr.Name)
+			// }
+
+			// fmt.Println(wrk)
+
+			// err = json.Unmarshal([]byte(wrk.AsString()), &blk.Content)
+			// if err != nil {
+			// 	return nil, errors.Wrapf(err, "failed to decode %q", attr.Name)
+			// }
+
+			// blk.Content = SliceWrapper(slc.(yaml.MapSlice))
 
 			dataAttr = attr.Expr
 
@@ -350,6 +464,8 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *h
 			blk.Validation = lerr
 		}
 	}
+	// blk.DataOrder = dorder
+	// blk.Content = SliceWrapper(dorder)
 
 	return blk, nil
 
