@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/walteh/snake"
+	"github.com/walteh/terrors"
 )
 
 func FSRunner() snake.Runner {
@@ -12,7 +13,7 @@ func FSRunner() snake.Runner {
 }
 
 type FSResolver struct {
-	Dir  string `default:"." usage:"the directory to run in"`
+	Dir  string `usage:"the directory to run in"`
 	File string `usage:"the file to read the configuration from"`
 }
 
@@ -26,6 +27,7 @@ func (me *FSResolver) Run() (afero.Fs, afero.File, error) {
 		res = afero.NewBasePathFs(res, wrking)
 	} else {
 		res = afero.NewBasePathFs(res, me.Dir)
+
 	}
 
 	path := me.File
@@ -36,7 +38,7 @@ func (me *FSResolver) Run() (afero.Fs, afero.File, error) {
 
 	fle, err := res.Open(path)
 	if err != nil {
-		return res, nil, err
+		return res, nil, terrors.Wrap(err, "failed to open file")
 	}
 
 	return res, fle, nil

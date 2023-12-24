@@ -37,7 +37,6 @@ func NewCommand(ctx context.Context) (*scobra.CobraSnake, *cobra.Command, error)
 		snake.Resolvers(
 			resolvers.FSRunner(),
 			resolvers.ConfigurationRunner(),
-			resolvers.FileRunner(),
 		),
 	)
 	_, err := snake.NewSnakeWithOpts(ctx, impl, opts)

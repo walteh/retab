@@ -13,7 +13,6 @@ func Runner() snake.Runner {
 }
 
 type Handler struct {
-	File string `default:"retab.hcl" help:"The file to read the configuration from."`
 }
 
 func (me *Handler) Name() string {
@@ -21,18 +20,25 @@ func (me *Handler) Name() string {
 }
 
 func (me *Handler) Description() string {
-	return "generate files defined in retab.hcl"
+	return "generate files defined in .retab files"
 }
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
 
-	body, err := hclread.Process(ctx, fs, me.File)
+	fles, err := afero.Glob(fs, "*.retab|*.retab.hcl|.retab/*.retab|.retab/*.retab.hcl")
 	if err != nil {
 		return err
 	}
-	err = body.WriteToFile(ctx, fs)
-	if err != nil {
-		return err
+
+	for _, fle := range fles {
+		body, err := hclread.Process(ctx, fs, fle)
+		if err != nil {
+			return err
+		}
+		err = body.WriteToFile(ctx, fs)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

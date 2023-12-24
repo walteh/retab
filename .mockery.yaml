@@ -9,6 +9,6 @@
     packages:
         {
             github.com/walteh/retab/pkg/configuration:
-                { interfaces: { Provider: {} } },
+                { interfaces: { Configuration: {} } },
         },
 }

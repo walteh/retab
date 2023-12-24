@@ -14,7 +14,6 @@ import (
 	"github.com/walteh/retab/pkg/hclwrite"
 	"github.com/walteh/retab/pkg/protowrite"
 	"github.com/walteh/snake"
-	"github.com/walteh/terrors"
 )
 
 func Runner() snake.Runner {
@@ -78,5 +77,5 @@ func (me *Handler) Run(ctx context.Context, fs afero.Fs, fle afero.File, ecfg co
 		// }
 	}
 
-	return terrors.New("no targets found")
+	return nil
 }

@@ -32,7 +32,7 @@ import (
 type formatter struct {
 	writer   io.Writer
 	fileNode *ast.FileNode
-	cfg      configuration.Provider
+	cfg      configuration.Configuration
 
 	// Current level of indentation.
 	indent int
@@ -73,7 +73,7 @@ type formatter struct {
 func newFormatter(
 	writer io.Writer,
 	fileNode *ast.FileNode,
-	cfg configuration.Provider,
+	cfg configuration.Configuration,
 ) *formatter {
 	return &formatter{
 		writer:   writer,

@@ -24,7 +24,7 @@ func (me *Formatter) Targets() []string {
 	return []string{"*.proto", "*.proto3"}
 }
 
-func (me *Formatter) Format(_ context.Context, cfg configuration.Provider, read io.Reader) (io.Reader, error) {
+func (me *Formatter) Format(_ context.Context, cfg configuration.Configuration, read io.Reader) (io.Reader, error) {
 
 	fileNode, err := parser.Parse("retab.protobuf-parser", read, reporter.NewHandler(nil))
 	if err != nil {

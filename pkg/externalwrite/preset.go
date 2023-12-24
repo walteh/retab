@@ -18,6 +18,6 @@ func NewTerraformFormatter(cmds ...string) format.Provider {
 
 	return NewExecFormatter(&BasicExternalFormatterOpts{
 		Indent:  "  ",
-		Targets: []string{"*.tf", "*.tfvars", "*.hcl"},
+		Targets: []string{"*.tf", "*.tfvars"},
 	}, cmds...)
 }
