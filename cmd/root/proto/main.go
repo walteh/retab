@@ -1,12 +1,12 @@
-package dart
+package proto
 
 import (
 	"context"
 
 	"github.com/spf13/afero"
 	"github.com/walteh/retab/pkg/configuration"
-	"github.com/walteh/retab/pkg/externalwrite"
 	"github.com/walteh/retab/pkg/format"
+	"github.com/walteh/retab/pkg/protowrite"
 	"github.com/walteh/snake"
 )
 
@@ -18,14 +18,14 @@ type Handler struct {
 }
 
 func (me *Handler) Name() string {
-	return "dart"
+	return "proto"
 }
 
 func (me *Handler) Description() string {
-	return "format dart files with your local version of dart, but with tabs"
+	return "format proto files with the official buf library, but with tabs"
 }
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs, fle afero.File, ecfg configuration.Provider) error {
-	fourmatter := externalwrite.NewDartFormatter("dart")
-	return format.Format(ctx, fourmatter, ecfg, fs, fle)
+	fmtr := protowrite.NewFormatter()
+	return format.Format(ctx, fmtr, ecfg, fs, fle)
 }

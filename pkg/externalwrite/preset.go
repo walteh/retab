@@ -12,3 +12,12 @@ func NewDartFormatter(cmds ...string) format.Provider {
 		Targets: []string{"*.dart"},
 	}, cmds...)
 }
+
+func NewTerraformFormatter(cmds ...string) format.Provider {
+	cmds = append(cmds, "fmt", "-write=false", "-list=false")
+
+	return NewExecFormatter(&BasicExternalFormatterOpts{
+		Indent:  "  ",
+		Targets: []string{"*.tf", "*.tfvars", "*.hcl"},
+	}, cmds...)
+}

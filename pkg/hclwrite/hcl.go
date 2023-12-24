@@ -13,7 +13,7 @@ type Formatter struct {
 
 var _ format.Provider = (*Formatter)(nil)
 
-func NewHclFormatter() *Formatter {
+func NewFormatter() *Formatter {
 	return &Formatter{}
 }
 

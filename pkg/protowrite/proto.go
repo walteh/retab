@@ -1,4 +1,4 @@
-package bufwrite
+package protowrite
 
 import (
 	"context"
@@ -16,7 +16,7 @@ type Formatter struct {
 
 var _ format.Provider = (*Formatter)(nil)
 
-func NewBufFormatter() *Formatter {
+func NewFormatter() *Formatter {
 	return &Formatter{}
 }
 

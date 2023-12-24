@@ -3,6 +3,7 @@ package format
 import (
 	"context"
 	"io"
+	"reflect"
 	"sync"
 
 	"github.com/hashicorp/go-multierror"
@@ -17,6 +18,8 @@ type Provider interface {
 }
 
 func Format(ctx context.Context, provider Provider, cfg configuration.Provider, fls afero.Fs, fle afero.File) error {
+
+	ctx = zerolog.Ctx(ctx).With().Str("provider", reflect.TypeOf(provider).String()).Logger().WithContext(ctx)
 
 	isdir, err := afero.IsDir(fls, fle.Name())
 	if err != nil {
@@ -36,6 +39,11 @@ func Format(ctx context.Context, provider Provider, cfg configuration.Provider, 
 		}
 	} else {
 		files = append(files, fle.Name())
+	}
+
+	if len(files) == 0 {
+		zerolog.Ctx(ctx).Debug().Msg("No files to format.")
+		return nil
 	}
 
 	// // handle when option specifies a particular file

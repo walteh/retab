@@ -1,19 +1,127 @@
 # `retab` 🚀✨
 
-Welcome to a new era, where we have broken the Terraform space-time continuum.
+imagine a world where you don't have to fight with `yaml` anymore
+
+retab empowers you to write your `yaml` files in `hcl` ... and format them with tabs 🤯
 
 ---
 
-✅ `=` sign alignment
+## 🛠️ install from the source
 
-**AND**
+```bash
+go install  github.com/walteh/retab/cmd/retab
+```
+---
 
-✅ tab based indentation
+## 3️⃣ commands, endless possibilities
+
+```bash
+retab gen
+```
+✅ use `hcl` to write `.yaml` and `.json` files
+
+✅ never fight with yaml again 🎉
+
+✅ runs all `.retab` files in the current directory, or in the `.retab` directory
+
+```bash
+retab fmt --file=<file>
+```
+✅ formats `.hcl` files with its standard guidelines, but with tabs as indentation
+
+✅ also supports `.proto` files
+
+✅ native, no runtime dependancies
+
+- > ⚠️  `.tf` and `.dart` files are supported, but depend on the `terraform` and `dart` commands being installed on your system
 
 ---
+
+## supplemental commands
+
+```bash
+retab wfmt --command=<command> --file=<file>
+```
+✅ "wrapped `fmt`" - runs a command on your system, and formats the output with tabs
+
+⚠️ depends on the command you want to run
+
+terraform example: `retab wfmt --terraform --file=main.tf`
+
+---
+
+
+## `retab gen`: builing `.yaml` and `.json` files
+
+start with a `.retab` file
+
+```hcl
+# my-workflow.retab
+file "deployment-pipeline.yaml" {
+	dir = "./.codecatalyst/workflows"
+	data = {
+		Name          = "deployment-pipeline"
+		RunMode       = "SUPERSEDED"
+		SchemaVersion = "1.0"
+		Triggers = [
+			{
+				Branches = ["main"]
+				Type     = "PUSH"
+			}
+		]
+		Actions = {
+			Beta = Actions.Beta
+		}
+	}
+}
+
+Actions "Beta" {
+	Actions "Deploy" {
+		Identifier = "aws/cdk-deploy@v1"
+		Inputs = {
+			Sources = ["WorkflowSource"]
+		}
+	}
+}
+```
+
+run `retab gen`
+
+```yaml
+# ./.github/workflows/my-workflow.yaml
+
+# managed by retab - please do not edit manually
+# join the fight against yaml @ github.com/walteh/retab
+
+# source ./my-workflow.retab
+
+Name: deployment-pipeline
+RunMode: SUPERSEDED
+SchemaVersion: 1.0
+Triggers:
+    - Branches:
+	    - main
+	Type: PUSH
+Actions:
+    Beta:
+	  Deploy:
+	    Identifier: aws/cdk-deploy@v1
+	    Inputs:
+			- Sources:
+				 - WorkflowSource
+```
+
+see  your new `.yaml` file in the `.github/workflows` directory
+
+---
+
+## `retab fmt`: formatting `.hcl` files
+
+welcome to a new era, where we have broken the YAML/HCL space-time continuum.
+
+
 
 <!-- `retab` is the same as `terraform fmt`, but it replaces **preceding** spaces with tabs. -->
-
 
 ```hcl
 # terraform fmt 😞
@@ -49,18 +157,16 @@ terraform fmt my_sad_file.tf
 retab my_happy_file.tf
 ```
 
-## 🛠️ install `retab`
 
-### 🍺 Homebrew
 
-<!-- Installation is a breeze with Homebrew. Just tap into the wisdom of nuggxyz, and install the formula for `retab`. Here's how you do it: -->
+
+<!-- Installation is a breeze with Go. Here's how you do it: -->
 
 ```bash
-brew tap nuggxyz/tap
-brew install retab
+go install  github.com/walteh/retab/cmd/retab
 ```
 
-<!-- And just like that, you're ready to embrace the tab life in your Terraform files. -->
+<!-- And just like that, you're ready to embrace the tab life in your HCL files. -->
 
 ## 🤯 Why `retab`?
 

@@ -1,4 +1,4 @@
-package generate
+package gen
 
 import (
 	"context"
@@ -17,7 +17,7 @@ type Handler struct {
 }
 
 func (me *Handler) Name() string {
-	return "generate"
+	return "gen"
 }
 
 func (me *Handler) Description() string {

@@ -31,8 +31,6 @@ func (me *Handler) Description() string {
 }
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs, fle afero.File, ecfg configuration.Provider) error {
-
-	fmtr := hclwrite.NewHclFormatter()
-
+	fmtr := hclwrite.NewFormatter()
 	return format.Format(ctx, fmtr, ecfg, fs, fle)
 }

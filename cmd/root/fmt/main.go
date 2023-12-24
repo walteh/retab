@@ -5,23 +5,26 @@ package fmt
 
 import (
 	"context"
-	"errors"
+	"strings"
 
-	"github.com/mattn/go-zglob"
 	"github.com/spf13/afero"
-	"github.com/walteh/retab/pkg/bufwrite"
 	"github.com/walteh/retab/pkg/configuration"
 	"github.com/walteh/retab/pkg/externalwrite"
 	"github.com/walteh/retab/pkg/format"
 	"github.com/walteh/retab/pkg/hclwrite"
+	"github.com/walteh/retab/pkg/protowrite"
 	"github.com/walteh/snake"
+	"github.com/walteh/terrors"
 )
 
 func Runner() snake.Runner {
-	return snake.GenRunCommand_In04_Out01(&Handler{})
+	return snake.GenRunCommand_In05_Out01(&Handler{})
 }
 
 type Handler struct {
+	CustomCommand      string   `default:"" usage:"use custom formating command"`
+	TargetRestrictions []string `usage:"file patterns to match - for example, *.tfvars"`
+	CustomCommandIdent int      `default:"2" usage:"the number of spaces the custom formatter uses for indentation - for example, for terraform format you would put 2"`
 }
 
 func (me *Handler) Name() string {
@@ -29,32 +32,51 @@ func (me *Handler) Name() string {
 }
 
 func (me *Handler) Description() string {
-	return "format files with the official buf library, but with tabs"
+	return "format files hcl library, but with tabs"
 }
 
-func (me *Handler) Run(ctx context.Context, fs afero.Fs, fle afero.File, ecfg configuration.Provider) error {
+func (me *Handler) Run(ctx context.Context, fs afero.Fs, fle afero.File, ecfg configuration.Provider, out snake.Stdout) error {
+	fmtrs := []format.Provider{}
 
-	fmtrs := []format.Provider{
-		hclwrite.NewHclFormatter(),
-		bufwrite.NewBufFormatter(),
-		externalwrite.NewDartFormatter("dart"),
+	if me.CustomCommand != "" {
+		indentstr := ""
+		for i := 0; i < me.CustomCommandIdent; i++ {
+			indentstr += " "
+		}
+		fmtrs = append(fmtrs, externalwrite.NewExecFormatter(&externalwrite.BasicExternalFormatterOpts{
+			Indent:  indentstr,
+			Targets: me.TargetRestrictions,
+		}, strings.Split(me.CustomCommand, " ")...))
+	} else {
+		fmtrs = append(fmtrs, hclwrite.NewFormatter())
+		fmtrs = append(fmtrs, protowrite.NewFormatter())
+		fmtrs = append(fmtrs, externalwrite.NewDartFormatter("dart"))
+		fmtrs = append(fmtrs, externalwrite.NewTerraformFormatter("terraform"))
 	}
 
 	for _, fmtr := range fmtrs {
-		for _, target := range fmtr.Targets() {
-			// targets are glob patterns
-			matches, err := zglob.Glob(target)
-			if err != nil {
-				return err
-			}
-
-			if len(matches) == 0 {
-				continue
-			}
-
-			return format.Format(ctx, fmtr, ecfg, fs, fle)
+		// trg := fmtr.Targets()
+		// if len(me.TargetRestrictions) > 0 {
+		// 	trg = me.TargetRestrictions
+		// }
+		err := format.Format(ctx, fmtr, ecfg, fs, fle)
+		if err != nil {
+			return err
 		}
+		// for _, target := range trg {
+
+		// 	matches, err := afero.Glob(fs, target)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+
+		// 	if len(matches) == 0 {
+		// 		continue
+		// 	}
+
+		// 	zerolog.Ctx(ctx).Info().Int("files", len(matches)).Str("target", target).Str("formatter", reflect.TypeOf(fmtr).String()).Msg("formatted")
+		// }
 	}
 
-	return errors.New("no targets found")
+	return terrors.New("no targets found")
 }
