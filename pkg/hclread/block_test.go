@@ -136,6 +136,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 }
 
 const validHCLWithReference = `
+
 file "default.yaml" {
 	dir = "./.github/workflows"
 	schema = "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json"
