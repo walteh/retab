@@ -13,15 +13,15 @@ type Formatter struct {
 
 var _ format.Provider = (*Formatter)(nil)
 
-func NewHclFormatter() *Formatter {
+func NewFormatter() *Formatter {
 	return &Formatter{}
 }
 
 func (me *Formatter) Targets() []string {
-	return []string{"*.hcl", "*.tf", "*.tfvars", "*.hcl2"}
+	return []string{"*.hcl", "*.hcl2", "*.retab"}
 }
 
-func (me *Formatter) Format(ctx context.Context, cfg configuration.Provider, read io.Reader) (io.Reader, error) {
+func (me *Formatter) Format(ctx context.Context, cfg configuration.Configuration, read io.Reader) (io.Reader, error) {
 
 	reads, err := io.ReadAll(read)
 	if err != nil {

@@ -1,36 +1,44 @@
 package format
 
 import (
+	"bytes"
 	"context"
 	"io"
+	"reflect"
 	"sync"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
 	"github.com/walteh/retab/pkg/configuration"
+	"github.com/walteh/terrors"
 )
 
 type Provider interface {
-	Format(ctx context.Context, cfg configuration.Provider, reader io.Reader) (io.Reader, error)
+	Format(ctx context.Context, cfg configuration.Configuration, reader io.Reader) (io.Reader, error)
 	Targets() []string
 }
 
 func Format(ctx context.Context, provider Provider, cfg configuration.Provider, fls afero.Fs, fle afero.File) error {
 
+	ctx = zerolog.Ctx(ctx).With().Str("path", fle.Name()).Str("provider", reflect.TypeOf(provider).Elem().String()).Logger().WithContext(ctx)
+
 	isdir, err := afero.IsDir(fls, fle.Name())
 	if err != nil {
-		return err
+		return terrors.Wrap(err, "failed to check if path is a directory")
 	}
 
 	files := []string{}
 
 	if isdir {
-		fls = afero.NewBasePathFs(fls, fle.Name())
+		zerolog.Ctx(ctx).Debug().Msg("Path is a directory. Globbing files.")
+		glbfls := afero.NewBasePathFs(fls, fle.Name())
 		for _, ext := range provider.Targets() {
-			glb, err := afero.Glob(fls, ext)
+			glb, err := afero.Glob(glbfls, ext)
 			if err != nil {
-				return err
+				return terrors.Wrap(err, "failed to glob").Event(func(e *zerolog.Event) *zerolog.Event {
+					return e.Str("pattern", ext)
+				})
 			}
 			files = append(files, glb...)
 		}
@@ -38,51 +46,12 @@ func Format(ctx context.Context, provider Provider, cfg configuration.Provider, 
 		files = append(files, fle.Name())
 	}
 
-	// // handle when option specifies a particular file
-	// if !isDir {
-
-	// 	if !filepath.IsAbs(path) {
-	// 		path = filepath.Join(working, path)
-	// 	}
-
-	// 	zerolog.Ctx(ctx).Debug().Msgf("Formatting hcl file at: %s.", path)
-
-	// 	fle, err := fs.Open(path)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	r, err := provider.Format(ctx, cfg, fle)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	err = afero.WriteReader(fs, path, r)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	zerolog.Ctx(ctx).Debug().Msgf("Formatted file at: %s.", path)
-
-	// 	return nil
-
-	// }
+	if len(files) == 0 {
+		zerolog.Ctx(ctx).Debug().Msg("No files to format.")
+		return nil
+	}
 
 	zerolog.Ctx(ctx).Debug().Any("files", files).Msg("Formatting files.")
-
-	// afero.Glob(fls, path)
-
-	// // zglob normalizes paths to "/"
-	// var files []string
-
-	// for _, ext := range provider.Targets() {
-	// 	pattern := filepath.Join(working, path, "**", ext)
-	// 	matches, err := zglob.Glob(pattern)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	files = append(files, matches...)
-	// }
 
 	grp := sync.WaitGroup{}
 
@@ -92,23 +61,35 @@ func Format(ctx context.Context, provider Provider, cfg configuration.Provider, 
 		go func(filename string) {
 			defer grp.Done()
 
-			fle, err := fls.Open(filename)
+			datafunc := func(e *zerolog.Event) *zerolog.Event {
+				return e.Str("path", filename)
+			}
+
+			fle, err := afero.ReadFile(fls, filename)
 			if err != nil {
-				formatErrors = multierror.Append(formatErrors, err)
+				formatErrors = multierror.Append(formatErrors, terrors.Wrap(err, "failed to open file").Event(datafunc))
 				return
 			}
 
-			r, err := provider.Format(ctx, cfg, fle)
+			efg, err := cfg.GetConfigurationForFileType(ctx, filename)
 			if err != nil {
-				formatErrors = multierror.Append(formatErrors, err)
+				formatErrors = multierror.Append(formatErrors, terrors.Wrap(err, "failed to get editorconfig").Event(datafunc))
+				return
+			}
+
+			r, err := provider.Format(ctx, efg, bytes.NewReader(fle))
+			if err != nil {
+				formatErrors = multierror.Append(formatErrors, terrors.Wrap(err, "failed to format file").Event(datafunc))
 				return
 			}
 
 			err = afero.WriteReader(fls, filename, r)
 			if err != nil {
-				formatErrors = multierror.Append(formatErrors, err)
+				formatErrors = multierror.Append(formatErrors, terrors.Wrap(err, "failed to write formatted file").Event(datafunc))
 				return
 			}
+
+			zerolog.Ctx(ctx).Info().Str("path", filename).Msg("formatted")
 		}(filename)
 	}
 

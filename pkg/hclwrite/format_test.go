@@ -15,6 +15,7 @@ func TestFormat(t *testing.T) {
 		useTabs                bool
 		indentSize             int
 		trimMultipleEmptyLines bool
+		oneBracketPerLine      bool
 		src                    []byte
 		expected               []byte
 	}{
@@ -23,22 +24,31 @@ func TestFormat(t *testing.T) {
 			useTabs:                true,
 			indentSize:             1,
 			trimMultipleEmptyLines: false,
+			oneBracketPerLine:      true,
 			src: []byte(`
 variable "DESTDIR" {
   default = "./bin"
   required = true
+  ok = [{abc = 1}]
 }`),
 			expected: []byte(`
 variable "DESTDIR" {
 	default  = "./bin"
 	required = true
-}`),
+	ok = [
+		{
+			abc = 1
+		}
+	]
+}
+`),
 		},
 		{
 			name:                   "Use Spaces with IndentSize 4",
 			useTabs:                false,
 			indentSize:             4,
 			trimMultipleEmptyLines: false,
+			oneBracketPerLine:      false,
 			src: []byte(`
 variable "DESTDIR" {
   default = "./bin"
@@ -55,6 +65,7 @@ variable "DESTDIR" {
 			useTabs:                true,
 			trimMultipleEmptyLines: true,
 			indentSize:             1,
+			oneBracketPerLine:      false,
 
 			src: []byte(`
 variable "DESTDIR" {
@@ -82,6 +93,7 @@ variable "DESTDIR1" {
 			name:                   "trim multiple empty lines - off",
 			useTabs:                true,
 			trimMultipleEmptyLines: false,
+			oneBracketPerLine:      false,
 			indentSize:             1,
 
 			src: []byte(`
@@ -111,10 +123,11 @@ variable "DESTDIR1" {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := &mockery.MockProvider_configuration{}
+			cfg := &mockery.MockConfiguration_configuration{}
 			cfg.EXPECT().UseTabs().Return(tt.useTabs)
 			cfg.EXPECT().IndentSize().Return(tt.indentSize)
 			cfg.EXPECT().TrimMultipleEmptyLines().Return(tt.trimMultipleEmptyLines)
+			cfg.EXPECT().OneBracketPerLine().Return(tt.oneBracketPerLine)
 
 			// Call the Format function with the provided configuration and source
 			result, err := hclwrite.FormatBytes(cfg, tt.src)

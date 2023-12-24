@@ -35,7 +35,7 @@ func ExternalFormatterToProvider(ext ExternalFormatter) format.Provider {
 	return &externalStdinFormatter{ext}
 }
 
-func (me *externalStdinFormatter) Format(ctx context.Context, cfg configuration.Provider, input io.Reader) (io.Reader, error) {
+func (me *externalStdinFormatter) Format(ctx context.Context, cfg configuration.Configuration, input io.Reader) (io.Reader, error) {
 
 	read, f := me.internal.Format(ctx, input)
 
@@ -71,7 +71,7 @@ func (me *externalStdinFormatter) Format(ctx context.Context, cfg configuration.
 // 	return &externalStdinFormatter{ext}
 // }
 
-func applyConfiguration(_ context.Context, ext ExternalFormatter, cfg configuration.Provider, input io.Reader) (io.Reader, error) {
+func applyConfiguration(_ context.Context, ext ExternalFormatter, cfg configuration.Configuration, input io.Reader) (io.Reader, error) {
 	var output bytes.Buffer
 	scanner := bufio.NewScanner(input)
 	indentation := "\t"

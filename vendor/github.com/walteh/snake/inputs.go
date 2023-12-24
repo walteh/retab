@@ -3,6 +3,7 @@ package snake
 import (
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 	"unicode"
 
@@ -273,6 +274,24 @@ func (me *simpleValueInput[T]) Default() T {
 			panic(err)
 		}
 		return any(durt).(T)
+	case *[]string:
+		if defstr == "" {
+			return any([]string{}).(T)
+		}
+		return any(strings.Split(defstr, ",")).(T)
+	case *[]int:
+		if defstr == "" {
+			return any([]int{}).(T)
+		}
+		ints := make([]int, 0)
+		for _, v := range strings.Split(defstr, ",") {
+			intt, err := strconv.Atoi(v)
+			if err != nil {
+				panic(err)
+			}
+			ints = append(ints, intt)
+		}
+		return any(ints).(T)
 	default:
 		panic(terrors.Errorf("unknown type %T", me.val))
 	}

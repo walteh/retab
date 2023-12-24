@@ -245,7 +245,7 @@ func TestParseBlocksWithReference(t *testing.T) {
 
 			resp := make([]*FileBlockEvaluation, 0)
 
-			be, err := NewFullEvaluation(ctx, ectx, got, false)
+			be, err := NewFullEvaluation(ctx, ectx, got, false, "somefile")
 			if tt.wantErr == nil {
 				require.NoError(t, err)
 				resp = append(resp, be.File)

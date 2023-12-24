@@ -16,7 +16,7 @@ import (
 // WriteTo takes an io.Writer and writes the bytes for each token to it,
 // along with the spacing that separates each token. In other words, this
 // allows serializing the tokens to a file or other such byte stream.
-func (ts Tokens) WriteTo(wr io.Writer, cfg configuration.Provider) (int64, error) {
+func (ts Tokens) WriteTo(wr io.Writer, cfg configuration.Configuration) (int64, error) {
 	// We know we're going to be writing a lot of small chunks of repeated
 	// space characters, so we'll prepare a buffer of these that we can
 	// easily pass to wr.Write without any further allocation.
@@ -89,8 +89,8 @@ func (ts Tokens) WriteTo(wr io.Writer, cfg configuration.Provider) (int64, error
 	return n, err
 }
 
-func FormatBytes(cfg configuration.Provider, src []byte) (io.Reader, error) {
-	tokens := lexConfig(src)
+func FormatBytes(cfg configuration.Configuration, src []byte) (io.Reader, error) {
+	tokens := lexConfig(src, cfg)
 	tokens.format()
 	r, w := io.Pipe()
 	go func() {
@@ -108,7 +108,7 @@ func FormatBytes(cfg configuration.Provider, src []byte) (io.Reader, error) {
 
 // Process uses the hcl2 library to format the hcl file. This will attempt to parse the HCL file first to
 // ensure that there are no syntax errors, before attempting to format it.
-func Format(ctx context.Context, cfg configuration.Provider, fs afero.Fs, fle string) error {
+func Format(ctx context.Context, cfg configuration.Configuration, fs afero.Fs, fle string) error {
 	zerolog.Ctx(ctx).Debug().Any("config", cfg).Msgf("Formatting %s", fle)
 
 	contents, err := afero.ReadFile(fs, fle)

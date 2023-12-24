@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2/ext/userfunc"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/spf13/afero"
+	"github.com/walteh/terrors"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
@@ -77,14 +78,12 @@ func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*
 
 	combos := make(map[string][]cty.Value, 0)
 
-	for _, v := range bdy.Blocks {
-		if v.Type == "file" {
-			continue
-		}
+	retrys := []*hclsyntax.Block{}
 
-		key, blks, err := NewAnyBlockEvaluation(ctx, ectx, v)
+	proc := func(blk *hclsyntax.Block) error {
+		key, blks, err := NewAnyBlockEvaluation(ctx, ectx, blk)
 		if err != nil {
-			return nil, nil, nil, err
+			return err
 		}
 
 		if combos[key] == nil {
@@ -92,29 +91,63 @@ func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*
 		}
 
 		combos[key] = append(combos[key], blks)
-
+		return nil
 	}
 
-	for k, v := range combos {
-		for _, v2 := range v {
+	comp := func() error {
+		for k, v := range combos {
+
 			if custvars[k] == cty.NilVal {
 				custvars[k] = cty.ObjectVal(map[string]cty.Value{})
 			}
 			wrk := custvars[k].AsValueMap()
-			for k2, v3 := range v2.AsValueMap() {
-				if wrk == nil {
-					wrk = map[string]cty.Value{}
-				}
+			if wrk == nil {
+				wrk = map[string]cty.Value{}
+			}
 
-				wrk[k2] = v3
+			for _, v2 := range v {
+				for k2, v3 := range v2.AsValueMap() {
+					wrk[k2] = v3
+				}
 			}
 			custvars[k] = cty.ObjectVal(wrk)
+
+			combos[k] = nil
+		}
+
+		for k, v := range custvars {
+			ectx.Variables[k] = v
+		}
+
+		return nil
+	}
+
+	for _, v := range bdy.Blocks {
+		if v.Type == "file" {
+			continue
+		}
+
+		err := proc(v)
+		if err != nil {
+			retrys = append(retrys, v)
 		}
 	}
 
-	for k, v := range custvars {
+	err = comp()
+	if err != nil {
+		return nil, nil, nil, terrors.Wrapf(err, "failed to combine")
+	}
 
-		ectx.Variables[k] = v
+	for _, v := range retrys {
+		err := proc(v)
+		if err != nil {
+			return nil, nil, nil, terrors.Wrapf(err, "failed to process")
+		}
+	}
+
+	err = comp()
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
 	bdy.Attributes = nil

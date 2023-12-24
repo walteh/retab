@@ -316,7 +316,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
 			ctx := context.Background()
 
-			cfg := &mockery.MockProvider_configuration{}
+			cfg := &mockery.MockConfiguration_configuration{}
 			cfg.EXPECT().UseTabs().Return(tt.useTabs)
 			cfg.EXPECT().IndentSize().Return(tt.indentSize)
 			cfg.EXPECT().TrimMultipleEmptyLines().Return(tt.trimMultipleEmptyLines)
