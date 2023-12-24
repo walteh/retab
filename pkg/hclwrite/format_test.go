@@ -15,6 +15,7 @@ func TestFormat(t *testing.T) {
 		useTabs                bool
 		indentSize             int
 		trimMultipleEmptyLines bool
+		oneBracketPerLine      bool
 		src                    []byte
 		expected               []byte
 	}{
@@ -23,6 +24,7 @@ func TestFormat(t *testing.T) {
 			useTabs:                true,
 			indentSize:             1,
 			trimMultipleEmptyLines: false,
+			oneBracketPerLine:      true,
 			src: []byte(`
 variable "DESTDIR" {
   default = "./bin"
@@ -46,6 +48,7 @@ variable "DESTDIR" {
 			useTabs:                false,
 			indentSize:             4,
 			trimMultipleEmptyLines: false,
+			oneBracketPerLine:      false,
 			src: []byte(`
 variable "DESTDIR" {
   default = "./bin"
@@ -62,6 +65,7 @@ variable "DESTDIR" {
 			useTabs:                true,
 			trimMultipleEmptyLines: true,
 			indentSize:             1,
+			oneBracketPerLine:      false,
 
 			src: []byte(`
 variable "DESTDIR" {
@@ -89,6 +93,7 @@ variable "DESTDIR1" {
 			name:                   "trim multiple empty lines - off",
 			useTabs:                true,
 			trimMultipleEmptyLines: false,
+			oneBracketPerLine:      false,
 			indentSize:             1,
 
 			src: []byte(`
@@ -122,7 +127,7 @@ variable "DESTDIR1" {
 			cfg.EXPECT().UseTabs().Return(tt.useTabs)
 			cfg.EXPECT().IndentSize().Return(tt.indentSize)
 			cfg.EXPECT().TrimMultipleEmptyLines().Return(tt.trimMultipleEmptyLines)
-			cfg.EXPECT().OneBracketPerLine().Return(true)
+			cfg.EXPECT().OneBracketPerLine().Return(tt.oneBracketPerLine)
 
 			// Call the Format function with the provided configuration and source
 			result, err := hclwrite.FormatBytes(cfg, tt.src)

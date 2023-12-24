@@ -24,8 +24,8 @@ func (me *Handler) Description() string {
 }
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {
-
-	fles, err := afero.Glob(fs, "*.retab|*.retab.hcl|.retab/*.retab|.retab/*.retab.hcl")
+	// {*.retab.hcl}{.retab/*.retab}{.retab/*.retab.hcl}
+	fles, err := afero.Glob(fs, "*.retab")
 	if err != nil {
 		return err
 	}

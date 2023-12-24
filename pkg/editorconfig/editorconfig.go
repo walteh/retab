@@ -53,7 +53,7 @@ func NewEditorConfigConfigurationProvider(ctx context.Context, fls afero.Fs) (co
 	if err != nil {
 		zerolog.Ctx(ctx).Debug().Err(err).Msg("failed to open .editorconfig -- using defaults")
 		return &EditorConfigConfigurationDefaults{
-			Defaults: configuration.NewBasicConfigurationProvider(true, 4, true, true),
+			Defaults: configuration.NewBasicConfigurationProvider(true, 4, true, false),
 		}, nil
 	}
 

@@ -27,29 +27,33 @@ func lexConfig(src []byte, cfg configuration.Configuration) Tokens {
 func writerTokens(nativeTokens hclsyntax.Tokens, cfg configuration.Configuration) Tokens {
 	if cfg.OneBracketPerLine() {
 		tnt := make([]hclsyntax.Token, 0)
-
+		myline := []hclsyntax.Token{}
 		prev := hclsyntax.Token{}
 		for _, nt := range nativeTokens {
-			ex := func() {
+			injectline := func() {
 				tnt = append(tnt, hclsyntax.Token{
 					Type:  hclsyntax.TokenNewline,
 					Bytes: []byte("\n"),
 					Range: nt.Range,
 				})
 				nt.Range.Start.Line++
+				nt.Range.End.Line++
+
+				myline = []hclsyntax.Token{}
 			}
 			switch {
 			case prev.Type != hclsyntax.TokenNewline && (nt.Type == hclsyntax.TokenCBrack || nt.Type == hclsyntax.TokenCBrace):
 				{
-					ex()
+					injectline()
 				}
 			case (prev.Type == hclsyntax.TokenCBrack || prev.Type == hclsyntax.TokenCBrace || prev.Type == hclsyntax.TokenOBrace || prev.Type == hclsyntax.TokenOBrack) && nt.Type != hclsyntax.TokenNewline:
 				{
-					ex()
+					injectline()
 				}
 			}
 
 			tnt = append(tnt, nt)
+			myline = append(myline, nt)
 			prev = nt
 		}
 
