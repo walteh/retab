@@ -6,7 +6,9 @@ import (
 	"github.com/walteh/snake"
 )
 
-var _ snake.Flagged = (*FSResolver)(nil)
+func FSRunner() snake.Runner {
+	return snake.GenRunResolver_In00_Out02(&FSResolver{})
+}
 
 type FSResolver struct {
 }

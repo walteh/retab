@@ -7,25 +7,27 @@ import (
 	"context"
 
 	"github.com/spf13/afero"
-	"github.com/spf13/cobra"
 	"github.com/walteh/retab/pkg/configuration"
 	"github.com/walteh/retab/pkg/format"
 	"github.com/walteh/retab/pkg/hclwrite"
 	"github.com/walteh/snake"
 )
 
+func Runner() snake.Runner {
+	return snake.GenRunCommand_In04_Out01(&Handler{})
+}
+
 type Handler struct {
 }
 
-var _ snake.Cobrad = (*Handler)(nil)
+// name
+func (me *Handler) Name() string {
+	return "hcl"
+}
 
-func (me *Handler) Cobra() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "hcl",
-		Short: "format hcl files with the official hcl2 library, but with tabs",
-	}
-
-	return cmd
+// description
+func (me *Handler) Description() string {
+	return "format hcl files with the official hcl2 library, but with tabs"
 }
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs, fle afero.File, ecfg configuration.Provider) error {

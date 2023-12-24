@@ -3,21 +3,18 @@ package root
 import (
 	"context"
 
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/walteh/retab/cmd/root/buf"
 	"github.com/walteh/retab/cmd/root/dart"
 	"github.com/walteh/retab/cmd/root/fmt"
 	"github.com/walteh/retab/cmd/root/generate"
 	"github.com/walteh/retab/cmd/root/hcl"
-	"github.com/walteh/retab/cmd/root/install"
-	"github.com/walteh/retab/cmd/root/lsp"
 	"github.com/walteh/retab/cmd/root/resolvers"
-	"github.com/walteh/retab/pkg/configuration"
 	"github.com/walteh/snake"
+	"github.com/walteh/snake/scobra"
 )
 
-func NewCommand() (*cobra.Command, error) {
+func NewCommand(ctx context.Context) (*scobra.CobraSnake, *cobra.Command, error) {
 
 	cmd := &cobra.Command{
 		Use:   "retab",
@@ -27,24 +24,25 @@ func NewCommand() (*cobra.Command, error) {
 		},
 	}
 
-	return snake.NewSnake(&snake.NewSnakeOpts{
-		Root: cmd,
-		Resolvers: []snake.Method{
-			snake.NewArgumentMethod[context.Context](&resolvers.ContextResolver{}),
-			snake.NewArgumentMethod[afero.Fs](&resolvers.FSResolver{}),
-			snake.NewArgumentMethod[configuration.Provider](&resolvers.ConfigurationResolver{}),
-			snake.NewArgumentMethod[afero.File](&resolvers.FileResolver{}),
-		},
-		Commands: []snake.Method{
-			snake.NewCommandMethod(&fmt.Handler{}),
-			snake.NewCommandMethod(&buf.Handler{}),
-			snake.NewCommandMethod(&hcl.Handler{}),
-			snake.NewCommandMethod(&install.Handler{}),
-			snake.NewCommandMethod(&generate.Handler{}),
-			snake.NewCommandMethod(&lsp.Handler{}),
-			snake.NewCommandMethod(&dart.Handler{}),
-		},
-		GlobalContextResolverFlags: true,
-	})
+	impl := scobra.NewCobraSnake(ctx, cmd)
 
+	opts := snake.Opts(
+		snake.Commands(snake.Command(fmt.Runner, impl, &cobra.Command{}),
+			snake.Command(buf.Runner, impl, &cobra.Command{}),
+			snake.Command(hcl.Runner, impl, &cobra.Command{}),
+			snake.Command(generate.Runner, impl, &cobra.Command{}),
+			snake.Command(dart.Runner, impl, &cobra.Command{}),
+		),
+		snake.Resolvers(
+			resolvers.FSRunner(),
+			resolvers.ConfigurationRunner(),
+			resolvers.FileRunner(),
+		),
+	)
+	_, err := snake.NewSnakeWithOpts(ctx, impl, opts)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return impl, cmd, nil
 }

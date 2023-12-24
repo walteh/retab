@@ -109,7 +109,7 @@ func TestRootUnit(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			runner := func(ctx context.Context, strs ...string) error {
-				got, err := NewCommand()
+				_, got, err := NewCommand(ctx)
 				if (err != nil) != tt.wantErr {
 					t.Errorf("NewCommand() error = %v, wantErr %v", err, tt.wantErr)
 					return err

@@ -4,27 +4,24 @@ import (
 	"context"
 
 	"github.com/spf13/afero"
-	"github.com/spf13/cobra"
 	"github.com/walteh/retab/pkg/hclread"
 	"github.com/walteh/snake"
 )
 
-var _ snake.Cobrad = (*Handler)(nil)
-
-type Handler struct {
-	File string
+func Runner() snake.Runner {
+	return snake.GenRunCommand_In02_Out01(&Handler{})
 }
 
-func (me *Handler) Cobra() *cobra.Command {
-	cmd := &cobra.Command{
-		Use: "generate",
-	}
+type Handler struct {
+	File string `default:"retab.hcl" help:"The file to read the configuration from."`
+}
 
-	cmd.Args = cobra.ExactArgs(0)
+func (me *Handler) Name() string {
+	return "generate"
+}
 
-	cmd.Flags().StringVar(&me.File, "file", "retab.hcl", "location of the retab.hcl file")
-
-	return cmd
+func (me *Handler) Description() string {
+	return "generate files defined in retab.hcl"
 }
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs) error {

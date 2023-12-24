@@ -2,6 +2,7 @@ package editorconfig
 
 import (
 	"context"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -17,6 +18,11 @@ type EditorConfigConfigurationProvider struct {
 func NewEditorConfigConfigurationProvider(_ context.Context, filename string) (configuration.Provider, error) {
 	x, err := editorconfig.GetDefinitionForFilename(filename)
 	if err != nil {
+		dir := filepath.Dir(filename)
+		x, err = editorconfig.GetDefinitionForFilename(filepath.Join(dir, ".editorconfig"))
+		if err != nil {
+			return nil, err
+		}
 		return nil, err
 	}
 

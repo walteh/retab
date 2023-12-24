@@ -9,7 +9,6 @@ import (
 
 	"github.com/mattn/go-zglob"
 	"github.com/spf13/afero"
-	"github.com/spf13/cobra"
 	"github.com/walteh/retab/pkg/bufwrite"
 	"github.com/walteh/retab/pkg/configuration"
 	"github.com/walteh/retab/pkg/externalwrite"
@@ -18,18 +17,19 @@ import (
 	"github.com/walteh/snake"
 )
 
-var _ snake.Cobrad = (*Handler)(nil)
+func Runner() snake.Runner {
+	return snake.GenRunCommand_In04_Out01(&Handler{})
+}
 
 type Handler struct {
 }
 
-func (me *Handler) Cobra() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "fmt",
-		Short: "format files using retab",
-	}
+func (me *Handler) Name() string {
+	return "fmt"
+}
 
-	return cmd
+func (me *Handler) Description() string {
+	return "format files with the official buf library, but with tabs"
 }
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs, fle afero.File, ecfg configuration.Provider) error {

@@ -7,46 +7,29 @@ import (
 	"context"
 
 	"github.com/spf13/afero"
-	"github.com/spf13/cobra"
 	"github.com/walteh/retab/pkg/bufwrite"
 	"github.com/walteh/retab/pkg/configuration"
 	"github.com/walteh/retab/pkg/format"
 	"github.com/walteh/snake"
 )
 
-var _ snake.Cobrad = (*Handler)(nil)
+func Runner() snake.Runner {
+	return snake.GenRunCommand_In04_Out01(&Handler{})
+}
 
 type Handler struct {
-	File       string `arg:"" default:" " name:"file" help:"The hcl file to format."`
 	WorkingDir string `name:"working-dir" help:"The working directory to use. Defaults to the current directory."`
 }
 
-func (me *Handler) Cobra() *cobra.Command {
+func (me *Handler) Name() string {
+	return "buf"
+}
 
-	cmd := &cobra.Command{
-		Use:   "buf <file>",
-		Short: "format proto files with the official buf library, but with tabs",
-	}
-
-	cmd.Flags().StringVar(&me.WorkingDir, "working-dir", "", "The working directory to use. Defaults to the current directory.")
-
-	cmd.Args = func(cmd *cobra.Command, args []string) error {
-
-		if len(args) != 1 {
-			return cmd.Usage()
-		}
-
-		me.File = args[0]
-
-		return nil
-	}
-
-	return cmd
+func (me *Handler) Description() string {
+	return "format proto files with the official buf library, but with tabs"
 }
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs, fle afero.File, ecfg configuration.Provider) error {
-
 	fmtr := bufwrite.NewBufFormatter()
-
 	return format.Format(ctx, fmtr, ecfg, fs, fle)
 }
