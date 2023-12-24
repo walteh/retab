@@ -2,230 +2,244 @@ package snake
 
 import (
 	"context"
-	"os"
+	"io"
 	"reflect"
-	"strings"
-	"sync"
 
-	"github.com/go-faster/errors"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
+	"github.com/walteh/terrors"
 )
 
-type Snake struct {
-	bindings  map[string]*reflect.Value
-	resolvers map[string]Method
-	root      *cobra.Command
-	runlock   sync.Mutex
+type NewSnakeOpts[M any] struct {
+	Commands             []TypedResolver[M]
+	Resolvers            []UntypedResolver
+	OverrideEnumResolver EnumResolverFunc
 }
 
-type Flagged interface {
-	Flags(*pflag.FlagSet)
+func Opts[M any](commands []TypedResolver[M], resolvers []UntypedResolver) *NewSnakeOpts[M] {
+	return &NewSnakeOpts[M]{
+		Commands:  commands,
+		Resolvers: resolvers,
+	}
 }
 
-type Cobrad interface {
-	Cobra() *cobra.Command
+type Snake interface {
+	ResolverNames() []string
+	Resolve(string) UntypedResolver
+	Enums() []Enum
+	Resolvers() []UntypedResolver
+	DependantsOf(string) []string
 }
 
-type NewSnakeOpts struct {
-	Root                       *cobra.Command
-	Commands                   []Method
-	Resolvers                  []Method
-	GlobalContextResolverFlags bool
+type defaultSnake struct {
+	resolvers  map[string]UntypedResolver
+	dependants map[string][]string
 }
 
-func attachMethod(me *Snake, cmd *cobra.Command, name string, globalFlags *pflag.FlagSet) (*cobra.Command, error) {
-
-	if cmd == nil {
-		return nil, nil
+func (me *defaultSnake) ResolverNames() []string {
+	names := make([]string, 0)
+	for k := range me.resolvers {
+		names = append(names, k)
 	}
-
-	if flgs, err := FlagsFor(name, func(s string) Method {
-		return me.resolvers[s]
-	}); err != nil {
-		return nil, err
-	} else {
-		flgs.VisitAll(func(f *pflag.Flag) {
-			if globalFlags != nil && globalFlags.Lookup(f.Name) != nil {
-				return
-			}
-			cmd.Flags().AddFlag(f)
-		})
-	}
-
-	oldRunE := cmd.RunE
-
-	// if a flag is not set, we check the environment for "cmd_name_arg_name"
-
-	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		cmd.Flags().VisitAll(func(f *pflag.Flag) {
-			if f.Changed {
-				return
-			}
-			val := strings.ToUpper(me.root.Name() + "_" + strings.ReplaceAll(f.Name, "-", "_"))
-			envvar := os.Getenv(val)
-			if envvar == "" {
-				return
-			}
-			err := f.Value.Set(envvar)
-			if err != nil {
-				return
-			}
-		})
-		return nil
-	}
-
-	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		defer setBindingWithLock(me, cmd)()
-		defer setBindingWithLock(me, args)()
-
-		err := runResolvingArguments(name, func(s string) IsRunnable {
-			return me.resolvers[s]
-		}, me.bindings)
-		if err != nil {
-			return HandleErrorByPrintingToConsole(cmd, err)
-		}
-		if oldRunE != nil {
-			err := oldRunE(cmd, args)
-			if err != nil {
-				return HandleErrorByPrintingToConsole(cmd, err)
-			}
-		}
-		return nil
-	}
-
-	return cmd, nil
-
+	return names
 }
 
-func NewSnake(opts *NewSnakeOpts) (*cobra.Command, error) {
+func (me *defaultSnake) Resolve(name string) UntypedResolver {
+	return me.resolvers[name]
+}
 
-	root := opts.Root
+type SnakeImplementationTyped[X any] interface {
+	Decorate(context.Context, TypedResolver[X], Snake, []Input, []Middleware) error
+	SnakeImplementation
+}
 
-	if root == nil {
-		root = &cobra.Command{}
-	}
+type SnakeImplementation interface {
+	ManagedResolvers(context.Context) []UntypedResolver
+	OnSnakeInit(context.Context, Snake) error
+	ResolveEnum(string, []string) (string, error)
+	ProvideContextResolver() UntypedResolver
+}
 
-	snk := &Snake{
-		bindings:  make(map[string]*reflect.Value),
-		resolvers: make(map[string]Method),
-		root:      root,
-	}
-
-	for _, v := range opts.Resolvers {
-		snk.resolvers[v.Name()] = v
-
-		if opts.GlobalContextResolverFlags && v.IsContextResolver() {
-			v.Flags(root.PersistentFlags())
-		}
-	}
-
-	for _, v := range opts.Commands {
-		snk.resolvers[v.Name()] = v
-	}
-
-	// these will always be overwritten in the RunE function
-	snk.resolvers["*cobra.Command"] = NewArgumentMethod[*cobra.Command](&inlineResolver[*cobra.Command]{
-		flagFunc: func(*pflag.FlagSet) {},
-		runFunc: func() (*cobra.Command, error) {
-			return &cobra.Command{}, nil
-		},
+func NewSnake[M NamedMethod](ctx context.Context, impl SnakeImplementationTyped[M], res ...UntypedResolver) (Snake, error) {
+	return NewSnakeWithOpts(ctx, impl, &NewSnakeOpts[M]{
+		Resolvers: res,
 	})
+}
 
-	snk.resolvers["[]string"] = NewArgumentMethod[[]string](&inlineResolver[[]string]{
-		flagFunc: func(*pflag.FlagSet) {},
-		runFunc: func() ([]string, error) {
-			return []string{}, nil
-		},
-	})
+func snakeManagedResolvers() []UntypedResolver {
+	return []UntypedResolver{
+		NewNoopMethod[Chan](),
+		NewNoopMethod[io.Writer](),
+		NewNoopMethod[io.Reader](),
+		NewNoopMethod[Stdin](),
+		NewNoopMethod[Stdout](),
+		NewNoopMethod[Stderr](),
+	}
+}
 
-	for _, exer := range snk.resolvers {
-		if exer.Command() == nil {
+func NewSnakeWithOpts[M Method](ctx context.Context, impl SnakeImplementationTyped[M], opts *NewSnakeOpts[M]) (Snake, error) {
+	var err error
+
+	snk := &defaultSnake{
+		resolvers:  make(map[string]UntypedResolver),
+		dependants: make(map[string][]string),
+	}
+
+	enums := make([]Enum, 0)
+
+	named := make(map[string]TypedResolver[M])
+
+	inputResolvers := make([]UntypedResolver, 0)
+
+	if opts.Resolvers != nil {
+		inputResolvers = append(inputResolvers, opts.Resolvers...)
+	}
+
+	inputResolvers = append(inputResolvers, NewResolvedResolver[EnumResolverFunc](impl.ResolveEnum))
+
+	con := impl.ProvideContextResolver()
+	if con != nil {
+		inputResolvers = append(inputResolvers, con)
+	}
+
+	inputResolvers = append(inputResolvers, impl.ManagedResolvers(ctx)...)
+
+	inputResolvers = append(inputResolvers, snakeManagedResolvers()...)
+
+	for _, runner := range opts.Commands {
+		named[runner.Name()] = runner
+	}
+
+	for _, runner := range inputResolvers {
+
+		if nmd, ok := runner.(TypedResolver[M]); ok {
+			named[nmd.Name()] = nmd
 			continue
 		}
-		if cmd, err := attachMethod(snk, exer.Command().Cobra(), exer.Name(), root.PersistentFlags()); err != nil {
-			return nil, err
-		} else if cmd != nil {
-			err := exer.ValidateResponse()
+
+		retrn := ListOfReturns(runner)
+
+		// every return value marks this runner as the resolver for that type
+		for _, r := range retrn {
+			if r.Kind().String() == "error" {
+				continue
+			}
+			snk.resolvers[reflectTypeString(r)] = runner
+		}
+
+		// enum options are also resolvers so they are passed here
+		if mp, ok := runner.(Enum); ok {
+			resolver := opts.OverrideEnumResolver
+			if resolver == nil {
+				resolver = impl.ResolveEnum
+			}
+			err := mp.ApplyResolver(resolver)
 			if err != nil {
 				return nil, err
 			}
-			root.AddCommand(cmd)
+			enums = append(enums, mp)
 		}
+
 	}
 
-	if opts.GlobalContextResolverFlags {
-		// this will force the context to be resolved before any command is run
-		snk.resolvers["root"] = NewCommandMethod(&fakeCobraWithContext{})
-	} else {
-		snk.resolvers["root"] = NewCommandMethod(&fakeCobra{})
-	}
+	for name, runner := range named {
+		snk.resolvers[name] = runner
 
-	root.RunE = func(cmd *cobra.Command, args []string) error {
-		err := runResolvingArguments("root", func(s string) IsRunnable {
-			return snk.resolvers[s]
-		}, snk.bindings)
+		inpts, err := DependancyInputs(name, snk.Resolve, enums...)
 		if err != nil {
-			return HandleErrorByPrintingToConsole(cmd, err)
+			return nil, err
 		}
-		return nil
+
+		mw := make([]Middleware, 0)
+
+		if mwd, ok := runner.(MiddlewareProvider); ok {
+			mw = append(mw, mwd.Middlewares()...)
+
+			for _, m := range mwd.Middlewares() {
+
+				mwin, err := InputsFor(NewMiddlewareResolver(m), enums...)
+				if err != nil {
+					return nil, err
+				}
+
+				inpts = append(inpts, mwin...)
+			}
+		}
+
+		err = impl.Decorate(ctx, runner, snk, inpts, mw)
+		if err != nil {
+			return nil, err
+		}
+
 	}
 
-	root.SilenceUsage = true
+	for name := range snk.resolvers {
 
-	return root, nil
-}
+		deps, err := DependanciesOf(name, snk.Resolve)
+		if err != nil {
+			return nil, terrors.Wrapf(err, "failed to find dependancies of %q", name)
+		}
 
-func NewCommandMethod[I Cobrad](cbra I) Method {
+		for _, dep := range deps {
+			methd := MethodName(snk.Resolve(dep))
 
-	ec := &method{
-		flags:              func(*pflag.FlagSet) {},
-		validationStrategy: commandResponseValidationStrategy,
-		responseStrategy:   commandResponseHandleStrategy,
-		name:               reflect.TypeOf((*I)(nil)).Elem().String(),
-		method:             getRunMethod(cbra),
-		cmd:                cbra,
+			if _, ok := snk.dependants[methd]; !ok {
+				snk.dependants[methd] = make([]string, 0)
+			}
+
+			// fmt.Println("adding dependant", name, "to", methd)
+			snk.dependants[methd] = append(snk.dependants[methd], name)
+		}
 	}
 
-	if flg, ok := any(cbra).(Flagged); ok {
-		ec.flags = flg.Flags
+	err = impl.OnSnakeInit(ctx, snk)
+	if err != nil {
+		return nil, err
 	}
 
-	return ec
+	return snk, nil
+
 }
 
-func NewArgumentMethod[I any](m Flagged) Method {
+func buildMiddlewareName(name string, m Middleware) string {
+	return name + "_" + reflectTypeString(reflect.TypeOf(m))
+}
 
-	ec := &method{
-		flags:              m.Flags,
-		validationStrategy: validateArgumentResponse[I],
-		responseStrategy:   handleArgumentResponse[I],
-		name:               reflect.TypeOf((*I)(nil)).Elem().String(),
-		method:             getRunMethod(m),
+func (me *defaultSnake) Enums() []Enum {
+	enums := make([]Enum, 0)
+	for _, name := range me.resolvers {
+		if mp, ok := name.(Enum); ok {
+			enums = append(enums, mp)
+		}
 	}
-
-	return ec
+	return enums
 }
 
-type fakeCobra struct {
+func (me *defaultSnake) Resolvers() []UntypedResolver {
+	abc := make([]UntypedResolver, 0)
+	for _, name := range me.resolvers {
+		abc = append(abc, name)
+	}
+	return abc
 }
 
-func (me *fakeCobra) Cobra() *cobra.Command {
-	return &cobra.Command{}
+func (me *defaultSnake) DependantsOf(name string) []string {
+	return me.dependants[name]
 }
 
-func (me *fakeCobra) Run(cmd *cobra.Command) error {
-	return errors.Errorf("no method found for %q", cmd.Name())
+// func (me *rund[X]) WithImplementation(impl SnakeImplementation) Resolver {
+// 	return &rund[X]{
+// }
+
+func Commands[M any](cmds ...TypedResolver[M]) []TypedResolver[M] {
+	return cmds
 }
 
-type fakeCobraWithContext struct {
-	internal fakeCobra
+func Command[I SnakeImplementationTyped[M], M Method, Rnr Runner](runner func() Rnr, impl I, cmd M) TypedResolver[M] {
+	return NewInlineRunner(cmd, runner())
 }
 
-func (me *fakeCobraWithContext) Cobra() *cobra.Command {
-	return me.internal.Cobra()
+func Resolvers(args ...UntypedResolver) []UntypedResolver {
+	return args
 }
-
-func (me *fakeCobraWithContext) Run(_ context.Context, cmd *cobra.Command) error {
-	return me.internal.Run(cmd)
+func Resolver(runner func() Runner) UntypedResolver {
+	return runner()
 }

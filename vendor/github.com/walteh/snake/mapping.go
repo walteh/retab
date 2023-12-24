@@ -3,80 +3,54 @@ package snake
 import (
 	"reflect"
 
-	"github.com/go-faster/errors"
-	"github.com/spf13/pflag"
+	"github.com/walteh/terrors"
 )
 
-var (
-	ErrMissingResolver = errors.New("missing resolver")
-)
-
-type HasRunArgs interface{ RunArgs() []reflect.Type }
-
-type IsRunnable interface {
-	HasRunArgs
-	Run() reflect.Value
-	HandleResponse([]reflect.Value) (*reflect.Value, error)
+type Method interface {
 }
 
-type FMap[G any] func(string) G
+type NamedMethod interface {
+	Name() string
+	Description() string
+}
 
-func FlagsFor(str string, m FMap[Method]) (*pflag.FlagSet, error) {
-	if ok := m(str); ok == nil {
-		return nil, errors.Wrapf(ErrMissingResolver, "missing resolver for %q", str)
+type FMap func(string) UntypedResolver
+
+func DependanciesOf(str string, m FMap) ([]string, error) {
+	if ok := m(str); !reflect.ValueOf(ok).IsValid() || reflect.ValueOf(ok).IsNil() {
+		return nil, terrors.Errorf("missing resolver for %q", str)
 	}
 
-	mapa, err := findBrothers(str, func(s string) HasRunArgs {
-		return m(s)
-	})
+	mapa, err := FindBrothers(str, m, ListOfArgs)
 	if err != nil {
 		return nil, err
 	}
 
-	flgs := &pflag.FlagSet{}
-
-	for _, f := range mapa {
-		if z := m(f); z == nil {
-			return nil, errors.Wrapf(ErrMissingResolver, "missing resolver for %q", f)
-		} else {
-			if z, ok := z.(Flagged); ok {
-				z.Flags(flgs)
-			}
-		}
-	}
-
-	return flgs, nil
+	return mapa, nil
 }
 
-func (me *Snake) Run(str Method) error {
-	return me.RunString(str.Name())
-}
-
-var end_of_chain = reflect.ValueOf("end_of_chain")
-var end_of_chain_ptr = &end_of_chain
-
-func (me *Snake) RunString(str string) error {
-	args, err := findArgumentsRaw(str, func(s string) IsRunnable {
-		return me.resolvers[s]
-	}, nil)
+func DependantsOf(str string, m FMap) ([]string, error) {
+	mapa, err := FindBrothers(str, m, ListOfReturns)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if resp, ok := args[str]; !ok {
-		return errors.Wrapf(ErrMissingResolver, "missing resolver for %q", str)
-	} else {
-		if resp == end_of_chain_ptr {
-			return nil
-		} else {
-			return errors.Errorf("expected end of chain, got %v", resp)
-		}
-	}
-
+	return mapa, nil
 }
 
-func findBrothers(str string, me FMap[HasRunArgs]) ([]string, error) {
-	raw, err := findBrothersRaw(str, me, nil)
+func EndOfChain() reflect.Value {
+	return reflect.ValueOf("end_of_chain")
+}
+
+func EndOfChainPtr() *reflect.Value {
+	v := EndOfChain()
+	return &v
+}
+
+type ListFunc func(UntypedResolver) []reflect.Type
+
+func FindBrothers(str string, me FMap, listFunc ListFunc) ([]string, error) {
+	raw, err := findBrothersRaw(str, me, nil, listFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -87,18 +61,16 @@ func findBrothers(str string, me FMap[HasRunArgs]) ([]string, error) {
 	return resp, nil
 }
 
-func findBrothersRaw(str string, fmap FMap[HasRunArgs], rmap map[string]bool) (map[string]bool, error) {
+func findBrothersRaw(str string, fmap FMap, rmap map[string]bool, listFunc ListFunc) (map[string]bool, error) {
 	var err error
 	if rmap == nil {
 		rmap = make(map[string]bool)
 	}
 
-	var curr HasRunArgs
+	validated := fmap(str)
 
-	if ok := fmap(str); ok == nil {
-		return nil, errors.Wrapf(ErrMissingResolver, "missing resolver for %q", str)
-	} else {
-		curr = ok
+	if validated == nil {
+		return nil, terrors.Errorf("missing resolver for %q", str)
 	}
 
 	if rmap[str] {
@@ -107,8 +79,8 @@ func findBrothersRaw(str string, fmap FMap[HasRunArgs], rmap map[string]bool) (m
 
 	rmap[str] = true
 
-	for _, f := range curr.RunArgs() {
-		rmap, err = findBrothersRaw(f.String(), fmap, rmap)
+	for _, f := range listFunc(validated) {
+		rmap, err = findBrothersRaw(f.String(), fmap, rmap, listFunc)
 		if err != nil {
 			return nil, err
 		}
@@ -117,82 +89,85 @@ func findBrothersRaw(str string, fmap FMap[HasRunArgs], rmap map[string]bool) (m
 	return rmap, nil
 }
 
-func findArguments(str string, fmap FMap[IsRunnable]) ([]reflect.Value, error) {
+func FindArguments(str string, fmap FMap) ([]reflect.Value, error) {
 	raw, err := findArgumentsRaw(str, fmap, nil)
 	if err != nil {
 		return nil, err
 	}
 	resp := make([]reflect.Value, 0)
-	for _, v := range raw {
+	for _, v := range raw.bindings {
 		resp = append(resp, *v)
 	}
 	return resp, nil
-}
-
-func valueToIsRunnable(v reflect.Value) IsRunnable {
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	return v.Interface().(IsRunnable)
-}
-
-func runResolvingArguments(str string, fmap FMap[IsRunnable], bmap map[string]*reflect.Value) error {
-
-	args, err := findArgumentsRaw(str, fmap, bmap)
-	if err != nil {
-		return err
-	}
-
-	if resp, ok := args[str]; !ok {
-		return errors.Wrapf(ErrMissingResolver, "missing resolver for %q", str)
-	} else {
-		if resp == end_of_chain_ptr {
-			return nil
-		} else {
-			return errors.Errorf("expected end of chain, got %v", resp)
-		}
-	}
-
 }
 
 func reflectTypeString(typ reflect.Type) string {
 	return typ.String()
 }
 
-func findArgumentsRaw(str string, fmap FMap[IsRunnable], wrk map[string]*reflect.Value) (map[string]*reflect.Value, error) {
-	var curr IsRunnable
+func findArgumentsRaw(str string, fmap FMap, wrk *Binder) (*Binder, error) {
+	validated := fmap(str)
 	var err error
-	if ok := fmap(str); ok == nil {
-		return nil, errors.Wrapf(ErrMissingResolver, "missing resolver for %q", str)
-	} else {
-		curr = ok
+	if validated == nil {
+		return nil, terrors.Errorf("missing resolver for %q", str)
 	}
 
 	if wrk == nil {
-		wrk = make(map[string]*reflect.Value)
+		wrk = NewBinder()
 	}
 
-	if _, ok := wrk[str]; ok {
+	if _, ok := wrk.bindings[str]; ok {
 		return wrk, nil
 	}
 
 	tmp := make([]reflect.Value, 0)
-	for _, f := range curr.RunArgs() {
+	for _, f := range ListOfArgs(validated) {
 		name := reflectTypeString(f)
 		wrk, err = findArgumentsRaw(name, fmap, wrk)
 		if err != nil {
 			return nil, err
 		}
-		tmp = append(tmp, *wrk[name])
+		tmp = append(tmp, *wrk.bindings[name])
 	}
 
-	resp := curr.Run().Call(tmp)
-	out, err := curr.HandleResponse(resp)
-	if err != nil {
-		return nil, err
-	}
+	out := CallMethod(validated, tmp)
 
-	wrk[str] = out
+	if !MenthodIsShared(validated) {
+		// only commands can have one response value, which is always an error
+		// so here we know we can name it str
+		// otherwise we would be naming it "error"
+		//
+		if len(out) == 1 {
+			wrk.Bind(str, &out[0])
+			if out[0].Interface() != nil {
+				return wrk, out[0].Interface().(error)
+			} else {
+				// we want to get out right away as we know this is an error (only one return value)
+				return wrk, nil
+			}
+		}
+
+		resp := out[0]
+
+		if resp.IsNil() {
+			resp = reflect.ValueOf(&NilOutput{})
+		}
+
+		wrk.Bind(str, &resp)
+
+	} else {
+		for _, v := range out {
+			in := v
+			strd := v.Type().String()
+			if strd != "error" {
+				wrk.Bind(strd, &in)
+			} else {
+				if in.Interface() != nil {
+					return wrk, in.Interface().(error)
+				}
+			}
+		}
+	}
 
 	return wrk, nil
 

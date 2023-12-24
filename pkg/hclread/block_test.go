@@ -48,7 +48,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    []*BlockEvaluation
+		want    []*FileBlockEvaluation
 		wantErr error
 	}{
 		{
@@ -56,7 +56,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 			args: args{
 				str: validHCL2,
 			},
-			want: []*BlockEvaluation{
+			want: []*FileBlockEvaluation{
 				{
 					Name:   "default.yaml",
 					Schema: "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json",
@@ -115,13 +115,13 @@ func TestParseBlocksFromFile(t *testing.T) {
 				assert.Error(t, err)
 			}
 
-			resp := make([]*BlockEvaluation, 0)
+			resp := make([]*FileBlockEvaluation, 0)
 
 			for _, block := range got.Blocks {
 				if block.Type != "file" {
 					continue
 				}
-				be, err := NewBlockEvaluation(ctx, ectx, block)
+				be, err := NewFileBlockEvaluation(ctx, ectx, block, false)
 				if tt.wantErr == nil {
 					assert.NoError(t, err)
 					resp = append(resp, be)
@@ -136,6 +136,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 }
 
 const validHCLWithReference = `
+
 file "default.yaml" {
 	dir = "./.github/workflows"
 	schema = "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json"
@@ -175,7 +176,7 @@ func TestParseBlocksWithReference(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    []*BlockEvaluation
+		want    []*FileBlockEvaluation
 		wantErr error
 	}{
 		{
@@ -183,7 +184,7 @@ func TestParseBlocksWithReference(t *testing.T) {
 			args: args{
 				str: validHCL2,
 			},
-			want: []*BlockEvaluation{
+			want: []*FileBlockEvaluation{
 				{
 					Name:   "default.yaml",
 					Schema: "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json",
@@ -242,9 +243,9 @@ func TestParseBlocksWithReference(t *testing.T) {
 				assert.Error(t, err)
 			}
 
-			resp := make([]*BlockEvaluation, 0)
+			resp := make([]*FileBlockEvaluation, 0)
 
-			be, err := NewFullEvaluation(ctx, ectx, got)
+			be, err := NewFullEvaluation(ctx, ectx, got, false)
 			if tt.wantErr == nil {
 				require.NoError(t, err)
 				resp = append(resp, be.File)

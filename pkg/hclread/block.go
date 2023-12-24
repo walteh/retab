@@ -3,15 +3,16 @@ package hclread
 import (
 	"context"
 	"encoding/json"
-	"strings"
+	"fmt"
 
 	"github.com/go-faster/errors"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/walteh/retab/schemas"
+	"github.com/walteh/yaml"
+	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
-	"gopkg.in/yaml.v3"
 )
 
 // var rootScheme = &hcl.BodySchema{
@@ -43,20 +44,53 @@ import (
 // 	},
 // }
 
-type BlockEvaluation struct {
+var (
+// _ ValidationBlock = (*FileBlockEvaluation)(nil)
+// _ ValidationBlock = (*AnyBlockEvaluation)(nil)
+)
+
+// TODO do the brace thing
+
+type AnyBlockEvaluation struct {
+	Name       string
+	Content    map[string]cty.Value
+	Validation []*ValidationError
+}
+
+type FileBlockEvaluation struct {
 	Name   string
 	Schema string
 	Dir    string
 	// ContentRaw cty.Value
-	Content    map[string]any
+	Content    any
 	Validation []*ValidationError
+	DataOrder  yaml.MapSlice
 }
 
-func (me *BlockEvaluation) GetJSONSchema(ctx context.Context) (*jsonschema.Schema, error) {
+type SliceWrapper yaml.MapSlice
+
+func (me *SliceWrapper) Append(item yaml.MapItem) {
+	*me = append(*me, item)
+}
+
+func (me *SliceWrapper) UnmarshalJSON(b []byte) error {
+	mapper := make(map[string]interface{})
+	err := json.Unmarshal(b, &mapper)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range mapper {
+		me.Append(yaml.MapItem{Key: k, Value: v})
+	}
+	return nil
+}
+
+func (me *FileBlockEvaluation) GetJSONSchema(ctx context.Context) (*jsonschema.Schema, error) {
 	return schemas.LoadJSONSchema(ctx, me.Schema)
 }
 
-func (me *BlockEvaluation) GetProperties(ctx context.Context) (map[string]*jsonschema.Schema, error) {
+func (me *FileBlockEvaluation) GetProperties(ctx context.Context) (map[string]*jsonschema.Schema, error) {
 	schema, err := me.GetJSONSchema(ctx)
 	if err != nil {
 		return nil, err
@@ -69,7 +103,7 @@ func (me *BlockEvaluation) GetProperties(ctx context.Context) (map[string]*jsons
 	return m, nil
 }
 
-func (me *BlockEvaluation) ValidateJSONSchema(ctx context.Context) error {
+func (me *FileBlockEvaluation) ValidateJSONSchema(ctx context.Context) error {
 	schema, err := me.GetJSONSchema(ctx)
 	if err != nil {
 		return err
@@ -78,7 +112,7 @@ func (me *BlockEvaluation) ValidateJSONSchema(ctx context.Context) error {
 	return schema.Validate(me.Content)
 }
 
-func (me *BlockEvaluation) ValidateJSONSchemaProperty(ctx context.Context, prop string) error {
+func (me *FileBlockEvaluation) ValidateJSONSchemaProperty(ctx context.Context, prop string) error {
 	schema, err := me.GetProperties(ctx)
 	if err != nil {
 		return err
@@ -148,25 +182,34 @@ func getAllDefs(parent string, schema *jsonschema.Schema, defs map[string]*jsons
 }
 
 type FullEvaluation struct {
-	File *BlockEvaluation
+	File  *FileBlockEvaluation
+	Other []*AnyBlockEvaluation
 }
 
-func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsyntax.Body) (res *FullEvaluation, err error) {
+func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsyntax.Body, preserveOrder bool) (res *FullEvaluation, err error) {
 
-	var fle *BlockEvaluation
+	var fle *FileBlockEvaluation
+
+	other := make([]*AnyBlockEvaluation, 0)
 
 	for _, block := range file.Blocks {
-		if block.Type != "file" {
-			continue
+		switch block.Type {
+		case "file":
+			blk, err := NewFileBlockEvaluation(ctx, ectx, block, preserveOrder)
+			if err != nil {
+				return nil, err
+			}
+
+			fle = blk
+			break
+		default:
+			// blk, err := NewAnyBlockEvaluation(ctx, ectx, block)
+			// if err != nil {
+			// 	return nil, err
+			// }
+			// other = append(other, blk)
 		}
 
-		blk, err := NewBlockEvaluation(ctx, ectx, block)
-		if err != nil {
-			return nil, err
-		}
-
-		fle = blk
-		break
 	}
 
 	if fle == nil {
@@ -192,15 +235,15 @@ func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsynt
 				fle.Validation = append(fle.Validation, lerr...)
 			}
 		}
-
 	}
 
 	return &FullEvaluation{
-		File: fle,
+		File:  fle,
+		Other: other,
 	}, nil
 }
 
-func (me *BlockEvaluation) PropertyEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) ([]*ValidationError, error) {
+func (me *FileBlockEvaluation) PropertyEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) ([]*ValidationError, error) {
 
 	schema, err := me.GetProperties(ctx)
 	if err != nil {
@@ -229,13 +272,128 @@ func (me *BlockEvaluation) PropertyEvaluation(ctx context.Context, ectx *hcl.Eva
 
 }
 
-func NewBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (res *BlockEvaluation, err error) {
+func NewAnyBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (key string, res cty.Value, err error) {
+
+	tmp := make(map[string]cty.Value)
+
+	for _, attr := range block.Body.Attributes {
+		// Evaluate the attribute's expression to get a cty.Value
+		val, err := attr.Expr.Value(ectx)
+		if err.HasErrors() {
+			return "", cty.Value{}, errors.Wrapf(err, "failed to evaluate %q", attr.Name)
+		}
+
+		tmp[attr.Name] = val
+	}
+
+	for _, blkd := range block.Body.Blocks {
+
+		key, blks, err := NewAnyBlockEvaluation(ctx, ectx, blkd)
+		if err != nil {
+			return "", cty.Value{}, err
+		}
+
+		if tmp[key] == cty.NilVal {
+			tmp[key] = cty.ObjectVal(map[string]cty.Value{})
+		}
+
+		wrk := tmp[key].AsValueMap()
+		if wrk == nil {
+			wrk = map[string]cty.Value{}
+		}
+
+		for k, v := range blks.AsValueMap() {
+			wrk[k] = v
+		}
+
+		tmp[key] = cty.ObjectVal(wrk)
+	}
+
+	for _, lab := range block.Labels {
+		tmp = map[string]cty.Value{
+			lab: cty.ObjectVal(tmp),
+		}
+	}
+
+	return block.Type, cty.ObjectVal(tmp), nil
+
+}
+
+func addVarToDorder(abc hcl.Traversal, val cty.Value) yaml.MapItem {
+	str := yaml.MapItem{Key: abc.RootName()}
+	for _, v := range abc {
+		if _, ok := v.(hcl.TraverseRoot); ok {
+			continue
+		} else if a, ok := v.(hcl.TraverseAttr); ok {
+			ok, err := v.TraversalStep(val)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			str.Value = yaml.MapItem{Key: a.Name, Value: ok}
+		}
+	}
+	return str
+}
+
+func roll(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, error) {
+
+	if x, ok := e.(*hclsyntax.ObjectConsExpr); ok {
+		group := make(yaml.MapSlice, 0)
+		for _, rr := range x.Items {
+			kvf, err := rr.KeyExpr.Value(ectx)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to evaluate %q", rr.KeyExpr)
+			}
+			rz, errd := roll(rr.ValueExpr, ectx)
+			if errd != nil {
+				return nil, errd
+			}
+			if rz == nil {
+				continue
+			}
+			group = append(group, yaml.MapItem{Key: kvf.AsString(), Value: rz})
+		}
+		return group, nil
+	} else if x, ok := e.(*hclsyntax.TupleConsExpr); ok {
+		wrk := make([]any, 0)
+		for _, exp := range x.Exprs {
+			r, err := roll(exp, ectx)
+			if err != nil {
+				return nil, err
+			}
+			if r == nil {
+				continue
+			}
+			wrk = append(wrk, r)
+		}
+		return wrk, nil
+	} else {
+		evaled, errd := e.Value(ectx)
+		if errd != nil {
+			return nil, errors.Wrapf(errd, "failed to evaluate %q", e)
+		}
+
+		ok, err := stdlib.JSONEncode(evaled)
+		if err != nil {
+			return nil, err
+		}
+		var ok2 interface{}
+		err = json.Unmarshal([]byte(ok.AsString()), &ok2)
+		if err != nil {
+			return nil, err
+		}
+		return ok2, nil
+	}
+}
+
+func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block, preserveOrder bool) (res *FileBlockEvaluation, err error) {
 
 	if block.Type != "file" {
 		return nil, errors.Errorf("invalid block type %q", block.Type)
 	}
 
-	blk := &BlockEvaluation{
+	blk := &FileBlockEvaluation{
 		Name: block.Labels[0],
 	}
 
@@ -246,6 +404,9 @@ func NewBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsy
 		// Evaluate the attribute's expression to get a cty.Value
 		val, err := attr.Expr.Value(ectx)
 		if err.HasErrors() {
+			for _, diag := range err.Errs() {
+				fmt.Println(diag)
+			}
 			return nil, errors.Wrapf(err, "failed to evaluate %q", attr.Name)
 		}
 
@@ -255,14 +416,42 @@ func NewBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsy
 		case "schema":
 			blk.Schema = val.AsString()
 		case "data":
-			wrk, err := stdlib.JSONEncode(val)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to encode %q", attr.Name)
-			}
 
-			err = json.Unmarshal([]byte(wrk.AsString()), &blk.Content)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to decode %q", attr.Name)
+			if preserveOrder {
+				// this is more generic, but it doesn't preserve the order
+				cnt := yaml.MapSlice{}
+
+				slc, err := roll(attr.Expr, ectx)
+				if err != nil {
+					return nil, err
+				}
+
+				if x, ok := slc.(yaml.MapSlice); ok {
+					cnt = append(cnt, x...)
+				}
+				if x, ok := slc.(yaml.MapItem); ok {
+					cnt = append(cnt, x)
+				}
+
+				blk.Content = cnt
+
+			} else {
+
+				wrk, err := stdlib.JSONEncode(val)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to encode %q", attr.Name)
+				}
+
+				// fmt.Println(wrk)
+
+				ctnt := make(map[string]interface{})
+
+				err = json.Unmarshal([]byte(wrk.AsString()), &ctnt)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to decode %q", attr.Name)
+				}
+
+				blk.Content = ctnt
 			}
 
 			dataAttr = attr.Expr
@@ -280,33 +469,18 @@ func NewBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsy
 			blk.Validation = lerr
 		}
 	}
+	// blk.DataOrder = dorder
+	// blk.Content = SliceWrapper(dorder)
 
 	return blk, nil
 
 }
 
-func (me *BlockEvaluation) HasValidationErrors() bool {
-	return me.Validation != nil
+type ValidationBlock interface {
+	HasValidationErrors() bool
+	Encode() ([]byte, error)
 }
 
-func (me *BlockEvaluation) Encode() ([]byte, error) {
-	arr := strings.Split(me.Name, ".")
-	if len(arr) < 2 {
-		return nil, errors.Errorf("invalid file name [%s] - missing extension", me.Name)
-	}
-	switch arr[len(arr)-1] {
-	case "json":
-		return json.MarshalIndent(me.Content, "", "\t")
-	case "yaml":
-		dat, err := yaml.Marshal(me.Content)
-		if err != nil {
-			return nil, err
-		}
-
-		return []byte(strings.ReplaceAll(string(dat), "\t", "")), nil
-	// case "hcl":
-	// 	return
-	default:
-		return nil, errors.Errorf("unknown file extension [%s] in %s", arr[len(arr)-1], me.Name)
-	}
+func (me *FileBlockEvaluation) HasValidationErrors() bool {
+	return me.Validation != nil
 }
