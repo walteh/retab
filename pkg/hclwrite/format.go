@@ -90,7 +90,7 @@ func (ts Tokens) WriteTo(wr io.Writer, cfg configuration.Configuration) (int64, 
 }
 
 func FormatBytes(cfg configuration.Configuration, src []byte) (io.Reader, error) {
-	tokens := lexConfig(src)
+	tokens := lexConfig(src, cfg)
 	tokens.format()
 	r, w := io.Pipe()
 	go func() {

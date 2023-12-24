@@ -27,12 +27,19 @@ func TestFormat(t *testing.T) {
 variable "DESTDIR" {
   default = "./bin"
   required = true
+  ok = [{abc = 1}]
 }`),
 			expected: []byte(`
 variable "DESTDIR" {
 	default  = "./bin"
 	required = true
-}`),
+	ok = [
+		{
+			abc = 1
+		}
+	]
+}
+`),
 		},
 		{
 			name:                   "Use Spaces with IndentSize 4",
@@ -115,6 +122,7 @@ variable "DESTDIR1" {
 			cfg.EXPECT().UseTabs().Return(tt.useTabs)
 			cfg.EXPECT().IndentSize().Return(tt.indentSize)
 			cfg.EXPECT().TrimMultipleEmptyLines().Return(tt.trimMultipleEmptyLines)
+			cfg.EXPECT().OneBracketPerLine().Return(true)
 
 			// Call the Format function with the provided configuration and source
 			result, err := hclwrite.FormatBytes(cfg, tt.src)

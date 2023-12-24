@@ -53,7 +53,7 @@ func NewEditorConfigConfigurationProvider(ctx context.Context, fls afero.Fs) (co
 	if err != nil {
 		zerolog.Ctx(ctx).Debug().Err(err).Msg("failed to open .editorconfig -- using defaults")
 		return &EditorConfigConfigurationDefaults{
-			Defaults: configuration.NewBasicConfigurationProvider(true, 4, true),
+			Defaults: configuration.NewBasicConfigurationProvider(true, 4, true, true),
 		}, nil
 	}
 
@@ -83,4 +83,8 @@ func (x *EditorConfigConfiguration) UseTabs() bool {
 
 func (x *EditorConfigConfiguration) TrimMultipleEmptyLines() bool {
 	return x.Definition.Raw["trim_multiple_empty_lines"] == "true"
+}
+
+func (x *EditorConfigConfiguration) OneBracketPerLine() bool {
+	return x.Definition.Raw["one_bracket_per_line"] == "true"
 }

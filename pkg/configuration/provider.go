@@ -10,12 +10,14 @@ type Configuration interface {
 	UseTabs() bool
 	IndentSize() int
 	TrimMultipleEmptyLines() bool
+	OneBracketPerLine() bool
 }
 
 type basicConfigurationProvider struct {
 	tabs                   bool
 	indentSize             int
 	trimMultipleEmptyLines bool
+	oneBracketPerLine      bool
 }
 
 func (x *basicConfigurationProvider) UseTabs() bool {
@@ -31,10 +33,15 @@ func (x *basicConfigurationProvider) TrimMultipleEmptyLines() bool {
 	return x.trimMultipleEmptyLines
 }
 
-func NewBasicConfigurationProvider(tabs bool, indentSize int, trimMultipleEmptyLines bool) Configuration {
+func (x *basicConfigurationProvider) OneBracketPerLine() bool {
+	return x.oneBracketPerLine
+}
+
+func NewBasicConfigurationProvider(tabs bool, indentSize int, trimMultipleEmptyLines bool, onebracket bool) Configuration {
 	return &basicConfigurationProvider{
 		tabs:                   tabs,
 		indentSize:             indentSize,
 		trimMultipleEmptyLines: trimMultipleEmptyLines,
+		oneBracketPerLine:      onebracket,
 	}
 }
