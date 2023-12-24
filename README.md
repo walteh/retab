@@ -37,7 +37,7 @@ retab fmt --file=<file>
 
 ---
 
-## supplemental commands
+<!-- ## supplemental commands
 
 ```bash
 retab wfmt --command=<command> --file=<file>
@@ -48,7 +48,7 @@ retab wfmt --command=<command> --file=<file>
 
 terraform example: `retab wfmt --terraform --file=main.tf`
 
----
+--- -->
 
 
 ## `retab gen`: builing `.yaml` and `.json` files

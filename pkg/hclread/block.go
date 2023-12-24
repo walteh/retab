@@ -182,11 +182,12 @@ func getAllDefs(parent string, schema *jsonschema.Schema, defs map[string]*jsons
 }
 
 type FullEvaluation struct {
-	File  *FileBlockEvaluation
-	Other []*AnyBlockEvaluation
+	File   *FileBlockEvaluation
+	Other  []*AnyBlockEvaluation
+	Source string
 }
 
-func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsyntax.Body, preserveOrder bool) (res *FullEvaluation, err error) {
+func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsyntax.Body, preserveOrder bool, source string) (res *FullEvaluation, err error) {
 
 	var fle *FileBlockEvaluation
 
@@ -238,8 +239,9 @@ func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsynt
 	}
 
 	return &FullEvaluation{
-		File:  fle,
-		Other: other,
+		File:   fle,
+		Other:  other,
+		Source: source,
 	}, nil
 }
 

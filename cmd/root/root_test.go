@@ -23,14 +23,14 @@ type test struct {
 
 var tests = []test{
 	{
-		name: "test",
+		name: "*.test",
 		args: args{
 			data: `
 resource "aws_s3_bucket" "b" {
 bucket = "my-tf-test-bucket"
 acl = "private"
 }`,
-			filename: "test.tf",
+			filename: "*.test.hcl",
 		},
 		want: `
 resource "aws_s3_bucket" "b" {
@@ -43,7 +43,11 @@ resource "aws_s3_bucket" "b" {
 func (tr *test) run(ctx context.Context, t *testing.T, runner func(ctx context.Context, strs ...string) error) {
 	t.Helper()
 
-	d := os.TempDir()
+	d, err := os.MkdirTemp("", "retab-test")
+	if err != nil {
+		t.Errorf("MkdirTemp() error = %v", err)
+		return
+	}
 
 	// save sample 1 to a temp file
 	f, err := os.CreateTemp(d, tr.args.filename)
@@ -51,22 +55,6 @@ func (tr *test) run(ctx context.Context, t *testing.T, runner func(ctx context.C
 		t.Errorf("CreateTemp() error = %v", err)
 		return
 	}
-
-	// 	c, err :=
-
-	// 	// make tmp editorconfig
-	// 	def := `
-	// root = true
-
-	// [*]
-	// indent_style = tabs
-	// indent_size = 4
-	// trim_trailing_whitespace = true
-	// trim_multiple_empty_lines = true
-	// `
-
-	// 	// write editorconfig
-	// 	err = os.WriteFile(".editorconfig", []byte(def), 0644)
 
 	_, err = f.WriteString(tr.args.data)
 	if err != nil {

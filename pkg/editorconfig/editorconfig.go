@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/editorconfig/editorconfig-core-go/v2"
+	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
 	"github.com/walteh/retab/pkg/configuration"
 	"github.com/walteh/terrors"
@@ -20,9 +21,18 @@ type EditorConfigConfigurationProvider struct {
 	definitions *editorconfig.Editorconfig
 }
 
+type EditorConfigConfigurationDefaults struct {
+	Defaults configuration.Configuration
+}
+
+func (me *EditorConfigConfigurationDefaults) GetConfigurationForFileType(ctx context.Context, str string) (configuration.Configuration, error) {
+	return me.Defaults, nil
+}
+
 func (me *EditorConfigConfigurationProvider) GetConfigurationForFileType(ctx context.Context, str string) (configuration.Configuration, error) {
 	def, err := me.definitions.GetDefinitionForFilename(str)
 	if err != nil {
+
 		return nil, err
 	}
 
@@ -37,11 +47,14 @@ func (me *EditorConfigConfigurationProvider) GetConfigurationForFileType(ctx con
 	}, nil
 }
 
-func NewEditorConfigConfigurationProvider(_ context.Context, fls afero.Fs) (configuration.Provider, error) {
+func NewEditorConfigConfigurationProvider(ctx context.Context, fls afero.Fs) (configuration.Provider, error) {
 
 	fle, err := fls.Open(".editorconfig")
 	if err != nil {
-		return nil, terrors.Wrap(err, "failed to open file")
+		zerolog.Ctx(ctx).Debug().Err(err).Msg("failed to open .editorconfig -- using defaults")
+		return &EditorConfigConfigurationDefaults{
+			Defaults: configuration.NewBasicConfigurationProvider(true, 4, true),
+		}, nil
 	}
 
 	x, err2, err := editorconfig.ParseGraceful(fle)
