@@ -121,7 +121,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 				if block.Type != "file" {
 					continue
 				}
-				be, err := NewFileBlockEvaluation(ctx, ectx, block)
+				be, err := NewFileBlockEvaluation(ctx, ectx, block, false)
 				if tt.wantErr == nil {
 					assert.NoError(t, err)
 					resp = append(resp, be)
@@ -244,7 +244,7 @@ func TestParseBlocksWithReference(t *testing.T) {
 
 			resp := make([]*FileBlockEvaluation, 0)
 
-			be, err := NewFullEvaluation(ctx, ectx, got)
+			be, err := NewFullEvaluation(ctx, ectx, got, false)
 			if tt.wantErr == nil {
 				require.NoError(t, err)
 				resp = append(resp, be.File)

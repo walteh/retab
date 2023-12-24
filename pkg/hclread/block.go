@@ -186,7 +186,7 @@ type FullEvaluation struct {
 	Other []*AnyBlockEvaluation
 }
 
-func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsyntax.Body) (res *FullEvaluation, err error) {
+func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsyntax.Body, preserveOrder bool) (res *FullEvaluation, err error) {
 
 	var fle *FileBlockEvaluation
 
@@ -195,7 +195,7 @@ func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsynt
 	for _, block := range file.Blocks {
 		switch block.Type {
 		case "file":
-			blk, err := NewFileBlockEvaluation(ctx, ectx, block)
+			blk, err := NewFileBlockEvaluation(ctx, ectx, block, preserveOrder)
 			if err != nil {
 				return nil, err
 			}
@@ -387,7 +387,7 @@ func roll(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, error) {
 	}
 }
 
-func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (res *FileBlockEvaluation, err error) {
+func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block, preserveOrder bool) (res *FileBlockEvaluation, err error) {
 
 	if block.Type != "file" {
 		return nil, errors.Errorf("invalid block type %q", block.Type)
@@ -417,37 +417,42 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *h
 			blk.Schema = val.AsString()
 		case "data":
 
-			cnt := yaml.MapSlice{}
+			if preserveOrder {
+				// this is more generic, but it doesn't preserve the order
+				cnt := yaml.MapSlice{}
 
-			slc, err := roll(attr.Expr, ectx)
-			if err != nil {
-				return nil, err
+				slc, err := roll(attr.Expr, ectx)
+				if err != nil {
+					return nil, err
+				}
+
+				if x, ok := slc.(yaml.MapSlice); ok {
+					cnt = append(cnt, x...)
+				}
+				if x, ok := slc.(yaml.MapItem); ok {
+					cnt = append(cnt, x)
+				}
+
+				blk.Content = cnt
+
+			} else {
+
+				wrk, err := stdlib.JSONEncode(val)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to encode %q", attr.Name)
+				}
+
+				// fmt.Println(wrk)
+
+				ctnt := make(map[string]interface{})
+
+				err = json.Unmarshal([]byte(wrk.AsString()), &ctnt)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to decode %q", attr.Name)
+				}
+
+				blk.Content = ctnt
 			}
-
-			if x, ok := slc.(yaml.MapSlice); ok {
-				cnt = append(cnt, x...)
-			}
-			if x, ok := slc.(yaml.MapItem); ok {
-				cnt = append(cnt, x)
-			}
-
-			blk.Content = cnt
-
-			// this is more generic, but it doesn't preserve the order
-
-			// wrk, err := stdlib.JSONEncode(val)
-			// if err != nil {
-			// 	return nil, errors.Wrapf(err, "failed to encode %q", attr.Name)
-			// }
-
-			// fmt.Println(wrk)
-
-			// err = json.Unmarshal([]byte(wrk.AsString()), &blk.Content)
-			// if err != nil {
-			// 	return nil, errors.Wrapf(err, "failed to decode %q", attr.Name)
-			// }
-
-			// blk.Content = SliceWrapper(slc.(yaml.MapSlice))
 
 			dataAttr = attr.Expr
 

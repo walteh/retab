@@ -24,7 +24,7 @@ func Process(ctx context.Context, fs afero.Fs, file string) (*FullEvaluation, er
 		return nil, err
 	}
 
-	eval, err := NewFullEvaluation(ctx, ectx, blks)
+	eval, err := NewFullEvaluation(ctx, ectx, blks, true)
 	if err != nil {
 		return nil, err
 	}
