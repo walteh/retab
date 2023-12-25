@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/go-faster/errors"
 	"github.com/hashicorp/hcl/v2"
@@ -274,6 +276,8 @@ func (me *FileBlockEvaluation) PropertyEvaluation(ctx context.Context, ectx *hcl
 
 }
 
+const MetaKey = "____meta"
+
 func NewAnyBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (key string, res cty.Value, err error) {
 
 	tmp := make(map[string]cty.Value)
@@ -287,6 +291,12 @@ func NewAnyBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hc
 
 		tmp[attr.Name] = val
 	}
+
+	meta := map[string]cty.Value{
+		"label": cty.StringVal(strings.Join(block.Labels, ".")),
+	}
+
+	tmp[MetaKey] = cty.ObjectVal(meta)
 
 	for _, blkd := range block.Body.Blocks {
 
@@ -347,6 +357,9 @@ func roll(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, error) {
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to evaluate %q", rr.KeyExpr)
 			}
+			if kvf.AsString() == MetaKey {
+				continue
+			}
 			rz, errd := roll(rr.ValueExpr, ectx)
 			if errd != nil {
 				return nil, errd
@@ -380,6 +393,9 @@ func roll(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, error) {
 		if err != nil {
 			return nil, err
 		}
+		reg := regexp.MustCompile(`[,|]\"` + MetaKey + `\":{.*?}`)
+		ok = cty.StringVal(reg.ReplaceAllString(ok.AsString(), ""))
+
 		var ok2 interface{}
 		err = json.Unmarshal([]byte(ok.AsString()), &ok2)
 		if err != nil {

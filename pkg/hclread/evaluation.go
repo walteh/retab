@@ -2,6 +2,7 @@ package hclread
 
 import (
 	"context"
+	"encoding/base64"
 	"io"
 
 	"github.com/go-faster/errors"
@@ -38,6 +39,114 @@ func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*
 		Functions: map[string]function.Function{
 			"jsonencode": stdlib.JSONEncodeFunc,
 			"jsondecode": stdlib.JSONDecodeFunc,
+			"csvdecode":  stdlib.CSVDecodeFunc,
+			// "yamlencode": stdlib.YAMLDecodeFunc,
+			"equal":      stdlib.EqualFunc,
+			"notequal":   stdlib.NotEqualFunc,
+			"concat":     stdlib.ConcatFunc,
+			"format":     stdlib.FormatFunc,
+			"join":       stdlib.JoinFunc,
+			"lower":      stdlib.LowerFunc,
+			"upper":      stdlib.UpperFunc,
+			"replace":    stdlib.ReplaceFunc,
+			"split":      stdlib.SplitFunc,
+			"substr":     stdlib.SubstrFunc,
+			"trimprefix": stdlib.TrimPrefixFunc,
+			"trimspace":  stdlib.TrimSpaceFunc,
+			"trimsuffix": stdlib.TrimSuffixFunc,
+			"chomp":      stdlib.ChompFunc,
+			"label": function.New(&function.Spec{
+				Description: `Gets the label of an hcl block`,
+				Params: []function.Parameter{
+					{
+						Name:             "block",
+						Type:             cty.DynamicPseudoType,
+						AllowUnknown:     true,
+						AllowDynamicType: true,
+						AllowNull:        false,
+						AllowMarked:      true,
+					},
+				},
+				Type: function.StaticReturnType(cty.String),
+				Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+					if len(args) != 1 {
+						return cty.NilVal, terrors.Errorf("expected 1 argument, got %d", len(args))
+					}
+
+					mp := args[0].AsValueMap()
+					if mp == nil {
+						return cty.NilVal, terrors.Errorf("expected map, got %s", args[0].GoString())
+					}
+
+					if mp[MetaKey] == cty.NilVal {
+						return cty.NilVal, terrors.Errorf("expected map with _label, got %s", args[0].GoString())
+					}
+
+					mp = mp[MetaKey].AsValueMap()
+					if mp == nil {
+						return cty.NilVal, terrors.Errorf("expected map with _label, got %s", args[0].GoString())
+					}
+
+					return cty.StringVal(mp["label"].AsString()), nil
+				},
+			}),
+			"base64encode": function.New(&function.Spec{
+				Description: `Returns the Base64-encoded version of the given string.`,
+				Params: []function.Parameter{
+					{
+						Name:             "str",
+						Type:             cty.String,
+						AllowUnknown:     false,
+						AllowDynamicType: false,
+						AllowNull:        false,
+					},
+				},
+				Type: function.StaticReturnType(cty.String),
+				// RefineResult: refineNonNull,
+				Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+					if len(args) != 1 {
+						return cty.NilVal, terrors.Errorf("expected 1 argument, got %d", len(args))
+					}
+					if args[0].IsNull() {
+						return cty.StringVal(""), nil
+					}
+
+					if args[0].Type() != cty.String {
+						return cty.NilVal, terrors.Errorf("expected string, got %s", args[0].GoString())
+					}
+					return cty.StringVal(base64.StdEncoding.EncodeToString([]byte(args[0].AsString()))), nil
+				},
+			}),
+			"base64decode": function.New(&function.Spec{
+				Description: `Returns the Base64-decoded version of the given string.`,
+				Params: []function.Parameter{
+					{
+						Name:             "str",
+						Type:             cty.String,
+						AllowUnknown:     false,
+						AllowDynamicType: false,
+						AllowNull:        false,
+					},
+				},
+				Type: function.StaticReturnType(cty.String),
+				// RefineResult: refineNonNull,
+				Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+					if len(args) != 1 {
+						return cty.NilVal, terrors.Errorf("expected 1 argument, got %d", len(args))
+					}
+					if args[0].IsNull() {
+						return cty.StringVal(""), nil
+					}
+					if args[0].Type() != cty.String {
+						return cty.NilVal, terrors.Errorf("expected string, got %s", args[0].GoString())
+					}
+					dec, err := base64.StdEncoding.DecodeString(args[0].AsString())
+					if err != nil {
+						return cty.NilVal, err
+					}
+					return cty.StringVal(string(dec)), nil
+				},
+			}),
 		},
 		Variables: map[string]cty.Value{},
 	}
@@ -77,8 +186,6 @@ func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*
 	custvars := map[string]cty.Value{}
 
 	combos := make(map[string][]cty.Value, 0)
-
-	retrys := []*hclsyntax.Block{}
 
 	proc := func(blk *hclsyntax.Block) error {
 		key, blks, err := NewAnyBlockEvaluation(ctx, ectx, blk)
@@ -122,32 +229,31 @@ func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*
 		return nil
 	}
 
-	for _, v := range bdy.Blocks {
-		if v.Type == "file" {
-			continue
+	retrys := bdy.Blocks
+	prevRetrys := []*hclsyntax.Block{}
+	start := true
+	for (len(retrys) > 0 && len(prevRetrys) > len(retrys)) || start {
+		start = false
+		newRetrys := []*hclsyntax.Block{}
+
+		for _, v := range retrys {
+			if v.Type == "file" {
+				continue
+			}
+
+			err := proc(v)
+			if err != nil {
+				newRetrys = append(newRetrys, v)
+			}
 		}
 
-		err := proc(v)
+		err = comp()
 		if err != nil {
-			retrys = append(retrys, v)
+			return nil, nil, nil, terrors.Wrapf(err, "failed to combine")
 		}
-	}
 
-	err = comp()
-	if err != nil {
-		return nil, nil, nil, terrors.Wrapf(err, "failed to combine")
-	}
-
-	for _, v := range retrys {
-		err := proc(v)
-		if err != nil {
-			return nil, nil, nil, terrors.Wrapf(err, "failed to process")
-		}
-	}
-
-	err = comp()
-	if err != nil {
-		return nil, nil, nil, err
+		prevRetrys = retrys
+		retrys = newRetrys
 	}
 
 	bdy.Attributes = nil
