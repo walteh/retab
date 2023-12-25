@@ -7,7 +7,7 @@ import (
 	"github.com/k0kubun/pp/v3"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
+	"github.com/walteh/yaml"
 )
 
 const validHCL = `
@@ -80,7 +80,7 @@ func TestValidHCLDecoding(t *testing.T) {
 			t.Fatal(blk.Validation)
 		}
 
-		out, erry := yaml.Marshal(blk.Content)
+		out, erry := yaml.Marshal(blk.RawOutput)
 		if erry != nil {
 			t.Fatal(erry)
 		}

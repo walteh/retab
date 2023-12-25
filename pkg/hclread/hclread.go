@@ -50,7 +50,7 @@ func (me *FullEvaluation) WriteToFile(ctx context.Context, fs afero.Fs) error {
 	return nil
 }
 
-func (me *FullEvaluation) WriteToReader(_ context.Context) (io.Reader, error) {
+func (me *FullEvaluation) WriteToReader(ctx context.Context) (io.Reader, error) {
 	out, erry := me.Encode()
 	if erry != nil {
 		return nil, errors.Wrapf(erry, "failed to encode block %q", me.File.Name)
@@ -66,7 +66,7 @@ func (me *FullEvaluation) Encode() ([]byte, error) {
 		return nil, errors.Errorf("invalid file name [%s] - missing extension", me.File.Name)
 	}
 
-	content := me.File.Content
+	// content, err := me.File.OrderedContent(ctx, ectx)
 	// for _, blk := range me.Other {
 	// 	content = append(content, blk.Content)
 	// }
@@ -80,16 +80,16 @@ func (me *FullEvaluation) Encode() ([]byte, error) {
 
 	switch arr[len(arr)-1] {
 	case "jsonc":
-		return json.MarshalIndent(content, "", "\t")
+		return json.MarshalIndent(me.File.OrderedOutput, "", "\t")
 	case "json":
-		return json.MarshalIndent(content, "", "\t")
+		return json.MarshalIndent(me.File.OrderedOutput, "", "\t")
 	case "yaml", "yml":
 		buf := bytes.NewBuffer(nil)
 		enc := yaml.NewEncoder(buf)
 		// enc.SetIndent(4)
 		defer enc.Close()
 
-		err := enc.Encode(content)
+		err := enc.Encode(me.File.OrderedOutput)
 		if err != nil {
 			return nil, err
 		}

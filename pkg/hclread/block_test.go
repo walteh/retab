@@ -7,7 +7,6 @@ import (
 	"github.com/k0kubun/pp/v3"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 const validHCL2 = `
@@ -48,7 +47,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    []*FileBlockEvaluation
+		want    *FileBlockEvaluation
 		wantErr error
 	}{
 		{
@@ -56,32 +55,30 @@ func TestParseBlocksFromFile(t *testing.T) {
 			args: args{
 				str: validHCL2,
 			},
-			want: []*FileBlockEvaluation{
-				{
-					Name:   "default.yaml",
-					Schema: "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json",
-					Dir:    "./.github/workflows",
-					Content: map[string]interface{}{
-						"name": "test",
-						"on": map[string]interface{}{
-							"push": map[string]interface{}{
-								"branches": []interface{}{
-									"main",
-								},
+			want: &FileBlockEvaluation{
+				Name:   "default.yaml",
+				Schema: "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json",
+				Dir:    "./.github/workflows",
+				RawOutput: map[string]interface{}{
+					"name": "test",
+					"on": map[string]interface{}{
+						"push": map[string]interface{}{
+							"branches": []interface{}{
+								"main",
 							},
 						},
-						"jobs": map[string]interface{}{
-							"build": map[string]interface{}{
-								"runs-on": "ubuntu-latest",
-								"steps": []interface{}{
-									map[string]interface{}{
-										"name": "Checkout",
-										"uses": "actions/checkout@v2",
-									},
-									map[string]interface{}{
-										"name": "Run tests",
-										"run":  "make test",
-									},
+					},
+					"jobs": map[string]interface{}{
+						"build": map[string]interface{}{
+							"runs-on": "ubuntu-latest",
+							"steps": []interface{}{
+								map[string]interface{}{
+									"name": "Checkout",
+									"uses": "actions/checkout@v2",
+								},
+								map[string]interface{}{
+									"name": "Run tests",
+									"run":  "make test",
 								},
 							},
 						},
@@ -115,7 +112,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 				assert.Error(t, err)
 			}
 
-			resp := make([]*FileBlockEvaluation, 0)
+			var resp *FileBlockEvaluation
 
 			for _, block := range got.Blocks {
 				if block.Type != "file" {
@@ -124,13 +121,15 @@ func TestParseBlocksFromFile(t *testing.T) {
 				be, err := NewFileBlockEvaluation(ctx, ectx, block, false)
 				if tt.wantErr == nil {
 					assert.NoError(t, err)
-					resp = append(resp, be)
 				} else {
 					assert.Error(t, err)
 				}
+
+				resp = be
+				break
 			}
 
-			assert.Equal(t, tt.want, resp)
+			assert.Equal(t, tt.want.RawOutput, resp.RawOutput)
 		})
 	}
 }
@@ -169,6 +168,16 @@ step "checkout" {
 }
 `
 
+const validHCLWithError = `
+file "default.yaml" {
+	dir = "./.github/workflows"
+	schema = "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json"
+	data = {
+		name = "test"
+	}
+}
+`
+
 func TestParseBlocksWithReference(t *testing.T) {
 	type args struct {
 		str string
@@ -176,47 +185,52 @@ func TestParseBlocksWithReference(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    []*FileBlockEvaluation
-		wantErr error
+		want    *FileBlockEvaluation
+		wantErr bool
 	}{
 		{
 			name: "valid hcl",
 			args: args{
 				str: validHCL2,
 			},
-			want: []*FileBlockEvaluation{
-				{
-					Name:   "default.yaml",
-					Schema: "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json",
-					Dir:    "./.github/workflows",
-					Content: map[string]interface{}{
-						"name": "test",
-						"on": map[string]interface{}{
-							"push": map[string]interface{}{
-								"branches": []interface{}{
-									"main",
-								},
+			want: &FileBlockEvaluation{
+				Name:   "default.yaml",
+				Schema: "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json",
+				Dir:    "./.github/workflows",
+				RawOutput: map[string]interface{}{
+					"name": "test",
+					"on": map[string]interface{}{
+						"push": map[string]interface{}{
+							"branches": []interface{}{
+								"main",
 							},
 						},
-						"jobs": map[string]interface{}{
-							"build": map[string]interface{}{
-								"runs-on": "ubuntu-latest",
-								"steps": []interface{}{
-									map[string]interface{}{
-										"name": "Checkout",
-										"uses": "actions/checkout@v2",
-									},
-									map[string]interface{}{
-										"name": "Run tests",
-										"run":  "make test",
-									},
+					},
+					"jobs": map[string]interface{}{
+						"build": map[string]interface{}{
+							"runs-on": "ubuntu-latest",
+							"steps": []interface{}{
+								map[string]interface{}{
+									"name": "Checkout",
+									"uses": "actions/checkout@v2",
+								},
+								map[string]interface{}{
+									"name": "Run tests",
+									"run":  "make test",
 								},
 							},
 						},
 					},
 				},
 			},
-			wantErr: nil,
+			wantErr: false,
+		},
+		{
+			name: "valid hcl with error",
+			args: args{
+				str: validHCLWithError,
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -226,7 +240,7 @@ func TestParseBlocksWithReference(t *testing.T) {
 
 			aferoFS := afero.NewMemMapFs()
 
-			err := afero.WriteFile(aferoFS, "test.hcl", []byte(validHCLWithReference), 0644)
+			err := afero.WriteFile(aferoFS, "test.hcl", []byte(tt.args.str), 0644)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -237,26 +251,24 @@ func TestParseBlocksWithReference(t *testing.T) {
 			}
 
 			_, ectx, got, err := NewEvaluation(ctx, file)
-			if tt.wantErr == nil {
-				assert.NoError(t, err)
-			} else {
-				assert.Error(t, err)
+			if err != nil {
+				t.Fatal(err)
 			}
-
-			resp := make([]*FileBlockEvaluation, 0)
-
 			be, err := NewFullEvaluation(ctx, ectx, got, false, "somefile")
-			if tt.wantErr == nil {
-				require.NoError(t, err)
-				resp = append(resp, be.File)
-			} else {
-				assert.Error(t, err)
+			if err != nil {
+				t.Fatal(err)
 			}
 
 			pp.SetDefaultMaxDepth(20)
 			pp.Println(be.File.Validation)
+			if tt.wantErr {
+				assert.True(t, len(be.File.Validation) > 0)
+			} else {
+				assert.Equal(t, tt.want.RawOutput, be.File.RawOutput)
+			}
 
-			assert.Equal(t, tt.want, resp)
+			// assert.Empty(t, resp)
+
 		})
 	}
 }

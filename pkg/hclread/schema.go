@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/santhosh-tekuri/jsonschema/v5"
+	"github.com/walteh/terrors"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -21,7 +22,7 @@ type ValidationError struct {
 	Range    *hcl.Range
 }
 
-func LoadValidationErrors(ctx context.Context, cnt hcl.Expression, ectx *hcl.EvalContext, errv error) ([]*ValidationError, bool) {
+func LoadValidationErrors(ctx context.Context, cnt hcl.Expression, ectx *hcl.EvalContext, errv error) ([]*ValidationError, error) {
 
 	berr := errv
 	for errors.Unwrap(berr) != nil {
@@ -30,10 +31,12 @@ func LoadValidationErrors(ctx context.Context, cnt hcl.Expression, ectx *hcl.Eva
 
 	vers := make([]*ValidationError, 0)
 
-	if verr, ok := errors.Into[*jsonschema.ValidationError](berr); ok {
+	if verr, ok := terrors.Into[*jsonschema.ValidationError](berr); ok {
 
 		for _, cause := range verr.Causes {
-			if ve, _ := LoadValidationErrors(ctx, cnt, ectx, cause); ve != nil {
+			if ve, err := LoadValidationErrors(ctx, cnt, ectx, cause); err != nil {
+				return nil, err
+			} else {
 				// basically, if one of our children has an error,
 				vers = append(vers, ve...)
 			}
@@ -41,7 +44,7 @@ func LoadValidationErrors(ctx context.Context, cnt hcl.Expression, ectx *hcl.Eva
 
 		rng, err := InstanceLocationStringToHCLRange(verr.InstanceLocation, cnt, ectx)
 		if err != nil {
-			return vers, true
+			return nil, err
 		}
 
 		validationErr := &ValidationError{
@@ -49,19 +52,22 @@ func LoadValidationErrors(ctx context.Context, cnt hcl.Expression, ectx *hcl.Eva
 			Range:           rng,
 		}
 
-		return append(vers, validationErr), true
+		return append(vers, validationErr), nil
 	}
 
-	return nil, false
+	return vers, nil
 
 }
 
-func InstanceLocationStringToHCLRange(instLoc string, cnt hcl.Expression, ectx *hcl.EvalContext) (*hcl.Range, hcl.Diagnostics) {
+func InstanceLocationStringToHCLRange(instLoc string, cnt hcl.Expression, ectx *hcl.EvalContext) (*hcl.Range, error) {
 	splt := strings.Split(strings.TrimPrefix(instLoc, "/"), "/")
+	if len(splt) == 0 {
+		return cnt.Range().Ptr(), nil
+	}
 	return InstanceLocationToHCLRange(splt, cnt, ectx)
 }
 
-func InstanceLocationToHCLRange(splt []string, cnt hcl.Expression, ectx *hcl.EvalContext) (*hcl.Range, hcl.Diagnostics) {
+func InstanceLocationToHCLRange(splt []string, cnt hcl.Expression, ectx *hcl.EvalContext) (*hcl.Range, error) {
 
 	switch t := cnt.(type) {
 	case *hclsyntax.ObjectConsExpr:
@@ -121,13 +127,15 @@ func InstanceLocationToHCLRange(splt []string, cnt hcl.Expression, ectx *hcl.Eva
 		}
 	}
 
-	return nil, hcl.Diagnostics{
-		&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "Invalid expression",
-			Detail:   "unable to find instance loc",
-			Subject:  cnt.Range().Ptr(),
-		},
-	}
+	// return nil, hcl.Diagnostics{
+	// 	&hcl.Diagnostic{
+	// 		Severity: hcl.DiagError,
+	// 		Summary:  "Invalid expression",
+	// 		Detail:   "unable to find instance loc",
+	// 		Subject:  cnt.Range().Ptr(),
+	// 	},
+	// }
+
+	return cnt.Range().Ptr(), nil
 
 }

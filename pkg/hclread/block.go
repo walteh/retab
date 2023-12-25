@@ -3,7 +3,6 @@ package hclread
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -12,46 +11,11 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/walteh/retab/schemas"
+	"github.com/walteh/terrors"
 	"github.com/walteh/yaml"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 )
-
-// var rootScheme = &hcl.BodySchema{
-// 	Blocks: []hcl.BlockHeaderSchema{
-// 		{
-// 			Type:       "file",
-// 			LabelNames: []string{"name"},
-// 		},
-// 		{
-// 			Type: "func",
-// 		},
-// 	},
-// }
-
-// var fileScheme = &hcl.BodySchema{
-// 	Attributes: []hcl.AttributeSchema{
-// 		{
-// 			Name:     "dir",
-// 			Required: true,
-// 		},
-// 		{
-// 			Name:     "schema",
-// 			Required: true,
-// 		},
-// 		{
-// 			Name:     "data",
-// 			Required: true,
-// 		},
-// 	},
-// }
-
-var (
-// _ ValidationBlock = (*FileBlockEvaluation)(nil)
-// _ ValidationBlock = (*AnyBlockEvaluation)(nil)
-)
-
-// TODO do the brace thing
 
 type AnyBlockEvaluation struct {
 	Name       string
@@ -60,32 +24,12 @@ type AnyBlockEvaluation struct {
 }
 
 type FileBlockEvaluation struct {
-	Name   string
-	Schema string
-	Dir    string
-	// ContentRaw cty.Value
-	Content    any
-	Validation []*ValidationError
-	DataOrder  yaml.MapSlice
-}
-
-type SliceWrapper yaml.MapSlice
-
-func (me *SliceWrapper) Append(item yaml.MapItem) {
-	*me = append(*me, item)
-}
-
-func (me *SliceWrapper) UnmarshalJSON(b []byte) error {
-	mapper := make(map[string]interface{})
-	err := json.Unmarshal(b, &mapper)
-	if err != nil {
-		return err
-	}
-
-	for k, v := range mapper {
-		me.Append(yaml.MapItem{Key: k, Value: v})
-	}
-	return nil
+	Name          string
+	Schema        string
+	Dir           string
+	OrderedOutput yaml.MapSlice
+	RawOutput     any
+	Validation    []*ValidationError
 }
 
 func (me *FileBlockEvaluation) GetJSONSchema(ctx context.Context) (*jsonschema.Schema, error) {
@@ -111,10 +55,14 @@ func (me *FileBlockEvaluation) ValidateJSONSchema(ctx context.Context) error {
 		return err
 	}
 
-	return schema.Validate(me.Content)
+	return schema.Validate(me.RawOutput)
 }
 
 func (me *FileBlockEvaluation) ValidateJSONSchemaProperty(ctx context.Context, prop string) error {
+	if prop == MetaKey {
+		return nil
+	}
+
 	schema, err := me.GetProperties(ctx)
 	if err != nil {
 		return err
@@ -124,12 +72,11 @@ func (me *FileBlockEvaluation) ValidateJSONSchemaProperty(ctx context.Context, p
 		return errors.Errorf("property %q not found", prop)
 	}
 
-	return schema[prop].Validate(me.Content)
+	return schema[prop].Validate(me.RawOutput)
 
 }
 
 func getAllDefs(parent string, schema *jsonschema.Schema, defs map[string]*jsonschema.Schema) {
-
 	////////////////////////////////////////
 	// not sure if this is needed or not
 	if defs[parent] != nil {
@@ -231,9 +178,9 @@ func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsynt
 
 			err := fle.ValidateJSONSchemaProperty(ctx, block.Type)
 			if err != nil {
-				lerr, ok := LoadValidationErrors(ctx, attr.Expr, ectx, err)
-				if ok {
-					continue
+				lerr, err := LoadValidationErrors(ctx, attr.Expr, ectx, err)
+				if err != nil {
+					return nil, err
 				}
 				fle.Validation = append(fle.Validation, lerr...)
 			}
@@ -247,34 +194,34 @@ func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsynt
 	}, nil
 }
 
-func (me *FileBlockEvaluation) PropertyEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) ([]*ValidationError, error) {
+// func (me *FileBlockEvaluation) PropertyEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) ([]*ValidationError, error) {
 
-	schema, err := me.GetProperties(ctx)
-	if err != nil {
-		return nil, err
-	}
+// 	schema, err := me.GetProperties(ctx)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	errs := make([]*ValidationError, 0)
+// 	errs := make([]*ValidationError, 0)
 
-	if schema[block.Labels[0]] == nil {
-		// return nil, errors.Errorf("property %q not found", schema[block.Labels[0]])
-		return errs, nil
-	}
+// 	if schema[block.Labels[0]] == nil {
+// 		// return nil, errors.Errorf("property %q not found", schema[block.Labels[0]])
+// 		return errs, nil
+// 	}
 
-	for _, attr := range block.Body.Attributes {
-		vld, ok := LoadValidationErrors(ctx, attr.Expr, ectx, nil)
-		if !ok {
-			continue
-		}
+// 	for _, attr := range block.Body.Attributes {
+// 		vld, err := LoadValidationErrors(ctx, attr.Expr, ectx, nil)
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-		if vld != nil {
-			errs = append(errs, vld...)
-		}
-	}
+// 		if vld != nil {
+// 			errs = append(errs, vld...)
+// 		}
+// 	}
 
-	return errs, nil
+// 	return errs, nil
 
-}
+// }
 
 const MetaKey = "____meta"
 
@@ -331,23 +278,6 @@ func NewAnyBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hc
 
 }
 
-func addVarToDorder(abc hcl.Traversal, val cty.Value) yaml.MapItem {
-	str := yaml.MapItem{Key: abc.RootName()}
-	for _, v := range abc {
-		if _, ok := v.(hcl.TraverseRoot); ok {
-			continue
-		} else if a, ok := v.(hcl.TraverseAttr); ok {
-			ok, err := v.TraversalStep(val)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-			str.Value = yaml.MapItem{Key: a.Name, Value: ok}
-		}
-	}
-	return str
-}
-
 func roll(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, error) {
 
 	if x, ok := e.(*hclsyntax.ObjectConsExpr); ok {
@@ -375,7 +305,7 @@ func roll(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, error) {
 		for _, exp := range x.Exprs {
 			r, err := roll(exp, ectx)
 			if err != nil {
-				return nil, err
+				return nil, terrors.Wrapf(err, "failed to evaluate %q", exp)
 			}
 			if r == nil {
 				continue
@@ -389,20 +319,41 @@ func roll(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, error) {
 			return nil, errors.Wrapf(errd, "failed to evaluate %q", e)
 		}
 
-		ok, err := stdlib.JSONEncode(evaled)
-		if err != nil {
-			return nil, err
-		}
-		reg := regexp.MustCompile(`[,|]\"` + MetaKey + `\":{.*?}`)
-		ok = cty.StringVal(reg.ReplaceAllString(ok.AsString(), ""))
-
-		var ok2 interface{}
-		err = json.Unmarshal([]byte(ok.AsString()), &ok2)
-		if err != nil {
-			return nil, err
-		}
-		return ok2, nil
+		return noMetaJsonEncode(evaled)
 	}
+}
+
+var reg1 = regexp.MustCompile(`,?\"` + MetaKey + `\":{.*?}`)
+var reg2 = regexp.MustCompile(`{,`)
+
+func noMetaJsonEncode(v cty.Value) (any, error) {
+	ok, err := stdlib.JSONEncode(v)
+	if err != nil {
+		return nil, err
+	}
+	oks := reg1.ReplaceAllString(ok.AsString(), "")
+	oks = reg2.ReplaceAllString(oks, "{")
+	ok = cty.StringVal(oks)
+
+	var ok2 interface{}
+	err = json.Unmarshal([]byte(ok.AsString()), &ok2)
+	if err != nil {
+		return nil, err
+	}
+	// if strings.Contains(ok.AsString(), MetaKey) {
+	// 	fmt.Println("found meta, skipping", ok)
+	// }
+	return ok2, nil
+}
+
+func checkNestedForMeta(message string, validation []*jsonschema.ValidationError) bool {
+	// if message == "additionalProperties '"+MetaKey+"' not allowed" {
+	// 	return true
+	// }
+	// for _, v := range validation {
+	// 	return checkNestedForMeta(v.Message, v.Causes)
+	// }
+	return false
 }
 
 func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block, preserveOrder bool) (res *FileBlockEvaluation, err error) {
@@ -422,10 +373,7 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *h
 		// Evaluate the attribute's expression to get a cty.Value
 		val, err := attr.Expr.Value(ectx)
 		if err.HasErrors() {
-			for _, diag := range err.Errs() {
-				fmt.Println(diag)
-			}
-			return nil, errors.Wrapf(err, "failed to evaluate %q", attr.Name)
+			return nil, terrors.Wrapf(err, "failed to evaluate %q", attr.Name)
 		}
 
 		switch attr.Name {
@@ -435,42 +383,28 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *h
 			blk.Schema = val.AsString()
 		case "data":
 
-			if preserveOrder {
-				// this is more generic, but it doesn't preserve the order
-				cnt := yaml.MapSlice{}
+			cnt := yaml.MapSlice{}
 
-				slc, err := roll(attr.Expr, ectx)
-				if err != nil {
-					return nil, err
-				}
-
-				if x, ok := slc.(yaml.MapSlice); ok {
-					cnt = append(cnt, x...)
-				}
-				if x, ok := slc.(yaml.MapItem); ok {
-					cnt = append(cnt, x)
-				}
-
-				blk.Content = cnt
-
-			} else {
-
-				wrk, err := stdlib.JSONEncode(val)
-				if err != nil {
-					return nil, errors.Wrapf(err, "failed to encode %q", attr.Name)
-				}
-
-				// fmt.Println(wrk)
-
-				ctnt := make(map[string]interface{})
-
-				err = json.Unmarshal([]byte(wrk.AsString()), &ctnt)
-				if err != nil {
-					return nil, errors.Wrapf(err, "failed to decode %q", attr.Name)
-				}
-
-				blk.Content = ctnt
+			slc, err := roll(attr.Expr, ectx)
+			if err != nil {
+				return nil, terrors.Wrap(err, "failed to evaluate")
 			}
+
+			if x, ok := slc.(yaml.MapSlice); ok {
+				cnt = append(cnt, x...)
+			}
+			if x, ok := slc.(yaml.MapItem); ok {
+				cnt = append(cnt, x)
+			}
+
+			mta, err := noMetaJsonEncode(val)
+			if err != nil {
+				return nil, err
+			}
+
+			blk.OrderedOutput = cnt
+
+			blk.RawOutput = mta
 
 			dataAttr = attr.Expr
 
@@ -478,17 +412,20 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *h
 			// ignore unknown attributes
 			continue
 		}
+	}
 
+	if dataAttr == nil {
+		return nil, errors.Errorf("missing data attribute")
 	}
 
 	// Validate the block body against the schema
 	if errv := blk.ValidateJSONSchema(ctx); errv != nil {
-		if lerr, ok := LoadValidationErrors(ctx, dataAttr, ectx, errv); ok {
+		if lerr, err := LoadValidationErrors(ctx, dataAttr, ectx, errv); err != nil {
+			return nil, err
+		} else {
 			blk.Validation = lerr
 		}
 	}
-	// blk.DataOrder = dorder
-	// blk.Content = SliceWrapper(dorder)
 
 	return blk, nil
 
