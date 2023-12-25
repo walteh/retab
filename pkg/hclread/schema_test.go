@@ -61,12 +61,12 @@ func TestValidHCLDecoding(t *testing.T) {
 	defer fle.Close()
 
 	// load schema file
-	_, ectx, got, errd := NewEvaluation(ctx, fle)
+	bd, ectx, got, errd := NewEvaluation(ctx, fle)
 	assert.NoError(t, errd)
 
 	for _, b := range got.Blocks {
 
-		blk, err := NewFileBlockEvaluation(ctx, ectx, b, false)
+		blk, err := NewFileBlockEvaluation(ctx, ectx, b, bd.Body, false)
 		if err != nil {
 			t.Fatal(err)
 		}

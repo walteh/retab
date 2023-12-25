@@ -31,7 +31,7 @@ func (me *Handler) Name() string {
 }
 
 func (me *Handler) Description() string {
-	return "format files hcl library, but with tabs"
+	return "format files with the hcl golang library, but with tabs"
 }
 
 func (me *Handler) Run(ctx context.Context, fs afero.Fs, fle afero.File, ecfg configuration.Provider, out snake.Stdout) error {
@@ -54,27 +54,10 @@ func (me *Handler) Run(ctx context.Context, fs afero.Fs, fle afero.File, ecfg co
 	}
 
 	for _, fmtr := range fmtrs {
-		// trg := fmtr.Targets()
-		// if len(me.TargetRestrictions) > 0 {
-		// 	trg = me.TargetRestrictions
-		// }
 		err := format.Format(ctx, fmtr, ecfg, fs, fle)
 		if err != nil {
 			return err
 		}
-		// for _, target := range trg {
-
-		// 	matches, err := afero.Glob(fs, target)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-
-		// 	if len(matches) == 0 {
-		// 		continue
-		// 	}
-
-		// 	zerolog.Ctx(ctx).Info().Int("files", len(matches)).Str("target", target).Str("formatter", reflect.TypeOf(fmtr).String()).Msg("formatted")
-		// }
 	}
 
 	return nil

@@ -105,7 +105,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			_, ectx, got, err := NewEvaluation(ctx, file)
+			f, ectx, got, err := NewEvaluation(ctx, file)
 			if tt.wantErr == nil {
 				assert.NoError(t, err)
 			} else {
@@ -118,7 +118,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 				if block.Type != "file" {
 					continue
 				}
-				be, err := NewFileBlockEvaluation(ctx, ectx, block, false)
+				be, err := NewFileBlockEvaluation(ctx, ectx, block, f.Body, false)
 				if tt.wantErr == nil {
 					assert.NoError(t, err)
 				} else {

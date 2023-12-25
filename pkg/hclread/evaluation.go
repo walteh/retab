@@ -3,6 +3,7 @@ package hclread
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"io"
 
 	"github.com/go-faster/errors"
@@ -203,6 +204,7 @@ func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*
 
 	comp := func() error {
 		for k, v := range combos {
+			// fmt.Println(k, v)
 
 			if custvars[k] == cty.NilVal {
 				custvars[k] = cty.ObjectVal(map[string]cty.Value{})
@@ -218,7 +220,6 @@ func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*
 				}
 			}
 			custvars[k] = cty.ObjectVal(wrk)
-
 			combos[k] = nil
 		}
 
@@ -232,7 +233,9 @@ func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*
 	retrys := bdy.Blocks
 	prevRetrys := []*hclsyntax.Block{}
 	start := true
+	// starts := 0
 	for (len(retrys) > 0 && len(prevRetrys) > len(retrys)) || start {
+
 		start = false
 		newRetrys := []*hclsyntax.Block{}
 
@@ -243,6 +246,7 @@ func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*
 
 			err := proc(v)
 			if err != nil {
+				fmt.Println(err)
 				newRetrys = append(newRetrys, v)
 			}
 		}
@@ -254,9 +258,17 @@ func NewEvaluationReadCloser(ctx context.Context, fle io.Reader, name string) (*
 
 		prevRetrys = retrys
 		retrys = newRetrys
+
+		// if len(retrys) == len(prevRetrys) && starts < 3 {
+		// 	slices.Reverse(retrys)
+		// 	start = true
+		// 	starts++
+		// }
 	}
 
-	bdy.Attributes = nil
+	// pp.Println(bdy.Blocks)
+
+	// bdy.Attributes = nil
 
 	return hcldata, ectx, bdy, nil
 

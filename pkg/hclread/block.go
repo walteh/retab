@@ -145,7 +145,7 @@ func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsynt
 	for _, block := range file.Blocks {
 		switch block.Type {
 		case "file":
-			blk, err := NewFileBlockEvaluation(ctx, ectx, block, preserveOrder)
+			blk, err := NewFileBlockEvaluation(ctx, ectx, block, file, preserveOrder)
 			if err != nil {
 				return nil, err
 			}
@@ -178,7 +178,7 @@ func NewFullEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsynt
 
 			err := fle.ValidateJSONSchemaProperty(ctx, block.Type)
 			if err != nil {
-				lerr, err := LoadValidationErrors(ctx, attr.Expr, ectx, err)
+				lerr, err := LoadValidationErrors(ctx, attr.Expr, ectx, err, file)
 				if err != nil {
 					return nil, err
 				}
@@ -356,7 +356,7 @@ func checkNestedForMeta(message string, validation []*jsonschema.ValidationError
 	return false
 }
 
-func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block, preserveOrder bool) (res *FileBlockEvaluation, err error) {
+func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block, file hcl.Body, preserveOrder bool) (res *FileBlockEvaluation, err error) {
 
 	if block.Type != "file" {
 		return nil, errors.Errorf("invalid block type %q", block.Type)
@@ -366,9 +366,11 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *h
 		Name: block.Labels[0],
 	}
 
-	var dataAttr hcl.Expression
+	var dataAttr hclsyntax.Expression
 
 	for _, attr := range block.Body.Attributes {
+
+		// fmt.Println(block.Body.Attributes)
 
 		// Evaluate the attribute's expression to get a cty.Value
 		val, err := attr.Expr.Value(ectx)
@@ -420,7 +422,7 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *h
 
 	// Validate the block body against the schema
 	if errv := blk.ValidateJSONSchema(ctx); errv != nil {
-		if lerr, err := LoadValidationErrors(ctx, dataAttr, ectx, errv); err != nil {
+		if lerr, err := LoadValidationErrors(ctx, dataAttr, ectx, errv, file); err != nil {
 			return nil, err
 		} else {
 			blk.Validation = lerr
