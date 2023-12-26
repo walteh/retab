@@ -1,0 +1,14 @@
+file "Taskfile.yml" {
+	schema = "https://taskfile.dev/schema.json"
+	dir    = "."
+	data = {
+		"version" : "3.0"
+	}
+}
+
+args hello {
+	desc = "hello world"
+	cmds = [
+		"echo hello"
+	]
+}

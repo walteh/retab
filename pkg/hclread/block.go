@@ -3,12 +3,14 @@ package hclread
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/go-faster/errors"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/rs/zerolog"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/walteh/retab/schemas"
 	"github.com/walteh/terrors"
@@ -33,7 +35,14 @@ type FileBlockEvaluation struct {
 }
 
 func (me *FileBlockEvaluation) GetJSONSchema(ctx context.Context) (*jsonschema.Schema, error) {
-	return schemas.LoadJSONSchema(ctx, me.Schema)
+	s, err := schemas.LoadJSONSchema(ctx, me.Schema)
+	if err != nil {
+		return s, terrors.Wrap(err, "problem getting schema").Event(func(e *zerolog.Event) *zerolog.Event {
+			return e.Int("schema_size", len(me.Schema))
+		})
+	}
+
+	return s, nil
 }
 
 func (me *FileBlockEvaluation) GetProperties(ctx context.Context) (map[string]*jsonschema.Schema, error) {
@@ -52,8 +61,12 @@ func (me *FileBlockEvaluation) GetProperties(ctx context.Context) (map[string]*j
 func (me *FileBlockEvaluation) ValidateJSONSchema(ctx context.Context) error {
 	schema, err := me.GetJSONSchema(ctx)
 	if err != nil {
+		fmt.Println("schema1", schema, err)
+
 		return err
 	}
+
+	fmt.Println("schema2", schema)
 
 	return schema.Validate(me.RawOutput)
 }
@@ -360,6 +373,13 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *h
 
 	if block.Type != "file" {
 		return nil, errors.Errorf("invalid block type %q", block.Type)
+	}
+
+	if len(block.Labels) != 1 {
+		if len(block.Labels) == 0 {
+			return nil, errors.Errorf("missing file block label")
+		}
+		return nil, errors.Errorf("invalid block label %q", block.Labels)
 	}
 
 	blk := &FileBlockEvaluation{

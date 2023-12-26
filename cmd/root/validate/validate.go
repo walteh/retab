@@ -10,7 +10,7 @@ import (
 )
 
 func Runner() snake.Runner {
-	return snake.GenRunCommand_In03_Out01(&Handler{})
+	return snake.GenRunCommand_In04_Out01(&Handler{})
 }
 
 type Handler struct {
@@ -24,11 +24,24 @@ func (me *Handler) Description() string {
 	return "validate files defined in .retab files"
 }
 
-func (me *Handler) Run(ctx context.Context, fs afero.Fs, stdout snake.Stdout) error {
-	// {*.retab.hcl}{.retab/*.retab}{.retab/*.retab.hcl}
-	fles, err := afero.Glob(fs, "*.retab")
+func (me *Handler) Run(ctx context.Context, fs afero.Fs, fle afero.File, stdout snake.Stdout) error {
+
+	isDir, err := afero.IsDir(fs, fle.Name())
 	if err != nil {
 		return err
+	}
+
+	fles := []string{}
+
+	if isDir {
+		// {*.retab.hcl}{.retab/*.retab}{.retab/*.retab.hcl}
+		flesd, err := afero.Glob(fs, "*.retab")
+		if err != nil {
+			return err
+		}
+		fles = append(fles, flesd...)
+	} else {
+		fles = append(fles, fle.Name())
 	}
 
 	for _, fle := range fles {
@@ -38,6 +51,7 @@ func (me *Handler) Run(ctx context.Context, fs afero.Fs, stdout snake.Stdout) er
 		}
 
 		for _, blk := range body.File.Validation {
+			// pp.Println(blk)
 			fmt.Fprintf(stdout, "start[line=%d,col=%d] end[line=%d,col=%d] message[%s]\n", blk.Range.Start.Line, blk.Range.Start.Column, blk.Range.End.Line, blk.Range.End.Column, blk.Message)
 		}
 	}

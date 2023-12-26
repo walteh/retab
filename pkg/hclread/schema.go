@@ -82,14 +82,6 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to evaluate %q", rr.KeyExpr)
 			}
-			// rz, errd := roll2(splt, rr.ValueExpr, ectx, file)
-			// if errd != nil {
-			// 	return nil, errd
-			// }
-			// fmt.Println(" ----- ", kvf.AsString(), splt, rz)
-			// if rz == nil {
-			// 	continue
-			// }
 
 			if kvf.AsString() == splt[0] {
 				if len(splt) == 1 {
@@ -100,17 +92,6 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body
 		}
 		return e.Range().Ptr(), nil
 	} else if x, ok := e.(*hclsyntax.TupleConsExpr); ok {
-		// wrk := make([]any, 0)
-		// for _, exp := range x.Exprs {
-		// 	r, err := roll2(splt, exp, ectx, file)
-		// 	if err != nil {
-		// 		return nil, terrors.Wrapf(err, "failed to evaluate %q", exp)
-		// 	}
-		// 	if r == nil {
-		// 		continue
-		// 	}
-		// 	// wrk = append(wrk, r)
-		// }
 
 		// pp.Println(" ----- ", splt, x.Exprs)
 		intr, err := strconv.Atoi(splt[0])
@@ -165,33 +146,7 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body
 			}
 		}
 
-		// attrs, err := file.JustAttributes()
-		// if err.HasErrors() {
-		// 	fmt.Println(attrs)
-		// 	return nil, terrors.Wrapf(err, "failed to get attributes")
-		// }
-
-		// var attr *hcl.Attribute
-
-		// for _, attrd := range attrs {
-		// 	if attrd.Name == name {
-		// 		attr = attrd
-		// 		break
-		// 	}
-		// }
-
-		// if attr == nil {
-		// 	return nil, errors.Errorf("failed to find block %q", name)
-		// }
-
-		// return roll2(splt, attr.Expr, ectx, file)
-
 	}
-
-	// evaled, errd := e.Value(ectx)
-	// if errd != nil {
-	// 	return nil, errors.Wrapf(errd, "failed to evaluate %q", e)
-	// }
 
 	return e.Range().Ptr(), nil
 

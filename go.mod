@@ -21,7 +21,6 @@ require (
 	github.com/zclconf/go-cty v1.14.1
 	go.uber.org/multierr v1.11.0
 	golang.org/x/mod v0.14.0
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -51,4 +50,5 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
