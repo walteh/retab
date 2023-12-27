@@ -2,9 +2,9 @@ package hclread
 
 import (
 	"context"
+	"embed"
 	"testing"
 
-	"github.com/k0kubun/pp/v3"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/walteh/yaml"
@@ -53,32 +53,32 @@ func TestValidHCLDecoding(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fle, err := aferoFS.Open("test.hcl")
+	fle, err := afero.ReadFile(aferoFS, "test.hcl")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defer fle.Close()
-
 	// load schema file
-	bd, ectx, got, errd := NewEvaluation(ctx, fle)
+	_, ectx, got, diags, errd := NewContextFromFile(ctx, fle, "test.hcl")
 	assert.NoError(t, errd)
+	assert.NoError(t, diags)
+
+	ran := false
 
 	for _, b := range got.Blocks {
+		if b.Type != "file" {
+			continue
+		}
 
-		blk, err := NewFileBlockEvaluation(ctx, ectx, b, bd.Body, false)
+		ran = true
+
+		blk, diags, err := NewFileBlockEvaluation(ctx, ectx, got)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if blk.Validation != nil {
-			for _, v := range blk.Validation {
-				for _, err := range v.Problems {
-					pp.Println(err)
-				}
-			}
-			t.Fatal(blk.Validation)
-		}
+		assert.NoError(t, err)
+		assert.NoError(t, diags)
 
 		out, erry := yaml.Marshal(blk.RawOutput)
 		if erry != nil {
@@ -87,5 +87,28 @@ func TestValidHCLDecoding(t *testing.T) {
 
 		t.Log(string(out))
 	}
+
+	assert.True(t, ran)
+
+}
+
+//go:embed testdata
+var testdata embed.FS
+
+func TestRetab3Schema(t *testing.T) {
+	ctx := context.Background()
+	// pp.SetDefaultMaxDepth(5)
+
+	data, err := testdata.ReadFile("testdata/retab3.retab")
+	assert.NoError(t, err)
+
+	// load schema file
+	_, ectx, got, diags, errd := NewContextFromFile(ctx, data, "test.hcl")
+	assert.NoError(t, errd)
+	assert.NoError(t, diags)
+
+	_, diags, err = NewFileBlockEvaluation(ctx, ectx, got)
+	assert.NoError(t, err)
+	assert.NoError(t, diags)
 
 }

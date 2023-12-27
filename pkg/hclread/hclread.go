@@ -9,61 +9,62 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-faster/errors"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/afero"
+	"github.com/walteh/terrors"
 	"github.com/walteh/yaml"
 )
 
-func Process(ctx context.Context, fs afero.Fs, file string) (*FullEvaluation, error) {
-	opn, err := fs.Open(file)
+func Process(ctx context.Context, fs afero.Fs, file string) (*FileBlockEvaluation, hcl.Diagnostics, error) {
+	opn, err := afero.ReadFile(fs, file)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	_, ectx, blks, err := NewEvaluation(ctx, opn)
-	if err != nil {
-		return nil, err
+	_, ectx, blks, diags, err := NewContextFromFile(ctx, opn, file)
+	if err != nil || diags.HasErrors() {
+		return nil, diags, err
 	}
 
-	eval, err := NewFullEvaluation(ctx, ectx, blks, true, file)
-	if err != nil {
-		return nil, err
+	eval, diags, err := NewFileBlockEvaluation(ctx, ectx, blks)
+	if err != nil || diags.HasErrors() {
+		return nil, diags, err
 	}
 
-	return eval, nil
+	return eval, diags, nil
 }
 
-func (me *FullEvaluation) WriteToFile(ctx context.Context, fs afero.Fs) error {
+func (me *FileBlockEvaluation) WriteToFile(ctx context.Context, fs afero.Fs) error {
 	out, erry := me.WriteToReader(ctx)
 	if erry != nil {
-		return errors.Wrapf(erry, "failed to encode block %q", me.File.Name)
+		return terrors.Wrapf(erry, "failed to encode block %q", me.Name)
 	}
 
-	if err := fs.MkdirAll(me.File.Dir, 0755); err != nil {
-		return errors.Wrapf(err, "failed to create directory %q", me.File.Dir)
+	if err := fs.MkdirAll(me.Dir, 0755); err != nil {
+		return terrors.Wrapf(err, "failed to create directory %q", me.Dir)
 	}
 
-	if err := afero.WriteReader(fs, filepath.Join(me.File.Dir, me.File.Name), out); err != nil {
-		return errors.Wrapf(err, "failed to write file %q", me.File.Name)
+	if err := afero.WriteReader(fs, filepath.Join(me.Dir, me.Name), out); err != nil {
+		return terrors.Wrapf(err, "failed to write file %q", me.Name)
 	}
 
 	return nil
 }
 
-func (me *FullEvaluation) WriteToReader(ctx context.Context) (io.Reader, error) {
+func (me *FileBlockEvaluation) WriteToReader(ctx context.Context) (io.Reader, error) {
 	out, erry := me.Encode()
 	if erry != nil {
-		return nil, errors.Wrapf(erry, "failed to encode block %q", me.File.Name)
+		return nil, terrors.Wrapf(erry, "failed to encode block %q", me.Name)
 	}
 
 	return bytes.NewReader(out), nil
 }
 
-func (me *FullEvaluation) Encode() ([]byte, error) {
+func (me *FileBlockEvaluation) Encode() ([]byte, error) {
 
-	arr := strings.Split(me.File.Name, ".")
+	arr := strings.Split(me.Name, ".")
 	if len(arr) < 2 {
-		return nil, errors.Errorf("invalid file name [%s] - missing extension", me.File.Name)
+		return nil, terrors.Errorf("invalid file name [%s] - missing extension", me.Name)
 	}
 
 	// content, err := me.File.OrderedContent(ctx, ectx)
@@ -80,16 +81,16 @@ func (me *FullEvaluation) Encode() ([]byte, error) {
 
 	switch arr[len(arr)-1] {
 	case "jsonc":
-		return json.MarshalIndent(me.File.OrderedOutput, "", "\t")
+		return json.MarshalIndent(me.OrderedOutput, "", "\t")
 	case "json":
-		return json.MarshalIndent(me.File.OrderedOutput, "", "\t")
+		return json.MarshalIndent(me.OrderedOutput, "", "\t")
 	case "yaml", "yml":
 		buf := bytes.NewBuffer(nil)
 		enc := yaml.NewEncoder(buf)
 		// enc.SetIndent(4)
 		defer enc.Close()
 
-		err := enc.Encode(me.File.OrderedOutput)
+		err := enc.Encode(me.OrderedOutput)
 		if err != nil {
 			return nil, err
 		}
@@ -99,41 +100,6 @@ func (me *FullEvaluation) Encode() ([]byte, error) {
 		return []byte(header + strWithTabsRemovedFromHeredoc), nil
 
 	default:
-		return nil, errors.Errorf("unknown file extension [%s] in %s", arr[len(arr)-1], me.File.Name)
+		return nil, terrors.Errorf("unknown file extension [%s] in %s", arr[len(arr)-1], me.Name)
 	}
 }
-
-type content struct {
-	Content map[string]any
-	Order   []string
-	root    string
-}
-
-// func (me *content) MarshalYAML() (interface{}, error) {
-
-// 	ordered := make(map[string]any)
-// 	unordered := make(map[string]any)
-
-// 	for _, v := range me.Order {
-// 		if !strings.HasPrefix(v, me.root) {
-// 			unordered[v] = me.Content[v]
-// 			continue
-// 		}
-// 		ordered[v] = me.Content[v]
-// 	}
-
-// 	buf := bytes.NewBuffer(nil)
-
-// 	for _, v := range me.Order {
-// 		resp, err := yaml.Marshal(ordered[v])
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		buf.WriteString(v + ": ")
-// 		buf.Write(resp)
-// 		buf.WriteString("\n")
-// 	}
-
-// 	return json.Marshal(me.value)
-// }

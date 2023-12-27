@@ -7,9 +7,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/go-faster/errors"
 	"github.com/walteh/retab/pkg/configuration"
 	"github.com/walteh/retab/pkg/format"
+	"github.com/walteh/terrors"
 )
 
 type ExternalFormatterConfig struct {
@@ -48,11 +48,11 @@ func (me *externalStdinFormatter) Format(ctx context.Context, cfg configuration.
 
 	output, err := applyConfiguration(ctx, me.internal, cfg, read)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to apply configuration")
+		return nil, terrors.Wrap(err, "failed to apply configuration")
 	}
 
 	if rerr != nil {
-		return nil, errors.Wrap(rerr, "failed to format")
+		return nil, terrors.Wrap(rerr, "failed to format")
 	}
 
 	return output, nil
@@ -106,12 +106,12 @@ func applyConfiguration(_ context.Context, ext ExternalFormatter, cfg configurat
 		// Write the modified line to the output buffer.
 		_, err := output.WriteString(line + "\n")
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to write to output buffer")
+			return nil, terrors.Wrap(err, "failed to write to output buffer")
 		}
 	}
 
 	// if !someOutput {
-	// 	return nil, errors.Errorf("no output from external formatter")
+	// 	return nil,terrors.Errorf("no output from external formatter")
 	// }
 
 	if err := scanner.Err(); err != nil {
@@ -120,7 +120,7 @@ func applyConfiguration(_ context.Context, ext ExternalFormatter, cfg configurat
 		if outputStr != "" {
 			failString = failString + ": " + outputStr
 		}
-		return nil, errors.Wrap(err, failString)
+		return nil, terrors.Wrap(err, failString)
 	}
 
 	return &output, nil

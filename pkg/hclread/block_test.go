@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/k0kubun/pp/v3"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 )
@@ -45,10 +45,11 @@ func TestParseBlocksFromFile(t *testing.T) {
 		str string
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    *FileBlockEvaluation
-		wantErr error
+		name         string
+		args         args
+		want         *FileBlockEvaluation
+		contextDiags hcl.Diagnostics
+		schemaDiags  hcl.Diagnostics
 	}{
 		{
 			name: "valid hcl",
@@ -85,7 +86,8 @@ func TestParseBlocksFromFile(t *testing.T) {
 					},
 				},
 			},
-			wantErr: nil,
+			contextDiags: hcl.Diagnostics{},
+			schemaDiags:  hcl.Diagnostics{},
 		},
 	}
 	for _, tt := range tests {
@@ -100,36 +102,26 @@ func TestParseBlocksFromFile(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			file, err := aferoFS.Open("test.hcl")
+			file, err := afero.ReadFile(aferoFS, "test.hcl")
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			f, ectx, got, err := NewEvaluation(ctx, file)
-			if tt.wantErr == nil {
-				assert.NoError(t, err)
-			} else {
-				assert.Error(t, err)
+			_, ectx, got, diags, err := NewContextFromFile(ctx, file, "test.hcl")
+			assert.NoError(t, err)
+			assert.ElementsMatch(t, tt.contextDiags, diags)
+			if len(diags) > 0 {
+				return
 			}
 
-			var resp *FileBlockEvaluation
-
-			for _, block := range got.Blocks {
-				if block.Type != "file" {
-					continue
-				}
-				be, err := NewFileBlockEvaluation(ctx, ectx, block, f.Body, false)
-				if tt.wantErr == nil {
-					assert.NoError(t, err)
-				} else {
-					assert.Error(t, err)
-				}
-
-				resp = be
-				break
+			be, diags, err := NewFileBlockEvaluation(ctx, ectx, got)
+			assert.NoError(t, err)
+			assert.ElementsMatch(t, tt.schemaDiags, diags)
+			if len(diags) > 0 {
+				return
 			}
 
-			assert.Equal(t, tt.want.RawOutput, resp.RawOutput)
+			assert.Equal(t, tt.want.RawOutput, be.RawOutput)
 		})
 	}
 }
@@ -183,10 +175,11 @@ func TestParseBlocksWithReference(t *testing.T) {
 		str string
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    *FileBlockEvaluation
-		wantErr bool
+		name         string
+		args         args
+		want         *FileBlockEvaluation
+		contextDiags hcl.Diagnostics
+		schemaDiags  hcl.Diagnostics
 	}{
 		{
 			name: "valid hcl",
@@ -223,14 +216,16 @@ func TestParseBlocksWithReference(t *testing.T) {
 					},
 				},
 			},
-			wantErr: false,
+			contextDiags: hcl.Diagnostics{},
+			schemaDiags:  hcl.Diagnostics{},
 		},
 		{
 			name: "valid hcl with error",
 			args: args{
 				str: validHCLWithError,
 			},
-			wantErr: true,
+			contextDiags: hcl.Diagnostics{},
+			schemaDiags:  hcl.Diagnostics{},
 		},
 	}
 	for _, tt := range tests {
@@ -245,27 +240,26 @@ func TestParseBlocksWithReference(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			file, err := aferoFS.Open("test.hcl")
+			file, err := afero.ReadFile(aferoFS, "test.hcl")
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			_, ectx, got, err := NewEvaluation(ctx, file)
-			if err != nil {
-				t.Fatal(err)
-			}
-			be, err := NewFullEvaluation(ctx, ectx, got, false, "somefile")
-			if err != nil {
-				t.Fatal(err)
+			_, ectx, got, diags, err := NewContextFromFile(ctx, file, "test.hcl")
+			assert.NoError(t, err)
+			assert.ElementsMatch(t, tt.contextDiags, diags)
+			if len(diags) > 0 {
+				return
 			}
 
-			pp.SetDefaultMaxDepth(20)
-			pp.Println(be.File.Validation)
-			if tt.wantErr {
-				assert.True(t, len(be.File.Validation) > 0)
-			} else {
-				assert.Equal(t, tt.want.RawOutput, be.File.RawOutput)
+			be, diags, err := NewFileBlockEvaluation(ctx, ectx, got)
+			assert.NoError(t, err)
+			assert.ElementsMatch(t, tt.schemaDiags, diags)
+			if len(diags) > 0 {
+				return
 			}
+
+			assert.Equal(t, tt.want.RawOutput, be.RawOutput)
 
 			// assert.Empty(t, resp)
 

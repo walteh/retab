@@ -5,14 +5,13 @@ package fmt
 
 import (
 	"context"
-	"strings"
+	"io"
 
 	"github.com/spf13/afero"
+	"github.com/walteh/retab/cmd/root/resolvers"
 	"github.com/walteh/retab/pkg/configuration"
-	"github.com/walteh/retab/pkg/externalwrite"
 	"github.com/walteh/retab/pkg/format"
 	"github.com/walteh/retab/pkg/hclwrite"
-	"github.com/walteh/retab/pkg/protowrite"
 	"github.com/walteh/snake"
 )
 
@@ -21,9 +20,7 @@ func Runner() snake.Runner {
 }
 
 type Handler struct {
-	CustomCommand      string   `default:"" usage:"use custom formating command"`
-	TargetRestrictions []string `usage:"file patterns to match - for example, *.tfvars"`
-	CustomCommandIdent int      `default:"2" usage:"the number of spaces the custom formatter uses for indentation - for example, for terraform format you would put 2"`
+	All bool `usage:"format all supported files, not just .retab files - .hcl, .proto, .tf, .tfvars, .dart"`
 }
 
 func (me *Handler) Name() string {
@@ -31,33 +28,24 @@ func (me *Handler) Name() string {
 }
 
 func (me *Handler) Description() string {
-	return "format files with the hcl golang library, but with tabs"
+	return "format .retab files with the hcl golang library, but with tabs - also format other files if --all is specified"
 }
 
-func (me *Handler) Run(ctx context.Context, fs afero.Fs, fle afero.File, ecfg configuration.Provider, out snake.Stdout) error {
-	fmtrs := []format.Provider{}
+func (me *Handler) Run(ctx context.Context, fls afero.Fs, fle afero.File, ecfg configuration.Provider, out snake.Stdout) error {
 
-	if me.CustomCommand != "" {
-		indentstr := ""
-		for i := 0; i < me.CustomCommandIdent; i++ {
-			indentstr += " "
-		}
-		fmtrs = append(fmtrs, externalwrite.NewExecFormatter(&externalwrite.BasicExternalFormatterOpts{
-			Indent:  indentstr,
-			Targets: me.TargetRestrictions,
-		}, strings.Split(me.CustomCommand, " ")...))
-	} else {
-		fmtrs = append(fmtrs, hclwrite.NewFormatter())
-		fmtrs = append(fmtrs, protowrite.NewFormatter())
-		fmtrs = append(fmtrs, externalwrite.NewDartFormatter("dart"))
-		fmtrs = append(fmtrs, externalwrite.NewTerraformFormatter("terraform"))
+	fles, err := resolvers.GetFileOrGlobDir(ctx, fls, fle, ".retab/*.retab")
+	if err != nil {
+		return err
 	}
 
-	for _, fmtr := range fmtrs {
-		err := format.Format(ctx, fmtr, ecfg, fs, fle)
-		if err != nil {
-			return err
-		}
+	fmtr := hclwrite.NewFormatter()
+
+	err = resolvers.ForAllFilesAtSameTime(ctx, fls, fles, func(ctx context.Context, fle afero.File) (io.Reader, error) {
+		return format.Format(ctx, fmtr, ecfg, fle.Name(), fle)
+	})
+
+	if err != nil {
+		return err
 	}
 
 	return nil

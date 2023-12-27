@@ -2,6 +2,7 @@ package hclread
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,50 +17,77 @@ import (
 // load json or yaml schema file
 
 type ValidationError struct {
-	*jsonschema.ValidationError
-	Location string
+	// *jsonschema.ValidationError
+	// Location string
 	Problems []string
 	Range    *hcl.Range
 }
 
-func LoadValidationErrors(ctx context.Context, cnt hclsyntax.Expression, ectx *hcl.EvalContext, errv error, bdy hcl.Body) ([]*ValidationError, error) {
+func DiagnosticToValidationError(ctx context.Context, diags hcl.Diagnostics) ([]*ValidationError, error) {
+
+	vers := make([]*ValidationError, 0)
+
+	for _, diag := range diags {
+		vers = append(vers, &ValidationError{
+			// Location: diag.Subject,
+			Problems: []string{diag.Detail},
+			Range:    diag.Subject,
+		})
+	}
+	return vers, nil
+
+}
+
+func LoadValidationErrors(ctx context.Context, cnt hclsyntax.Expression, ectx *hcl.EvalContext, errv error, bdy hcl.Body) (hcl.Diagnostics, error) {
 
 	berr := errv
 	for errors.Unwrap(berr) != nil {
 		berr = errors.Unwrap(berr)
 	}
 
-	vers := make([]*ValidationError, 0)
+	fmt.Println("HERE", berr)
+
+	diags := hcl.Diagnostics{}
 
 	if verr, ok := terrors.Into[*jsonschema.ValidationError](berr); ok {
 
-		for _, cause := range verr.Causes {
-			if ve, err := LoadValidationErrors(ctx, cnt, ectx, cause, bdy); err != nil {
-				return nil, err
-			} else {
-				// basically, if one of our children has an error,
-				vers = append(vers, ve...)
+		if len(verr.Causes) > 0 {
+			for _, cause := range verr.Causes {
+				if ve, err := LoadValidationErrors(ctx, cnt, ectx, cause, bdy); err != nil {
+					return nil, err
+				} else {
+					// basically, if one of our children has an error,
+					for _, v := range ve {
+						diags = append(diags, v)
+					}
+				}
 			}
+		} else {
+			rng, diagd := InstanceLocationStringToHCLRange(verr.InstanceLocation, verr.Message, cnt, ectx, bdy)
+			if diagd.HasErrors() {
+				return nil, diagd
+			}
+
+			diag := &hcl.Diagnostic{
+				Severity:    hcl.DiagError,
+				Summary:     verr.Message,
+				Detail:      verr.Message,
+				Subject:     rng.Range().Ptr(),
+				Expression:  rng,
+				EvalContext: ectx,
+			}
+
+			diags = append(diags, diag)
 		}
 
-		rng, err := InstanceLocationStringToHCLRange(verr.InstanceLocation, verr.Message, cnt, ectx, bdy)
-		if err != nil {
-			return nil, err
-		}
-
-		validationErr := &ValidationError{
-			ValidationError: verr,
-			Range:           rng,
-		}
-
-		return append(vers, validationErr), nil
+		// return append(vers, validationErr), nil
 	}
 
-	return vers, nil
+	return diags, nil
 
 }
 
-func InstanceLocationStringToHCLRange(instLoc string, msg string, cnt hclsyntax.Expression, ectx *hcl.EvalContext, file hcl.Body) (*hcl.Range, error) {
+func InstanceLocationStringToHCLRange(instLoc string, msg string, cnt hclsyntax.Expression, ectx *hcl.EvalContext, file hcl.Body) (hcl.Expression, hcl.Diagnostics) {
 	splt := strings.Split(strings.TrimPrefix(instLoc, "/"), "/")
 
 	cmp := regexp.MustCompile("additionalProperties '(.*)' not allowed")
@@ -71,35 +99,38 @@ func InstanceLocationStringToHCLRange(instLoc string, msg string, cnt hclsyntax.
 	return roll2(splt, cnt, ectx, file)
 }
 
-func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body) (*hcl.Range, error) {
+func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body) (hcl.Expression, hcl.Diagnostics) {
+	// pp.Println(splt)
 	if len(splt) == 0 {
-		return e.Range().Ptr(), nil
+		return e, nil
 	}
 
 	if x, ok := e.(*hclsyntax.ObjectConsExpr); ok {
 		for _, rr := range x.Items {
-			kvf, err := rr.KeyExpr.Value(ectx)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to evaluate %q", rr.KeyExpr)
+			kvf, diags := rr.KeyExpr.Value(ectx)
+			if diags.HasErrors() {
+				return nil, diags
 			}
 
 			if kvf.AsString() == splt[0] {
 				if len(splt) == 1 {
-					return rr.KeyExpr.Range().Ptr(), nil
+					return rr.KeyExpr, nil
 				}
 				return roll2(splt[1:], rr.ValueExpr, ectx, file)
 			}
 		}
-		return e.Range().Ptr(), nil
+		return e, nil
 	} else if x, ok := e.(*hclsyntax.TupleConsExpr); ok {
 
-		// pp.Println(" ----- ", splt, x.Exprs)
 		intr, err := strconv.Atoi(splt[0])
 		if err != nil {
 			for _, exp := range x.Exprs {
-				ex, err := roll2(splt, exp, ectx, file)
+				ex, diags := roll2(splt, exp, ectx, file)
+				if diags.HasErrors() {
+					// todo maybe not
+					return nil, diags
+				}
 				if err == nil {
-					// return nil, terrors.Wrapf(err, "failed to evaluate %q", exp)
 					return ex, nil
 				}
 
@@ -112,6 +143,24 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body
 		// return wrk, nil
 	} else if x, ok := e.(*hclsyntax.ScopeTraversalExpr); ok {
 
+		// hclsyntax.VisitAll(x, func(node hclsyntax.Node) hcl.Diagnostics {
+		// 	pp.Println("HERE", node, node.Range())
+		// 	return nil
+		// })
+
+		// // pp.Println(x.Traversal)
+		// ttrav, diag := hcl.AbsTraversalForExpr(x)
+		// if diag.HasErrors() {
+		// 	return nil, hcl.Diagnostics{
+		// 		&hcl.Diagnostic{
+		// 			Severity: hcl.DiagError,
+		// 			Summary:  "Invalid expression",
+		// 			Detail:   "unable to find instance loc",
+		// 			Subject:  x.Range().Ptr(),
+		// 		},
+		// 	}
+		// }
+
 		name := x.Traversal.RootName()
 
 		labs := []string{}
@@ -121,6 +170,8 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body
 				labs = append(labs, z.Name)
 			}
 		}
+
+		// pp.Println("foundg", labs, splt)
 
 		if bdy, ok := file.(*hclsyntax.Body); ok {
 		HERE:
@@ -134,10 +185,15 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body
 							break HERE
 						}
 					}
+					splt = append(labs[len(blk.Labels):], splt...)
+					// pp.Println("found block", blk.Type, blk.Labels, labs, splt)
 					for zz, k := range blk.Body.Attributes {
 						if zz == splt[0] {
+							// pp.Println("hello", k.Expr.Range(), k.Range())
 							if len(splt) == 1 {
-								return k.Range().Ptr(), nil
+								// pp.Println(k.Expr.Range())
+								// pp.Println(k.Range())
+								return k.Expr, nil
 							}
 							return roll2(splt[1:], k.Expr, ectx, blk.Body)
 						}
@@ -148,8 +204,104 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body
 
 	}
 
-	return e.Range().Ptr(), nil
+	return e, nil
 
+}
+
+// func (me *FileBlockEvaluation) GetJSONSchema(ctx context.Context) (*jsonschema.Schema, error) {
+// 	s, err := schemas.LoadJSONSchema(ctx, me.Schema)
+// 	if err != nil {
+// 		return s, terrors.Wrap(err, "problem getting schema").Event(func(e *zerolog.Event) *zerolog.Event {
+// 			return e.Int("schema_size", len(me.Schema))
+// 		})
+// 	}
+
+// 	return s, nil
+// }
+
+// func (me *FileBlockEvaluation) GetProperties(ctx context.Context) (map[string]*jsonschema.Schema, error) {
+// 	schema, err := me.GetJSONSchema(ctx)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	m := make(map[string]*jsonschema.Schema)
+
+// 	getAllDefs("root", schema, m)
+
+// 	return m, nil
+// }
+
+// func (me *FileBlockEvaluation) ValidateJSONSchemaProperty(ctx context.Context, prop string) error {
+// 	if prop == MetaKey {
+// 		return nil
+// 	}
+
+// 	schema, err := me.GetProperties(ctx)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	if schema[prop] == nil {
+// 		return terrors.Errorf("property %q not found", prop)
+// 	}
+
+// 	return schema[prop].Validate(me.RawOutput)
+
+// }
+
+func getAllDefs(parent string, schema *jsonschema.Schema, defs map[string]*jsonschema.Schema) {
+	////////////////////////////////////////
+	// not sure if this is needed or not
+	if defs[parent] != nil {
+		return
+	}
+	////////////////////////////////////////
+
+	if schema == nil {
+		return
+	}
+
+	for k, v := range schema.DependentSchemas {
+		if ok := defs[k]; ok != nil {
+			continue
+		}
+		defs[k] = v
+		getAllDefs(k, v, defs)
+	}
+
+	for k, v := range schema.Properties {
+		if ok := defs[k]; ok != nil {
+			continue
+		}
+		defs[k] = v
+		getAllDefs(k, v, defs)
+	}
+
+	for _, v := range schema.AllOf {
+		getAllDefs(parent, v, defs)
+	}
+
+	for _, v := range schema.AnyOf {
+		getAllDefs(parent, v, defs)
+	}
+
+	for _, v := range schema.OneOf {
+		getAllDefs(parent, v, defs)
+	}
+
+	for _, v := range schema.PatternProperties {
+		getAllDefs(parent, v, defs)
+	}
+
+	switch v := schema.Items.(type) {
+	case *jsonschema.Schema:
+		getAllDefs(parent, v, defs)
+	case []*jsonschema.Schema:
+		for _, v := range v {
+			getAllDefs(parent, v, defs)
+		}
+	}
 }
 
 // func InstanceLocationToHCLRange(splt []string, cnt hcl.Expression, ectx *hcl.EvalContext) (*hcl.Range, error) {
