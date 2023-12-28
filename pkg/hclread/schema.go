@@ -2,7 +2,6 @@ package hclread
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,36 +15,12 @@ import (
 
 // load json or yaml schema file
 
-type ValidationError struct {
-	// *jsonschema.ValidationError
-	// Location string
-	Problems []string
-	Range    *hcl.Range
-}
-
-func DiagnosticToValidationError(ctx context.Context, diags hcl.Diagnostics) ([]*ValidationError, error) {
-
-	vers := make([]*ValidationError, 0)
-
-	for _, diag := range diags {
-		vers = append(vers, &ValidationError{
-			// Location: diag.Subject,
-			Problems: []string{diag.Detail},
-			Range:    diag.Subject,
-		})
-	}
-	return vers, nil
-
-}
-
 func LoadValidationErrors(ctx context.Context, cnt hclsyntax.Expression, ectx *hcl.EvalContext, errv error, bdy hcl.Body) (hcl.Diagnostics, error) {
 
 	berr := errv
 	for errors.Unwrap(berr) != nil {
 		berr = errors.Unwrap(berr)
 	}
-
-	fmt.Println("HERE", berr)
 
 	diags := hcl.Diagnostics{}
 
@@ -71,7 +46,7 @@ func LoadValidationErrors(ctx context.Context, cnt hclsyntax.Expression, ectx *h
 			diag := &hcl.Diagnostic{
 				Severity:    hcl.DiagError,
 				Summary:     verr.Message,
-				Detail:      verr.Message,
+				Detail:      verr.DetailedOutput().KeywordLocation,
 				Subject:     rng.Range().Ptr(),
 				Expression:  rng,
 				EvalContext: ectx,
@@ -84,7 +59,6 @@ func LoadValidationErrors(ctx context.Context, cnt hclsyntax.Expression, ectx *h
 	}
 
 	return diags, nil
-
 }
 
 func InstanceLocationStringToHCLRange(instLoc string, msg string, cnt hclsyntax.Expression, ectx *hcl.EvalContext, file hcl.Body) (hcl.Expression, hcl.Diagnostics) {
@@ -143,24 +117,6 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body
 		// return wrk, nil
 	} else if x, ok := e.(*hclsyntax.ScopeTraversalExpr); ok {
 
-		// hclsyntax.VisitAll(x, func(node hclsyntax.Node) hcl.Diagnostics {
-		// 	pp.Println("HERE", node, node.Range())
-		// 	return nil
-		// })
-
-		// // pp.Println(x.Traversal)
-		// ttrav, diag := hcl.AbsTraversalForExpr(x)
-		// if diag.HasErrors() {
-		// 	return nil, hcl.Diagnostics{
-		// 		&hcl.Diagnostic{
-		// 			Severity: hcl.DiagError,
-		// 			Summary:  "Invalid expression",
-		// 			Detail:   "unable to find instance loc",
-		// 			Subject:  x.Range().Ptr(),
-		// 		},
-		// 	}
-		// }
-
 		name := x.Traversal.RootName()
 
 		labs := []string{}
@@ -205,7 +161,6 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body
 	}
 
 	return e, nil
-
 }
 
 // func (me *FileBlockEvaluation) GetJSONSchema(ctx context.Context) (*jsonschema.Schema, error) {

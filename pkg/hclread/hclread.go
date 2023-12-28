@@ -40,11 +40,11 @@ func (me *FileBlockEvaluation) WriteToFile(ctx context.Context, fs afero.Fs) err
 		return terrors.Wrapf(erry, "failed to encode block %q", me.Name)
 	}
 
-	if err := fs.MkdirAll(me.Dir, 0755); err != nil {
-		return terrors.Wrapf(err, "failed to create directory %q", me.Dir)
+	if err := fs.MkdirAll(filepath.Dir(me.Path), 0755); err != nil {
+		return terrors.Wrapf(err, "failed to create directory %q", me.Path)
 	}
 
-	if err := afero.WriteReader(fs, filepath.Join(me.Dir, me.Name), out); err != nil {
+	if err := afero.WriteReader(fs, me.Path, out); err != nil {
 		return terrors.Wrapf(err, "failed to write file %q", me.Name)
 	}
 
@@ -62,7 +62,7 @@ func (me *FileBlockEvaluation) WriteToReader(ctx context.Context) (io.Reader, er
 
 func (me *FileBlockEvaluation) Encode() ([]byte, error) {
 
-	arr := strings.Split(me.Name, ".")
+	arr := strings.Split(me.Path, ".")
 	if len(arr) < 2 {
 		return nil, terrors.Errorf("invalid file name [%s] - missing extension", me.Name)
 	}

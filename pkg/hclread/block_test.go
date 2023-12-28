@@ -59,7 +59,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 			want: &FileBlockEvaluation{
 				Name:   "default.yaml",
 				Schema: "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json",
-				Dir:    "./.github/workflows",
+				Path:   "./.github/workflows",
 				RawOutput: map[string]interface{}{
 					"name": "test",
 					"on": map[string]interface{}{
@@ -90,6 +90,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 			schemaDiags:  hcl.Diagnostics{},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
@@ -189,7 +190,7 @@ func TestParseBlocksWithReference(t *testing.T) {
 			want: &FileBlockEvaluation{
 				Name:   "default.yaml",
 				Schema: "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json",
-				Dir:    "./.github/workflows",
+				Path:   "./.github/workflows",
 				RawOutput: map[string]interface{}{
 					"name": "test",
 					"on": map[string]interface{}{

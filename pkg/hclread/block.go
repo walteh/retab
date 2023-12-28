@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -24,7 +25,7 @@ type AnyBlockEvaluation struct {
 type FileBlockEvaluation struct {
 	Name          string
 	Schema        string
-	Dir           string
+	Path          string
 	OrderedOutput yaml.MapSlice
 	RawOutput     any
 	Source        string
@@ -37,7 +38,7 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hc
 
 	for _, block := range file.Blocks {
 		switch block.Type {
-		case "file":
+		case "gen":
 			fblock = block
 			break
 		default:
@@ -53,8 +54,8 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hc
 		return nil, hcl.Diagnostics{
 			{
 				Severity: hcl.DiagError,
-				Summary:  "missing file block",
-				Detail:   "a file block must be present",
+				Summary:  "missing gen block",
+				Detail:   "at least one gen block must be present",
 				Subject:  file.Range().Ptr(),
 			},
 		}, nil
@@ -66,7 +67,7 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hc
 				{
 					Severity: hcl.DiagError,
 					Summary:  "missing block label",
-					Detail:   "a file block must have a label",
+					Detail:   "a gen block must have a label",
 					Subject:  &fblock.TypeRange,
 				},
 			}, nil
@@ -75,7 +76,7 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hc
 			{
 				Severity: hcl.DiagError,
 				Summary:  "too many block labels",
-				Detail:   "a file block can only have one label",
+				Detail:   "a gen block can only have one label",
 				Subject:  &fblock.TypeRange,
 			},
 		}, nil
@@ -97,8 +98,14 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hc
 		}
 
 		switch attr.Name {
-		case "dir":
-			blk.Dir = val.AsString()
+		case "path":
+			blk.Path = val.AsString()
+
+			// we want it to work whether or not the user is poining to the current directory, or the retab folder
+			blk.Path = strings.TrimPrefix(blk.Path, "./")
+			blk.Path = strings.TrimPrefix(blk.Path, "/")
+			blk.Path = strings.TrimPrefix(blk.Path, "../")
+			blk.Path = strings.TrimPrefix(blk.Path, "/")
 		case "schema":
 			blk.Schema = val.AsString()
 		case "data":
@@ -164,7 +171,6 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hc
 	}
 
 	return blk, diags, nil
-
 }
 
 func roll(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, hcl.Diagnostics, error) {

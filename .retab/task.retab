@@ -1,17 +1,21 @@
-file "Taskfile.yml" {
-	schema = "https://taskfile.dev/schema.json"
-	dir    = "."
-	data = {
-		"version" = "3"
-		"tasks" = {
 
-			mockery-bin = arg.sup.mockery-bin
+gen taskfile {
+	schema = "https://taskfile.dev/schema.json"
+	path   = "../Taskfile.yml"
+	data = {
+		version = 3
+		tasks = {
+			mockery-bin = arg.sup.mockery-bin.sources
+			// abc = {
+			// 	abc = "def"
+			// }
+
 			golangci-lint-bin = {
 				generates = ["bin/golangci-lint"]
 				dir       = "tools"
 				sources   = ["**/*", { exclude = "bin/**/*" }]
 				cmds = [
-					"GOWORK=off go build -mod=vendor -o ./bin/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint"
+					base64encode("GOWORK=off go build -mod=vendor -o ./bin/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint")
 				]
 			}
 
@@ -23,7 +27,6 @@ file "Taskfile.yml" {
 					"GOWORK=off go build -mod=vendor -o ./bin/gotestsum gotest.tools/gotestsum"
 				]
 			}
-
 			mockery-gen = {
 				deps      = ["mockery-bin"]
 				generates = ["gen/mockery/**/*"]
@@ -45,11 +48,6 @@ file "Taskfile.yml" {
 					"GOWORK=off ./tools/bin/golangci-lint run --config ./.golangci.yml"
 				]
 			}
-
-			#
-			# TESTS
-			#
-
 			test-ci = {
 				deps = ["gotestsum-bin"]
 				sources = [
@@ -77,7 +75,7 @@ args hello {
 
 arg sup {
 	mockery-bin = {
-		generate = ["bin/mockery"]
+		generates = ["bin/mockery"]
 		dir       = "tools"
 		sources   = ["**/*", { exclude = "bin/**/*" }]
 		cmds = [

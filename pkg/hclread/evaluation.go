@@ -20,25 +20,6 @@ func ExtractUserFuncs(ctx context.Context, ibdy hcl.Body, parent *hcl.EvalContex
 		return nil, diag
 	}
 
-	// // always works
-	// bdy := rbdy.(*hclsyntax.Body)
-
-	// kid := parent.NewChild()
-
-	// for k, v := range userfuncs {
-	// 	kid.Functions[k] = v
-	// }
-
-	// blks := hclsyntax.Blocks{}
-	// for _, v := range bdy.Blocks {
-	// 	if v.Type == "func" {
-	// 		continue
-	// 	}
-	// 	blks = append(blks, v)
-	// }
-
-	// bdy.Blocks = blks
-
 	return userfuncs, nil
 }
 
@@ -111,7 +92,7 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parent *hcl.Eval
 		newRetrys := []*hclsyntax.Block{}
 
 		for _, v := range retrys {
-			if v.Type == "file" {
+			if v.Type == "gen" {
 				continue
 			}
 
@@ -199,6 +180,7 @@ func NewContextFromFile(ctx context.Context, fle []byte, name string) (*hcl.File
 		Variables: map[string]cty.Value{},
 	}
 
+	// will always work
 	bdy := hcldata.Body.(*hclsyntax.Body)
 
 	// process funcs
@@ -224,7 +206,6 @@ func NewContextFromFile(ctx context.Context, fle []byte, name string) (*hcl.File
 	}
 
 	return hcldata, ectx, bdy, nil, nil
-
 }
 
 type WorkingContext struct {

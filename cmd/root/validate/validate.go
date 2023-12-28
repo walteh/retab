@@ -39,13 +39,14 @@ func (me *Handler) Run(ctx context.Context, fls afero.Fs, fle afero.File, stdout
 		}
 
 		for _, blk := range diags {
-			fmt.Fprintf(stdout, "start[line=%d,col=%d] end[line=%d,col=%d] message[%s]\n",
-				blk.Expression.Range().Start.Line,
-				blk.Expression.Range().Start.Column,
-				blk.Expression.Range().End.Line,
-				blk.Expression.Range().End.Column,
-				blk.Detail,
-			)
+			fmt.Fprintf(stdout, "%+v\n", blk)
+			// fmt.Fprintf(stdout, "start[line=%d,col=%d] end[line=%d,col=%d] message[%s]\n",
+			// 	blk.Expression.Range().Start.Line,
+			// 	blk.Expression.Range().Start.Column,
+			// 	blk.Expression.Range().End.Line,
+			// 	blk.Expression.Range().End.Column,
+			// 	blk.Detail,
+			// )
 		}
 	}
 
