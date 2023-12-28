@@ -5,11 +5,7 @@ gen taskfile {
 	data = {
 		version = 3
 		tasks = {
-			mockery-bin = arg.sup.mockery-bin.sources
-			// abc = {
-			// 	abc = "def"
-			// }
-
+			mockery-bin = arg.sup.mockery-bin
 			golangci-lint-bin = {
 				generates = ["bin/golangci-lint"]
 				dir       = "tools"
