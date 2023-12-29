@@ -18,8 +18,6 @@ file "default.yaml" {
 	}
 }
 
-
-
 action "jobs" {
 	build = {
 		runs-on = "ubuntu-latest"

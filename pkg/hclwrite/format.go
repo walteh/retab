@@ -134,7 +134,7 @@ func Format(ctx context.Context, cfg configuration.Configuration, fs afero.Fs, f
 	return afero.WriteReader(fs, fle, newContents)
 }
 
-// checkErrors takes in the contents of a hcl file and looks for syntax errors.
+// checkErrors takes in the contents of a hcl file and looks for syntaxterrors.
 func checkErrors(ctx context.Context, contents []byte, fle string) error {
 	parser := hclparse.NewParser()
 	_, diags := parser.ParseHCL(contents, fle)

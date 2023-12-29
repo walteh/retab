@@ -6,11 +6,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/walteh/retab/cmd/root/fmt"
 	"github.com/walteh/retab/cmd/root/gen"
-	"github.com/walteh/retab/cmd/root/hcl"
-	"github.com/walteh/retab/cmd/root/proto"
 	"github.com/walteh/retab/cmd/root/resolvers"
 	"github.com/walteh/retab/cmd/root/validate"
-	"github.com/walteh/retab/cmd/root/wrap"
+	"github.com/walteh/retab/cmd/root/wfmt"
 	"github.com/walteh/snake"
 	"github.com/walteh/snake/scobra"
 )
@@ -29,11 +27,9 @@ func NewCommand(ctx context.Context) (*scobra.CobraSnake, *cobra.Command, error)
 
 	opts := snake.Opts(
 		snake.Commands(
+			snake.Command(wfmt.Runner, impl, &cobra.Command{}),
 			snake.Command(fmt.Runner, impl, &cobra.Command{}),
 			snake.Command(gen.Runner, impl, &cobra.Command{}),
-			snake.Command(wrap.Runner, impl, &cobra.Command{}),
-			snake.Command(hcl.Runner, impl, &cobra.Command{Hidden: true}),
-			snake.Command(proto.Runner, impl, &cobra.Command{Hidden: true}),
 			snake.Command(validate.Runner, impl, &cobra.Command{Hidden: true}),
 		),
 		snake.Resolvers(

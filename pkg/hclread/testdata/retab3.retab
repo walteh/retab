@@ -1,0 +1,92 @@
+file "Taskfile.yml" {
+	schema = "https://taskfile.dev/schema.json"
+	dir    = "."
+	data = {
+		"version" = "3"
+		"tasks" = {
+
+			mockery-bin = arg.sup.mockery-bin
+			golangci-lint-bin = {
+				generates = ["bin/golangci-lint"]
+				dir       = "tools"
+				sources   = ["**/*", { exclude = "bin/**/*" }]
+				cmds = [
+					"GOWORK=off go build -mod=vendor -o ./bin/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint"
+				]
+			}
+
+			gotestsum-bin = {
+				generates = ["bin/gotestsum"]
+				dir       = "tools"
+				sources   = ["**/*", { exclude = "bin/**/*" }]
+				cmds = [
+					"GOWORK=off go build -mod=vendor -o ./bin/gotestsum gotest.tools/gotestsum"
+				]
+			}
+
+			mockery-gen = {
+				deps      = ["mockery-bin"]
+				generates = ["gen/mockery/**/*"]
+				dir       = "."
+				sources   = ["**/*.go", "./.mockery.yaml", "./tools/bin/mockery"]
+				cmds = [
+					"./tools/bin/mockery --dir ./gen/mockery --config ./.mockery.yaml"
+				]
+			}
+			lint = {
+				deps = ["golangci-lint-bin"]
+				sources = [
+					"**/*.go",
+					{ exclude = "tools/**/*" },
+					"./tools/bin/golangci-lint",
+				]
+
+				cmds = [
+					"GOWORK=off ./tools/bin/golangci-lint run --config ./.golangci.yml"
+				]
+			}
+
+			#
+			# TESTS
+			#
+
+			test-ci = {
+				deps = ["gotestsum-bin"]
+				sources = [
+					"**/*.go",
+					{ exclude = "tools/**/*" },
+					"./tools/bin/gotestsum"
+				]
+				preconditions = ["which go"]
+				cmds = [
+					"GOWORK=off ./tools/bin/gotestsum --junitfile test-reports/junit.xml -- -v -coverprofile=coverage.out -coverpkg=./... ./..."
+				]
+			}
+
+			default = { deps = ["tools", "gen", "lint", "test"] }
+		}
+	}
+}
+
+args hello {
+	desc = "hello world"
+	cmds = [
+		"echo hello"
+	]
+}
+
+arg sup {
+	mockery-bin = {
+		generate = ["bin/mockery"]
+		dir       = "tools"
+		sources   = ["**/*", { exclude = "bin/**/*" }]
+		cmds = [
+			<<EOT
+						GOWORK=off go build -mod=vendor -o ./bin/mockery github.com/vektra/mockery/v2
+					EOT
+		]
+	}
+	zzz = {
+		abc = "def"
+	}
+}

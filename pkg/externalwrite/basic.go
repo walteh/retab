@@ -5,7 +5,6 @@ import (
 	"io"
 	"os/exec"
 
-	"github.com/go-faster/errors"
 	"github.com/rs/zerolog"
 
 	"github.com/walteh/retab/pkg/format"
@@ -43,7 +42,7 @@ func NewNoopBasicExternalFormatProvider() format.Provider {
 		return func() error {
 			_, err := io.Copy(w, r)
 			if err != nil {
-				return errors.Wrap(err, "failed to copy")
+				return terrors.Wrap(err, "failed to copy")
 			}
 			return nil
 		}

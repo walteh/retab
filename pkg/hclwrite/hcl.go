@@ -18,7 +18,7 @@ func NewFormatter() *Formatter {
 }
 
 func (me *Formatter) Targets() []string {
-	return []string{"*.hcl", "*.hcl2", "*.retab"}
+	return []string{"*.hcl", "*.hcl2", ".retab/*.retab"}
 }
 
 func (me *Formatter) Format(ctx context.Context, cfg configuration.Configuration, read io.Reader) (io.Reader, error) {

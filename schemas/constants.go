@@ -25,6 +25,12 @@ func SchemaRefName(str string) string {
 
 	str = strings.TrimPrefix(str, "/")
 
+	for ka, alias := range unregisterdSchemas {
+		if str == ka {
+			return alias
+		}
+	}
+
 	return str
 }
 
@@ -32,6 +38,14 @@ func KnownSchemas() []string {
 	return knownSchemas
 }
 
+func UnregisteredSchemas() map[string]string {
+	return unregisterdSchemas
+}
+
 var knownSchemas = []string{
 	"github-workflow.json",
+}
+
+var unregisterdSchemas = map[string]string{
+	"taskfile.dev/schema.json": "taskfile.json",
 }

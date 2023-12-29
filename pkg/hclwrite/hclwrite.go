@@ -65,7 +65,7 @@ func (ts Tokens) format() {
 	// changing the SpacesBefore attribute on a token while leaving the
 	// other token attributes unchanged.
 
-	lines := linesForFormat(ts)
+	lines := linesForFormat(ts, false)
 	formatIndent(lines)
 	formatSpaces(lines)
 	formatCells(lines)
@@ -386,7 +386,7 @@ func spaceAfterToken(subject, before, after *Token) bool {
 	}
 }
 
-func linesForFormat(tokens Tokens) []formatLine {
+func linesForFormat(tokens Tokens, lineBracketsUp bool) []formatLine {
 	if len(tokens) == 0 {
 		return make([]formatLine, 0)
 	}
@@ -459,10 +459,18 @@ func linesForFormat(tokens Tokens) []formatLine {
 					netBrackets += tokenBracketChange(token)
 				}
 
-				if netBrackets == 0 {
-					line.assign = line.lead[i:]
-					line.lead = line.lead[:i]
+				if lineBracketsUp {
+					if netBrackets >= 0 {
+						line.assign = line.lead[i:]
+						line.lead = line.lead[:i]
+					}
+				} else {
+					if netBrackets == 0 {
+						line.assign = line.lead[i:]
+						line.lead = line.lead[:i]
+					}
 				}
+
 				break
 			}
 		}
