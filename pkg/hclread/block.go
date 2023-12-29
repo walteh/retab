@@ -95,6 +95,9 @@ func NewGenBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hcl
 		attr := fblock.Body.Attributes[attrkey]
 
 		if attr == nil {
+			if attrkey == "schema" {
+				continue
+			}
 			return nil, hcl.Diagnostics{&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  "missing attribute",
@@ -162,20 +165,23 @@ func NewGenBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hcl
 
 	diags = hcl.Diagnostics{}
 
-	s, err := schemas.LoadJSONSchema(ctx, blk.Schema)
-	if err != nil {
-		return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem getting schema").Event(func(e *zerolog.Event) *zerolog.Event {
-			return e.Int("schema_size", len(blk.Schema))
-		})
-	}
+	if blk.Schema != "" {
 
-	// Validate the block body against the schema
-	if errv := s.Validate(blk.RawOutput); errv != nil {
-		if lerr, err := LoadValidationErrors(ctx, dataAttr, ectx, errv, file); err != nil {
-			return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem loading validation errors")
-		} else {
-			for _, v := range lerr {
-				diags = append(diags, v)
+		s, err := schemas.LoadJSONSchema(ctx, blk.Schema)
+		if err != nil {
+			return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem getting schema").Event(func(e *zerolog.Event) *zerolog.Event {
+				return e.Int("schema_size", len(blk.Schema))
+			})
+		}
+
+		// Validate the block body against the schema
+		if errv := s.Validate(blk.RawOutput); errv != nil {
+			if lerr, err := LoadValidationErrors(ctx, dataAttr, ectx, errv, file); err != nil {
+				return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem loading validation errors")
+			} else {
+				for _, v := range lerr {
+					diags = append(diags, v)
+				}
 			}
 		}
 	}
