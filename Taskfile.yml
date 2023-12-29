@@ -5,10 +5,20 @@
 
 version: 3
 tasks:
+    mockery-bin:
+        cmds:
+            - |
+              GOWORK=off go build -mod=vendor -o ./bin/mockery github.com/vektra/mockery/v2
+        dir: tools
+        generates:
+            - bin/mockery
+        sources:
+            - '**/*'
+            - exclude: bin/**/*
     gotestsum-bin:
         generates:
             - bin/gotestsum
-        dir: toolsabc
+        dir: tools
         sources:
             - '**/*'
             - exclude: bin/**/*
@@ -21,7 +31,7 @@ tasks:
         sources:
             - '**/*'
             - exclude: bin/**/*
-            - toolsabc
+            - tools
         cmds:
             - R09XT1JLPW9mZiBnbyBidWlsZCAtbW9kPXZlbmRvciAtbyAuL2Jpbi9nb2xhbmdjaS1saW50IGdpdGh1Yi5jb20vZ29sYW5nY2kvZ29sYW5nY2ktbGludC9jbWQvZ29sYW5nY2ktbGludA==
     mockery-gen:
