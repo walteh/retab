@@ -37,8 +37,6 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parent *hcl.Eval
 		eectx.Variables[v.Name] = val
 	}
 
-	custvars := map[string]cty.Value{}
-
 	combos := make(map[string][]cty.Value, 0)
 
 	reevaluate := func(blk *hclsyntax.Block) hcl.Diagnostics {
@@ -57,10 +55,10 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parent *hcl.Eval
 
 	updateVariables := func() {
 		for k, v := range combos {
-			if custvars[k] == cty.NilVal {
-				custvars[k] = cty.ObjectVal(map[string]cty.Value{})
+			if eectx.Variables[k] == cty.NilVal {
+				eectx.Variables[k] = cty.ObjectVal(map[string]cty.Value{})
 			}
-			wrk := custvars[k].AsValueMap()
+			wrk := eectx.Variables[k].AsValueMap()
 			if wrk == nil {
 				wrk = map[string]cty.Value{}
 			}
@@ -70,12 +68,8 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parent *hcl.Eval
 					wrk[k2] = v3
 				}
 			}
-			custvars[k] = cty.ObjectVal(wrk)
+			eectx.Variables[k] = cty.ObjectVal(wrk)
 			combos[k] = nil
-		}
-
-		for k, v := range custvars {
-			eectx.Variables[k] = v
 		}
 
 		return
@@ -90,21 +84,27 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parent *hcl.Eval
 
 		start = false
 		newRetrys := []*hclsyntax.Block{}
+		diags := hcl.Diagnostics{}
 
 		for _, v := range retrys {
 			if v.Type == "gen" {
 				continue
 			}
 
-			diags := reevaluate(v)
-			if diags.HasErrors() {
-				lastDiags = diags
+			diagd := reevaluate(v)
+			if diagd.HasErrors() {
+				diags = append(diags, diagd...)
 				newRetrys = append(newRetrys, v)
 			}
 		}
 
+		if len(diags) < len(lastDiags) {
+			start = true
+		}
+
 		updateVariables()
 
+		lastDiags = diags
 		prevRetrys = retrys
 		retrys = newRetrys
 	}

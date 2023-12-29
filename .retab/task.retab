@@ -1,9 +1,8 @@
 TOOLS_DIR="tools"
 
-
 gen taskfile {
 	schema = "https://taskfile.dev/schema.json"
-	path   = "../Taskfile.yml"
+	path   = "../taskfile-gen.yaml"
 	data = {
 		version = 3
 		tasks = {

@@ -33,7 +33,7 @@ tasks:
             - exclude: bin/**/*
             - tools
         cmds:
-            - R09XT1JLPW9mZiBnbyBidWlsZCAtbW9kPXZlbmRvciAtbyAuL2Jpbi9nb2xhbmdjaS1saW50IGdpdGh1Yi5jb20vZ29sYW5nY2kvZ29sYW5nY2ktbGludC9jbWQvZ29sYW5nY2ktbGludA==
+            - GOWORK=off go build -mod=vendor -o ./bin/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint
     mockery-gen:
         deps:
             - mockery-bin

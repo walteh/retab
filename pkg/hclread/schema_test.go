@@ -3,6 +3,7 @@ package hclread
 import (
 	"context"
 	"embed"
+	"fmt"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -11,8 +12,8 @@ import (
 )
 
 const validHCL = `
-file "default.yaml" {
-	dir = "./.github/workflows"
+gen "default" {
+	path = "./.github/workflows/def.yaml"
 	schema = "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json"
 	data = {
 		name = "test"
@@ -61,34 +62,22 @@ func TestValidHCLDecoding(t *testing.T) {
 	// load schema file
 	_, ectx, got, diags, errd := NewContextFromFile(ctx, fle, "test.hcl")
 	assert.NoError(t, errd)
-	assert.NoError(t, diags)
+	assert.Empty(t, diags)
 
-	ran := false
-
-	for _, b := range got.Blocks {
-		if b.Type != "file" {
-			continue
-		}
-
-		ran = true
-
-		blk, diags, err := NewGenBlockEvaluation(ctx, ectx, got)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		assert.NoError(t, err)
-		assert.NoError(t, diags)
-
-		out, erry := yaml.Marshal(blk.RawOutput)
-		if erry != nil {
-			t.Fatal(erry)
-		}
-
-		t.Log(string(out))
+	blk, diags, err := NewGenBlockEvaluation(ctx, ectx, got)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	assert.True(t, ran)
+	assert.NoError(t, err)
+	assert.Empty(t, diags)
+
+	out, erry := yaml.Marshal(blk.RawOutput)
+	if erry != nil {
+		t.Fatal(erry)
+	}
+
+	t.Log(string(out))
 
 }
 
@@ -105,10 +94,13 @@ func TestRetab3Schema(t *testing.T) {
 	// load schema file
 	_, ectx, got, diags, errd := NewContextFromFile(ctx, data, "test.hcl")
 	assert.NoError(t, errd)
-	assert.NoError(t, diags)
+	assert.Empty(t, diags)
 
 	_, diags, err = NewGenBlockEvaluation(ctx, ectx, got)
 	assert.NoError(t, err)
-	assert.NoError(t, diags)
+	for _, c := range diags {
+		fmt.Println(c)
+	}
+	assert.Empty(t, diags)
 
 }

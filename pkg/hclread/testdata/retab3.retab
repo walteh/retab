@@ -1,10 +1,9 @@
-file "Taskfile.yml" {
+gen "Taskfile" {
 	schema = "https://taskfile.dev/schema.json"
-	dir    = "."
+	path    = "Taskfile.yml"
 	data = {
-		"version" = "3"
+		"version" = 3
 		"tasks" = {
-
 			mockery-bin = arg.sup.mockery-bin
 			golangci-lint-bin = {
 				generates = ["bin/golangci-lint"]
@@ -77,7 +76,7 @@ args hello {
 
 arg sup {
 	mockery-bin = {
-		generate = ["bin/mockery"]
+		generates = ["bin/mockery"]
 		dir       = "tools"
 		sources   = ["**/*", { exclude = "bin/**/*" }]
 		cmds = [

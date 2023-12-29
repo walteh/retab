@@ -7,11 +7,12 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const validHCL2 = `
-file "default.yaml" {
-	dir = "./.github/workflows"
+gen "first" {
+	path = "./.github/workflows/default.yaml"
 	schema = "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json"
 	data = {
 		name = "test"
@@ -129,8 +130,8 @@ func TestParseBlocksFromFile(t *testing.T) {
 
 const validHCLWithReference = `
 
-file "default.yaml" {
-	dir = "./.github/workflows"
+gen "default" {
+	path = "./.github/workflows/default.yaml"
 	schema = "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json"
 	data = {
 		name = "test"
@@ -162,8 +163,8 @@ step "checkout" {
 `
 
 const validHCLWithError = `
-file "default.yaml" {
-	dir = "./.github/workflows"
+gen "default" {
+	path = "./.github/workflows/default.yaml"
 	schema = "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json"
 	data = {
 		name = "test"
@@ -226,7 +227,25 @@ func TestParseBlocksWithReference(t *testing.T) {
 				str: validHCLWithError,
 			},
 			contextDiags: hcl.Diagnostics{},
-			schemaDiags:  hcl.Diagnostics{},
+			schemaDiags: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "missing properties: 'on', 'jobs'",
+					Detail:   "/required",
+					Subject: &hcl.Range{
+						Filename: "test.hcl",
+						Start: hcl.Pos{
+							Line:   5,
+							Column: 9,
+							Byte:   183,
+						},
+						End: hcl.Pos{
+							Line:   7,
+							Column: 3,
+							Byte:   203,
+						},
+					}},
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -237,17 +256,13 @@ func TestParseBlocksWithReference(t *testing.T) {
 			aferoFS := afero.NewMemMapFs()
 
 			err := afero.WriteFile(aferoFS, "test.hcl", []byte(tt.args.str), 0644)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			file, err := afero.ReadFile(aferoFS, "test.hcl")
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			_, ectx, got, diags, err := NewContextFromFile(ctx, file, "test.hcl")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.ElementsMatch(t, tt.contextDiags, diags)
 			if len(diags) > 0 {
 				return
@@ -255,7 +270,12 @@ func TestParseBlocksWithReference(t *testing.T) {
 
 			be, diags, err := NewGenBlockEvaluation(ctx, ectx, got)
 			assert.NoError(t, err)
+			for _, diag := range diags {
+				diag.EvalContext = nil
+				diag.Expression = nil
+			}
 			assert.ElementsMatch(t, tt.schemaDiags, diags)
+
 			if len(diags) > 0 {
 				return
 			}

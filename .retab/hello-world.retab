@@ -1,11 +1,11 @@
 
 BRANCH = "main"
 
-file "default.yaml" {
-	dir    = "./.github/workflows"
+gen "default" {
+	path    = "./.github/workflows/hello-world.yaml"
 	schema = "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json"
 	data = {
-		name = "test"
+		name = "hello-world"
 
 		on = {
 			push = {
@@ -25,8 +25,8 @@ action "jobs" {
 			{
 				name = "Checkout"
 				uses = "actions/checkout@v2"
-				label(hi.withd) = {
-					fetch-depth = leggo(1, 2)
+				label(hi.with) = {
+					fetch-depth = 1
 				}
 			},
 			{
@@ -39,12 +39,9 @@ action "jobs" {
 	}
 }
 
-func "leggo" {
-	params = [abc, def]
-	result = abc + def
-}
 
-hi "withd" {
+
+hi "with" {
 	abc = 1
 	def = 2
 }
