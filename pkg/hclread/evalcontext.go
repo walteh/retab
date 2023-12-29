@@ -3,6 +3,8 @@ package hclread
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -27,90 +29,373 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parent *hcl.Eval
 
 	eectx := parent.NewChild()
 
+	eectx.Functions = parent.Functions
+
 	eectx.Variables = map[string]cty.Value{}
 
-	for _, v := range bdy.Attributes {
-		val, diag := v.Expr.Value(eectx)
-		if diag.HasErrors() {
-			return nil, diag
-		}
-		eectx.Variables[v.Name] = val
-	}
+	// for _, v := range bdy.Attributes {
+	// 	val, diag := v.Expr.Value(eectx)
+	// 	if diag.HasErrors() {
+	// 		return nil, diag
+	// 	}
+	// 	eectx.Variables[v.Name] = val
+	// }
 
-	custvars := map[string]cty.Value{}
+	// custvars := map[string]cty.Value{}
 
-	combos := make(map[string][]cty.Value, 0)
+	// updateVariables := func(combos map[string][]cty.Value) {
+	// 	for k, v := range combos {
+	// 		if eectx.Variables[k] == cty.NilVal {
+	// 			eectx.Variables[k] = cty.ObjectVal(map[string]cty.Value{})
+	// 		}
+	// 		wrk := eectx.Variables[k].AsValueMap()
+	// 		if wrk == nil {
+	// 			wrk = map[string]cty.Value{}
+	// 		}
 
-	reevaluate := func(blk *hclsyntax.Block) hcl.Diagnostics {
-		key, blks, diags := NewUnknownBlockEvaluation(ctx, eectx, blk)
-		if diags.HasErrors() {
-			return diags
-		}
+	// 		for _, v2 := range v {
+	// 			for k2, v3 := range v2.AsValueMap() {
+	// 				wrk[k2] = v3
+	// 			}
+	// 		}
+	// 		eectx.Variables[k] = cty.ObjectVal(wrk)
+	// 		combos[k] = nil
+	// 	}
 
-		if combos[key] == nil {
-			combos[key] = make([]cty.Value, 0)
-		}
+	// 	return
+	// }
+	var reevaluate func(blk *hclsyntax.Block) hcl.Diagnostics
+	reevaluate = func(blk *hclsyntax.Block) hcl.Diagnostics {
+		// combos := make(map[string][]cty.Value, 0)
+		// key, blks, diags := NewUnknownBlockEvaluation(ctx, eectx, blk)
+		// if key != "" {
+		// 	if combos[key] == nil {
+		// 		combos[key] = make([]cty.Value, 0)
+		// 	}
 
-		combos[key] = append(combos[key], blks)
-		return nil
-	}
+		// 	combos[key] = append(combos[key], blks)
+		// }
+		// combos := make(map[string][]cty.Value, 0)
 
-	updateVariables := func() {
-		for k, v := range combos {
-			if custvars[k] == cty.NilVal {
-				custvars[k] = cty.ObjectVal(map[string]cty.Value{})
-			}
-			wrk := custvars[k].AsValueMap()
-			if wrk == nil {
-				wrk = map[string]cty.Value{}
-			}
+		// updateVariables(combos)
+		// name := append([]string{blk.Type}, blk.Labels...)
+		// return diags
+		return hclsyntax.Walk(blk, &Walker{EvalContext: eectx, backlog: []hclsyntax.Node{}})
+		// 	// switch node := node.(type) {
+		// 	case *hclsyntax.Block:
+		// 		diags := hcl.Diagnostics{}
+		// 		// if node.Type == "gen" {
+		// 		// 	return hcl.Diagnostics{}
+		// 		// }
 
-			for _, v2 := range v {
-				for k2, v3 := range v2.AsValueMap() {
-					wrk[k2] = v3
-				}
-			}
-			custvars[k] = cty.ObjectVal(wrk)
-			combos[k] = nil
-		}
+		// 		// key, blks, diag := NewUnknownBlockEvaluation(ctx, eectx, node)
+		// 		// if key != "" {
+		// 		// 	if combos[key] == nil {
+		// 		// 		combos[key] = make([]cty.Value, 0)
+		// 		// 	}
 
-		for k, v := range custvars {
-			eectx.Variables[k] = v
-		}
+		// 		// 	combos[key] = append(combos[key], blks)
+		// 		// }
 
-		return
+		// 		for _, attr := range node.Body.Blocks {
+		// 			rev, noded, diagd := reevaluate(attr)
+		// 			if combos[rev] == nil {
+		// 				combos[rev] = make([]cty.Value, 0)
+		// 			}
+		// 			combos[rev] = append(combos[rev], noded)
+		// 			updateVariables(noded)
+		// 			diags = append(diags, diagd...)
+		// 		}
+
+		// 		return diags
+		// 	case *hclsyntax.ObjectConsExpr:
+
+		// 	case *hclsyntax.Attribute:
+		// 		val, diag := node.Expr.Value(eectx)
+		// 		if diag.HasErrors() {
+		// 			return diag
+		// 		}
+		// 		eectx.Variables[node.Name] = val
+		// 		// case *hclsyntax.ObjectConsExpr:
+
+		// 	}
+
+		// 	return hcl.Diagnostics{}
+		// })
 	}
 
 	retrys := bdy.Blocks
 	prevRetrys := []*hclsyntax.Block{}
 	lastDiags := hcl.Diagnostics{}
 	start := true
+	runs := 0
 	// starts := 0
 	for (len(retrys) > 0 && len(prevRetrys) > len(retrys)) || start {
-
+		runs++
 		start = false
 		newRetrys := []*hclsyntax.Block{}
 
-		for _, v := range retrys {
-			if v.Type == "gen" {
-				continue
-			}
+		diags := hcl.Diagnostics{}
 
-			diags := reevaluate(v)
-			if diags.HasErrors() {
-				lastDiags = diags
+		for _, v := range retrys {
+			// if v.Type == "gen" {
+			// 	continue
+			// }
+
+			diagd := reevaluate(v)
+			if diagd.HasErrors() {
+				diags = append(diags, diagd...)
 				newRetrys = append(newRetrys, v)
 			}
 		}
 
-		updateVariables()
+		fmt.Println(runs, len(diags), len(lastDiags), len(prevRetrys), len(retrys))
+
+		if len(diags) < len(lastDiags) {
+			start = true
+		}
+
+		for _, x := range diags {
+			fmt.Println(x)
+		}
 
 		prevRetrys = retrys
 		retrys = newRetrys
+		lastDiags = diags
 	}
 
 	return eectx.Variables, lastDiags
 
+}
+
+type Walker struct {
+	EvalContext *hcl.EvalContext
+	backlog     []hclsyntax.Node
+	strs        []string
+}
+
+func applyblocklabels(v *hclsyntax.Block) []string {
+	strz := []string{}
+	backwardsLabels := make([]string, len(v.Labels))
+	copy(backwardsLabels, v.Labels)
+	slices.Reverse(backwardsLabels)
+
+	strz = append(strz, backwardsLabels...)
+
+	strz = append(strz, v.Type)
+	return strz
+}
+
+func (me *Walker) Enter(node hclsyntax.Node) hcl.Diagnostics {
+	var last hclsyntax.Node
+	if len(me.backlog) > 0 {
+		last = me.backlog[len(me.backlog)-1]
+	}
+	switch v := node.(type) {
+	case *hclsyntax.Block:
+		me.strs = append(me.strs, applyblocklabels(v)...)
+		me.backlog = append(me.backlog, v)
+	case *hclsyntax.Attribute:
+		me.strs = append(me.strs, v.Name)
+		me.backlog = append(me.backlog, v)
+	case hclsyntax.Attributes:
+		for _, v2 := range v {
+			// fmt.Println(v2.Name)
+			// fmt.Println(v2.Name, v2.Range(), last.Range())
+			if last == nil || v2.Range().ContainsPos(last.Range().Start) {
+				me.strs = append(me.strs, v2.Name)
+			}
+		}
+		me.backlog = append(me.backlog, v)
+	// case *hclsyntax.LiteralValueExpr:
+	// 	me.strs = append(me.strs, v.Val.AsString())
+
+	default:
+		me.backlog = append(me.backlog, v)
+
+		// pp.Println("enter unknown", reflect.TypeOf(v).String())
+		// return hcl.Diagnostics{}
+	}
+
+	// me.backlog = append(me.backlog, node)
+
+	// fmt.Println("enter", me.strs)
+	return hcl.Diagnostics{}
+}
+
+func (me *Walker) Exit(node hclsyntax.Node) hcl.Diagnostics {
+	// fmt.Println("exit", me.strs)
+
+	me.backlog = me.backlog[:len(me.backlog)-1]
+
+	strs := []string{}
+
+	last := hclsyntax.Node(node)
+
+	backwardsBacklog := make([]hclsyntax.Node, len(me.backlog))
+	copy(backwardsBacklog, me.backlog)
+	slices.Reverse(backwardsBacklog)
+
+	var diag hcl.Diagnostics
+
+	for _, v := range backwardsBacklog {
+
+		switch v := v.(type) {
+		case *hclsyntax.Block:
+
+			strs = append(strs, applyblocklabels(v)...)
+			last = v
+
+		case hclsyntax.Attributes:
+			for _, v2 := range v {
+				if v2.Range().ContainsPos(last.Range().Start) {
+					strs = append(strs, v2.Name)
+				}
+			}
+			last = v
+		case *hclsyntax.ObjectConsExpr:
+			// valz := map[string]cty.Value{}
+			for _, item := range v.Items {
+				if item.ValueExpr.Range().ContainsPos(last.Range().Start) {
+					vald, diagd := item.KeyExpr.Value(me.EvalContext)
+					if diagd.HasErrors() {
+						diag = append(diag, diagd...)
+						break
+					}
+					strs = append(strs, vald.AsString())
+				}
+
+				// // strs = append(strs, vald.AsString())
+
+				// val2, diag2 := item.ValueExpr.Value(me.EvalContext)
+				// if diag2.HasErrors() {
+				// 	diag = append(diag, diagd...)
+				// }
+
+				// // pp.Println(vald)
+
+				// valz[vald.AsString()] = val2
+			}
+
+			// val = cty.ObjectVal(valz)
+		default:
+			// pp.Println("unknown", reflect.TypeOf(v).String())
+
+			// fmt.Println("unknown", v, reflect.TypeOf(v))
+			last = v
+		}
+	}
+	val := cty.NilVal
+	switch node := node.(type) {
+
+	case *hclsyntax.LiteralValueExpr:
+		val = node.Val
+	case *hclsyntax.Attribute:
+		strs = append(strs, node.Name)
+		vald, diagd := node.Expr.Value(me.EvalContext)
+		if diagd.HasErrors() {
+			diag = append(diag, diagd...)
+		} else {
+			val = vald
+		}
+	default:
+		// fmt.Println("unknownout", reflect.TypeOf(node).String(), strs)
+		// return diag
+		return diag
+
+	}
+
+	// for _, v := range strs {
+	// 	val = cty.ObjectVal(map[string]cty.Value{
+	// 		v: val,
+	// 	})
+	// }
+
+	// fmt.Println(strs)
+
+	// var ok bool
+
+	// check := []string{"dir", "gotestsum-bin", "tasks", "data", "taskfile", "gen"}
+	// if len(check) == len(strs) {
+	// 	ok = true
+	// 	for i := range strs {
+	// 		if strs[i] != check[i] {
+	// 			ok = false
+	// 			break
+	// 		}
+	// 	}
+	// 	if ok {
+	// 		pp.Println(val)
+	// 	}
+	// } else {
+	// 	ok = false
+	// }
+
+	// objval := cty.ObjectVal(me.EvalContext.Variables)
+
+	// pp.Println(val)
+
+	slices.Reverse(strs)
+
+	merged := applyToNextedContext(context.TODO(), me.EvalContext.Variables, strs, val)
+
+	// merged, err := stdlib.Merge(objval, val)
+	// if err != nil {
+	// 	diag = append(diag,
+	// 		&hcl.Diagnostic{
+	// 			Severity: hcl.DiagError,
+	// 			Summary:  "failed to merge",
+	// 			Detail:   err.Error(),
+	// 			Subject:  node.Range().Ptr(),
+	// 		})
+	// 	fmt.Println("oh no", err)
+	// 	return diag
+	// }
+
+	// if ok {
+	// 	pp.Println(merged)
+	// }
+
+	me.EvalContext.Variables = merged.AsValueMap()
+
+	return diag
+}
+
+func applyToNextedContext(ctx context.Context, mapd map[string]cty.Value, strs []string, val cty.Value) cty.Value {
+	fmt.Println(strs)
+	if len(strs) == 0 {
+		// fmt.Println(val)
+		return val
+	} else {
+
+		var wrk map[string]cty.Value
+		if mapd[strs[0]].IsNull() {
+			wrk = map[string]cty.Value{}
+		} else {
+			fmt.Println(mapd[strs[0]].Type().GoString())
+			if mapd[strs[0]].CanIterateElements() {
+				wrk = mapd[strs[0]].AsValueMap()
+			} else {
+				// wrk = cty.SetVal([]cty.Value{mapd[strs[0]]})
+				wrk = map[string]cty.Value{}
+			}
+		}
+
+		vald := applyToNextedContext(ctx, wrk, strs[1:], val)
+
+		mapd[strs[0]] = vald
+
+		return cty.ObjectVal(mapd)
+	}
+}
+
+func combineMaps(a map[string]cty.Value, b map[string]cty.Value) map[string]cty.Value {
+
+	for k, v := range b {
+		a[k] = v
+	}
+
+	return a
 }
 
 const MetaKey = "____meta"
@@ -207,12 +492,6 @@ func NewContextFromFile(ctx context.Context, fle []byte, name string) (*hcl.File
 
 	return hcldata, ectx, bdy, nil, nil
 }
-
-type WorkingContext struct {
-	ectx *hcl.EvalContext
-}
-
-func (me *WorkingContext) EvalContext() *hcl.EvalContext { return me.ectx }
 
 func NewFunctionMap() map[string]function.Function {
 
@@ -329,3 +608,49 @@ func NewFunctionMap() map[string]function.Function {
 		}),
 	}
 }
+
+// hclsyntax.Walk(bdy, func(n hclsyntax.Node) (hcl.Diagnostics, hclsyntax.Node) {
+// 	switch n := n.(type) {
+// 	case *hclsyntax.Attribute:
+// 		if n.Name == "var" {
+// 			return hcl.Diagnostics{}, n
+// 		}
+// 	case *hclsyntax.ForExpr:
+// 		return hcl.Diagnostics{}, n
+// 	case *hclsyntax.FunctionCallExpr:
+// 		if n.Name == "var" {
+// 			return hcl.Diagnostics{}, n
+// 		}
+// 	case *hclsyntax.IndexExpr:
+// 		if n.Name == "var" {
+// 			return hcl.Diagnostics{}, n
+// 		}
+// 	case *hclsyntax.ObjectConsExpr:
+
+// 		for _, item := range n.Items {
+
+// 			if item.KeyExpr.(*hclsyntax.LiteralValueExpr).Val.(*cty.StringVal).AsString() == "var" {
+// 				return hcl.Diagnostics{}, n
+// 			}
+// 		}
+// 	case *hclsyntax.ScopeTraversalExpr:
+// 		if n.Traversal[0].(hclsyntax.TraverseAttr).Name == "var" {
+// 			return hcl.Diagnostics{}, n
+// 		}
+// 	case *hclsyntax.TemplateExpr:
+// 		return hcl.Diagnostics{}, n
+// 	case *hclsyntax.TemplateWrapExpr:
+// 		return hcl.Diagnostics{}, n
+// 	case *hclsyntax.TupleConsExpr:
+
+// 		for _, item := range n.Exprs {
+
+// 			if item.(*hclsyntax.LiteralValueExpr).Val.(*cty.StringVal).AsString() == "var" {
+// 				return hcl.Diagnostics{}, n
+// 			}
+// 		}
+// 	case *hclsyntax.UnaryOpExpr:
+// 		if n.Op == "var" {
+// 			return hcl.Diagnostics{}, n
+// 		}
+// 	}

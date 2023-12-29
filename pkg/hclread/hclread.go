@@ -26,7 +26,7 @@ func Process(ctx context.Context, fs afero.Fs, file string) (*FileBlockEvaluatio
 		return nil, diags, err
 	}
 
-	eval, diags, err := NewFileBlockEvaluation(ctx, ectx, blks)
+	eval, diags, err := NewGenBlockEvaluation(ctx, ectx, blks)
 	if err != nil || diags.HasErrors() {
 		return nil, diags, err
 	}

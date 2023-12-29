@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"regexp"
-	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -32,7 +31,7 @@ type FileBlockEvaluation struct {
 	// Validation    []*ValidationError
 }
 
-func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsyntax.Body) (res *FileBlockEvaluation, diags hcl.Diagnostics, err error) {
+func NewGenBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsyntax.Body) (res *FileBlockEvaluation, diags hcl.Diagnostics, err error) {
 
 	var fblock *hclsyntax.Block
 
@@ -89,7 +88,20 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hc
 
 	var dataAttr hclsyntax.Expression
 
-	for _, attr := range fblock.Body.Attributes {
+	attrs := []string{"path", "schema", "data"}
+
+	for _, attrkey := range attrs {
+
+		attr := fblock.Body.Attributes[attrkey]
+
+		if attr == nil {
+			return nil, hcl.Diagnostics{&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "missing attribute",
+				Detail:   "a file block must have a " + attrkey + " attribute",
+				Subject:  &fblock.TypeRange,
+			}}, nil
+		}
 
 		// Evaluate the attribute's expression to get a cty.Value
 		val, diag := attr.Expr.Value(ectx)
@@ -101,11 +113,9 @@ func NewFileBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hc
 		case "path":
 			blk.Path = val.AsString()
 
-			// we want it to work whether or not the user is poining to the current directory, or the retab folder
-			blk.Path = strings.TrimPrefix(blk.Path, "./")
-			blk.Path = strings.TrimPrefix(blk.Path, "/")
-			blk.Path = strings.TrimPrefix(blk.Path, "../")
-			blk.Path = strings.TrimPrefix(blk.Path, "/")
+			blk.Path = sanatizeGenPath(blk.Path)
+
+			ectx.Functions["ref"] = NewRefFunctionFromPath(ctx, blk.Path)
 		case "schema":
 			blk.Schema = val.AsString()
 		case "data":
