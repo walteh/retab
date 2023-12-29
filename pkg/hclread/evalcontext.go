@@ -337,65 +337,90 @@ func (me *Walker) Exit(node hclsyntax.Node) hcl.Diagnostics {
 
 	slices.Reverse(strs)
 
-	merged := applyToNextedContext(context.TODO(), me.EvalContext.Variables, strs, val)
+	fmt.Println(strs)
 
-	// merged, err := stdlib.Merge(objval, val)
-	// if err != nil {
-	// 	diag = append(diag,
-	// 		&hcl.Diagnostic{
-	// 			Severity: hcl.DiagError,
-	// 			Summary:  "failed to merge",
-	// 			Detail:   err.Error(),
-	// 			Subject:  node.Range().Ptr(),
-	// 		})
-	// 	fmt.Println("oh no", err)
-	// 	return diag
-	// }
-
-	// if ok {
-	// 	pp.Println(merged)
-	// }
+	merged := applyToNextedContext(context.TODO(), cty.ObjectVal(me.EvalContext.Variables), strs, val)
 
 	me.EvalContext.Variables = merged.AsValueMap()
 
 	return diag
 }
 
-func applyToNextedContext(ctx context.Context, mapd map[string]cty.Value, strs []string, val cty.Value) cty.Value {
-	fmt.Println(strs)
+func applyToNextedContext(ctx context.Context, mapd cty.Value, strs []string, val cty.Value) cty.Value {
 	if len(strs) == 0 {
 		// fmt.Println(val)
 		return val
 	} else {
 
-		var wrk map[string]cty.Value
-		if mapd[strs[0]].IsNull() {
-			wrk = map[string]cty.Value{}
-		} else {
-			fmt.Println(mapd[strs[0]].Type().GoString())
-			if mapd[strs[0]].CanIterateElements() {
-				wrk = mapd[strs[0]].AsValueMap()
-			} else {
-				// wrk = cty.SetVal([]cty.Value{mapd[strs[0]]})
-				wrk = map[string]cty.Value{}
+		if mapd.Type().IsObjectType() {
+			obj := mapd.AsValueMap()
+			// var wrk map[string]cty.Value
+			// if obj[strs[0]].IsNull() {
+			// 	wrk = map[string]cty.Value{}
+			// } else {
+			// 	// fmt.Println(obj[strs[0]].Type().GoString())
+			// 	if obj[strs[0]].CanIterateElements() {
+			// 		wrk = obj[strs[0]].AsValueMap()
+			// 	} else {
+			// 		// wrk = cty.SetVal([]cty.Value{obj[strs[0]]})
+			// 		wrk = map[string]cty.Value{}
+			// 	}
+			// }
+
+			if obj == nil {
+				obj = map[string]cty.Value{}
 			}
+
+			vald := applyToNextedContext(ctx, obj[strs[0]], strs[1:], val)
+
+			obj[strs[0]] = vald
+
+			return cty.ObjectVal(obj)
 		}
 
-		vald := applyToNextedContext(ctx, wrk, strs[1:], val)
+		if mapd.Type().IsListType() {
+			obj := mapd.AsValueSet()
+			obj.Add(val)
+			return cty.ListVal(obj.Values())
 
-		mapd[strs[0]] = vald
+			// vars := obj.Values()
+			// vars = append(vars, applyToNextedContext(ctx, cty.Value{}, strs[1:], val))
+		}
 
-		return cty.ObjectVal(mapd)
+		fmt.Println("outtttt", mapd.Type().GoString(), strs)
+
+		obj := map[string]cty.Value{}
+
+		vald := applyToNextedContext(ctx, obj[strs[0]], strs[1:], val)
+
+		obj[strs[0]] = vald
+
+		return cty.ObjectVal(obj)
+
+		// if mapd.Type().
+		// return val
+
+		// panic("ahh " + mapd.Type().GoString())
+
+		// var wrk map[string]cty.Value
+		// if mapd[strs[0]].IsNull() {
+		// 	wrk = map[string]cty.Value{}
+		// } else {
+		// 	// fmt.Println(mapd[strs[0]].Type().GoString())
+		// 	if mapd[strs[0]].CanIterateElements() {
+		// 		wrk = mapd[strs[0]].AsValueMap()
+		// 	} else {
+		// 		// wrk = cty.SetVal([]cty.Value{mapd[strs[0]]})
+		// 		wrk = map[string]cty.Value{}
+		// 	}
+		// }
+
+		// vald := applyToNextedContext(ctx, wrk, strs[1:], val)
+
+		// mapd[strs[0]] = vald
+
+		// return cty.ObjectVal(mapd)
 	}
-}
-
-func combineMaps(a map[string]cty.Value, b map[string]cty.Value) map[string]cty.Value {
-
-	for k, v := range b {
-		a[k] = v
-	}
-
-	return a
 }
 
 const MetaKey = "____meta"

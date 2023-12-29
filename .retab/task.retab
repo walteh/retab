@@ -5,7 +5,7 @@ gen taskfile {
 	data = {
 		version = 3
 		tasks = {
-			mockery-bin = arg.sup.mockery-bin
+			// mockery-bin = arg.sup.mockery-bin
 			gotestsum-bin = {
 				generates = ["bin/gotestsum"]
 				dir       = "toolsabc"
@@ -17,7 +17,7 @@ gen taskfile {
 						golangci-lint-bin = {
 				generates = ["bin/golangci-lint"]
 				dir       = "tools"
-				sources   = ["**/*", { exclude = "bin/**/*" }, gen.taskfile.data.tasks.gotestsum-bin.dir]
+				sources   = gen.taskfile.data.tasks.default.deps
 				cmds = [
 					base64encode("GOWORK=off go build -mod=vendor -o ./bin/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint")
 				]
