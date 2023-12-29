@@ -6,21 +6,20 @@ gen taskfile {
 		version = 3
 		tasks = {
 			mockery-bin = arg.sup.mockery-bin
-			golangci-lint-bin = {
-				generates = ["bin/golangci-lint"]
-				dir       = "tools"
-				sources   = ["**/*", { exclude = "bin/**/*" }]
-				cmds = [
-					base64encode("GOWORK=off go build -mod=vendor -o ./bin/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint")
-				]
-			}
-
 			gotestsum-bin = {
 				generates = ["bin/gotestsum"]
-				dir       = "tools"
+				dir       = "toolsabc"
 				sources   = ["**/*", { exclude = "bin/**/*" }]
 				cmds = [
 					"GOWORK=off go build -mod=vendor -o ./bin/gotestsum gotest.tools/gotestsum"
+				]
+			}
+						golangci-lint-bin = {
+				generates = ["bin/golangci-lint"]
+				dir       = "tools"
+				sources   = ["**/*", { exclude = "bin/**/*" }, gen.taskfile.data.tasks.gotestsum-bin.dir]
+				cmds = [
+					base64encode("GOWORK=off go build -mod=vendor -o ./bin/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint")
 				]
 			}
 			mockery-gen = {

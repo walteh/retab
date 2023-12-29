@@ -72,7 +72,7 @@ func TestValidHCLDecoding(t *testing.T) {
 
 		ran = true
 
-		blk, diags, err := NewFileBlockEvaluation(ctx, ectx, got)
+		blk, diags, err := NewGenBlockEvaluation(ctx, ectx, got)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -107,7 +107,7 @@ func TestRetab3Schema(t *testing.T) {
 	assert.NoError(t, errd)
 	assert.NoError(t, diags)
 
-	_, diags, err = NewFileBlockEvaluation(ctx, ectx, got)
+	_, diags, err = NewGenBlockEvaluation(ctx, ectx, got)
 	assert.NoError(t, err)
 	assert.NoError(t, diags)
 

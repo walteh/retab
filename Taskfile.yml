@@ -5,16 +5,15 @@
 
 version: 3
 tasks:
-    mockery-bin:
-        cmds:
-            - |
-              GOWORK=off go build -mod=vendor -o ./bin/mockery github.com/vektra/mockery/v2
-        dir: tools
+    gotestsum-bin:
         generates:
-            - bin/mockery
+            - bin/gotestsum
+        dir: toolsabc
         sources:
             - '**/*'
             - exclude: bin/**/*
+        cmds:
+            - GOWORK=off go build -mod=vendor -o ./bin/gotestsum gotest.tools/gotestsum
     golangci-lint-bin:
         generates:
             - bin/golangci-lint
@@ -22,17 +21,9 @@ tasks:
         sources:
             - '**/*'
             - exclude: bin/**/*
+            - toolsabc
         cmds:
             - R09XT1JLPW9mZiBnbyBidWlsZCAtbW9kPXZlbmRvciAtbyAuL2Jpbi9nb2xhbmdjaS1saW50IGdpdGh1Yi5jb20vZ29sYW5nY2kvZ29sYW5nY2ktbGludC9jbWQvZ29sYW5nY2ktbGludA==
-    gotestsum-bin:
-        generates:
-            - bin/gotestsum
-        dir: tools
-        sources:
-            - '**/*'
-            - exclude: bin/**/*
-        cmds:
-            - GOWORK=off go build -mod=vendor -o ./bin/gotestsum gotest.tools/gotestsum
     mockery-gen:
         deps:
             - mockery-bin

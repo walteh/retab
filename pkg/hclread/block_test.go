@@ -115,7 +115,7 @@ func TestParseBlocksFromFile(t *testing.T) {
 				return
 			}
 
-			be, diags, err := NewFileBlockEvaluation(ctx, ectx, got)
+			be, diags, err := NewGenBlockEvaluation(ctx, ectx, got)
 			assert.NoError(t, err)
 			assert.ElementsMatch(t, tt.schemaDiags, diags)
 			if len(diags) > 0 {
@@ -253,7 +253,7 @@ func TestParseBlocksWithReference(t *testing.T) {
 				return
 			}
 
-			be, diags, err := NewFileBlockEvaluation(ctx, ectx, got)
+			be, diags, err := NewGenBlockEvaluation(ctx, ectx, got)
 			assert.NoError(t, err)
 			assert.ElementsMatch(t, tt.schemaDiags, diags)
 			if len(diags) > 0 {
