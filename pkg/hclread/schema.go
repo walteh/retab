@@ -74,7 +74,6 @@ func InstanceLocationStringToHCLRange(instLoc string, msg string, cnt hclsyntax.
 }
 
 func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body) (hcl.Expression, hcl.Diagnostics) {
-	// pp.Println(splt)
 	if len(splt) == 0 {
 		return e, nil
 	}
@@ -104,9 +103,7 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body
 					// todo maybe not
 					return nil, diags
 				}
-				if err == nil {
-					return ex, nil
-				}
+				return ex, nil
 
 				// if err != nil {
 				// 	return nil, terrors.Wrapf(err, "failed to evaluate %q", exp)
@@ -151,13 +148,12 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body
 								// pp.Println(k.Range())
 								return k.Expr, nil
 							}
-							return roll2(splt[1:], k.Expr, ectx, blk.Body)
+							return roll2(splt[1:], k.Expr, ectx, bdy)
 						}
 					}
 				}
 			}
 		}
-
 	}
 
 	return e, nil

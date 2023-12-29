@@ -21,7 +21,7 @@ gen taskfile {
 				dir       = TOOLS_DIR
 				sources   = ["**/*", { exclude = "bin/**/*" }, TOOLS_DIR]
 				cmds = [
-					base64encode("GOWORK=off go build -mod=vendor -o ./bin/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint")
+					"GOWORK=off go build -mod=vendor -o ./bin/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint"
 				]
 			}
 			mockery-gen = {
