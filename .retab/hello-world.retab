@@ -1,8 +1,8 @@
 
 BRANCH = "main"
 
-gen "default" {
-	path    = "./.github/workflows/hello-world.yaml"
+gen "hello-world-github-workflow" {
+	path   = "./.github/workflows/hello-world.yaml"
 	schema = "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json"
 	data = {
 		name = "hello-world"
@@ -13,36 +13,32 @@ gen "default" {
 			}
 		}
 
-		jobs = action.jobs
-
+		jobs = {
+			say-hello = my_custom_type.my_custom_name.another_custom_type.do_whatever_you_want
+		}
 	}
 }
 
-action "jobs" {
-	build = {
-		runs-on = "ubuntu-latest"
-		steps = [
-			{
-				name = "Checkout"
-				uses = "actions/checkout@v2"
-				label(hi.with) = {
-					fetch-depth = 1
-				}
-			},
-			{
-				name = "Run tests"
-				run  = <<SHELL
+my_custom_type "my_custom_name" {
+	another_custom_type {
+		do_whatever_you_want = {
+			runs-on = "ubuntu-latest"
+			steps = [
+				{
+					name = "Checkout"
+					uses = "actions/checkout@v4"
+					with = {
+						fetch-depth = 1
+					}
+				},
+				{
+					name = "Run tests"
+					run  = <<SHELL
 							echo "Hello world"
 						SHELL
-			}
-		]
+				}
+			]
+		}
 	}
-}
-
-
-
-hi "with" {
-	abc = 1
-	def = 2
 }
 

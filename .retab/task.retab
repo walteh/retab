@@ -1,4 +1,4 @@
-TOOLS_DIR="tools"
+TOOLS_DIR = "tools"
 
 gen taskfile {
 	schema = "https://taskfile.dev/schema.json"
@@ -15,7 +15,7 @@ gen taskfile {
 					"GOWORK=off go build -mod=vendor -o ./bin/gotestsum gotest.tools/gotestsum"
 				]
 			}
-						golangci-lint-bin = {
+			golangci-lint-bin = {
 				generates = ["bin/golangci-lint"]
 				dir       = TOOLS_DIR
 				sources   = ["**/*", { exclude = "bin/**/*" }, TOOLS_DIR]
