@@ -1,6 +1,6 @@
 module github.com/walteh/retab
 
-go 1.21.5
+go 1.22.0
 
 require (
 	github.com/apparentlymart/go-textseg/v13 v13.0.0
@@ -16,7 +16,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/walteh/snake v0.43.0
 	github.com/walteh/terrors v0.12.0
-	github.com/walteh/yaml v0.0.0-20240212172524-293c650868ad
+	github.com/walteh/yaml v0.0.0-20240212175823-ac6e39d6b02d
 	github.com/zclconf/go-cty v1.14.1
 	go.uber.org/multierr v1.11.0
 	golang.org/x/mod v0.14.0

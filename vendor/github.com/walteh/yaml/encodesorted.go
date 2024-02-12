@@ -11,9 +11,7 @@ import (
 var (
 	mapItemType = reflect.TypeOf(MapSlice{})
 
-	_ json.Marshaler   = MapItem{}
 	_ json.Marshaler   = MapSlice{}
-	_ json.Unmarshaler = &MapItem{}
 	_ json.Unmarshaler = &MapSlice{}
 )
 
@@ -34,35 +32,18 @@ func (e *encoder) itemsv(tag string, slice MapSlice) {
 }
 
 func (m MapSlice) MarshalJSON() ([]byte, error) {
-	return json.Marshal([]MapItem(m))
+	mapper, err := NewOrderedMapFromKVPairs(m)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(mapper)
 }
 
 func (m *MapSlice) UnmarshalJSON(data []byte) error {
-	var slice []MapItem
-	err := json.Unmarshal(data, &slice)
+	kvp := NewOrderedMap()
+	err := kvp.UnmarshalJSON(data)
 	if err == nil {
-		*m = MapSlice(slice)
+		*m = kvp.ToMapSlice()
 	}
 	return err
-}
-
-func (m MapItem) MarshalJSON() ([]byte, error) {
-	mapd := make(map[string]any)
-	mapd[m.Key.(string)] = m.Value
-	return json.Marshal(mapd)
-}
-
-// Encode encodes the map slice to a YAML byte slice
-func (m *MapItem) UnmarshalJSON(data []byte) error {
-	mapd := make(map[string]any)
-	if err := json.Unmarshal(data, &mapd); err != nil {
-		return err
-	}
-
-	for k, v := range mapd {
-		m.Value = k
-		m.Key = v
-	}
-
-	return nil
 }
