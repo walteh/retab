@@ -76,7 +76,17 @@ func (me *FileBlockEvaluation) Encode() ([]byte, error) {
 
 	switch arr[len(arr)-1] {
 	case "jsonc", "code-workspace":
-		return json.MarshalIndent(me.OrderedOutput, "", "\t")
+
+		buf := bytes.NewBuffer(nil)
+		enc := json.NewEncoder(buf)
+		enc.SetIndent("", "\t")
+
+		err := enc.Encode(me.OrderedOutput)
+		if err != nil {
+			return nil, err
+		}
+
+		return []byte(strings.ReplaceAll(header, "#", "//") + buf.String()), nil
 	case "json":
 		return json.MarshalIndent(me.OrderedOutput, "", "\t")
 	case "yaml", "yml":
