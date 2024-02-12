@@ -110,7 +110,6 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parent *hcl.Eval
 	}
 
 	return eectx.Variables, lastDiags
-
 }
 
 const MetaKey = "____meta"

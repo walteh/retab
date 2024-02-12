@@ -38,7 +38,28 @@ func (e *wrapError) Event(gv func(*zerolog.Event) *zerolog.Event) error {
 	return e
 }
 
-func ChainFormatter(self func() string, kid error) string {
+func (e *wrapError) With(name string, value any) *wrapError {
+	e.event = append(e.event, func(ev *zerolog.Event) *zerolog.Event {
+		return ev.Interface(name, value)
+	})
+	return e
+}
+
+func GetChain(err error) []error {
+	errs := []error{}
+	for err != nil {
+		errs = append(errs, err)
+		if we, ok := err.(*wrapError); ok {
+			err = we.err
+		} else {
+			break
+		}
+	}
+
+	return errs
+}
+
+func InlineChainFormatter(self func() string, kid error) string {
 
 	if kid == nil {
 		slf := self()
@@ -50,7 +71,7 @@ func ChainFormatter(self func() string, kid error) string {
 
 	errd := kid.Error()
 
-	arrow := "⏩"
+	arrow := "👉"
 
 	if !strings.Contains(errd, arrow) && !strings.HasPrefix(errd, "❌") {
 		arrow += " ❌"
@@ -59,8 +80,34 @@ func ChainFormatter(self func() string, kid error) string {
 	return fmt.Sprintf("%s %s %s", self(), arrow, errd)
 }
 
+func FullChainFormatter(kid error) string {
+
+	chain := GetChain(kid)
+
+	wrk := "\n\n"
+
+	for i, err := range chain {
+		arrow := "👇"
+		if len(chain)-1 == i {
+			arrow = "❌"
+		}
+		wrk += arrow + " "
+		switch v := err.(type) {
+		case *wrapError:
+			wrk += v.DetailedSelf()
+		default:
+			wrk += fmt.Sprintf("%s\n\n", v.Error())
+		}
+	}
+
+	wrk += "\n\n"
+
+	return wrk
+
+}
+
 func (e *wrapError) Error() string {
-	return ChainFormatter(e.Self, e.err)
+	return InlineChainFormatter(e.Self, e.err)
 }
 
 func (e *wrapError) Code() int {
@@ -73,7 +120,11 @@ func (e *wrapError) WithCode(code int) *wrapError {
 }
 
 func (e *wrapError) Simple() string {
-	return ChainFormatter(e.Message, e.err)
+	return InlineChainFormatter(e.Message, e.err)
+}
+
+func (e *wrapError) Complicated() string {
+	return FullChainFormatter(e.err)
 }
 
 func (e *wrapError) Message() string {
@@ -85,6 +136,18 @@ func (e *wrapError) Message() string {
 
 func (e *wrapError) Self() string {
 	return fmt.Sprintf("%s%s", e.Message(), FormatCallerFromFrame(e.Frame()))
+}
+
+func (e *wrapError) DetailedSelf() string {
+	self := e.Self()
+
+	dets := e.Detail()
+
+	if dets != "" {
+		self += fmt.Sprintf("\n\n%s\n\n", dets)
+	}
+
+	return self
 }
 
 func (e *wrapError) Unwrap() error {

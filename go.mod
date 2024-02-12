@@ -9,14 +9,14 @@ require (
 	github.com/go-faster/errors v0.7.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/hcl/v2 v2.19.1
-	github.com/rs/zerolog v1.31.0
+	github.com/rs/zerolog v1.32.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/spf13/afero v1.10.0
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
 	github.com/walteh/snake v0.43.0
-	github.com/walteh/terrors v0.11.0
-	github.com/walteh/yaml v0.0.0-20231223230933-6a9fb8fcd85f
+	github.com/walteh/terrors v0.12.0
+	github.com/walteh/yaml v0.0.0-20240212172524-293c650868ad
 	github.com/zclconf/go-cty v1.14.1
 	go.uber.org/multierr v1.11.0
 	golang.org/x/mod v0.14.0
@@ -45,7 +45,7 @@ require (
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect

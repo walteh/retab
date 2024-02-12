@@ -6,7 +6,9 @@ package wfmt
 import (
 	"context"
 	"io"
+	"reflect"
 
+	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
 	"github.com/walteh/retab/cmd/root/resolvers"
 	"github.com/walteh/retab/pkg/configuration"
@@ -15,6 +17,7 @@ import (
 	"github.com/walteh/retab/pkg/hclwrite"
 	"github.com/walteh/retab/pkg/protowrite"
 	"github.com/walteh/snake"
+	"github.com/walteh/terrors"
 )
 
 func Runner() snake.Runner {
@@ -22,6 +25,10 @@ func Runner() snake.Runner {
 }
 
 type Handler struct {
+	Proto bool `usage:"format .proto files"`
+	Dart  bool `usage:"format .dart files"`
+	Tf    bool `usage:"format .tf files"`
+	Hcl   bool `usage:"format .hcl files"`
 }
 
 func (me *Handler) Name() string {
@@ -35,10 +42,25 @@ func (me *Handler) Description() string {
 func (me *Handler) Run(ctx context.Context, fls afero.Fs, fle afero.File, ecfg configuration.Provider, out snake.Stdout) error {
 	fmtrs := []format.Provider{}
 
-	fmtrs = append(fmtrs, hclwrite.NewFormatter())
-	fmtrs = append(fmtrs, protowrite.NewFormatter())
-	fmtrs = append(fmtrs, externalwrite.NewDartFormatter("dart"))
-	fmtrs = append(fmtrs, externalwrite.NewTerraformFormatter("terraform"))
+	if me.Hcl {
+		fmtrs = append(fmtrs, hclwrite.NewFormatter())
+	}
+
+	if me.Proto {
+		fmtrs = append(fmtrs, protowrite.NewFormatter())
+	}
+
+	if me.Dart {
+		fmtrs = append(fmtrs, externalwrite.NewDartFormatter("dart"))
+	}
+
+	if me.Tf {
+		fmtrs = append(fmtrs, externalwrite.NewTerraformFormatter("terraform"))
+	}
+
+	if len(fmtrs) == 0 {
+		return terrors.New("no formatters specified")
+	}
 
 	flefmtrmap := map[format.Provider][]string{}
 
@@ -51,12 +73,17 @@ func (me *Handler) Run(ctx context.Context, fls afero.Fs, fle afero.File, ecfg c
 				return err
 			}
 
+			zerolog.Ctx(ctx).Debug().Strs("files", fles).Str("fmtr", reflect.TypeOf(fmtr).String()).Msg("adding provider to map")
+
 			for _, fle := range fles {
+
 				flefmtrmap[fmtr] = append(flefmtrmap[fmtr], fle)
 			}
 		}
 
 	}
+
+	zerolog.Ctx(ctx).Debug().Any("flefmtrmap", flefmtrmap).Msg("flefmtrmap")
 
 	for fmtr, fles := range flefmtrmap {
 		err := resolvers.ForAllFilesAtSameTime(ctx, fls, fles, func(ctx context.Context, fle afero.File) (io.Reader, error) {

@@ -75,7 +75,7 @@ func (me *FileBlockEvaluation) Encode() ([]byte, error) {
 `, me.Source)
 
 	switch arr[len(arr)-1] {
-	case "jsonc":
+	case "jsonc", "code-workspace":
 		return json.MarshalIndent(me.OrderedOutput, "", "\t")
 	case "json":
 		return json.MarshalIndent(me.OrderedOutput, "", "\t")
