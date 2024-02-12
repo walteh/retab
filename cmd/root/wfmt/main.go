@@ -6,9 +6,7 @@ package wfmt
 import (
 	"context"
 	"io"
-	"reflect"
 
-	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
 	"github.com/walteh/retab/cmd/root/resolvers"
 	"github.com/walteh/retab/pkg/configuration"
@@ -62,36 +60,20 @@ func (me *Handler) Run(ctx context.Context, fls afero.Fs, fle afero.File, ecfg c
 		return terrors.New("no formatters specified")
 	}
 
-	flefmtrmap := map[format.Provider][]string{}
-
-	for _, fmtr := range fmtrs {
-
-		for _, s := range fmtr.Targets() {
-
-			fles, err := resolvers.GetFileOrGlobDir(ctx, fls, fle, s)
-			if err != nil {
-				return err
-			}
-
-			zerolog.Ctx(ctx).Debug().Strs("files", fles).Str("fmtr", reflect.TypeOf(fmtr).String()).Msg("adding provider to map")
-
-			for _, fle := range fles {
-
-				flefmtrmap[fmtr] = append(flefmtrmap[fmtr], fle)
-			}
-		}
-
+	if len(fmtrs) > 1 {
+		return terrors.New("only one formatter can be specified")
 	}
 
-	zerolog.Ctx(ctx).Debug().Any("flefmtrmap", flefmtrmap).Msg("flefmtrmap")
+	fles, err := resolvers.GetFileOrGlobDir(ctx, fls, fle, "*")
+	if err != nil {
+		return err
+	}
 
-	for fmtr, fles := range flefmtrmap {
-		err := resolvers.ForAllFilesAtSameTime(ctx, fls, fles, func(ctx context.Context, fle afero.File) (io.Reader, error) {
-			return format.Format(ctx, fmtr, ecfg, fle.Name(), fle)
-		})
-		if err != nil {
-			return err
-		}
+	err = resolvers.ForAllFilesAtSameTime(ctx, fls, fles, func(ctx context.Context, fle afero.File) (io.Reader, error) {
+		return format.Format(ctx, fmtrs[0], ecfg, fle.Name(), fle)
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil
