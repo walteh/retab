@@ -1242,4 +1242,57 @@ import (
 )
 `,
 	},
+	{
+		"alias",
+
+		`sections:
+  - Standard
+  - Default
+  - Alias
+`,
+		`package main
+
+import (
+	testing "github.com/daixiang0/test"
+	"fmt"
+
+	g "github.com/golang"
+
+	"github.com/daixiang0/gci"
+	"github.com/daixiang0/gci/subtest"
+)
+`,
+		`package main
+
+import (
+	"fmt"
+
+	"github.com/daixiang0/gci"
+	"github.com/daixiang0/gci/subtest"
+
+	testing "github.com/daixiang0/test"
+	g "github.com/golang"
+)
+`,
+	},
+	{
+		"no-trailing-newline",
+
+		`sections:
+  - Standard
+`,
+		`package main
+
+import (
+	"net"
+	"fmt"
+)`,
+		`package main
+
+import (
+	"fmt"
+	"net"
+)
+`,
+	},
 }

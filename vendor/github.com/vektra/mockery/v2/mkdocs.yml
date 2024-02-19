@@ -78,12 +78,17 @@ extra_javascript:
 extra:
   version:
     provider: mike
+  analytics:
+    provider: google
+    property: G-0ZGMQGZGRN
 
 plugins:
+- glightbox
 - mike:
     alias_type: symlink
     canonical_version: latest
-- glightbox
-- social
-- search
 - open-in-new-tab
+- search
+- social
+- typeset:
+    enabled: true
