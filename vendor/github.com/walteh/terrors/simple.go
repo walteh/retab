@@ -28,3 +28,7 @@ func Mismatch[T any](expected, actual T) *wrapError {
 		return e.Interface("expected", expected).Interface("actual", actual)
 	}).(*wrapError)
 }
+
+func (me *wrapError) WithMismatch(expected, actual any) *wrapError {
+	return me.With("expected", expected).With("actual", actual)
+}

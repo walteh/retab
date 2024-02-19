@@ -210,6 +210,7 @@ func NewCobraSnake(ctx context.Context, root *cobra.Command) *CobraSnake {
 }
 
 func ExecuteHandlingError(ctx context.Context, cmd *CobraSnake) {
+	cmd.RootCommand.SilenceErrors = true
 	err := HandleErrorByPrintingToConsole(cmd.RootCommand, cmd.RootCommand.ExecuteContext(ctx))
 	if err != nil {
 		os.Exit(1)

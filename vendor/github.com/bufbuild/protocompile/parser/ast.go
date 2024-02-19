@@ -14,7 +14,9 @@
 
 package parser
 
-import "github.com/bufbuild/protocompile/ast"
+import (
+	"github.com/bufbuild/protocompile/ast"
+)
 
 // the types below are accumulator types, just used in intermediate productions
 // to accumulate slices that will get stored in AST nodes
@@ -32,7 +34,9 @@ func toStringValueNode(strs []*ast.StringLiteralNode) ast.StringValueNode {
 }
 
 type nameSlices struct {
+	// only names or idents will be set, never both
 	names  []ast.StringValueNode
+	idents []*ast.IdentNode
 	commas []*ast.RuneNode
 }
 
@@ -87,4 +91,54 @@ func (list *messageFieldList) toNodes() ([]*ast.MessageFieldNode, []*ast.RuneNod
 		}
 	}
 	return fields, delimiters
+}
+
+func prependRunes[T ast.Node](convert func(*ast.RuneNode) T, runes []*ast.RuneNode, elements []T) []T {
+	elems := make([]T, 0, len(runes)+len(elements))
+	for _, rune := range runes {
+		elems = append(elems, convert(rune))
+	}
+	elems = append(elems, elements...)
+	return elems
+}
+
+func toServiceElement(semi *ast.RuneNode) ast.ServiceElement {
+	return ast.NewEmptyDeclNode(semi)
+}
+
+func toMethodElement(semi *ast.RuneNode) ast.RPCElement {
+	return ast.NewEmptyDeclNode(semi)
+}
+
+func toFileElement(semi *ast.RuneNode) ast.FileElement {
+	return ast.NewEmptyDeclNode(semi)
+}
+
+func toEnumElement(semi *ast.RuneNode) ast.EnumElement {
+	return ast.NewEmptyDeclNode(semi)
+}
+
+func toMessageElement(semi *ast.RuneNode) ast.MessageElement {
+	return ast.NewEmptyDeclNode(semi)
+}
+
+type nodeWithRunes[T ast.Node] struct {
+	Node  T
+	Runes []*ast.RuneNode
+}
+
+func newNodeWithRunes[T ast.Node](node T, trailingRunes ...*ast.RuneNode) nodeWithRunes[T] {
+	return nodeWithRunes[T]{
+		Node:  node,
+		Runes: trailingRunes,
+	}
+}
+
+func toElements[T ast.Node](convert func(*ast.RuneNode) T, node T, runes []*ast.RuneNode) []T {
+	elements := make([]T, 1+len(runes))
+	elements[0] = node
+	for i, rune := range runes {
+		elements[i+1] = convert(rune)
+	}
+	return elements
 }

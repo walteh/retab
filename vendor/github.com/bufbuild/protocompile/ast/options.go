@@ -71,10 +71,13 @@ func NewOptionNode(keyword *KeywordNode, name *OptionNameNode, equals *RuneNode,
 	if val == nil {
 		panic("val is nil")
 	}
+	var children []Node
 	if semicolon == nil {
-		panic("semicolon is nil")
+		children = []Node{keyword, name, equals, val}
+	} else {
+		children = []Node{keyword, name, equals, val, semicolon}
 	}
-	children := []Node{keyword, name, equals, val, semicolon}
+
 	return &OptionNode{
 		compositeNode: compositeNode{
 			children: children,
@@ -97,13 +100,18 @@ func NewCompactOptionNode(name *OptionNameNode, equals *RuneNode, val ValueNode)
 	if name == nil {
 		panic("name is nil")
 	}
-	if equals == nil {
-		panic("equals is nil")
+	if equals == nil && val != nil {
+		panic("equals is nil but val is not")
 	}
-	if val == nil {
-		panic("val is nil")
+	if val == nil && equals != nil {
+		panic("val is nil but equals is not")
 	}
-	children := []Node{name, equals, val}
+	var children []Node
+	if equals == nil && val == nil {
+		children = []Node{name}
+	} else {
+		children = []Node{name, equals, val}
+	}
 	return &OptionNode{
 		compositeNode: compositeNode{
 			children: children,
@@ -151,10 +159,10 @@ func NewOptionNameNode(parts []*FieldReferenceNode, dots []*RuneNode) *OptionNam
 	if len(parts) == 0 {
 		panic("must have at least one part")
 	}
-	if len(dots) != len(parts)-1 {
+	if len(dots) != len(parts)-1 && len(dots) != len(parts) {
 		panic(fmt.Sprintf("%d parts requires %d dots, not %d", len(parts), len(parts)-1, len(dots)))
 	}
-	children := make([]Node, 0, len(parts)*2-1)
+	children := make([]Node, 0, len(parts)+len(dots))
 	for i, part := range parts {
 		if part == nil {
 			panic(fmt.Sprintf("parts[%d] is nil", i))
@@ -166,6 +174,12 @@ func NewOptionNameNode(parts []*FieldReferenceNode, dots []*RuneNode) *OptionNam
 			children = append(children, dots[i-1])
 		}
 		children = append(children, part)
+	}
+	if len(dots) == len(parts) { // Add the erroneous, but tolerated trailing dot.
+		if dots[len(dots)-1] == nil {
+			panic(fmt.Sprintf("dots[%d] is nil", len(dots)-1))
+		}
+		children = append(children, dots[len(dots)-1])
 	}
 	return &OptionNameNode{
 		compositeNode: compositeNode{
@@ -332,25 +346,33 @@ func NewCompactOptionsNode(openBracket *RuneNode, opts []*OptionNode, commas []*
 	if closeBracket == nil {
 		panic("closeBracket is nil")
 	}
-	if len(opts) == 0 {
-		panic("must have at least one part")
+	if len(opts) == 0 && len(commas) != 0 {
+		panic("opts is empty but commas is not")
 	}
-	if len(commas) != len(opts)-1 {
+	if len(opts) != len(commas) && len(opts) != len(commas)+1 {
 		panic(fmt.Sprintf("%d opts requires %d commas, not %d", len(opts), len(opts)-1, len(commas)))
 	}
-	children := make([]Node, 0, len(opts)*2+1)
+	children := make([]Node, 0, len(opts)+len(commas)+2)
 	children = append(children, openBracket)
-	for i, opt := range opts {
-		if i > 0 {
-			if commas[i-1] == nil {
-				panic(fmt.Sprintf("commas[%d] is nil", i-1))
+	if len(opts) > 0 {
+		for i, opt := range opts {
+			if i > 0 {
+				if commas[i-1] == nil {
+					panic(fmt.Sprintf("commas[%d] is nil", i-1))
+				}
+				children = append(children, commas[i-1])
 			}
-			children = append(children, commas[i-1])
+			if opt == nil {
+				panic(fmt.Sprintf("opts[%d] is nil", i))
+			}
+			children = append(children, opt)
 		}
-		if opt == nil {
-			panic(fmt.Sprintf("opts[%d] is nil", i))
+		if len(opts) == len(commas) { // Add the erroneous, but tolerated trailing comma.
+			if commas[len(commas)-1] == nil {
+				panic(fmt.Sprintf("commas[%d] is nil", len(commas)-1))
+			}
+			children = append(children, commas[len(commas)-1])
 		}
-		children = append(children, opt)
 	}
 	children = append(children, closeBracket)
 

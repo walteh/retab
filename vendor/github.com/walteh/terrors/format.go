@@ -75,3 +75,50 @@ func FormatErrorCaller(err error, name string, verbose bool) string {
 
 	return fmt.Sprintf("%s%s%s", name, color.New(color.FgRed).Sprint(errstr), dets)
 }
+
+func InlineChainFormatter(self func() string, kid error) string {
+
+	if kid == nil {
+		slf := self()
+		if !strings.Contains(slf, "❌") {
+			return "❌ " + slf
+		}
+		return slf
+	}
+
+	errd := kid.Error()
+
+	arrow := "👉"
+
+	if !strings.Contains(errd, arrow) && !strings.HasPrefix(errd, "❌") {
+		arrow += " ❌"
+	}
+
+	return fmt.Sprintf("%s %s %s", self(), arrow, errd)
+}
+
+func FullChainFormatter(kid error) string {
+
+	chain := GetChain(kid)
+
+	wrk := "\n\n"
+
+	for i, err := range chain {
+		arrow := "👇"
+		if len(chain)-1 == i {
+			arrow = "❌"
+		}
+		wrk += arrow + " "
+		switch v := err.(type) {
+		case *wrapError:
+			wrk += v.DetailedSelf()
+		default:
+			wrk += fmt.Sprintf("%s\n\n", v.Error())
+		}
+	}
+
+	wrk += "\n\n"
+
+	return wrk
+
+}

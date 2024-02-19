@@ -6,17 +6,22 @@ package terrors
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/rs/zerolog"
 )
 
 type wrapError struct {
-	msg   string
-	err   error
-	frame Frame
-	event []func(*zerolog.Event) *zerolog.Event
-	code  int
+	msg      string
+	err      error
+	frame    Frame
+	event    []func(*zerolog.Event) *zerolog.Event
+	code     int
+	recovery *Recovery
+}
+
+type Recovery struct {
+	Suggestion string
+	State      []any
 }
 
 func (e *wrapError) Root() error {
@@ -25,6 +30,19 @@ func (e *wrapError) Root() error {
 
 func (e *wrapError) Frame() Frame {
 	return e.frame
+}
+
+func (e *wrapError) Recovery() *Recovery {
+	return e.recovery
+}
+
+func (e *wrapError) WithRecovery(r string, state ...any) *wrapError {
+	e.recovery = &Recovery{r, state}
+	return e
+}
+
+func (me *wrapError) WithRecoveryf(format string, a ...any) *wrapError {
+	return me.WithRecovery(fmt.Sprintf(format, a...))
 }
 
 func (e *wrapError) Info() []any {
@@ -43,67 +61,6 @@ func (e *wrapError) With(name string, value any) *wrapError {
 		return ev.Interface(name, value)
 	})
 	return e
-}
-
-func GetChain(err error) []error {
-	errs := []error{}
-	for err != nil {
-		errs = append(errs, err)
-		if we, ok := err.(*wrapError); ok {
-			err = we.err
-		} else {
-			break
-		}
-	}
-
-	return errs
-}
-
-func InlineChainFormatter(self func() string, kid error) string {
-
-	if kid == nil {
-		slf := self()
-		if !strings.Contains(slf, "❌") {
-			return "❌ " + slf
-		}
-		return slf
-	}
-
-	errd := kid.Error()
-
-	arrow := "👉"
-
-	if !strings.Contains(errd, arrow) && !strings.HasPrefix(errd, "❌") {
-		arrow += " ❌"
-	}
-
-	return fmt.Sprintf("%s %s %s", self(), arrow, errd)
-}
-
-func FullChainFormatter(kid error) string {
-
-	chain := GetChain(kid)
-
-	wrk := "\n\n"
-
-	for i, err := range chain {
-		arrow := "👇"
-		if len(chain)-1 == i {
-			arrow = "❌"
-		}
-		wrk += arrow + " "
-		switch v := err.(type) {
-		case *wrapError:
-			wrk += v.DetailedSelf()
-		default:
-			wrk += fmt.Sprintf("%s\n\n", v.Error())
-		}
-	}
-
-	wrk += "\n\n"
-
-	return wrk
-
 }
 
 func (e *wrapError) Error() string {

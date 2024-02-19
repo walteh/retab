@@ -16,7 +16,7 @@ type stringWriter struct {
 }
 
 func (s *stringWriter) Write(b []byte) (int, error) {
-	str, err := FormatJsonForDetail(b, []string{"level", "error", "caller"}, []string{"package", "file", "message", "function", "chain"})
+	str, err := FormatJsonForDetail(b, []string{"level", "error", "caller", "chain"}, []string{"package", "file", "message", "function"})
 	if err != nil {
 		return 0, err
 	}
