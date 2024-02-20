@@ -8,14 +8,6 @@ bins = {
 	"golangci-lint" = "github.com/golangci/golangci-lint/cmd/golangci-lint",
 }
 
-cmd ok {
-	words = "ok"
-}
-
-cmd work {
-	words = "work"
-}
-
 gen taskfile {
 	schema = "https://taskfile.dev/schema.json"
 	path   = "../taskfile.yaml"
@@ -88,9 +80,9 @@ task mockery-gen {
 
 task retab-gen {
 	deps      = []
-	generates = ["gen/retab/**/*"]
+	generates = []
 	dir       = "."
-	sources   = [".retab/*.retab", "./${TOOLS_DIR}/bin/mockery"]
+	sources   = [".retab/*.retab"]
 	cmds = [
 		"go run ./cmd/retab fmt && go run ./cmd/retab gen"
 	]

@@ -1,5 +1,3 @@
-TOOLS_DIR = "tools"
-
 GO_PACKAGE = "github.com/walteh/retab"
 
 gen taskfile {
@@ -35,7 +33,7 @@ gen taskfile {
 				"commands" : [
 					{
 						"match" : "\\.retab$",
-						"cmd" : "task retab-gen"
+						"cmd" : "./${file("task").TOOLS_DIR}/bin/task retab-gen"
 					},
 					{
 						"match" : "\\.proto$",
@@ -43,11 +41,11 @@ gen taskfile {
 					},
 					{
 						"match" : "\\.proto$",
-						"cmd" : "task buf-gen"
+						"cmd" : "./${file("task").TOOLS_DIR}/bin/task  buf-gen"
 					},
 					{
 						"match" : "\\.go$",
-						"cmd" : "task mockery-gen"
+						"cmd" : "./${file("task").TOOLS_DIR}/bin/task  mockery-gen"
 					}
 				]
 			},

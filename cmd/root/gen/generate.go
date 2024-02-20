@@ -33,15 +33,16 @@ func (me *Handler) Run(ctx context.Context, fls afero.Fs, fle afero.File) error 
 		return err
 	}
 
-	for _, fle := range fles {
-		body, diags, err := hclread.Process(ctx, fls, fle)
-		if err != nil {
-			return err
-		}
+	bodies, diags, err := hclread.ProccessBulk(ctx, fls, fles)
+	if err != nil {
+		return err
+	}
 
-		if diags.HasErrors() {
-			return diags
-		}
+	if diags.HasErrors() {
+		return diags
+	}
+
+	for _, body := range bodies {
 
 		err = body.WriteToFile(ctx, fls)
 		if err != nil {

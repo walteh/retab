@@ -113,6 +113,7 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parent *hcl.Eval
 }
 
 const MetaKey = "____meta"
+const FilesKey = "____files"
 
 func NewUnknownBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block *hclsyntax.Block) (key string, res cty.Value, diags hcl.Diagnostics) {
 
@@ -396,9 +397,45 @@ func NewFunctionMap() map[string]function.Function {
 	}
 }
 
-func NewContextualizedFunctionMap(ectx *hcl.EvalContext) map[string]function.Function {
-
+func NewGlobalContextualizedFunctionMap(ectx *hcl.EvalContext) map[string]function.Function {
 	return map[string]function.Function{
+		"file": function.New(&function.Spec{
+			Description: "Returns the contents of another .retab file",
+			Params: []function.Parameter{
+				{
+					Name:             "file",
+					Type:             cty.String,
+					AllowUnknown:     false,
+					AllowDynamicType: false,
+					AllowNull:        false,
+				},
+			},
+			Type: function.StaticReturnType(cty.DynamicPseudoType),
+			// RefineResult: refineNonNull,
+			Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+				if files, ok := ectx.Variables[FilesKey]; ok {
+					if files.IsKnown() {
+						if files.Type().IsObjectType() {
+							if file, ok := files.AsValueMap()[args[0].AsString()]; ok {
+								return file, nil
+							} else {
+								known := []string{}
+								for k := range files.AsValueMap() {
+									known = append(known, k)
+								}
+								return cty.NilVal, terrors.Errorf("file %s not found, known files: %s", args[0].AsString(), strings.Join(known, ", "))
+							}
+						}
+					}
+				}
+				return cty.NilVal, terrors.Errorf("files not found in context")
+			},
+		}),
+	}
+}
+func NewContextualizedFunctionMap(ectx *hcl.EvalContext) map[string]function.Function {
+	return map[string]function.Function{
+
 		"allof": function.New(&function.Spec{
 			Description: `Returns a map of all blocks w\ the given label`,
 			Params: []function.Parameter{

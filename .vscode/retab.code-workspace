@@ -30,7 +30,7 @@
 			"commands": [
 				{
 					"match": "\\.retab$",
-					"cmd": "task retab-gen"
+					"cmd": "./tools/bin/task retab-gen"
 				},
 				{
 					"match": "\\.proto$",
@@ -38,11 +38,11 @@
 				},
 				{
 					"match": "\\.proto$",
-					"cmd": "task buf-gen"
+					"cmd": "./tools/bin/task  buf-gen"
 				},
 				{
 					"match": "\\.go$",
-					"cmd": "task mockery-gen"
+					"cmd": "./tools/bin/task  mockery-gen"
 				}
 			]
 		}

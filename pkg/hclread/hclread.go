@@ -9,11 +9,70 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2/hclsyntax"
+
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/afero"
 	"github.com/walteh/terrors"
 	"github.com/walteh/yaml"
 )
+
+func ProccessBulk(ctx context.Context, fs afero.Fs, files []string) ([]*FileBlockEvaluation, hcl.Diagnostics, error) {
+	var out []*FileBlockEvaluation
+	diags := hcl.Diagnostics{}
+
+	globalFiles := make(map[string]cty.Value)
+
+	global := &hcl.EvalContext{
+		Variables: map[string]cty.Value{},
+	}
+
+	ectxs := make(map[string]*hcl.EvalContext)
+	blks := make(map[string]*hclsyntax.Body)
+
+	for _, file := range files {
+
+		opn, err := afero.ReadFile(fs, file)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		_, ectx, blk, diags, err := NewContextFromFile(ctx, opn, file)
+		if err != nil || diags.HasErrors() {
+			return nil, diags, err
+		}
+
+		ectxs[file] = ectx
+		blks[file] = blk
+
+		basenoext := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
+
+		globalFiles[basenoext] = cty.ObjectVal(ectx.Variables)
+
+	}
+
+	global.Variables[FilesKey] = cty.ObjectVal(globalFiles)
+
+	gfuncs := NewGlobalContextualizedFunctionMap(global)
+
+	for _, file := range files {
+
+		for k, v := range gfuncs {
+			ectxs[file].Functions[k] = v
+		}
+
+		eval, diags, err := NewGenBlockEvaluation(ctx, ectxs[file], blks[file])
+		if err != nil || diags.HasErrors() {
+			return nil, diags, err
+		}
+
+		out = append(out, eval)
+	}
+
+	return out, diags, nil
+}
 
 func Process(ctx context.Context, fs afero.Fs, file string) (*FileBlockEvaluation, hcl.Diagnostics, error) {
 	opn, err := afero.ReadFile(fs, file)
