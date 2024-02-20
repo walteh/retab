@@ -14,6 +14,7 @@ tasks:
         sources:
             - go.mod
             - go.sum
+            - main.go
     buf-gen:
         cmds:
             - |
@@ -49,6 +50,7 @@ tasks:
         sources:
             - go.mod
             - go.sum
+            - main.go
     gotestsum-bin:
         cmds:
             - go build -mod=vendor -o ./bin/gotestsum gotest.tools/gotestsum
@@ -58,6 +60,7 @@ tasks:
         sources:
             - go.mod
             - go.sum
+            - main.go
     lint:
         cmds:
             - GOWORK=off ./tools/bin/golangci-lint run --config ./.golangci.yml
@@ -76,6 +79,7 @@ tasks:
         sources:
             - go.mod
             - go.sum
+            - main.go
     mockery-gen:
         cmds:
             - ./tools/bin/mockery --dir ./gen/mockery --config ./.mockery.yaml
@@ -109,6 +113,7 @@ tasks:
         sources:
             - go.mod
             - go.sum
+            - main.go
     test-ci:
         cmds:
             - ./tools/bin/gotestsum --junitfile test-reports/junit.xml -- -v -coverprofile=coverage.out -coverpkg=./... ./...
