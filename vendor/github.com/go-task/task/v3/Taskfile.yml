@@ -1,0 +1,142 @@
+version: '3'
+
+includes:
+  docs:
+    aliases: [d]
+    taskfile: ./docs
+    dir: ./docs
+
+vars:
+  BIN: "{{.ROOT_DIR}}/bin"
+
+env:
+  CGO_ENABLED: '0'
+
+tasks:
+  default:
+    cmds:
+      - task: lint
+      - task: test
+
+  install:
+    desc: Installs Task
+    aliases: [i]
+    sources:
+      - './**/*.go'
+    cmds:
+      - go install -v ./cmd/task
+
+  generate:
+    desc: Runs Go generate to create mocks
+    aliases: [gen, g]
+    deps: [install:mockery]
+    sources:
+      - "internal/fingerprint/checker.go"
+    generates:
+      - "internal/mocks/*.go"
+    cmds:
+      - "{{.BIN}}/mockery --dir ./internal/fingerprint --name SourcesCheckable"
+      - "{{.BIN}}/mockery --dir ./internal/fingerprint --name StatusCheckable"
+
+  install:mockery:
+    desc: Installs mockgen; a tool to generate mock files
+    vars:
+      MOCKERY_VERSION: v2.24.0
+    env:
+      GOBIN: "{{.BIN}}"
+    status:
+      - go version -m {{.BIN}}/mockery | grep github.com/vektra/mockery | grep {{.MOCKERY_VERSION}}
+    cmds:
+      - go install github.com/vektra/mockery/v2@{{.MOCKERY_VERSION}}
+
+  mod:
+    desc: Downloads and tidy Go modules
+    cmds:
+      - go mod download
+      - go mod tidy
+
+  clean:
+    desc: Cleans temp files and folders
+    cmds:
+      - rm -rf dist/
+      - rm -rf tmp/
+
+  lint:
+    desc: Runs golangci-lint
+    aliases: [l]
+    sources:
+      - './**/*.go'
+      - .golangci.yml
+    cmds:
+      - golangci-lint run
+
+  lint:fix:
+    desc: Runs golangci-lint and fixes any issues
+    sources:
+      - './**/*.go'
+      - .golangci.yml
+    cmds:
+      - golangci-lint run --fix
+
+  sleepit:build:
+    desc: Builds the sleepit test helper
+    sources:
+      - ./cmd/sleepit/**/*.go
+    generates:
+      - "{{.BIN}}/sleepit"
+    cmds:
+      - go build -o {{.BIN}}/sleepit{{exeExt}} ./cmd/sleepit
+
+  sleepit:run:
+    desc: Builds the sleepit test helper
+    deps: [sleepit:build]
+    cmds:
+      - "{{.BIN}}/sleepit {{.CLI_ARGS}}"
+    silent: true
+
+  test:
+    desc: Runs test suite
+    aliases: [t]
+    deps: [install]
+    cmds:
+      - go test {{catLines .GO_PACKAGES}}
+    vars:
+      GO_PACKAGES:
+        sh: go list ./...
+
+  test:all:
+    desc: Runs test suite with signals and watch tests included
+    deps: [install, sleepit:build]
+    cmds:
+      - go test {{catLines .GO_PACKAGES}} -tags 'signals watch'
+    vars:
+      GO_PACKAGES:
+        sh: go list ./...
+
+  goreleaser:test:
+    desc: Tests release process without publishing
+    cmds:
+      - goreleaser --snapshot --clean
+
+  goreleaser:install:
+    desc: Installs goreleaser
+    cmds:
+      - go install github.com/goreleaser/goreleaser@latest
+
+  release:
+    desc: Prepare the project for a new release
+    cmds:
+      - go run ./cmd/release {{.CLI_ARGS}}
+
+  npm:publish:
+    desc: Publish release to npm
+    cmds:
+      - npm publish --access=public
+
+  packages:
+    cmds:
+      - echo '{{.GO_PACKAGES}}'
+    vars:
+      GO_PACKAGES:
+        sh: go list ./...
+    silent: true

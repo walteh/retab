@@ -1,6 +1,8 @@
 TOOLS_DIR = "tools"
 
 bins = {
+	"task"          = "github.com/go-task/task/v3/cmd/task"
+	"buf"           = "github.com/bufbuild/buf/cmd/buf",
 	"mockery"       = "github.com/vektra/mockery/v2",
 	"gotestsum"     = "gotest.tools/gotestsum",
 	"golangci-lint" = "github.com/golangci/golangci-lint/cmd/golangci-lint",
@@ -16,7 +18,7 @@ gen taskfile {
 				for bin, path in bins : "${bin}-bin" => {
 					generates = ["bin/${bin}"]
 					dir       = "${TOOLS_DIR}"
-					sources   = ["**/*", { exclude = "bin/**/*" }]
+					sources   = ["go.mod", "go.sum"]
 					cmds = [
 						"go build -mod=vendor -o ./bin/${bin} ${path}"
 					]
@@ -30,11 +32,11 @@ gen taskfile {
 						"go work vendor"
 					]
 				}
-				gen = {
-					deps = ["buf-gen", "mockery-gen"]
+				tools = {
+					deps = [for bin, _ in bins : "${bin}-bin"]
 				}
 				buf-gen = {
-					deps      = ["buf-bin"]
+					deps      = ["buf-bin", "retab-gen"]
 					generates = ["gen/buf/**/*"]
 					dir       = "."
 					sources   = ["proto/**/*.proto", "./${TOOLS_DIR}/bin/buf", "./buf.gen.yaml"]
@@ -47,7 +49,7 @@ gen taskfile {
 					]
 				}
 				mockery-gen = {
-					deps      = ["mockery-bin"]
+					deps      = ["mockery-bin", "retab-gen"]
 					generates = ["gen/mockery/**/*"]
 					dir       = "."
 					sources   = ["**/*.go", "./.mockery.yaml", "./${TOOLS_DIR}/bin/mockery"]
@@ -89,7 +91,9 @@ gen taskfile {
 						"./tools/bin/gotestsum --junitfile test-reports/junit.xml -- -v -coverprofile=coverage.out -coverpkg=./... ./..."
 					]
 				}
-
+				gen = {
+					deps = ["retab-gen", "buf-gen", "mockery-gen"]
+				}
 				default = { deps = ["tools", "gen", "lint", "test"] }
 		})
 	}

@@ -5,6 +5,15 @@
 
 version: 3
 tasks:
+    buf-bin:
+        cmds:
+            - go build -mod=vendor -o ./bin/buf github.com/bufbuild/buf/cmd/buf
+        dir: tools
+        generates:
+            - bin/buf
+        sources:
+            - go.mod
+            - go.sum
     buf-gen:
         cmds:
             - |
@@ -12,6 +21,7 @@ tasks:
             - find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete
         deps:
             - buf-bin
+            - retab-gen
         dir: .
         generates:
             - gen/buf/**/*
@@ -27,6 +37,7 @@ tasks:
             - test
     gen:
         deps:
+            - retab-gen
             - buf-gen
             - mockery-gen
     golangci-lint-bin:
@@ -36,8 +47,8 @@ tasks:
         generates:
             - bin/golangci-lint
         sources:
-            - '**/*'
-            - exclude: bin/**/*
+            - go.mod
+            - go.sum
     gotestsum-bin:
         cmds:
             - go build -mod=vendor -o ./bin/gotestsum gotest.tools/gotestsum
@@ -45,8 +56,8 @@ tasks:
         generates:
             - bin/gotestsum
         sources:
-            - '**/*'
-            - exclude: bin/**/*
+            - go.mod
+            - go.sum
     lint:
         cmds:
             - GOWORK=off ./tools/bin/golangci-lint run --config ./.golangci.yml
@@ -63,14 +74,15 @@ tasks:
         generates:
             - bin/mockery
         sources:
-            - '**/*'
-            - exclude: bin/**/*
+            - go.mod
+            - go.sum
     mockery-gen:
         cmds:
             - ./tools/bin/mockery --dir ./gen/mockery --config ./.mockery.yaml
             - find ./gen/mockery -type f -mmin +1 -delete
         deps:
             - mockery-bin
+            - retab-gen
         dir: .
         generates:
             - gen/mockery/**/*
@@ -88,6 +100,15 @@ tasks:
         sources:
             - .retab/*.retab
             - ./tools/bin/mockery
+    task-bin:
+        cmds:
+            - go build -mod=vendor -o ./bin/task github.com/go-task/task/v3/cmd/task
+        dir: tools
+        generates:
+            - bin/task
+        sources:
+            - go.mod
+            - go.sum
     test-ci:
         cmds:
             - ./tools/bin/gotestsum --junitfile test-reports/junit.xml -- -v -coverprofile=coverage.out -coverpkg=./... ./...
@@ -104,3 +125,10 @@ tasks:
             - go mod tidy
             - cd tools && go mod tidy
             - go work vendor
+    tools:
+        deps:
+            - buf-bin
+            - golangci-lint-bin
+            - gotestsum-bin
+            - mockery-bin
+            - task-bin

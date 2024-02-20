@@ -5,6 +5,17 @@
 # 4d63.com/gochecknoglobals v0.2.1
 ## explicit; go 1.15
 4d63.com/gochecknoglobals/checknoglobals
+# buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.32.0-20231115204500-e097f827e652.1
+## explicit
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate/priv
+# connectrpc.com/connect v1.14.0
+## explicit; go 1.19
+connectrpc.com/connect
+connectrpc.com/connect/internal/gen/connectext/grpc/status/v1
+# connectrpc.com/otelconnect v0.7.0
+## explicit; go 1.19
+connectrpc.com/otelconnect
 # github.com/4meepo/tagalign v1.3.3
 ## explicit; go 1.19
 github.com/4meepo/tagalign
@@ -24,6 +35,10 @@ github.com/Antonboom/testifylint/internal/analysisutil
 github.com/Antonboom/testifylint/internal/checkers
 github.com/Antonboom/testifylint/internal/config
 github.com/Antonboom/testifylint/internal/testify
+# github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161
+## explicit; go 1.16
+github.com/Azure/go-ansiterm
+github.com/Azure/go-ansiterm/winterm
 # github.com/BurntSushi/toml v1.3.2
 ## explicit; go 1.16
 github.com/BurntSushi/toml
@@ -40,6 +55,16 @@ github.com/GaijinEntertainment/go-exhaustruct/v3/internal/structure
 # github.com/Masterminds/semver v1.5.0
 ## explicit
 github.com/Masterminds/semver
+# github.com/Masterminds/semver/v3 v3.2.1
+## explicit; go 1.18
+github.com/Masterminds/semver/v3
+# github.com/Microsoft/go-winio v0.6.1
+## explicit; go 1.17
+github.com/Microsoft/go-winio
+github.com/Microsoft/go-winio/internal/fs
+github.com/Microsoft/go-winio/internal/socket
+github.com/Microsoft/go-winio/internal/stringbuffer
+github.com/Microsoft/go-winio/pkg/guid
 # github.com/OpenPeeDeeP/depguard/v2 v2.2.0
 ## explicit; go 1.20
 github.com/OpenPeeDeeP/depguard/v2
@@ -59,6 +84,9 @@ github.com/alexkohler/prealloc/pkg
 # github.com/alingse/asasalint v0.0.11
 ## explicit; go 1.18
 github.com/alingse/asasalint
+# github.com/antlr4-go/antlr/v4 v4.13.0
+## explicit; go 1.20
+github.com/antlr4-go/antlr/v4
 # github.com/apparentlymart/go-textseg/v13 v13.0.0
 ## explicit; go 1.16
 github.com/apparentlymart/go-textseg/v13/textseg
@@ -92,13 +120,207 @@ github.com/breml/bidichk/pkg/bidichk
 # github.com/breml/errchkjson v0.3.6
 ## explicit; go 1.20
 github.com/breml/errchkjson
+# github.com/bufbuild/buf v1.29.0
+## explicit; go 1.19
+github.com/bufbuild/buf/cmd/buf
+github.com/bufbuild/buf/private/buf/bufapp
+github.com/bufbuild/buf/private/buf/bufcli
+github.com/bufbuild/buf/private/buf/bufcurl
+github.com/bufbuild/buf/private/buf/buffetch
+github.com/bufbuild/buf/private/buf/buffetch/internal
+github.com/bufbuild/buf/private/buf/bufformat
+github.com/bufbuild/buf/private/buf/bufgen
+github.com/bufbuild/buf/private/buf/bufmigrate
+github.com/bufbuild/buf/private/buf/bufprint
+github.com/bufbuild/buf/private/buf/bufsync
+github.com/bufbuild/buf/private/buf/bufsync/bufsyncapi
+github.com/bufbuild/buf/private/buf/bufwire
+github.com/bufbuild/buf/private/buf/bufwork
+github.com/bufbuild/buf/private/buf/cmd/buf
+github.com/bufbuild/buf/private/buf/cmd/buf/command/alpha/package/goversion
+github.com/bufbuild/buf/private/buf/cmd/buf/command/alpha/package/mavenversion
+github.com/bufbuild/buf/private/buf/cmd/buf/command/alpha/package/npmversion
+github.com/bufbuild/buf/private/buf/cmd/buf/command/alpha/package/pythonversion
+github.com/bufbuild/buf/private/buf/cmd/buf/command/alpha/package/swiftversion
+github.com/bufbuild/buf/private/buf/cmd/buf/command/alpha/protoc
+github.com/bufbuild/buf/private/buf/cmd/buf/command/alpha/registry/token/tokendelete
+github.com/bufbuild/buf/private/buf/cmd/buf/command/alpha/registry/token/tokenget
+github.com/bufbuild/buf/private/buf/cmd/buf/command/alpha/registry/token/tokenlist
+github.com/bufbuild/buf/private/buf/cmd/buf/command/alpha/repo/reposync
+github.com/bufbuild/buf/private/buf/cmd/buf/command/alpha/workspace/workspacepush
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/graph
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/migratev1beta1
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/price
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/commit/commitget
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/commit/commitlist
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/draft/draftdelete
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/draft/draftlist
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/organization/organizationcreate
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/organization/organizationdelete
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/organization/organizationget
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/plugin/plugindelete
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/plugin/pluginpush
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/repository/repositorycreate
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/repository/repositorydelete
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/repository/repositorydeprecate
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/repository/repositoryget
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/repository/repositorylist
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/repository/repositoryundeprecate
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/repository/repositoryupdate
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/tag/tagcreate
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/tag/taglist
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/webhook/webhookcreate
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/webhook/webhookdelete
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/registry/webhook/webhooklist
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/stats
+github.com/bufbuild/buf/private/buf/cmd/buf/command/beta/studioagent
+github.com/bufbuild/buf/private/buf/cmd/buf/command/breaking
+github.com/bufbuild/buf/private/buf/cmd/buf/command/build
+github.com/bufbuild/buf/private/buf/cmd/buf/command/convert
+github.com/bufbuild/buf/private/buf/cmd/buf/command/curl
+github.com/bufbuild/buf/private/buf/cmd/buf/command/export
+github.com/bufbuild/buf/private/buf/cmd/buf/command/format
+github.com/bufbuild/buf/private/buf/cmd/buf/command/generate
+github.com/bufbuild/buf/private/buf/cmd/buf/command/lint
+github.com/bufbuild/buf/private/buf/cmd/buf/command/lsfiles
+github.com/bufbuild/buf/private/buf/cmd/buf/command/mod/internal
+github.com/bufbuild/buf/private/buf/cmd/buf/command/mod/modclearcache
+github.com/bufbuild/buf/private/buf/cmd/buf/command/mod/modinit
+github.com/bufbuild/buf/private/buf/cmd/buf/command/mod/modlsbreakingrules
+github.com/bufbuild/buf/private/buf/cmd/buf/command/mod/modlslintrules
+github.com/bufbuild/buf/private/buf/cmd/buf/command/mod/modopen
+github.com/bufbuild/buf/private/buf/cmd/buf/command/mod/modprune
+github.com/bufbuild/buf/private/buf/cmd/buf/command/mod/modupdate
+github.com/bufbuild/buf/private/buf/cmd/buf/command/push
+github.com/bufbuild/buf/private/buf/cmd/buf/command/registry/registrylogin
+github.com/bufbuild/buf/private/buf/cmd/buf/command/registry/registrylogout
+github.com/bufbuild/buf/private/bufpkg/bufanalysis
+github.com/bufbuild/buf/private/bufpkg/bufapimodule
+github.com/bufbuild/buf/private/bufpkg/bufcas
+github.com/bufbuild/buf/private/bufpkg/bufcas/bufcasalpha
+github.com/bufbuild/buf/private/bufpkg/bufcheck
+github.com/bufbuild/buf/private/bufpkg/bufcheck/bufbreaking
+github.com/bufbuild/buf/private/bufpkg/bufcheck/bufbreaking/bufbreakingconfig
+github.com/bufbuild/buf/private/bufpkg/bufcheck/bufbreaking/internal/bufbreakingbuild
+github.com/bufbuild/buf/private/bufpkg/bufcheck/bufbreaking/internal/bufbreakingcheck
+github.com/bufbuild/buf/private/bufpkg/bufcheck/bufbreaking/internal/bufbreakingv1
+github.com/bufbuild/buf/private/bufpkg/bufcheck/bufbreaking/internal/bufbreakingv1beta1
+github.com/bufbuild/buf/private/bufpkg/bufcheck/buflint
+github.com/bufbuild/buf/private/bufpkg/bufcheck/buflint/buflintconfig
+github.com/bufbuild/buf/private/bufpkg/bufcheck/buflint/internal/buflintbuild
+github.com/bufbuild/buf/private/bufpkg/bufcheck/buflint/internal/buflintcheck
+github.com/bufbuild/buf/private/bufpkg/bufcheck/buflint/internal/buflintv1
+github.com/bufbuild/buf/private/bufpkg/bufcheck/buflint/internal/buflintv1beta1
+github.com/bufbuild/buf/private/bufpkg/bufcheck/buflint/internal/buflintvalidate
+github.com/bufbuild/buf/private/bufpkg/bufcheck/internal
+github.com/bufbuild/buf/private/bufpkg/bufconfig
+github.com/bufbuild/buf/private/bufpkg/bufconnect
+github.com/bufbuild/buf/private/bufpkg/bufgraph
+github.com/bufbuild/buf/private/bufpkg/bufimage
+github.com/bufbuild/buf/private/bufpkg/bufimage/bufimagebuild
+github.com/bufbuild/buf/private/bufpkg/bufimage/bufimagemodify
+github.com/bufbuild/buf/private/bufpkg/bufimage/bufimageutil
+github.com/bufbuild/buf/private/bufpkg/buflock
+github.com/bufbuild/buf/private/bufpkg/bufmodule
+github.com/bufbuild/buf/private/bufpkg/bufmodule/bufmodulebuild
+github.com/bufbuild/buf/private/bufpkg/bufmodule/bufmodulecache
+github.com/bufbuild/buf/private/bufpkg/bufmodule/bufmoduleconfig
+github.com/bufbuild/buf/private/bufpkg/bufmodule/bufmoduleprotocompile
+github.com/bufbuild/buf/private/bufpkg/bufmodule/bufmoduleref
+github.com/bufbuild/buf/private/bufpkg/bufmodule/bufmodulestat
+github.com/bufbuild/buf/private/bufpkg/bufmodule/internal
+github.com/bufbuild/buf/private/bufpkg/bufplugin
+github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig
+github.com/bufbuild/buf/private/bufpkg/bufplugin/bufplugindocker
+github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref
+github.com/bufbuild/buf/private/bufpkg/bufpluginexec
+github.com/bufbuild/buf/private/bufpkg/bufreflect
+github.com/bufbuild/buf/private/bufpkg/bufremoteplugin
+github.com/bufbuild/buf/private/bufpkg/bufstudioagent
+github.com/bufbuild/buf/private/bufpkg/buftransport
+github.com/bufbuild/buf/private/bufpkg/bufwasm
+github.com/bufbuild/buf/private/gen/data/dataspdx
+github.com/bufbuild/buf/private/gen/data/datawkt
+github.com/bufbuild/buf/private/gen/proto/connect/buf/alpha/registry/v1alpha1/registryv1alpha1connect
+github.com/bufbuild/buf/private/gen/proto/go/buf/alpha/breaking/v1
+github.com/bufbuild/buf/private/gen/proto/go/buf/alpha/image/v1
+github.com/bufbuild/buf/private/gen/proto/go/buf/alpha/lint/v1
+github.com/bufbuild/buf/private/gen/proto/go/buf/alpha/module/v1alpha1
+github.com/bufbuild/buf/private/gen/proto/go/buf/alpha/registry/v1alpha1
+github.com/bufbuild/buf/private/gen/proto/go/buf/alpha/studio/v1alpha1
+github.com/bufbuild/buf/private/gen/proto/go/buf/alpha/wasmplugin/v1
+github.com/bufbuild/buf/private/gen/proto/go/grpc/reflection/v1
+github.com/bufbuild/buf/private/pkg/app
+github.com/bufbuild/buf/private/pkg/app/appcmd
+github.com/bufbuild/buf/private/pkg/app/appflag
+github.com/bufbuild/buf/private/pkg/app/applog
+github.com/bufbuild/buf/private/pkg/app/appname
+github.com/bufbuild/buf/private/pkg/app/appproto
+github.com/bufbuild/buf/private/pkg/app/appproto/appprotoos
+github.com/bufbuild/buf/private/pkg/app/appverbose
+github.com/bufbuild/buf/private/pkg/cert/certclient
+github.com/bufbuild/buf/private/pkg/command
+github.com/bufbuild/buf/private/pkg/connectclient
+github.com/bufbuild/buf/private/pkg/dag
+github.com/bufbuild/buf/private/pkg/diff
+github.com/bufbuild/buf/private/pkg/encoding
+github.com/bufbuild/buf/private/pkg/filepathext
+github.com/bufbuild/buf/private/pkg/git
+github.com/bufbuild/buf/private/pkg/httpauth
+github.com/bufbuild/buf/private/pkg/interrupt
+github.com/bufbuild/buf/private/pkg/ioext
+github.com/bufbuild/buf/private/pkg/netext
+github.com/bufbuild/buf/private/pkg/netrc
+github.com/bufbuild/buf/private/pkg/normalpath
+github.com/bufbuild/buf/private/pkg/observabilityzap
+github.com/bufbuild/buf/private/pkg/osext
+github.com/bufbuild/buf/private/pkg/protodescriptor
+github.com/bufbuild/buf/private/pkg/protoencoding
+github.com/bufbuild/buf/private/pkg/protosource
+github.com/bufbuild/buf/private/pkg/protostat
+github.com/bufbuild/buf/private/pkg/protoversion
+github.com/bufbuild/buf/private/pkg/slicesext
+github.com/bufbuild/buf/private/pkg/storage
+github.com/bufbuild/buf/private/pkg/storage/storagearchive
+github.com/bufbuild/buf/private/pkg/storage/storagegit
+github.com/bufbuild/buf/private/pkg/storage/storagemem
+github.com/bufbuild/buf/private/pkg/storage/storagemem/internal
+github.com/bufbuild/buf/private/pkg/storage/storageos
+github.com/bufbuild/buf/private/pkg/storage/storageutil
+github.com/bufbuild/buf/private/pkg/stringutil
+github.com/bufbuild/buf/private/pkg/syserror
+github.com/bufbuild/buf/private/pkg/thread
+github.com/bufbuild/buf/private/pkg/tmp
+github.com/bufbuild/buf/private/pkg/transport/http/httpclient
+github.com/bufbuild/buf/private/pkg/transport/http/httpserver
+github.com/bufbuild/buf/private/pkg/uuidutil
+github.com/bufbuild/buf/private/pkg/verbose
+github.com/bufbuild/buf/private/pkg/zaputil
+github.com/bufbuild/buf/private/usage
 # github.com/bufbuild/protocompile v0.8.0
 ## explicit; go 1.19
+github.com/bufbuild/protocompile
 github.com/bufbuild/protocompile/ast
 github.com/bufbuild/protocompile/internal
+github.com/bufbuild/protocompile/linker
+github.com/bufbuild/protocompile/options
 github.com/bufbuild/protocompile/parser
+github.com/bufbuild/protocompile/protoutil
 github.com/bufbuild/protocompile/reporter
+github.com/bufbuild/protocompile/sourceinfo
 github.com/bufbuild/protocompile/walk
+# github.com/bufbuild/protovalidate-go v0.5.0
+## explicit; go 1.19
+github.com/bufbuild/protovalidate-go
+github.com/bufbuild/protovalidate-go/celext
+github.com/bufbuild/protovalidate-go/internal/constraints
+github.com/bufbuild/protovalidate-go/internal/errors
+github.com/bufbuild/protovalidate-go/internal/evaluator
+github.com/bufbuild/protovalidate-go/internal/expression
+github.com/bufbuild/protovalidate-go/resolver
+# github.com/bufbuild/protoyaml-go v0.1.7
+## explicit; go 1.19
+github.com/bufbuild/protoyaml-go
 # github.com/butuzov/ireturn v0.3.0
 ## explicit; go 1.18
 github.com/butuzov/ireturn/analyzer
@@ -122,6 +344,8 @@ github.com/ccojocar/zxcvbn-go/match
 github.com/ccojocar/zxcvbn-go/matching
 github.com/ccojocar/zxcvbn-go/scoring
 github.com/ccojocar/zxcvbn-go/utils/math
+# github.com/cenkalti/backoff/v4 v4.2.1
+## explicit; go 1.18
 # github.com/cespare/xxhash/v2 v2.2.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
@@ -137,6 +361,13 @@ github.com/chigopher/pathlib
 # github.com/chzyer/readline v1.5.1
 ## explicit; go 1.15
 github.com/chzyer/readline
+# github.com/containerd/stargz-snapshotter/estargz v0.15.1
+## explicit; go 1.19
+github.com/containerd/stargz-snapshotter/estargz
+github.com/containerd/stargz-snapshotter/estargz/errorutil
+# github.com/cpuguy83/go-md2man/v2 v2.0.3
+## explicit; go 1.11
+github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/curioswitch/go-reassign v0.2.0
 ## explicit; go 1.18
 github.com/curioswitch/go-reassign
@@ -158,9 +389,60 @@ github.com/davecgh/go-spew/spew
 # github.com/denis-tingaikin/go-header v0.4.3
 ## explicit; go 1.17
 github.com/denis-tingaikin/go-header
+# github.com/distribution/reference v0.5.0
+## explicit; go 1.20
+github.com/distribution/reference
 # github.com/dnephin/pflag v1.0.7
 ## explicit; go 1.12
 github.com/dnephin/pflag
+# github.com/docker/cli v24.0.7+incompatible
+## explicit
+github.com/docker/cli/cli/config
+github.com/docker/cli/cli/config/configfile
+github.com/docker/cli/cli/config/credentials
+github.com/docker/cli/cli/config/types
+# github.com/docker/distribution v2.8.3+incompatible
+## explicit
+github.com/docker/distribution/registry/client/auth/challenge
+# github.com/docker/docker v25.0.0+incompatible
+## explicit
+github.com/docker/docker/api
+github.com/docker/docker/api/types
+github.com/docker/docker/api/types/blkiodev
+github.com/docker/docker/api/types/checkpoint
+github.com/docker/docker/api/types/container
+github.com/docker/docker/api/types/events
+github.com/docker/docker/api/types/filters
+github.com/docker/docker/api/types/image
+github.com/docker/docker/api/types/mount
+github.com/docker/docker/api/types/network
+github.com/docker/docker/api/types/registry
+github.com/docker/docker/api/types/strslice
+github.com/docker/docker/api/types/swarm
+github.com/docker/docker/api/types/swarm/runtime
+github.com/docker/docker/api/types/system
+github.com/docker/docker/api/types/time
+github.com/docker/docker/api/types/versions
+github.com/docker/docker/api/types/volume
+github.com/docker/docker/client
+github.com/docker/docker/errdefs
+github.com/docker/docker/image/spec/specs-go/v1
+github.com/docker/docker/internal/multierror
+github.com/docker/docker/pkg/homedir
+github.com/docker/docker/pkg/jsonmessage
+github.com/docker/docker/pkg/stringid
+# github.com/docker/docker-credential-helpers v0.8.1
+## explicit; go 1.19
+github.com/docker/docker-credential-helpers/client
+github.com/docker/docker-credential-helpers/credentials
+# github.com/docker/go-connections v0.5.0
+## explicit; go 1.18
+github.com/docker/go-connections/nat
+github.com/docker/go-connections/sockets
+github.com/docker/go-connections/tlsconfig
+# github.com/docker/go-units v0.5.0
+## explicit
+github.com/docker/go-units
 # github.com/editorconfig/editorconfig-core-go/v2 v2.6.1
 ## explicit; go 1.20
 github.com/editorconfig/editorconfig-core-go/v2
@@ -176,6 +458,12 @@ github.com/fatih/color
 # github.com/fatih/structtag v1.2.0
 ## explicit; go 1.12
 github.com/fatih/structtag
+# github.com/felixge/fgprof v0.9.3
+## explicit; go 1.14
+github.com/felixge/fgprof
+# github.com/felixge/httpsnoop v1.0.4
+## explicit; go 1.13
+github.com/felixge/httpsnoop
 # github.com/firefart/nonamedreturns v1.0.4
 ## explicit; go 1.18
 github.com/firefart/nonamedreturns/analyzer
@@ -188,6 +476,9 @@ github.com/fzipp/gocyclo
 # github.com/ghostiam/protogetter v0.3.4
 ## explicit; go 1.19
 github.com/ghostiam/protogetter
+# github.com/go-chi/chi/v5 v5.0.11
+## explicit; go 1.14
+github.com/go-chi/chi/v5
 # github.com/go-critic/go-critic v0.11.1
 ## explicit; go 1.18
 github.com/go-critic/go-critic/checkers
@@ -198,6 +489,44 @@ github.com/go-critic/go-critic/linter
 # github.com/go-faster/errors v0.7.1
 ## explicit; go 1.20
 github.com/go-faster/errors
+# github.com/go-logr/logr v1.4.1
+## explicit; go 1.18
+github.com/go-logr/logr
+github.com/go-logr/logr/funcr
+# github.com/go-logr/stdr v1.2.2
+## explicit; go 1.16
+github.com/go-logr/stdr
+# github.com/go-task/slim-sprig/v3 v3.0.0
+## explicit; go 1.20
+github.com/go-task/slim-sprig/v3
+# github.com/go-task/task/v3 v3.34.1
+## explicit; go 1.20
+github.com/go-task/task/v3
+github.com/go-task/task/v3/args
+github.com/go-task/task/v3/cmd/task
+github.com/go-task/task/v3/errors
+github.com/go-task/task/v3/internal/compiler
+github.com/go-task/task/v3/internal/deepcopy
+github.com/go-task/task/v3/internal/editors
+github.com/go-task/task/v3/internal/env
+github.com/go-task/task/v3/internal/execext
+github.com/go-task/task/v3/internal/experiments
+github.com/go-task/task/v3/internal/filepathext
+github.com/go-task/task/v3/internal/fingerprint
+github.com/go-task/task/v3/internal/goext
+github.com/go-task/task/v3/internal/hash
+github.com/go-task/task/v3/internal/logger
+github.com/go-task/task/v3/internal/omap
+github.com/go-task/task/v3/internal/output
+github.com/go-task/task/v3/internal/slicesext
+github.com/go-task/task/v3/internal/sort
+github.com/go-task/task/v3/internal/summary
+github.com/go-task/task/v3/internal/sysinfo
+github.com/go-task/task/v3/internal/templater
+github.com/go-task/task/v3/internal/term
+github.com/go-task/task/v3/internal/version
+github.com/go-task/task/v3/taskfile
+github.com/go-task/task/v3/taskfile/ast
 # github.com/go-toolsmith/astcast v1.1.0
 ## explicit; go 1.16
 github.com/go-toolsmith/astcast
@@ -238,6 +567,12 @@ github.com/gobwas/glob/util/strings
 # github.com/gofrs/flock v0.8.1
 ## explicit
 github.com/gofrs/flock
+# github.com/gofrs/uuid/v5 v5.0.0
+## explicit; go 1.19
+github.com/gofrs/uuid/v5
+# github.com/gogo/protobuf v1.3.2
+## explicit; go 1.15
+github.com/gogo/protobuf/proto
 # github.com/golangci/check v0.0.0-20180506172741-cfe4005ccda2
 ## explicit
 github.com/golangci/check/cmd/structcheck
@@ -300,6 +635,29 @@ github.com/golangci/revgrep
 # github.com/golangci/unconvert v0.0.0-20180507085042-28b1c447d1f4
 ## explicit
 github.com/golangci/unconvert
+# github.com/google/cel-go v0.19.0
+## explicit; go 1.18
+github.com/google/cel-go/cel
+github.com/google/cel-go/checker
+github.com/google/cel-go/checker/decls
+github.com/google/cel-go/common
+github.com/google/cel-go/common/ast
+github.com/google/cel-go/common/containers
+github.com/google/cel-go/common/debug
+github.com/google/cel-go/common/decls
+github.com/google/cel-go/common/functions
+github.com/google/cel-go/common/operators
+github.com/google/cel-go/common/overloads
+github.com/google/cel-go/common/runes
+github.com/google/cel-go/common/stdlib
+github.com/google/cel-go/common/types
+github.com/google/cel-go/common/types/pb
+github.com/google/cel-go/common/types/ref
+github.com/google/cel-go/common/types/traits
+github.com/google/cel-go/ext
+github.com/google/cel-go/interpreter
+github.com/google/cel-go/parser
+github.com/google/cel-go/parser/gen
 # github.com/google/go-cmp v0.6.0
 ## explicit; go 1.13
 github.com/google/go-cmp/cmp
@@ -307,6 +665,34 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
+# github.com/google/go-containerregistry v0.18.0
+## explicit; go 1.18
+github.com/google/go-containerregistry/internal/and
+github.com/google/go-containerregistry/internal/compression
+github.com/google/go-containerregistry/internal/estargz
+github.com/google/go-containerregistry/internal/gzip
+github.com/google/go-containerregistry/internal/redact
+github.com/google/go-containerregistry/internal/retry
+github.com/google/go-containerregistry/internal/retry/wait
+github.com/google/go-containerregistry/internal/verify
+github.com/google/go-containerregistry/internal/zstd
+github.com/google/go-containerregistry/pkg/authn
+github.com/google/go-containerregistry/pkg/compression
+github.com/google/go-containerregistry/pkg/logs
+github.com/google/go-containerregistry/pkg/name
+github.com/google/go-containerregistry/pkg/v1
+github.com/google/go-containerregistry/pkg/v1/empty
+github.com/google/go-containerregistry/pkg/v1/match
+github.com/google/go-containerregistry/pkg/v1/mutate
+github.com/google/go-containerregistry/pkg/v1/partial
+github.com/google/go-containerregistry/pkg/v1/remote
+github.com/google/go-containerregistry/pkg/v1/remote/transport
+github.com/google/go-containerregistry/pkg/v1/stream
+github.com/google/go-containerregistry/pkg/v1/tarball
+github.com/google/go-containerregistry/pkg/v1/types
+# github.com/google/pprof v0.0.0-20240117000934-35fc243c5815
+## explicit; go 1.19
+github.com/google/pprof/profile
 # github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 ## explicit; go 1.13
 github.com/google/shlex
@@ -370,6 +756,9 @@ github.com/iancoleman/strcase
 # github.com/inconshreveable/mousetrap v1.1.0
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
+# github.com/jdx/go-netrc v1.0.0
+## explicit; go 1.20
+github.com/jdx/go-netrc
 # github.com/jgautheron/goconst v1.7.0
 ## explicit; go 1.13
 github.com/jgautheron/goconst
@@ -385,6 +774,9 @@ github.com/jirfag/go-printf-func-name/pkg/analyzer
 # github.com/jjti/go-spancheck v0.5.2
 ## explicit; go 1.20
 github.com/jjti/go-spancheck
+# github.com/joho/godotenv v1.5.1
+## explicit; go 1.12
+github.com/joho/godotenv
 # github.com/julz/importas v0.1.0
 ## explicit; go 1.15
 github.com/julz/importas
@@ -404,6 +796,23 @@ github.com/kisielk/gotool/internal/load
 # github.com/kkHAIKE/contextcheck v1.1.4
 ## explicit; go 1.20
 github.com/kkHAIKE/contextcheck
+# github.com/klauspost/compress v1.17.4
+## explicit; go 1.19
+github.com/klauspost/compress
+github.com/klauspost/compress/flate
+github.com/klauspost/compress/fse
+github.com/klauspost/compress/huff0
+github.com/klauspost/compress/internal/cpuinfo
+github.com/klauspost/compress/internal/snapref
+github.com/klauspost/compress/zip
+github.com/klauspost/compress/zstd
+github.com/klauspost/compress/zstd/internal/xxhash
+# github.com/klauspost/cpuid/v2 v2.0.9
+## explicit; go 1.13
+github.com/klauspost/cpuid/v2
+# github.com/klauspost/pgzip v1.2.6
+## explicit
+github.com/klauspost/pgzip
 # github.com/kr/pretty v0.3.1
 ## explicit; go 1.12
 # github.com/kulti/thelper v0.6.3
@@ -461,6 +870,10 @@ github.com/mattn/go-isatty
 # github.com/mattn/go-runewidth v0.0.15
 ## explicit; go 1.9
 github.com/mattn/go-runewidth
+# github.com/mattn/go-zglob v0.0.4
+## explicit; go 1.12
+github.com/mattn/go-zglob
+github.com/mattn/go-zglob/fastwalk
 # github.com/mbilski/exhaustivestruct v1.2.0
 ## explicit; go 1.15
 github.com/mbilski/exhaustivestruct/pkg/analyzer
@@ -478,14 +891,24 @@ github.com/mitchellh/go-homedir
 # github.com/mitchellh/go-wordwrap v1.0.1
 ## explicit; go 1.14
 github.com/mitchellh/go-wordwrap
+# github.com/mitchellh/hashstructure/v2 v2.0.2
+## explicit; go 1.14
+github.com/mitchellh/hashstructure/v2
 # github.com/mitchellh/mapstructure v1.5.0
 ## explicit; go 1.14
 github.com/mitchellh/mapstructure
+# github.com/moby/term v0.5.0
+## explicit; go 1.18
+github.com/moby/term
+github.com/moby/term/windows
 # github.com/moricho/tparallel v0.3.1
 ## explicit; go 1.20
 github.com/moricho/tparallel
 github.com/moricho/tparallel/pkg/ssafunc
 github.com/moricho/tparallel/pkg/ssainstr
+# github.com/morikuni/aec v1.0.0
+## explicit
+github.com/morikuni/aec
 # github.com/nakabonne/nestif v0.3.1
 ## explicit; go 1.15
 github.com/nakabonne/nestif
@@ -507,6 +930,13 @@ github.com/nunnatsa/ginkgolinter/version
 # github.com/olekukonko/tablewriter v0.0.5
 ## explicit; go 1.12
 github.com/olekukonko/tablewriter
+# github.com/opencontainers/go-digest v1.0.0
+## explicit; go 1.13
+github.com/opencontainers/go-digest
+# github.com/opencontainers/image-spec v1.1.0-rc5
+## explicit; go 1.18
+github.com/opencontainers/image-spec/specs-go
+github.com/opencontainers/image-spec/specs-go/v1
 # github.com/pelletier/go-toml/v2 v2.1.1
 ## explicit; go 1.16
 github.com/pelletier/go-toml/v2
@@ -514,6 +944,15 @@ github.com/pelletier/go-toml/v2/internal/characters
 github.com/pelletier/go-toml/v2/internal/danger
 github.com/pelletier/go-toml/v2/internal/tracker
 github.com/pelletier/go-toml/v2/unstable
+# github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
+## explicit; go 1.14
+github.com/pkg/browser
+# github.com/pkg/errors v0.9.1
+## explicit
+github.com/pkg/errors
+# github.com/pkg/profile v1.7.0
+## explicit; go 1.13
+github.com/pkg/profile
 # github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 ## explicit
 github.com/pmezard/go-difflib/difflib
@@ -567,17 +1006,26 @@ github.com/quasilyte/regex/syntax
 # github.com/quasilyte/stdinfo v0.0.0-20220114132959-f7386bf02567
 ## explicit; go 1.17
 github.com/quasilyte/stdinfo
+# github.com/radovskyb/watcher v1.0.7
+## explicit
+github.com/radovskyb/watcher
 # github.com/rivo/uniseg v0.4.7
 ## explicit; go 1.18
 github.com/rivo/uniseg
 # github.com/rogpeppe/go-internal v1.12.0
 ## explicit; go 1.20
+# github.com/rs/cors v1.10.1
+## explicit; go 1.13
+github.com/rs/cors
 # github.com/rs/zerolog v1.32.0
 ## explicit; go 1.15
 github.com/rs/zerolog
 github.com/rs/zerolog/internal/cbor
 github.com/rs/zerolog/internal/json
 github.com/rs/zerolog/log
+# github.com/russross/blackfriday/v2 v2.1.0
+## explicit
+github.com/russross/blackfriday/v2
 # github.com/ryancurrah/gomodguard v1.3.0
 ## explicit; go 1.19
 github.com/ryancurrah/gomodguard
@@ -590,6 +1038,9 @@ github.com/sagikazarmark/locafero
 # github.com/sagikazarmark/slog-shim v0.1.0
 ## explicit; go 1.20
 github.com/sagikazarmark/slog-shim
+# github.com/sajari/fuzzy v1.0.0
+## explicit
+github.com/sajari/fuzzy
 # github.com/sanposhiho/wastedassign/v2 v2.0.7
 ## explicit; go 1.14
 github.com/sanposhiho/wastedassign/v2
@@ -652,6 +1103,7 @@ github.com/spf13/cast
 # github.com/spf13/cobra v1.8.0
 ## explicit; go 1.15
 github.com/spf13/cobra
+github.com/spf13/cobra/doc
 # github.com/spf13/pflag v1.0.5
 ## explicit; go 1.12
 github.com/spf13/pflag
@@ -673,6 +1125,9 @@ github.com/ssgreg/nlreturn/v2/pkg/nlreturn
 # github.com/stbenjam/no-sprintf-host-port v0.1.1
 ## explicit; go 1.16
 github.com/stbenjam/no-sprintf-host-port/pkg/analyzer
+# github.com/stoewer/go-strcase v1.3.0
+## explicit; go 1.11
+github.com/stoewer/go-strcase
 # github.com/stretchr/objx v0.5.1
 ## explicit; go 1.13
 github.com/stretchr/objx
@@ -693,6 +1148,57 @@ github.com/tdakkota/asciicheck
 # github.com/tetafro/godot v1.4.16
 ## explicit; go 1.20
 github.com/tetafro/godot
+# github.com/tetratelabs/wazero v1.6.0
+## explicit; go 1.19
+github.com/tetratelabs/wazero
+github.com/tetratelabs/wazero/api
+github.com/tetratelabs/wazero/experimental
+github.com/tetratelabs/wazero/experimental/gojs
+github.com/tetratelabs/wazero/experimental/sys
+github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1
+github.com/tetratelabs/wazero/internal/asm
+github.com/tetratelabs/wazero/internal/asm/amd64
+github.com/tetratelabs/wazero/internal/asm/arm64
+github.com/tetratelabs/wazero/internal/bitpack
+github.com/tetratelabs/wazero/internal/close
+github.com/tetratelabs/wazero/internal/descriptor
+github.com/tetratelabs/wazero/internal/engine/compiler
+github.com/tetratelabs/wazero/internal/engine/interpreter
+github.com/tetratelabs/wazero/internal/engine/wazevo
+github.com/tetratelabs/wazero/internal/engine/wazevo/backend
+github.com/tetratelabs/wazero/internal/engine/wazevo/backend/isa/arm64
+github.com/tetratelabs/wazero/internal/engine/wazevo/backend/regalloc
+github.com/tetratelabs/wazero/internal/engine/wazevo/frontend
+github.com/tetratelabs/wazero/internal/engine/wazevo/ssa
+github.com/tetratelabs/wazero/internal/engine/wazevo/wazevoapi
+github.com/tetratelabs/wazero/internal/filecache
+github.com/tetratelabs/wazero/internal/fsapi
+github.com/tetratelabs/wazero/internal/gojs
+github.com/tetratelabs/wazero/internal/gojs/config
+github.com/tetratelabs/wazero/internal/gojs/custom
+github.com/tetratelabs/wazero/internal/gojs/goarch
+github.com/tetratelabs/wazero/internal/gojs/goos
+github.com/tetratelabs/wazero/internal/gojs/run
+github.com/tetratelabs/wazero/internal/gojs/util
+github.com/tetratelabs/wazero/internal/gojs/values
+github.com/tetratelabs/wazero/internal/ieee754
+github.com/tetratelabs/wazero/internal/internalapi
+github.com/tetratelabs/wazero/internal/leb128
+github.com/tetratelabs/wazero/internal/moremath
+github.com/tetratelabs/wazero/internal/platform
+github.com/tetratelabs/wazero/internal/sock
+github.com/tetratelabs/wazero/internal/sys
+github.com/tetratelabs/wazero/internal/sysfs
+github.com/tetratelabs/wazero/internal/u32
+github.com/tetratelabs/wazero/internal/u64
+github.com/tetratelabs/wazero/internal/version
+github.com/tetratelabs/wazero/internal/wasip1
+github.com/tetratelabs/wazero/internal/wasm
+github.com/tetratelabs/wazero/internal/wasm/binary
+github.com/tetratelabs/wazero/internal/wasmdebug
+github.com/tetratelabs/wazero/internal/wasmruntime
+github.com/tetratelabs/wazero/internal/wazeroir
+github.com/tetratelabs/wazero/sys
 # github.com/timakin/bodyclose v0.0.0-20240125160201-f835fa56326a
 ## explicit; go 1.12
 github.com/timakin/bodyclose/passes/bodyclose
@@ -722,6 +1228,9 @@ github.com/ultraware/whitespace
 # github.com/uudashr/gocognit v1.1.2
 ## explicit; go 1.16
 github.com/uudashr/gocognit
+# github.com/vbatts/tar-split v0.11.5
+## explicit; go 1.17
+github.com/vbatts/tar-split/archive/tar
 # github.com/vektra/mockery/v2 v2.42.0
 ## explicit; go 1.22
 github.com/vektra/mockery/v2
@@ -765,6 +1274,9 @@ github.com/zclconf/go-cty/cty/function/stdlib
 github.com/zclconf/go-cty/cty/gocty
 github.com/zclconf/go-cty/cty/json
 github.com/zclconf/go-cty/cty/set
+# github.com/zeebo/xxh3 v1.0.2
+## explicit; go 1.17
+github.com/zeebo/xxh3
 # gitlab.com/bosi/decorder v0.4.1
 ## explicit; go 1.20
 gitlab.com/bosi/decorder
@@ -774,6 +1286,49 @@ go-simpler.org/musttag
 # go-simpler.org/sloglint v0.4.0
 ## explicit; go 1.20
 go-simpler.org/sloglint
+# go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.47.0
+## explicit; go 1.20
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp/internal/semconvutil
+# go.opentelemetry.io/otel v1.23.1
+## explicit; go 1.20
+go.opentelemetry.io/otel
+go.opentelemetry.io/otel/attribute
+go.opentelemetry.io/otel/baggage
+go.opentelemetry.io/otel/codes
+go.opentelemetry.io/otel/internal
+go.opentelemetry.io/otel/internal/attribute
+go.opentelemetry.io/otel/internal/baggage
+go.opentelemetry.io/otel/internal/global
+go.opentelemetry.io/otel/propagation
+go.opentelemetry.io/otel/semconv/v1.20.0
+go.opentelemetry.io/otel/semconv/v1.21.0
+go.opentelemetry.io/otel/semconv/v1.24.0
+# go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.23.1
+## explicit; go 1.20
+# go.opentelemetry.io/otel/metric v1.23.1
+## explicit; go 1.20
+go.opentelemetry.io/otel/metric
+go.opentelemetry.io/otel/metric/embedded
+go.opentelemetry.io/otel/metric/noop
+# go.opentelemetry.io/otel/sdk v1.23.1
+## explicit; go 1.20
+go.opentelemetry.io/otel/sdk
+go.opentelemetry.io/otel/sdk/instrumentation
+go.opentelemetry.io/otel/sdk/internal
+go.opentelemetry.io/otel/sdk/internal/env
+go.opentelemetry.io/otel/sdk/resource
+go.opentelemetry.io/otel/sdk/trace
+# go.opentelemetry.io/otel/trace v1.23.1
+## explicit; go 1.20
+go.opentelemetry.io/otel/trace
+go.opentelemetry.io/otel/trace/embedded
+go.opentelemetry.io/otel/trace/noop
+# go.opentelemetry.io/proto/otlp v1.1.0
+## explicit; go 1.17
+# go.uber.org/atomic v1.11.0
+## explicit; go 1.18
+go.uber.org/atomic
 # go.uber.org/multierr v1.11.0
 ## explicit; go 1.19
 go.uber.org/multierr
@@ -788,6 +1343,9 @@ go.uber.org/zap/internal/exit
 go.uber.org/zap/internal/pool
 go.uber.org/zap/internal/stacktrace
 go.uber.org/zap/zapcore
+# golang.org/x/crypto v0.19.0
+## explicit; go 1.18
+golang.org/x/crypto/sha3
 # golang.org/x/exp v0.0.0-20240213143201-ec583247a57a
 ## explicit; go 1.20
 golang.org/x/exp/constraints
@@ -805,15 +1363,25 @@ golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
 golang.org/x/mod/module
 golang.org/x/mod/semver
+# golang.org/x/net v0.21.0
+## explicit; go 1.18
+golang.org/x/net/http/httpguts
+golang.org/x/net/http2
+golang.org/x/net/http2/h2c
+golang.org/x/net/http2/hpack
+golang.org/x/net/idna
 # golang.org/x/sync v0.6.0
 ## explicit; go 1.18
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 # golang.org/x/sys v0.17.0
 ## explicit; go 1.18
+golang.org/x/sys/cpu
+golang.org/x/sys/execabs
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
+golang.org/x/sys/windows/registry
 # golang.org/x/term v0.17.0
 ## explicit; go 1.18
 golang.org/x/term
@@ -838,11 +1406,14 @@ golang.org/x/text/language
 golang.org/x/text/message
 golang.org/x/text/message/catalog
 golang.org/x/text/runes
+golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
+golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 golang.org/x/text/width
 # golang.org/x/tools v0.18.0
 ## explicit; go 1.18
+golang.org/x/tools/cmd/stringer
 golang.org/x/tools/go/analysis
 golang.org/x/tools/go/analysis/passes/appends
 golang.org/x/tools/go/analysis/passes/asmdecl
@@ -921,15 +1492,23 @@ golang.org/x/tools/internal/tokeninternal
 golang.org/x/tools/internal/typeparams
 golang.org/x/tools/internal/typesinternal
 golang.org/x/tools/internal/versions
+# google.golang.org/genproto/googleapis/api v0.0.0-20240116215550-a9fa1716bcac
+## explicit; go 1.19
+google.golang.org/genproto/googleapis/api/expr/v1alpha1
+# google.golang.org/genproto/googleapis/rpc v0.0.0-20240116215550-a9fa1716bcac
+## explicit; go 1.19
+google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/protobuf v1.32.0
 ## explicit; go 1.17
 google.golang.org/protobuf/encoding/protodelim
+google.golang.org/protobuf/encoding/protojson
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
 google.golang.org/protobuf/internal/descfmt
 google.golang.org/protobuf/internal/descopts
 google.golang.org/protobuf/internal/detrand
 google.golang.org/protobuf/internal/encoding/defval
+google.golang.org/protobuf/internal/encoding/json
 google.golang.org/protobuf/internal/encoding/messageset
 google.golang.org/protobuf/internal/encoding/tag
 google.golang.org/protobuf/internal/encoding/text
@@ -945,12 +1524,24 @@ google.golang.org/protobuf/internal/set
 google.golang.org/protobuf/internal/strs
 google.golang.org/protobuf/internal/version
 google.golang.org/protobuf/proto
+google.golang.org/protobuf/reflect/protodesc
 google.golang.org/protobuf/reflect/protoreflect
 google.golang.org/protobuf/reflect/protoregistry
 google.golang.org/protobuf/runtime/protoiface
 google.golang.org/protobuf/runtime/protoimpl
 google.golang.org/protobuf/types/descriptorpb
+google.golang.org/protobuf/types/dynamicpb
+google.golang.org/protobuf/types/known/anypb
+google.golang.org/protobuf/types/known/apipb
+google.golang.org/protobuf/types/known/durationpb
+google.golang.org/protobuf/types/known/emptypb
+google.golang.org/protobuf/types/known/fieldmaskpb
+google.golang.org/protobuf/types/known/sourcecontextpb
+google.golang.org/protobuf/types/known/structpb
 google.golang.org/protobuf/types/known/timestamppb
+google.golang.org/protobuf/types/known/typepb
+google.golang.org/protobuf/types/known/wrapperspb
+google.golang.org/protobuf/types/pluginpb
 # gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 ## explicit; go 1.11
 # gopkg.in/ini.v1 v1.67.0
@@ -1017,6 +1608,14 @@ mvdan.cc/interfacer/check
 # mvdan.cc/lint v0.0.0-20170908181259-adc824a0674b
 ## explicit
 mvdan.cc/lint
+# mvdan.cc/sh/v3 v3.7.0
+## explicit; go 1.19
+mvdan.cc/sh/v3/expand
+mvdan.cc/sh/v3/fileutil
+mvdan.cc/sh/v3/interp
+mvdan.cc/sh/v3/pattern
+mvdan.cc/sh/v3/shell
+mvdan.cc/sh/v3/syntax
 # mvdan.cc/unparam v0.0.0-20240104100049-c549a3470d14
 ## explicit; go 1.20
 mvdan.cc/unparam/check
