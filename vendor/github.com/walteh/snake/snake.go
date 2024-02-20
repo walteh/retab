@@ -225,16 +225,33 @@ func (me *defaultSnake) DependantsOf(name string) []string {
 	return me.dependants[name]
 }
 
-// func (me *rund[X]) WithImplementation(impl SnakeImplementation) Resolver {
-// 	return &rund[X]{
-// }
-
 func Commands[M any](cmds ...TypedResolver[M]) []TypedResolver[M] {
 	return cmds
 }
 
-func Command[I SnakeImplementationTyped[M], M Method, Rnr Runner](runner func() Rnr, impl I, cmd M) TypedResolver[M] {
-	return NewInlineRunner(cmd, runner())
+type backwardsResolver struct {
+	LegacyNamedRunner
+}
+
+type LegacyNamedRunner interface {
+	Runner
+	Named
+}
+
+func (me *backwardsResolver) RegisterRunFunc() RunFunc {
+	return me.LegacyNamedRunner
+}
+
+func (me *backwardsResolver) Name() string {
+	return me.LegacyNamedRunner.Name()
+}
+
+func (me *backwardsResolver) Description() string {
+	return me.LegacyNamedRunner.Description()
+}
+
+func Command[I SnakeImplementationTyped[M], M Method, Rnr LegacyNamedRunner](runner func() Rnr, impl I, cmd M) TypedResolver[M] {
+	return NewInlineRunner(cmd, &backwardsResolver{runner()})
 }
 
 func Resolvers(args ...UntypedResolver) []UntypedResolver {
@@ -242,4 +259,8 @@ func Resolvers(args ...UntypedResolver) []UntypedResolver {
 }
 func Resolver(runner func() Runner) UntypedResolver {
 	return runner()
+}
+
+func ResolverV2(runner RegisterableRunFunc) UntypedResolver {
+	return runner.RegisterRunFunc()
 }

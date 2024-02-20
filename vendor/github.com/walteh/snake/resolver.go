@@ -178,7 +178,7 @@ func getTypedResolver[M Method](inter M) (TypedResolver[M], error) {
 		typedRef: inter,
 	}
 
-	if name, ok := any(inter).(NamedMethod); ok {
+	if name, ok := any(inter).(Named); ok {
 		sr.name = name.Name()
 		sr.description = name.Description()
 	}

@@ -1,0 +1,57 @@
+TOOLS_DIR = "tools"
+
+GO_PACKAGE = "github.com/walteh/retab"
+
+gen taskfile {
+	schema = ""
+	path   = "../.vscode/retab.code-workspace"
+	data = {
+		"folders" : [
+			{
+				"path" : "../"
+			}
+		],
+
+		"settings" : {
+			"editor.formatOnSave" : true,
+			"editor.formatOnSaveTimeout" : 5000,
+			"editor.formatOnSaveMode" : "file",
+			"go.testFlags" : [
+				"-count=1",
+				// test timeout at 89s
+				"-timeout=90s"
+			],
+
+			"gopls" = {
+				"ui.semanticTokens" : true
+			}
+			"files.associations" : {
+				"*.retab" : "hcl"
+			},
+			"material-icon-theme.folders.associations" : {
+				"chain" : "contract"
+			},
+			"emeraldwalk.runonsave" : {
+				"commands" : [
+					{
+						"match" : "\\.retab$",
+						"cmd" : "task retab-gen"
+					},
+					{
+						"match" : "\\.proto$",
+						"cmd" : "go run ./cmd/retab wfmt --file=$${file} --proto"
+					},
+					{
+						"match" : "\\.proto$",
+						"cmd" : "task buf-gen"
+					},
+					{
+						"match" : "\\.go$",
+						"cmd" : "task mockery-gen"
+					}
+				]
+			},
+		}
+	}
+}
+

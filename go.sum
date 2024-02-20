@@ -107,8 +107,8 @@ github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO
 github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
-github.com/walteh/snake v0.44.0 h1:+vGYDRVKHHHIascd0uagRqyUa4CQTWwqiMwLABNxZ58=
-github.com/walteh/snake v0.44.0/go.mod h1:Vr0C5+0EXheO9nI6uokXx4IywpDRloPU4reGZMcXTOc=
+github.com/walteh/snake v0.48.0 h1:NUK0yt9zbK8uDJ4XzETfUsTdRn8c2vA3T+S1HOByVE8=
+github.com/walteh/snake v0.48.0/go.mod h1:+2LikrRFXC3v3qGMyw8Ca7efXV79BkZAfLsX4ExFJiE=
 github.com/walteh/terrors v0.19.0 h1:0biQxXIcCMahdqoFdRFaE0bOB7fulTFzsIxhDcr5YaA=
 github.com/walteh/terrors v0.19.0/go.mod h1:4OKArcXCIn9A9Atlnsu4rFJonuWkjn6fePaTMIetF9k=
 github.com/walteh/yaml v0.0.0-20240212175823-ac6e39d6b02d h1:OGRlcf8najLDoGlFdDhRk0VfJ5F0lRjh9Um8dg7HXXM=

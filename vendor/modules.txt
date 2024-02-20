@@ -730,8 +730,8 @@ github.com/vektra/mockery/v2/pkg
 github.com/vektra/mockery/v2/pkg/config
 github.com/vektra/mockery/v2/pkg/logging
 github.com/vektra/mockery/v2/pkg/stackerr
-# github.com/walteh/snake v0.44.0
-## explicit; go 1.21.4
+# github.com/walteh/snake v0.48.0
+## explicit; go 1.22.0
 github.com/walteh/snake
 github.com/walteh/snake/scobra
 github.com/walteh/snake/szerolog

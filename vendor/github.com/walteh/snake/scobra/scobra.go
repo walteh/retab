@@ -104,9 +104,13 @@ func (me *CobraSnake) Decorate(ctx context.Context, self snake.TypedResolver[*co
 			if envvar == "" {
 				return
 			}
-			err := f.Value.Set(envvar)
+			auto, err := snake.AutoENVVar(ctx, envvar)
 			if err != nil {
-				return
+				panic(err)
+			}
+			err = f.Value.Set(auto)
+			if err != nil {
+				panic(err)
 			}
 		})
 		return nil
@@ -218,18 +222,15 @@ func ExecuteHandlingError(ctx context.Context, cmd *CobraSnake) {
 	os.Exit(0)
 }
 
-type inlineResolver struct {
-	command *cobra.Command
+type Cobrad interface {
+	snake.RegisterableRunFunc
+	CobraCommand() *cobra.Command
 }
 
-func (me *inlineResolver) Command() *cobra.Command {
-	return me.command
-}
-
-func (me *inlineResolver) Run() error {
-	panic("not implemented")
-}
-
-func (me *CobraSnake) NewCommand(f snake.Runner, ref *cobra.Command) snake.TypedResolver[*cobra.Command] {
-	return snake.NewInlineRunner(ref, f)
+func NewCommand(f Cobrad) snake.TypedResolver[*cobra.Command] {
+	cmd := f.CobraCommand()
+	if cmd.Use == "" {
+		cmd.Use = cmd.Name()
+	}
+	return snake.NewInlineNamedRunner(cmd, f, cmd.Name(), cmd.Short)
 }

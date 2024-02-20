@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"github.com/spf13/afero"
+	"github.com/spf13/cobra"
 	"github.com/walteh/retab/cmd/root/resolvers"
 	"github.com/walteh/retab/pkg/configuration"
 	"github.com/walteh/retab/pkg/externalwrite"
@@ -18,10 +19,6 @@ import (
 	"github.com/walteh/terrors"
 )
 
-func Runner() snake.Runner {
-	return snake.GenRunCommand_In05_Out01(&Handler{})
-}
-
 type Handler struct {
 	Proto bool `usage:"format .proto files"`
 	Dart  bool `usage:"format .dart files"`
@@ -29,12 +26,17 @@ type Handler struct {
 	Hcl   bool `usage:"format .hcl files"`
 }
 
-func (me *Handler) Name() string {
-	return "wfmt"
+func (me *Handler) RegisterRunFunc() snake.RunFunc {
+	return snake.GenRunCommand_In05_Out01(me)
 }
 
-func (me *Handler) Description() string {
-	return "format files with the hcl golang library, but with tabs"
+func (me *Handler) CobraCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "wfmt",
+		Short: "format files with the hcl golang library, but with tabs",
+	}
+
+	return cmd
 }
 
 func (me *Handler) Run(ctx context.Context, fls afero.Fs, fle afero.File, ecfg configuration.Provider, out snake.Stdout) error {

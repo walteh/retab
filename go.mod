@@ -14,7 +14,7 @@ require (
 	github.com/spf13/afero v1.11.0
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
-	github.com/walteh/snake v0.44.0
+	github.com/walteh/snake v0.48.0
 	github.com/walteh/terrors v0.19.0
 	github.com/walteh/yaml v0.0.0-20240212175823-ac6e39d6b02d
 	github.com/zclconf/go-cty v1.14.2

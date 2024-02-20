@@ -27,10 +27,10 @@ func NewCommand(ctx context.Context) (*scobra.CobraSnake, *cobra.Command, error)
 
 	opts := snake.Opts(
 		snake.Commands(
-			snake.Command(wfmt.Runner, impl, &cobra.Command{}),
-			snake.Command(fmt.Runner, impl, &cobra.Command{}),
-			snake.Command(gen.Runner, impl, &cobra.Command{}),
-			snake.Command(validate.Runner, impl, &cobra.Command{Hidden: true}),
+			scobra.NewCommand(&wfmt.Handler{}),
+			scobra.NewCommand(&fmt.Handler{}),
+			scobra.NewCommand(&gen.Handler{}),
+			scobra.NewCommand(&validate.Handler{}),
 		),
 		snake.Resolvers(
 			resolvers.FSRunner(),

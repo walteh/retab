@@ -2,6 +2,8 @@ package snake
 
 import "reflect"
 
+type RunFunc Runner
+
 // A runner is different from a resolver in that it does not need to have any extra validation
 // the only Runner that i exists is rund[X], which is generically validated
 type Runner interface {
@@ -20,6 +22,9 @@ type TypedNamedRunner[X any] interface {
 
 type NamedRunner interface {
 	Runner
+}
+
+type Named interface {
 	Name() string
 	Description() string
 }
@@ -34,13 +39,13 @@ type namedrund[X NamedMethod] struct {
 	*rund[X]
 }
 
-func (r *namedrund[X]) Name() string {
-	return r.internal.Name()
-}
+// func (r *namedrund[X]) Name() string {
+// 	return r.internal.Name()
+// }
 
-func (r *namedrund[X]) Description() string {
-	return r.internal.Description()
-}
+// func (r *namedrund[X]) Description() string {
+// 	return r.internal.Description()
+// }
 
 func (r *rund[X]) IsResolver() {}
 

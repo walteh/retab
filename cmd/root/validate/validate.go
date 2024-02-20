@@ -5,24 +5,26 @@ import (
 	"fmt"
 
 	"github.com/spf13/afero"
+	"github.com/spf13/cobra"
 	"github.com/walteh/retab/cmd/root/resolvers"
 	"github.com/walteh/retab/pkg/hclread"
 	"github.com/walteh/snake"
 )
 
-func Runner() snake.Runner {
-	return snake.GenRunCommand_In04_Out01(&Handler{})
-}
-
 type Handler struct {
 }
 
-func (me *Handler) Name() string {
-	return "validate"
+func (me *Handler) RegisterRunFunc() snake.RunFunc {
+	return snake.GenRunCommand_In04_Out01(me)
 }
 
-func (me *Handler) Description() string {
-	return "validate files defined in .retab files"
+func (me *Handler) CobraCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "validate",
+		Short: "validate files defined in .retab files",
+	}
+
+	return cmd
 }
 
 func (me *Handler) Run(ctx context.Context, fls afero.Fs, fle afero.File, stdout snake.Stdout) error {

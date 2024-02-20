@@ -66,9 +66,13 @@ func (me *inlineResolver[M]) Description() string {
 	return me.description
 }
 
-func NewInlineNamedRunner[M any](typed M, nmd Runner, name, desc string) TypedResolver[M] {
+type RegisterableRunFunc interface {
+	RegisterRunFunc() RunFunc
+}
+
+func NewInlineNamedRunner[M any](typed M, nmd RegisterableRunFunc, name, desc string) TypedResolver[M] {
 	return &inlineResolver[M]{
-		Runner:      nmd,
+		Runner:      nmd.RegisterRunFunc(),
 		trickref:    typed,
 		middlewares: []Middleware{},
 		name:        name,
@@ -76,9 +80,9 @@ func NewInlineNamedRunner[M any](typed M, nmd Runner, name, desc string) TypedRe
 	}
 }
 
-func NewInlineRunner[M any](typed M, nmd Runner) TypedResolver[M] {
-	if nmd, ok := nmd.(NamedRunner); ok {
-		return NewInlineNamedRunner[M](typed, nmd, nmd.Name(), nmd.Description())
+func NewInlineRunner[M any](typed M, nmd RegisterableRunFunc) TypedResolver[M] {
+	if nmdz, ok := nmd.(Named); ok {
+		return NewInlineNamedRunner[M](typed, nmd, nmdz.Name(), nmdz.Description())
 	}
 	panic("not a named runner")
 }
