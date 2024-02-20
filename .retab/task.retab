@@ -8,6 +8,14 @@ bins = {
 	"golangci-lint" = "github.com/golangci/golangci-lint/cmd/golangci-lint",
 }
 
+cmd ok {
+	words = "ok"
+}
+
+cmd work {
+	words = "work"
+}
+
 gen taskfile {
 	schema = "https://taskfile.dev/schema.json"
 	path   = "../taskfile.yaml"
@@ -24,78 +32,92 @@ gen taskfile {
 					]
 				}
 			},
+			allof("task"),
 			{
-				tidy = {
-					cmds = [
-						"go mod tidy",
-						"cd ${TOOLS_DIR} && go mod tidy",
-						"go work vendor"
-					]
-				}
+				default = { deps = ["tools", "gen", "lint", "test"] }
 				tools = {
 					deps = [for bin, _ in bins : "${bin}-bin"]
-				}
-				buf-gen = {
-					deps      = ["buf-bin", "retab-gen"]
-					generates = ["gen/buf/**/*"]
-					dir       = "."
-					sources   = ["proto/**/*.proto", "./${TOOLS_DIR}/bin/buf", "./buf.gen.yaml"]
-					cmds = [
-						<<EOF
-						./${TOOLS_DIR}/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template ./buf.gen.yaml --path=./proto
-					EOF
-						,
-						"find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete"
-					]
-				}
-				mockery-gen = {
-					deps      = ["mockery-bin", "retab-gen"]
-					generates = ["gen/mockery/**/*"]
-					dir       = "."
-					sources   = ["**/*.go", "./.mockery.yaml", "./${TOOLS_DIR}/bin/mockery"]
-					cmds = [
-						"./${TOOLS_DIR}/bin/mockery --dir ./gen/mockery --config ./.mockery.yaml",
-						"find ./gen/mockery -type f -mmin +1 -delete"
-					]
-				}
-				retab-gen = {
-					deps      = []
-					generates = ["gen/retab/**/*"]
-					dir       = "."
-					sources   = [".retab/*.retab", "./${TOOLS_DIR}/bin/mockery"]
-					cmds = [
-						"go run ./cmd/retab fmt && go run ./cmd/retab gen"
-					]
-				}
-				lint = {
-					deps = ["golangci-lint-bin"]
-					sources = [
-						"**/*.go",
-						{ exclude = "${TOOLS_DIR}/**/*" },
-						"./${TOOLS_DIR}/bin/golangci-lint",
-					]
-
-					cmds = [
-						"GOWORK=off ./${TOOLS_DIR}/bin/golangci-lint run --config ./.golangci.yml"
-					]
-				}
-				test-ci = {
-					deps = ["gotestsum-bin"]
-					sources = [
-						"**/*.go",
-						{ exclude = "${TOOLS_DIR}/**/*" },
-						"./${TOOLS_DIR}/bin/gotestsum"
-					]
-					preconditions = ["which go"]
-					cmds = [
-						"./tools/bin/gotestsum --junitfile test-reports/junit.xml -- -v -coverprofile=coverage.out -coverpkg=./... ./..."
-					]
 				}
 				gen = {
 					deps = ["retab-gen", "buf-gen", "mockery-gen"]
 				}
-				default = { deps = ["tools", "gen", "lint", "test"] }
 		})
 	}
 }
 
+task tidy {
+	cmds = [
+		"go mod tidy",
+		"cd ${TOOLS_DIR} && go mod tidy",
+		"go work vendor"
+	]
+}
+
+task update {
+	cmds = [
+		"go get -u -v ./... && go mod tidy",
+		"cd ${TOOLS_DIR} && go get -u -v ./... && go mod tidy",
+		"go work vendor"
+	]
+}
+
+task buf-gen {
+	deps      = ["buf-bin", "retab-gen"]
+	generates = ["gen/buf/**/*"]
+	dir       = "."
+	sources   = ["proto/**/*.proto", "./${TOOLS_DIR}/bin/buf", "./buf.gen.yaml"]
+	cmds = [
+		<<EOF
+		./${TOOLS_DIR}/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template ./buf.gen.yaml --path=./proto
+	EOF
+		,
+		"find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete"
+	]
+}
+
+task mockery-gen {
+	deps      = ["mockery-bin", "retab-gen"]
+	generates = ["gen/mockery/**/*"]
+	dir       = "."
+	sources   = ["**/*.go", "./.mockery.yaml", "./${TOOLS_DIR}/bin/mockery"]
+	cmds = [
+		"./${TOOLS_DIR}/bin/mockery --dir ./gen/mockery --config ./.mockery.yaml",
+		"find ./gen/mockery -type f -mmin +1 -delete"
+	]
+}
+
+task retab-gen {
+	deps      = []
+	generates = ["gen/retab/**/*"]
+	dir       = "."
+	sources   = [".retab/*.retab", "./${TOOLS_DIR}/bin/mockery"]
+	cmds = [
+		"go run ./cmd/retab fmt && go run ./cmd/retab gen"
+	]
+}
+
+task lint {
+	deps = ["golangci-lint-bin"]
+	sources = [
+		"**/*.go",
+		{ exclude = "${TOOLS_DIR}/**/*" },
+		"./${TOOLS_DIR}/bin/golangci-lint",
+	]
+
+	cmds = [
+		"GOWORK=off ./${TOOLS_DIR}/bin/golangci-lint run --config ./.golangci.yml"
+	]
+}
+
+task test-ci {
+	deps = ["gotestsum-bin"]
+	sources = [
+		"**/*.go",
+		{ exclude = "${TOOLS_DIR}/**/*" },
+		"./${TOOLS_DIR}/bin/gotestsum"
+	]
+	preconditions = ["which go"]
+	cmds = [
+		"./tools/bin/gotestsum --junitfile test-reports/junit.xml -- -v -coverprofile=coverage.out -coverpkg=./... ./..."
+	]
+}

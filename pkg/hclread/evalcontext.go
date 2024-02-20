@@ -179,6 +179,11 @@ func NewContextFromFile(ctx context.Context, fle []byte, name string) (*hcl.File
 		Variables: map[string]cty.Value{},
 	}
 
+	ctxfuncs := NewContextualizedFunctionMap(ectx)
+	for k, v := range ctxfuncs {
+		ectx.Functions[k] = v
+	}
+
 	// will always work
 	bdy := hcldata.Body.(*hclsyntax.Body)
 
@@ -388,5 +393,68 @@ func NewFunctionMap() map[string]function.Function {
 				return cty.StringVal(string(dec)), nil
 			},
 		}),
+	}
+}
+
+func NewContextualizedFunctionMap(ectx *hcl.EvalContext) map[string]function.Function {
+
+	return map[string]function.Function{
+		"allof": function.New(&function.Spec{
+			Description: `Returns a map of all blocks w\ the given label`,
+			Params: []function.Parameter{
+				{
+					Name:             "block",
+					Type:             cty.String,
+					AllowUnknown:     true,
+					AllowDynamicType: true,
+					AllowNull:        false,
+					AllowMarked:      true,
+				},
+			},
+			Type: function.StaticReturnType(cty.DynamicPseudoType),
+			Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+
+				mapd := make(map[string]cty.Value)
+
+				for nme, blks := range ectx.Variables {
+					if nme == args[0].AsString() {
+						objd := blks.AsValueMap()
+						for k, v := range objd {
+							mapd[k] = v
+						}
+					}
+				}
+
+				return cty.ObjectVal(mapd), nil
+			},
+		}),
+		"alloflist": function.New(&function.Spec{
+			Description: `Returns a list of all blocks w\ the given label`,
+			Params: []function.Parameter{
+				{
+					Name:             "block",
+					Type:             cty.String,
+					AllowUnknown:     true,
+					AllowDynamicType: true,
+					AllowNull:        false,
+					AllowMarked:      true,
+				},
+			},
+			Type: function.StaticReturnType(cty.DynamicPseudoType),
+			Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+
+				mapd := make([]cty.Value, 0)
+
+				for nme, blks := range ectx.Variables {
+					if nme == args[0].AsString() {
+						objd := blks.AsValueMap()
+						for _, v := range objd {
+							mapd = append(mapd, v)
+						}
+					}
+				}
+
+				return cty.ListVal(mapd), nil
+			}}),
 	}
 }

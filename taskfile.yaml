@@ -137,3 +137,8 @@ tasks:
             - gotestsum-bin
             - mockery-bin
             - task-bin
+    update:
+        cmds:
+            - go get -u -v ./... && go mod tidy
+            - cd tools && go get -u -v ./... && go mod tidy
+            - go work vendor
