@@ -14,4 +14,3 @@ packages:
     github.com/walteh/retab/pkg/configuration:
         interfaces:
             Configuration: {}
-            Provider: {}
