@@ -11,7 +11,9 @@ gen taskfile {
 		],
 
 		"settings" : {
+
 			"editor.formatOnSave" : true,
+
 			"editor.formatOnSaveTimeout" : 5000,
 			"editor.formatOnSaveMode" : "file",
 			"go.testFlags" : [
@@ -23,6 +25,7 @@ gen taskfile {
 			"gopls" = {
 				"ui.semanticTokens" : true
 			}
+
 			"files.associations" : {
 				"*.retab" : "hcl"
 			},
@@ -33,7 +36,7 @@ gen taskfile {
 				"commands" : [
 					{
 						"match" : "\\.retab$",
-						"cmd" : "./${TOOLS_DIR}/bin/task retab-gen"
+						"cmd" : "./${file("task").TOOLS_DIR}/bin/task retab-gen"
 					},
 					{
 						"match" : "\\.proto$",
@@ -41,11 +44,11 @@ gen taskfile {
 					},
 					{
 						"match" : "\\.proto$",
-						"cmd" : "./${TOOLS_DIR}/bin/task  buf-gen"
+						"cmd" : "./${file("task").TOOLS_DIR}/bin/task  buf-gen"
 					},
 					{
 						"match" : "\\.go$",
-						"cmd" : "./${TOOLS_DIR}/bin/task  mockery-gen"
+						"cmd" : "./${file("task").TOOLS_DIR}/bin/task  mockery-gen"
 					}
 				]
 			},

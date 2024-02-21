@@ -31,7 +31,9 @@ type FileBlockEvaluation struct {
 	// Validation    []*ValidationError
 }
 
-func NewGenBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hclsyntax.Body) (res *FileBlockEvaluation, diags hcl.Diagnostics, err error) {
+func NewGenBlockEvaluation(ctx context.Context, sctx *SudoContext, file *hclsyntax.Body) (res *FileBlockEvaluation, diags hcl.Diagnostics, err error) {
+
+	ectx := sctx.BuildStaticEvalContextWithFileData(file.SrcRange.Filename)
 
 	var fblock *hclsyntax.Block
 

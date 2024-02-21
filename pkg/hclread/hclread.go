@@ -33,7 +33,7 @@ func ProccessBulk(ctx context.Context, fs afero.Fs, files []string) ([]*FileBloc
 		global.Functions[k] = v
 	}
 
-	for k, v := range NewGlobalContextualizedFunctionMap(global) {
+	for k, v := range NewGlobalContextualizedFunctionMap(global.Variables) {
 		global.Functions[k] = v
 	}
 
@@ -76,7 +76,7 @@ func ProccessBulk(ctx context.Context, fs afero.Fs, files []string) ([]*FileBloc
 
 	// gfuncs := NewGlobalContextualizedFunctionMap(global)
 
-	for k, v := range NewContextualizedFunctionMap(global) {
+	for k, v := range NewContextualizedFunctionMap(global.Variables) {
 		global.Functions[k] = v
 	}
 
@@ -85,9 +85,9 @@ func ProccessBulk(ctx context.Context, fs afero.Fs, files []string) ([]*FileBloc
 		return nil, diags, err
 	}
 
-	for k, v := range NewContextualizedFunctionMap(eectx) {
-		global.Functions[k] = v
-	}
+	// for k, v := range NewContextualizedFunctionMap(eectx.Variables) {
+	// 	global.Functions[k] = v
+	// }
 
 	for _, file := range filed {
 
