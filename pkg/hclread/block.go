@@ -119,6 +119,8 @@ func NewGenBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, file *hcl
 			blk.Path = sanatizeGenPath(blk.Path)
 
 			ectx.Functions["ref"] = NewRefFunctionFromPath(ctx, blk.Path)
+
+			defer delete(ectx.Functions, "ref")
 		case "schema":
 			blk.Schema = val.AsString()
 		case "data":

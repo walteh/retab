@@ -57,10 +57,10 @@ task buf-gen {
 	deps      = ["buf-bin", "retab-gen"]
 	generates = ["gen/buf/**/*"]
 	dir       = "."
-	sources   = ["proto/**/*.proto", "./${TOOLS_DIR}/bin/buf", "./buf.gen.yaml"]
+	sources   = ["proto/**/*.proto", "./${TOOLS_DIR}/bin/buf", "./${output(gen.buf)}"]
 	cmds = [
 		<<EOF
-		./${TOOLS_DIR}/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template ./buf.gen.yaml --path=./proto
+		./${TOOLS_DIR}/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template ${output(gen.buf)} --path=./proto
 	EOF
 		,
 		"find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete"
@@ -71,9 +71,9 @@ task mockery-gen {
 	deps      = ["mockery-bin", "retab-gen"]
 	generates = ["gen/mockery/**/*"]
 	dir       = "."
-	sources   = ["**/*.go", "./.mockery.yaml", "./${TOOLS_DIR}/bin/mockery"]
+	sources   = ["**/*.go", "./${output(gen.mockery)} ", "./${TOOLS_DIR}/bin/mockery"]
 	cmds = [
-		"./${TOOLS_DIR}/bin/mockery --dir ./gen/mockery --config ./.mockery.yaml",
+		"./${TOOLS_DIR}/bin/mockery --dir ./gen/mockery --config ./${output(gen.mockery)} ",
 		"find ./gen/mockery -type f -mmin +1 -delete"
 	]
 }

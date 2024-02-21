@@ -18,7 +18,7 @@ tasks:
     buf-gen:
         cmds:
             - |
-              ./tools/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template ./buf.gen.yaml --path=./proto
+              ./tools/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template buf.gen.yaml --path=./proto
             - find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete
         deps:
             - buf-bin
@@ -82,7 +82,7 @@ tasks:
             - main.go
     mockery-gen:
         cmds:
-            - ./tools/bin/mockery --dir ./gen/mockery --config ./.mockery.yaml
+            - './tools/bin/mockery --dir ./gen/mockery --config ./.mockery.yaml '
             - find ./gen/mockery -type f -mmin +1 -delete
         deps:
             - mockery-bin
@@ -92,7 +92,7 @@ tasks:
             - gen/mockery/**/*
         sources:
             - '**/*.go'
-            - ./.mockery.yaml
+            - './.mockery.yaml '
             - ./tools/bin/mockery
     retab-gen:
         cmds:

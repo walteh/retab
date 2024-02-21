@@ -4,7 +4,7 @@ TOOLS_DIR = "tools"
 
 GO_PACKAGE = "github.com/walteh/retab"
 
-gen taskfile {
+gen buf {
 	schema = "https://json.schemastore.org/buf.gen.json"
 	path   = "../buf.gen.yaml"
 	data = {

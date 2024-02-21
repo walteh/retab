@@ -3,6 +3,7 @@ package hclread
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -29,12 +30,14 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parent *hcl.Eval
 
 	eectx.Variables = map[string]cty.Value{}
 
-	for _, v := range bdy.Attributes {
-		val, diag := v.Expr.Value(eectx)
+	reevaluateAttr := func(name string, attr *hclsyntax.Attribute) hcl.Diagnostics {
+		val, diag := attr.Expr.Value(eectx)
 		if diag.HasErrors() {
-			return nil, diag
+			return diag
 		}
-		eectx.Variables[v.Name] = val
+		eectx.Variables[name] = val
+
+		return nil
 	}
 
 	combos := make(map[string][]cty.Value, 0)
@@ -53,7 +56,7 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parent *hcl.Eval
 		return nil
 	}
 
-	updateVariables := func() {
+	updateBlocks := func() {
 		for k, v := range combos {
 			if eectx.Variables[k] == cty.NilVal {
 				eectx.Variables[k] = cty.ObjectVal(map[string]cty.Value{})
@@ -75,26 +78,67 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parent *hcl.Eval
 		return
 	}
 
+	type attr struct {
+		Name  string
+		Attri *hclsyntax.Attribute
+	}
+
+	retryattrs := []*attr{}
+	for k, v := range bdy.Attributes {
+		retryattrs = append(retryattrs, &attr{
+			Name:  k,
+			Attri: v,
+		})
+	}
+	prevAttrRetrys := []*attr{}
+
 	retrys := bdy.Blocks
 	prevRetrys := []*hclsyntax.Block{}
 	lastDiags := hcl.Diagnostics{}
 	start := true
 	// starts := 0
-	for (len(retrys) > 0 && len(prevRetrys) > len(retrys)) || start {
+	for ((len(retrys) > 0 || len(retryattrs) > 0) && (len(prevRetrys) > len(retrys) || len(prevAttrRetrys) > len(retryattrs))) || start {
 
 		start = false
 		newRetrys := []*hclsyntax.Block{}
+		newAttrRetrys := []*attr{}
 		diags := hcl.Diagnostics{}
 
-		for _, v := range retrys {
-			if v.Type == "gen" {
-				continue
-			}
-
-			diagd := reevaluate(v)
-			if diagd.HasErrors() {
-				diags = append(diags, diagd...)
-				newRetrys = append(newRetrys, v)
+		for v := range len(retryattrs) + len(retrys) {
+			if v < len(retryattrs) {
+				attr := retryattrs[v]
+				diagd := reevaluateAttr(attr.Name, attr.Attri)
+				if diagd.HasErrors() {
+					diags = append(diags, diagd...)
+					newAttrRetrys = append(newAttrRetrys, attr)
+				}
+			} else {
+				attr := retrys[v-len(retryattrs)]
+				var save *hclsyntax.Attribute
+				if attr.Type == "gen" {
+					// this could probably be better, its just to skip the processing of the data attribute until the NewGenBlockEvaluation
+					// tbh not even sure if this is needed anymore
+					save = attr.Body.Attributes["data"]
+					// attr.Body.Attributes["data"] = &hclsyntax.Attribute{
+					// 	Expr: NewBrokenExpression(hcl.Diagnostics{
+					// 		{
+					// 			Severity: hcl.DiagError,
+					// 			Summary:  "gen data not supported",
+					// 			Detail:   "gen blocks are not supported in this context",
+					// 			Subject:  attr.TypeRange.Ptr(),
+					// 		},
+					// 	}),
+					// }
+					delete(attr.Body.Attributes, "data")
+				}
+				diagd := reevaluate(attr)
+				if save != nil {
+					attr.Body.Attributes["data"] = save
+				}
+				if diagd.HasErrors() {
+					diags = append(diags, diagd...)
+					newRetrys = append(newRetrys, attr)
+				}
 			}
 		}
 
@@ -102,10 +146,11 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parent *hcl.Eval
 			start = true
 		}
 
-		updateVariables()
+		updateBlocks()
 
 		lastDiags = diags
 		prevRetrys = retrys
+		retryattrs = newAttrRetrys
 		retrys = newRetrys
 	}
 
@@ -131,6 +176,11 @@ func NewUnknownBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block
 
 	meta := map[string]cty.Value{
 		"label": cty.StringVal(strings.Join(block.Labels, ".")),
+	}
+
+	if block.Type == "gen" {
+		meta["source"] = cty.StringVal(block.TypeRange.Filename)
+		meta["root_relative_path"] = cty.StringVal(sanatizeGenPath(tmp["path"].AsString()))
 	}
 
 	tmp[MetaKey] = cty.ObjectVal(meta)
@@ -168,8 +218,79 @@ func NewUnknownBlockEvaluation(ctx context.Context, ectx *hcl.EvalContext, block
 
 }
 
-func NewContextFromFile(ctx context.Context, fle []byte, name string) (*hcl.File, *hcl.EvalContext, *hclsyntax.Body, hcl.Diagnostics, error) {
+func NewContextFromBody(ctx context.Context, body *hclsyntax.Body, parent *hcl.EvalContext) (*hcl.EvalContext, hcl.Diagnostics, error) {
 
+	ectx := parent.NewChild()
+
+	funcs, diag := ExtractUserFuncs(ctx, body, ectx)
+	if diag.HasErrors() {
+		return nil, diag, nil
+	}
+
+	if ectx.Functions == nil {
+		ectx.Functions = map[string]function.Function{}
+	}
+
+	for k, v := range funcs {
+		ectx.Functions[k] = v
+	}
+
+	vars, diag := ExtractVariables(ctx, body, ectx)
+	if diag.HasErrors() {
+		return nil, diag, nil
+	}
+
+	if ectx.Variables == nil {
+		ectx.Variables = map[string]cty.Value{}
+	}
+
+	for k, v := range vars {
+		ectx.Variables[k] = v
+	}
+
+	return ectx, hcl.Diagnostics{}, nil
+}
+
+func NewContextFromFiles(ctx context.Context, fle map[string][]byte, parent *hcl.EvalContext) (*hcl.File, *hcl.EvalContext, *hclsyntax.Body, map[string]*hclsyntax.Body, hcl.Diagnostics, error) {
+
+	ectx := parent.NewChild()
+
+	bodys := make(map[string]*hclsyntax.Body)
+
+	for k, v := range fle {
+		hcldata, errd := hclsyntax.ParseConfig(v, k, hcl.InitialPos)
+		if errd.HasErrors() {
+			return nil, nil, nil, nil, errd, nil
+		}
+
+		// will always work
+		bdy := hcldata.Body.(*hclsyntax.Body)
+
+		bodys[k] = bdy
+	}
+
+	root := &hclsyntax.Body{
+		Attributes: hclsyntax.Attributes{},
+		Blocks:     make([]*hclsyntax.Block, 0),
+	}
+
+	for _, v := range bodys {
+		root.Blocks = append(root.Blocks, v.Blocks...)
+		for k, v2 := range v.Attributes {
+			root.Attributes[k] = v2
+		}
+	}
+
+	ccc, diags, err := NewContextFromBody(ctx, root, ectx)
+	if err != nil {
+		return nil, nil, nil, nil, nil, err
+	}
+
+	return nil, ccc, root, bodys, diags, nil
+
+}
+
+func NewContextFromFile(ctx context.Context, fle []byte, name string) (*hcl.File, *hcl.EvalContext, *hclsyntax.Body, hcl.Diagnostics, error) {
 	hcldata, errd := hclsyntax.ParseConfig(fle, name, hcl.InitialPos)
 	if errd.HasErrors() {
 		return nil, nil, nil, errd, nil
@@ -188,37 +309,52 @@ func NewContextFromFile(ctx context.Context, fle []byte, name string) (*hcl.File
 	// will always work
 	bdy := hcldata.Body.(*hclsyntax.Body)
 
-	// process funcs
-	funcs, diag := ExtractUserFuncs(ctx, bdy, ectx)
-	if diag.HasErrors() {
-		return nil, nil, nil, diag, nil
+	ccc, diags, err := NewContextFromBody(ctx, bdy, ectx)
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 
-	for k, v := range funcs {
-		ectx.Functions[k] = v
-	}
+	return hcldata, ccc, bdy, diags, nil
 
-	// todo, do we need to remove the func blocks from the body?
-
-	// process variables
-	vars, diag := ExtractVariables(ctx, bdy, ectx)
-	if diag.HasErrors() {
-		return nil, nil, nil, diag, nil
-	}
-
-	for k, v := range vars {
-		ectx.Variables[k] = v
-	}
-
-	return hcldata, ectx, bdy, nil, nil
 }
 
-type WorkingContext struct {
-	ectx *hcl.EvalContext
+func NewGetMetaKeyFunc(str string) function.Function {
+	return function.New(&function.Spec{
+		Description: fmt.Sprintf(`Gets the meta %s of an hcl block`, str),
+		Params: []function.Parameter{
+			{
+				Name:             "block",
+				Type:             cty.DynamicPseudoType,
+				AllowUnknown:     true,
+				AllowDynamicType: true,
+				AllowNull:        false,
+				AllowMarked:      true,
+			},
+		},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+			if len(args) != 1 {
+				return cty.NilVal, terrors.Errorf("expected 1 argument, got %d", len(args))
+			}
+
+			mp := args[0].AsValueMap()
+			if mp == nil {
+				return cty.NilVal, terrors.Errorf("expected map, got %s", args[0].GoString())
+			}
+
+			if mp[MetaKey] == cty.NilVal {
+				return cty.NilVal, terrors.Errorf("expected map with _label, got %s", args[0].GoString())
+			}
+
+			mp = mp[MetaKey].AsValueMap()
+			if mp == nil {
+				return cty.NilVal, terrors.Errorf("expected map with _label, got %s", args[0].GoString())
+			}
+
+			return cty.StringVal(mp[str].AsString()), nil
+		},
+	})
 }
-
-func (me *WorkingContext) EvalContext() *hcl.EvalContext { return me.ectx }
-
 func NewFunctionMap() map[string]function.Function {
 
 	return map[string]function.Function{
@@ -301,42 +437,10 @@ func NewFunctionMap() map[string]function.Function {
 		"coelscelist":            stdlib.CoalesceListFunc,
 		"reverse":                stdlib.ReverseFunc,
 		"sort":                   stdlib.SortFunc,
-
-		"label": function.New(&function.Spec{
-			Description: `Gets the label of an hcl block`,
-			Params: []function.Parameter{
-				{
-					Name:             "block",
-					Type:             cty.DynamicPseudoType,
-					AllowUnknown:     true,
-					AllowDynamicType: true,
-					AllowNull:        false,
-					AllowMarked:      true,
-				},
-			},
-			Type: function.StaticReturnType(cty.String),
-			Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
-				if len(args) != 1 {
-					return cty.NilVal, terrors.Errorf("expected 1 argument, got %d", len(args))
-				}
-
-				mp := args[0].AsValueMap()
-				if mp == nil {
-					return cty.NilVal, terrors.Errorf("expected map, got %s", args[0].GoString())
-				}
-
-				if mp[MetaKey] == cty.NilVal {
-					return cty.NilVal, terrors.Errorf("expected map with _label, got %s", args[0].GoString())
-				}
-
-				mp = mp[MetaKey].AsValueMap()
-				if mp == nil {
-					return cty.NilVal, terrors.Errorf("expected map with _label, got %s", args[0].GoString())
-				}
-
-				return cty.StringVal(mp["label"].AsString()), nil
-			},
-		}),
+		"ref":                    NewGetMetaKeyFunc("ref"),
+		"source":                 NewGetMetaKeyFunc("source"),
+		"output":                 NewGetMetaKeyFunc("root_relative_path"),
+		"label":                  NewGetMetaKeyFunc("label"),
 		"base64encode": function.New(&function.Spec{
 			Description: `Returns the Base64-encoded version of the given string.`,
 			Params: []function.Parameter{
@@ -495,3 +599,45 @@ func NewContextualizedFunctionMap(ectx *hcl.EvalContext) map[string]function.Fun
 			}}),
 	}
 }
+
+// type BrokenExpression struct {
+// 	hclsyntax.Node
+
+// 	// Node
+
+// 	// // The hcl.Expression methods are duplicated here, rather than simply
+// 	// // embedded, because both Node and hcl.Expression have a Range method
+// 	// // and so they conflict.
+
+// 	// Value(ctx *hcl.EvalContext) (cty.Value, hcl.Diagnostics)
+// 	// Variables() []hcl.Traversal
+// 	// StartRange() hcl.Range
+// }
+
+// func NewBrokenExpression() *BrokenExpression {
+// 	return &BrokenExpression{}
+// }
+
+// var _ hclsyntax.Expression = (*BrokenExpression)(nil)
+
+// func (be *BrokenExpression) Value(ctx *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+// 	val, err := ctx.Functions["jsondecode"].Proxy()(cty.StringVal(`{"error": "broken expression"}`))
+// 	if err != nil {
+// 		return cty.NilVal, hcl.Diagnostics{
+// 			{
+// 				Summary:  "broken expression",
+// 				Detail:   "broken expression",
+// 				Severity: hcl.DiagError,
+// 			},
+// 		}
+// 	}
+// 	return val, nil
+// }
+
+// func (be *BrokenExpression) Variables() []hcl.Traversal {
+// 	return nil
+// }
+
+// func (be *BrokenExpression) StartRange() hcl.Range {
+// 	return hcl.Range{}
+// }

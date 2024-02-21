@@ -33,7 +33,7 @@ gen taskfile {
 				"commands" : [
 					{
 						"match" : "\\.retab$",
-						"cmd" : "./${file("task").TOOLS_DIR}/bin/task retab-gen"
+						"cmd" : "./${TOOLS_DIR}/bin/task retab-gen"
 					},
 					{
 						"match" : "\\.proto$",
@@ -41,11 +41,11 @@ gen taskfile {
 					},
 					{
 						"match" : "\\.proto$",
-						"cmd" : "./${file("task").TOOLS_DIR}/bin/task  buf-gen"
+						"cmd" : "./${TOOLS_DIR}/bin/task  buf-gen"
 					},
 					{
 						"match" : "\\.go$",
-						"cmd" : "./${file("task").TOOLS_DIR}/bin/task  mockery-gen"
+						"cmd" : "./${TOOLS_DIR}/bin/task  mockery-gen"
 					}
 				]
 			},
