@@ -9,9 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/zclconf/go-cty/cty"
-	"github.com/zclconf/go-cty/cty/function"
-
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/afero"
 	"github.com/walteh/terrors"
@@ -20,11 +17,6 @@ import (
 
 func ProccessBulk(ctx context.Context, fs afero.Fs, files []string) ([]*FileBlockEvaluation, hcl.Diagnostics, error) {
 	var out []*FileBlockEvaluation
-
-	global := &hcl.EvalContext{
-		Variables: map[string]cty.Value{},
-		Functions: map[string]function.Function{},
-	}
 
 	fles := make(map[string][]byte)
 
@@ -39,41 +31,21 @@ func ProccessBulk(ctx context.Context, fs afero.Fs, files []string) ([]*FileBloc
 
 	}
 
-	_, eectx, _, filed, diags, err := NewContextFromFiles(ctx, fles, global)
+	_, full, bb, diags, err := NewContextFromFiles(ctx, fles)
 	if err != nil || diags.HasErrors() {
 		return nil, diags, err
 	}
 
-	for _, file := range filed {
-
-		eval, diags, err := NewGenBlockEvaluation(ctx, eectx, file)
-		if err != nil || diags.HasErrors() {
-			return nil, diags, err
-		}
-
-		out = append(out, eval)
+	out, diags, err = NewGenBlockEvaluation(ctx, full, bb)
+	if err != nil || diags.HasErrors() {
+		return nil, diags, err
 	}
 
 	return out, diags, nil
 }
 
-func Process(ctx context.Context, fs afero.Fs, file string) (*FileBlockEvaluation, hcl.Diagnostics, error) {
-	opn, err := afero.ReadFile(fs, file)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	_, ectx, blks, diags, err := NewContextFromFile(ctx, opn, file)
-	if err != nil || diags.HasErrors() {
-		return nil, diags, err
-	}
-
-	eval, diags, err := NewGenBlockEvaluation(ctx, ectx, blks)
-	if err != nil || diags.HasErrors() {
-		return nil, diags, err
-	}
-
-	return eval, diags, nil
+func Process(ctx context.Context, fs afero.Fs, file string) ([]*FileBlockEvaluation, hcl.Diagnostics, error) {
+	return ProccessBulk(ctx, fs, []string{file})
 }
 
 func (me *FileBlockEvaluation) WriteToFile(ctx context.Context, fs afero.Fs) error {

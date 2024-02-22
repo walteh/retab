@@ -21,11 +21,11 @@ func TestValidHCLDecoding(t *testing.T) {
 	// pp.SetDefaultMaxDepth(5)
 
 	// load schema file
-	_, ectx, _, flebdy, diags, errd := NewContextFromFiles(ctx, map[string][]byte{"sampleA.input.retab": sampleAInput}, nil)
+	_, ectx, bb, diags, errd := NewContextFromFiles(ctx, map[string][]byte{"sampleA.input.retab": sampleAInput})
 	require.NoError(t, errd)
 	require.Empty(t, diags)
 
-	blk, diags, err := NewGenBlockEvaluation(ctx, ectx, flebdy["sampleA.input.retab"])
+	blk, diags, err := NewGenBlockEvaluation(ctx, ectx, bb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,9 @@ func TestValidHCLDecoding(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, diags)
 
-	out, err := blk.Encode()
+	require.Len(t, blk, 1)
+
+	out, err := blk[0].Encode()
 	require.NoError(t, err)
 
 	require.Empty(t, diff.DiffExportedOnly(string(sampleAOutput), string(out)))

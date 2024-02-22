@@ -15,7 +15,7 @@ import (
 
 // load json or yaml schema file
 
-func LoadValidationErrors(ctx context.Context, cnt hclsyntax.Expression, ectx *hcl.EvalContext, errv error, bdy hcl.Body) (hcl.Diagnostics, error) {
+func LoadValidationErrors(ctx context.Context, cnt hclsyntax.Expression, ectx *hcl.EvalContext, errv error, bdy *BodyBuilder) (hcl.Diagnostics, error) {
 
 	berr := errv
 	for errors.Unwrap(berr) != nil {
@@ -32,9 +32,7 @@ func LoadValidationErrors(ctx context.Context, cnt hclsyntax.Expression, ectx *h
 					return nil, err
 				} else {
 					// basically, if one of our children has an error,
-					for _, v := range ve {
-						diags = append(diags, v)
-					}
+					diags = append(diags, ve...)
 				}
 			}
 		} else {
@@ -61,7 +59,7 @@ func LoadValidationErrors(ctx context.Context, cnt hclsyntax.Expression, ectx *h
 	return diags, nil
 }
 
-func InstanceLocationStringToHCLRange(instLoc string, msg string, cnt hclsyntax.Expression, ectx *hcl.EvalContext, file hcl.Body) (hcl.Expression, hcl.Diagnostics) {
+func InstanceLocationStringToHCLRange(instLoc string, msg string, cnt hclsyntax.Expression, ectx *hcl.EvalContext, file *BodyBuilder) (hcl.Expression, hcl.Diagnostics) {
 	splt := strings.Split(strings.TrimPrefix(instLoc, "/"), "/")
 
 	cmp := regexp.MustCompile("additionalProperties '(.*)' not allowed")
@@ -73,7 +71,7 @@ func InstanceLocationStringToHCLRange(instLoc string, msg string, cnt hclsyntax.
 	return roll2(splt, cnt, ectx, file)
 }
 
-func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body) (hcl.Expression, hcl.Diagnostics) {
+func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file *BodyBuilder) (hcl.Expression, hcl.Diagnostics) {
 	if len(splt) == 0 {
 		return e, nil
 	}
@@ -124,36 +122,46 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file hcl.Body
 			}
 		}
 
-		// pp.Println("foundg", labs, splt)
+		bdy, err := file.NewRootForFile(x.SrcRange.Filename)
+		if err != nil {
+			return nil, hcl.Diagnostics{
+				&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "Invalid expression",
+					Detail:   "unable to find instance loc",
+					Subject:  e.Range().Ptr(),
+				},
+			}
+		}
 
-		if bdy, ok := file.(*hclsyntax.Body); ok {
-		HERE:
-			for _, blk := range bdy.Blocks {
-				if blk.Type == name {
-					if len(labs) < len(blk.Labels) {
+		// if bdy, ok := fle.(*hclsyntax.Body); ok {
+	HERE:
+		for _, blk := range bdy.Blocks {
+			if blk.Type == name {
+				if len(labs) < len(blk.Labels) {
+					break HERE
+				}
+				for i, v := range blk.Labels {
+					if v != labs[i] {
 						break HERE
 					}
-					for i, v := range blk.Labels {
-						if v != labs[i] {
-							break HERE
+				}
+				splt = append(labs[len(blk.Labels):], splt...)
+				// pp.Println("found block", blk.Type, blk.Labels, labs, splt)
+				for zz, k := range blk.Body.Attributes {
+					if zz == splt[0] {
+						// pp.Println("hello", k.Expr.Range(), k.Range())
+						if len(splt) == 1 {
+							// pp.Println(k.Expr.Range())
+							// pp.Println(k.Range())
+							return k.Expr, nil
 						}
-					}
-					splt = append(labs[len(blk.Labels):], splt...)
-					// pp.Println("found block", blk.Type, blk.Labels, labs, splt)
-					for zz, k := range blk.Body.Attributes {
-						if zz == splt[0] {
-							// pp.Println("hello", k.Expr.Range(), k.Range())
-							if len(splt) == 1 {
-								// pp.Println(k.Expr.Range())
-								// pp.Println(k.Range())
-								return k.Expr, nil
-							}
-							return roll2(splt[1:], k.Expr, ectx, bdy)
-						}
+						return roll2(splt[1:], k.Expr, ectx, file)
 					}
 				}
 			}
 		}
+		// }
 	}
 
 	return e, nil

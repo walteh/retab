@@ -123,7 +123,9 @@ func TestParseBlocksFromFile(t *testing.T) {
 				return
 			}
 
-			assert.Equal(t, tt.want.RawOutput, be.RawOutput)
+			require.Len(t, be, 1)
+
+			assert.Equal(t, tt.want.RawOutput, be[0].RawOutput)
 		})
 	}
 }
@@ -280,7 +282,9 @@ func TestParseBlocksWithReference(t *testing.T) {
 				return
 			}
 
-			assert.Equal(t, tt.want.RawOutput, be.RawOutput)
+			require.Len(t, be, 1)
+
+			assert.Equal(t, tt.want.RawOutput, be[0].RawOutput)
 
 			// assert.Empty(t, resp)
 

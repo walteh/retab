@@ -18,7 +18,6 @@ import (
 type AnyBlockEvaluation struct {
 	Name    string
 	Content map[string]cty.Value
-	// Validation []*ValidationError
 }
 
 type FileBlockEvaluation struct {
@@ -28,39 +27,11 @@ type FileBlockEvaluation struct {
 	OrderedOutput yaml.MapSlice
 	RawOutput     any
 	Source        string
-	// Validation    []*ValidationError
 }
 
-func NewGenBlockEvaluation(ctx context.Context, sctx *SudoContext, file *hclsyntax.Body) (res *FileBlockEvaluation, diags hcl.Diagnostics, err error) {
+func evalGenBlock(ctx context.Context, sctx *SudoContext, fblock *hclsyntax.Block, file *BodyBuilder) (res *FileBlockEvaluation, diags hcl.Diagnostics, err error) {
 
-	ectx := sctx.BuildStaticEvalContextWithFileData(file.SrcRange.Filename)
-
-	var fblock *hclsyntax.Block
-
-	for _, block := range file.Blocks {
-		switch block.Type {
-		case "gen":
-			fblock = block
-			break
-		default:
-			// blk, err := NewAnyBlockEvaluation(ctx, ectx, block)
-			// if err != nil {
-			// 	return nil, err
-			// }
-			// other = append(other, blk)
-		}
-	}
-
-	if fblock == nil {
-		return nil, hcl.Diagnostics{
-			{
-				Severity: hcl.DiagError,
-				Summary:  "missing gen block",
-				Detail:   "at least one gen block must be present",
-				Subject:  file.Range().Ptr(),
-			},
-		}, nil
-	}
+	ectx := sctx.BuildStaticEvalContextWithFileData(fblock.TypeRange.Filename)
 
 	if len(fblock.Labels) != 1 {
 		if len(fblock.Labels) == 0 {
@@ -183,14 +154,41 @@ func NewGenBlockEvaluation(ctx context.Context, sctx *SudoContext, file *hclsynt
 			if lerr, err := LoadValidationErrors(ctx, dataAttr, ectx, errv, file); err != nil {
 				return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem loading validation errors")
 			} else {
-				for _, v := range lerr {
-					diags = append(diags, v)
-				}
+				diags = append(diags, lerr...)
 			}
 		}
 	}
 
 	return blk, diags, nil
+
+}
+
+func NewGenBlockEvaluation(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (res []*FileBlockEvaluation, diags hcl.Diagnostics, err error) {
+
+	fblocks := file.GetAllBlocksOfType("gen")
+
+	if len(fblocks) == 0 {
+		return nil, hcl.Diagnostics{&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "missing gen block",
+			Detail:   "a file must have at least one gen block",
+			// Subject:  &file.Blocks[0].TypeRange,
+		}}, nil
+	}
+
+	output := make([]*FileBlockEvaluation, 0)
+
+	for _, fblock := range fblocks {
+		res, diags, err := evalGenBlock(ctx, sctx, fblock, file)
+		if err != nil || diags.HasErrors() {
+			return nil, diags, err
+		}
+
+		output = append(output, res)
+	}
+
+	return output, diags, nil
+
 }
 
 func EncodeExpression(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, hcl.Diagnostics, error) {
@@ -267,7 +265,3 @@ type ValidationBlock interface {
 	HasValidationErrors() bool
 	Encode() ([]byte, error)
 }
-
-// func (me *FileBlockEvaluation) HasValidationErrors() bool {
-// 	return me.Validation != nil
-// }

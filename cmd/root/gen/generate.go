@@ -2,6 +2,7 @@ package gen
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -11,6 +12,7 @@ import (
 )
 
 type Handler struct {
+	Verbose bool `name:"verbose" usage:"verbose output" default:"false"`
 }
 
 func (me *Handler) RegisterRunFunc() snake.RunFunc {
@@ -39,6 +41,11 @@ func (me *Handler) Run(ctx context.Context, fls afero.Fs, fle afero.File) error 
 	}
 
 	if diags.HasErrors() {
+		if me.Verbose {
+			for _, diag := range diags {
+				fmt.Println(diag)
+			}
+		}
 		return diags
 	}
 

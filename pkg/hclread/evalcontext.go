@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -17,227 +15,6 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 )
 
-type SudoContext struct {
-	ParentKey string
-	Parent    *SudoContext
-	Map       map[string]*SudoContext
-	Array     []*SudoContext
-	Value     *cty.Value
-	UserFuncs map[string]function.Function
-	done      bool
-}
-
-func (me *SudoContext) ApplyValue(val cty.Value) {
-	if val.Type().IsObjectType() {
-		me.ApplyValueMap(val.AsValueMap())
-	} else {
-		me.Value = &val
-		// me.resolved = true
-	}
-}
-
-func (me *SudoContext) ApplyKeyVal(key string, val cty.Value) {
-	// if me.ParentKey == ArrKey {
-	// 	me.Parent.ApplyValue(me.ToValue())
-	// } else {
-	me.NewChild(key).ApplyValue(val)
-	// }
-}
-
-func (me *SudoContext) ApplyValueMap(val map[string]cty.Value) {
-	for k, v := range val {
-		me.ApplyKeyVal(k, v)
-	}
-}
-
-func (me *SudoContext) ApplyArray(arr []cty.Value) {
-	if me.ParentKey != ArrKey {
-		me.ApplyValue(cty.TupleVal(arr))
-		return
-	}
-	for _, v := range arr {
-		me.Array = append(me.Array, &SudoContext{
-			Parent: me,
-			Value:  &v,
-		})
-	}
-}
-
-func (me *SudoContext) ToValue() cty.Value {
-	if me.Value != nil {
-		return *me.Value
-	}
-
-	if me.ParentKey == ArrKey {
-		vars := me.BuildStaticVarsList()
-		return cty.TupleVal(vars)
-	}
-
-	if me.Array != nil {
-		arr := make([]cty.Value, len(me.Array))
-		for i, v := range me.Array {
-			arr[i] = v.ToValue()
-		}
-		return cty.TupleVal(arr)
-	}
-
-	obj := make(map[string]cty.Value, len(me.Map))
-	for k, v := range me.Map {
-		obj[k] = v.ToValue()
-	}
-	return cty.ObjectVal(obj)
-}
-
-func (me *SudoContext) BuildStaticEvalVars() map[string]cty.Value {
-
-	wrk := map[string]cty.Value{}
-	for k, v := range me.Map {
-		wrk[k] = v.ToValue()
-	}
-
-	return wrk
-
-}
-
-func (me *SudoContext) BuildStaticVarsList() []cty.Value {
-
-	type sorter struct {
-		Key   string
-		Value cty.Value
-	}
-
-	wrk := make([]sorter, 0, len(me.Map))
-	for srt, v := range me.Map {
-		if v.Value != nil {
-			wrk = append(wrk, sorter{
-				Key:   srt,
-				Value: *v.Value,
-			})
-		} else {
-			wrk = append(wrk, sorter{
-				Key:   srt,
-				Value: cty.ObjectVal(v.BuildStaticEvalVars()),
-			})
-		}
-	}
-
-	slices.SortFunc(wrk, func(a, b sorter) int {
-		intr, _ := strconv.Atoi(a.Key)
-		intr2, _ := strconv.Atoi(b.Key)
-		return intr - intr2
-	})
-
-	vals := make([]cty.Value, len(wrk))
-	for i, v := range wrk {
-		vals[i] = v.Value
-	}
-
-	return vals
-
-}
-
-func (me *SudoContext) Functions() map[string]function.Function {
-	fn := NewFunctionMap()
-
-	for k, v := range NewGlobalContextualizedFunctionMap(me.Root().BuildStaticEvalVars()) {
-		fn[k] = v
-	}
-
-	if me.UserFuncs != nil {
-		for k, v := range me.UserFuncs {
-			fn[k] = v
-		}
-	}
-
-	return fn
-}
-
-func (me *SudoContext) NewNestedChild(key ...string) *SudoContext {
-	wrk := me
-	for _, v := range key {
-		wrk = wrk.NewChild(v)
-	}
-	return wrk
-}
-
-func (me *SudoContext) NewArrayChild() *SudoContext {
-	return me.NewChild(ArrKey)
-}
-
-func (me *SudoContext) NewChild(key string) *SudoContext {
-
-	if me.Map[key] != nil {
-		return me.Map[key]
-	}
-
-	build := &SudoContext{
-		ParentKey: key,
-		Parent:    me,
-		Map:       make(map[string]*SudoContext),
-	}
-
-	me.Map[key] = build
-
-	return build
-}
-
-func (wc *SudoContext) BuildStaticEvalContext() *hcl.EvalContext {
-	wrk := &hcl.EvalContext{
-		Functions: wc.Functions(),
-		Variables: wc.BuildStaticEvalVars(),
-	}
-
-	return wrk
-}
-
-func (wc *SudoContext) BuildStaticEvalContextWithFileData(file string) *hcl.EvalContext {
-
-	internalParent := wc.Root().BuildStaticEvalContext().Variables[FilesKey].AsValueMap()
-
-	if internalParent == nil {
-		internalParent = map[string]cty.Value{}
-
-	}
-
-	if internalParent[file] == cty.NilVal {
-		internalParent[file] = cty.ObjectVal(map[string]cty.Value{})
-	}
-
-	internalParent = internalParent[file].AsValueMap()
-
-	wrk := &hcl.EvalContext{
-		Functions: wc.Functions(),
-		Variables: map[string]cty.Value{
-			"self": cty.ObjectVal(wc.BuildStaticEvalVars()),
-		},
-	}
-
-	if wc.Parent != nil {
-		wrk.Variables["parent"] = cty.ObjectVal(wc.Parent.BuildStaticEvalVars())
-		if wc.Parent.Parent != nil {
-			wrk.Variables["grandparent"] = cty.ObjectVal(wc.Parent.Parent.BuildStaticEvalVars())
-		}
-	}
-
-	for k, v := range internalParent {
-		wrk.Variables[k] = v
-	}
-
-	for k, v := range NewContextualizedFunctionMap(wc.Root().BuildStaticEvalVars(), file) {
-		wrk.Functions[k] = v
-	}
-
-	return wrk
-}
-
-func (wc *SudoContext) Root() *SudoContext {
-	if wc.Parent == nil {
-		return wc
-	}
-
-	return wc.Parent.Root()
-}
-
 func ExtractUserFuncs(ctx context.Context, ibdy hcl.Body, parent *hcl.EvalContext) (map[string]function.Function, hcl.Diagnostics) {
 	userfuncs, _, diag := userfunc.DecodeUserFunctions(ibdy, "func", func() *hcl.EvalContext { return parent })
 	if diag.HasErrors() {
@@ -247,25 +24,14 @@ func ExtractUserFuncs(ctx context.Context, ibdy hcl.Body, parent *hcl.EvalContex
 	return userfuncs, nil
 }
 
-type PreCtyValue struct {
-	Val      cty.Value
-	Range    hcl.Range
-	Name     string
-	Children []*PreCtyValue
-}
-
-func NewContextFromFiles(ctx context.Context, fle map[string][]byte, parent *hcl.EvalContext) (*hcl.File, *SudoContext, *hclsyntax.Body, map[string]*hclsyntax.Body, hcl.Diagnostics, error) {
-
-	childctx := parent.NewChild()
-	childctx.Variables = map[string]cty.Value{}
-	childctx.Functions = map[string]function.Function{}
+func NewContextFromFiles(ctx context.Context, fle map[string][]byte) (*hcl.File, *SudoContext, *BodyBuilder, hcl.Diagnostics, error) {
 
 	bodys := make(map[string]*hclsyntax.Body)
 
 	for k, v := range fle {
 		hcldata, errd := hclsyntax.ParseConfig(v, k, hcl.InitialPos)
 		if errd.HasErrors() {
-			return nil, nil, nil, nil, errd, nil
+			return nil, nil, nil, errd, nil
 		}
 
 		// will always work
@@ -274,19 +40,7 @@ func NewContextFromFiles(ctx context.Context, fle map[string][]byte, parent *hcl
 		bodys[k] = bdy
 	}
 
-	root := &hclsyntax.Body{
-		Attributes: hclsyntax.Attributes{},
-		Blocks:     make([]*hclsyntax.Block, 0),
-	}
-
-	for k, v := range bodys {
-		sudoblock := &hclsyntax.Block{
-			Type:   FilesKey,
-			Body:   v,
-			Labels: []string{k},
-		}
-		root.Blocks = append(root.Blocks, sudoblock)
-	}
+	root := &BodyBuilder{files: bodys}
 
 	mectx := &SudoContext{
 		Parent:    nil,
@@ -294,90 +48,14 @@ func NewContextFromFiles(ctx context.Context, fle map[string][]byte, parent *hcl
 		Map:       make(map[string]*SudoContext),
 	}
 
-	_, diags, err := NewContextFromBody(ctx, root, mectx)
+	diags := mectx.ApplyBody(ctx, root.NewRoot())
 
-	if err != nil || diags.HasErrors() {
-		return nil, nil, nil, nil, diags, err
-	}
-
-	return nil, mectx, root, bodys, diags, nil
+	return nil, mectx, root, diags, nil
 
 }
 
-func NewContextFromFile(ctx context.Context, fle []byte, name string) (*hcl.File, *SudoContext, *hclsyntax.Body, hcl.Diagnostics, error) {
-	hcldata, errd := hclsyntax.ParseConfig(fle, name, hcl.InitialPos)
-	if errd.HasErrors() {
-		return nil, nil, nil, errd, nil
-	}
-
-	// will always work
-	bdy := hcldata.Body.(*hclsyntax.Body)
-
-	ectx := &SudoContext{
-		Parent:    nil,
-		ParentKey: "",
-		Map:       map[string]*SudoContext{},
-	}
-
-	ectx.Map[FilesKey] = &SudoContext{
-		Parent:    ectx,
-		ParentKey: FilesKey,
-		Map:       map[string]*SudoContext{},
-	}
-
-	ectx.Map[name] = &SudoContext{
-		Parent:    ectx,
-		ParentKey: name,
-		Map:       map[string]*SudoContext{},
-	}
-
-	_, diags, err := NewContextFromBody(ctx, bdy, ectx)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-
-	return hcldata, ectx, bdy, diags, nil
-
-}
-
-func NewContextFromBody(ctx context.Context, body *hclsyntax.Body, parent *SudoContext) (*hcl.EvalContext, hcl.Diagnostics, error) {
-
-	childctx := parent.BuildStaticEvalContext().NewChild()
-	childctx.Variables = map[string]cty.Value{}
-	childctx.Functions = map[string]function.Function{}
-
-	diag := ExtractVariables(ctx, body, parent)
-	if diag.HasErrors() {
-		return nil, diag, nil
-	}
-
-	return childctx, hcl.Diagnostics{}, nil
-}
-
-func ApplyFileSpecificToContext(ctx context.Context, tange hcl.Range, child *hcl.EvalContext) {
-
-	nest := []string{}
-
-	rootparent := child.Parent()
-	for rootparent.Parent() != nil {
-		nest = append(nest, rootparent.Variables[MetaKey].AsValueMap()["label"].AsString())
-		rootparent = rootparent.Parent()
-	}
-
-	files := rootparent.Variables[FilesKey].AsValueMap()
-	if files == nil {
-		files = map[string]cty.Value{}
-	}
-
-	tmp := rootparent.Variables
-	for _, v := range nest {
-		tmp = tmp[v].AsValueMap()
-	}
-
-	files[tange.Filename] = cty.ObjectVal(child.Variables)
-
-	tmp[tange.Filename] = cty.ObjectVal(files)
-
+func NewContextFromFile(ctx context.Context, fle []byte, name string) (*hcl.File, *SudoContext, *BodyBuilder, hcl.Diagnostics, error) {
+	return NewContextFromFiles(ctx, map[string][]byte{name: fle})
 }
 
 const ArrKey = "____arr"
@@ -448,7 +126,7 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parentctx *SudoC
 	prevRetrys := []*hclsyntax.Block{}
 	lastDiags := hcl.Diagnostics{}
 	start := true
-	// starts := 0
+
 	for ((len(retrys) > 0 || len(retryattrs) > 0) && (len(prevRetrys) > len(retrys) || len(prevAttrRetrys) > len(retryattrs))) || start {
 
 		start = false
@@ -492,8 +170,18 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parentctx *SudoC
 		retryattrs = newAttrRetrys
 		retrys = newRetrys
 	}
-
 	return lastDiags
+
+	// if len(lastDiags) > 0 {
+	// 	return lastDiags
+	// }
+
+	// isFileParent := parentctx.Parent != nil && parentctx.Parent.ParentKey == FilesKey
+
+	// if isFileParent {
+
+	// }
+
 }
 
 const MetaKey = "____meta"
@@ -528,6 +216,7 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 	}
 
 	meta["block_type"] = cty.StringVal(block.Type)
+	meta["done"] = cty.BoolVal(true)
 
 	child.ApplyKeyVal(MetaKey, cty.ObjectVal(meta))
 
@@ -730,73 +419,86 @@ func sanitizeFileName(str string) string {
 	return str
 }
 
-func NewGlobalContextualizedFunctionMap(ectx map[string]cty.Value) map[string]function.Function {
-	return map[string]function.Function{
-		"file": function.New(&function.Spec{
-			Description: "Returns the contents of another .retab file",
-			Params: []function.Parameter{
-				{
-					Name:             "file",
-					Type:             cty.String,
-					AllowUnknown:     false,
-					AllowDynamicType: false,
-					AllowNull:        false,
-				},
-			},
-			Type: function.StaticReturnType(cty.DynamicPseudoType),
-			// RefineResult: refineNonNull,
-			Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+func Mapd(ectx map[string]cty.Value, file string, name string) (map[string]cty.Value, error) {
+	data := ectx[FilesKey].AsValueMap()[file].AsValueMap()
 
-				if files, ok := ectx[FilesKey]; ok {
-					if files.IsKnown() {
-						if files.Type().IsObjectType() {
-							sfilename := sanitizeFileName(args[0].AsString())
-							if file, ok := files.AsValueMap()[sfilename]; ok {
-
-								return file, nil
-							} else {
-								known := []string{}
-								for k := range files.AsValueMap() {
-									known = append(known, k)
-								}
-								return cty.NilVal, terrors.Errorf("file %s not found, known files: %s", sfilename, strings.Join(known, ", "))
-							}
-						}
-						return cty.NilVal, terrors.Errorf("files is not an object")
-					}
-					return cty.NilVal, terrors.Errorf("files is not known")
-				}
-				return cty.NilVal, terrors.Errorf("files not found in context")
-			},
-		}),
+	if data == nil {
+		return nil, terrors.Errorf("file %s not found", file)
 	}
-}
-func NewContextualizedFunctionMap(ectx map[string]cty.Value, file string) map[string]function.Function {
 
-	getBlockWithValidationErrors := func(name string) (map[string]cty.Value, error) {
-		data := ectx[FilesKey].AsValueMap()[file].AsValueMap()
-
-		if data == nil {
-			return nil, terrors.Errorf("file %s not found", file)
-		}
-
+	if name != "" {
 		data = data[name].AsValueMap()
 
 		if data == nil {
 			return nil, terrors.Errorf("block %s not found", name)
 		}
-
-		mapper := make(map[string]cty.Value)
-		for k, v := range data {
-			d := v.AsValueMap()
-			if d[MetaKey] == cty.NilVal || d[MetaKey].AsValueMap()["block_type"] == cty.NilVal {
-				return nil, terrors.Errorf("block %s has no meta", name)
-			}
-			mapper[k] = v
-		}
-
-		return mapper, nil
 	}
+
+	mapper := make(map[string]cty.Value)
+	for k, v := range data {
+		d := v.AsValueMap()
+		if d[MetaKey] == cty.NilVal || d[MetaKey].AsValueMap()["block_type"] == cty.NilVal {
+			return nil, terrors.Errorf("block %s:%s has no meta", name, k)
+		}
+		mapper[k] = v
+	}
+
+	return mapper, nil
+}
+
+func MapdFile(ectx map[string]cty.Value, file string) (map[string]cty.Value, error) {
+	data := ectx[FilesKey].AsValueMap()[file].AsValueMap()
+
+	if data == nil {
+		return nil, terrors.Errorf("file %s not found", file)
+	}
+
+	if data[MetaKey] == cty.NilVal || data[MetaKey].AsValueMap()["block_type"] == cty.NilVal {
+		return nil, terrors.Errorf("file block %s has no meta", file)
+	}
+
+	// mapper := make(map[string]cty.Value)
+	// for k, v := range data {
+	// 	d := v.AsValueMap()
+	// 	if d[MetaKey] == cty.NilVal || d[MetaKey].AsValueMap()["block_type"] == cty.NilVal {
+	// 		return nil, terrors.Errorf("block %s:%s has no meta", name, k)
+	// 	}
+	// 	mapper[k] = v
+	// }
+
+	return data, nil
+}
+
+func NewContextualizedFunctionMap(ectx map[string]cty.Value, file string) map[string]function.Function {
+
+	mapp := function.New(&function.Spec{
+		Description: `Returns a map of all blocks w\ the given label`,
+		Params: []function.Parameter{
+			{
+				Name:             "block",
+				Type:             cty.String,
+				AllowUnknown:     true,
+				AllowDynamicType: true,
+				AllowNull:        false,
+				AllowMarked:      true,
+			},
+		},
+		Type: function.StaticReturnType(cty.DynamicPseudoType),
+		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+
+			resp, err := Mapd(ectx, file, args[0].AsString())
+			if err != nil {
+				return cty.NilVal, err
+			}
+
+			mapd := make(map[string]cty.Value)
+			for k, v := range resp {
+				mapd[k] = v
+			}
+
+			return cty.ObjectVal(mapd), nil
+		},
+	})
 
 	list := function.New(&function.Spec{
 		Description: `Returns a list of all blocks w\ the given label`,
@@ -813,7 +515,7 @@ func NewContextualizedFunctionMap(ectx map[string]cty.Value, file string) map[st
 		Type: function.StaticReturnType(cty.DynamicPseudoType),
 		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
 
-			resp, err := getBlockWithValidationErrors(args[0].AsString())
+			resp, err := Mapd(ectx, file, args[0].AsString())
 			if err != nil {
 				return cty.NilVal, err
 			}
@@ -827,36 +529,61 @@ func NewContextualizedFunctionMap(ectx map[string]cty.Value, file string) map[st
 		}},
 	)
 
+	filed := function.New(&function.Spec{
+		Description: "Returns the contents of another .retab file",
+		Params: []function.Parameter{
+			{
+				Name:             "file",
+				Type:             cty.String,
+				AllowUnknown:     false,
+				AllowDynamicType: false,
+				AllowNull:        false,
+			},
+		},
+		Type: function.StaticReturnType(cty.DynamicPseudoType),
+		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+
+			mapper, err := MapdFile(ectx, sanitizeFileName(args[0].AsString()))
+			if err != nil {
+				return cty.NilVal, err
+			}
+
+			return cty.ObjectVal(mapper), nil
+		},
+	})
+
+	// takes in some negative number and returns the nested parent -x levels
+	// selfer := function.New(&function.Spec{
+	// 	Description: `Returns the parent block of the current block`,
+	// 	Params: []function.Parameter{
+	// 		{
+	// 			Name:             "block",
+	// 			Type:             cty.Number,
+	// 			AllowUnknown:     false,
+	// 			AllowDynamicType: false,
+	// 			AllowNull:        true,
+	// 		},
+	// 	},
+	// 	Type: function.StaticReturnType(cty.DynamicPseudoType),
+	// 	Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+
+	// 		if len(args) != 1 {
+	// 			// default to 0
+	// 			args = append(args, cty.NumberIntVal(0))
+	// 		}
+
+	// 		num := args[0].AsBigFloat()
+	// 		if !num.IsInt() {
+	// 			return cty.NilVal, terrors.Errorf("expected int, got %s", args[0].GoString())
+	// 		}
+
+	// 		if num.Cmp(cty.Zero.AsBigFloat()) >= 0 {
+	// 			return cty.NilVal, terrors.Errorf("expected positive int, got %s", args[0].GoString())
+	// 		}
+
 	return map[string]function.Function{
-
-		"allof": function.New(&function.Spec{
-			Description: `Returns a map of all blocks w\ the given label`,
-			Params: []function.Parameter{
-				{
-					Name:             "block",
-					Type:             cty.String,
-					AllowUnknown:     true,
-					AllowDynamicType: true,
-					AllowNull:        false,
-					AllowMarked:      true,
-				},
-			},
-			Type: function.StaticReturnType(cty.DynamicPseudoType),
-			Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
-
-				resp, err := getBlockWithValidationErrors(args[0].AsString())
-				if err != nil {
-					return cty.NilVal, err
-				}
-
-				mapd := make(map[string]cty.Value)
-				for k, v := range resp {
-					mapd[k] = v
-				}
-
-				return cty.ObjectVal(mapd), nil
-			},
-		}),
+		"file":       filed,
+		"allof":      mapp,
 		"alloflist":  list,
 		"allofarray": list,
 	}
