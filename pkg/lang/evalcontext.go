@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -225,6 +226,7 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 
 	meta["block_type"] = cty.StringVal(block.Type)
 	meta["done"] = cty.BoolVal(true)
+	meta["file_line_number"] = cty.NumberIntVal(int64(block.TypeRange.Start.Line))
 
 	child.ApplyKeyVal(MetaKey, cty.ObjectVal(meta))
 
@@ -427,6 +429,49 @@ func sanitizeFileName(str string) string {
 	return str
 }
 
+func Listd(ectx map[string]cty.Value, file string, name string) ([]cty.Value, error) {
+	data := ectx[FilesKey].AsValueMap()[file].AsValueMap()
+
+	if data == nil {
+		return nil, terrors.Errorf("file %s not found", file)
+	}
+
+	if name != "" {
+		data = data[name].AsValueMap()
+
+		if data == nil {
+			return nil, terrors.Errorf("block %s not found", name)
+		}
+	}
+
+	type mapper struct {
+		val   cty.Value
+		index int
+	}
+
+	mappers := make([]mapper, 0, len(data))
+	for k, v := range data {
+		d := v.AsValueMap()
+		if d[MetaKey] == cty.NilVal || d[MetaKey].AsValueMap()["block_type"] == cty.NilVal {
+			return nil, terrors.Errorf("block %s:%s has no meta", name, k)
+		}
+		i, _ := d[MetaKey].AsValueMap()["file_line_number"].AsBigFloat().Int64()
+		mappers = append(mappers, mapper{val: v, index: int(i)})
+	}
+
+	slices.SortFunc(mappers, func(a, b mapper) int {
+		// a - b because the lower line numbers should be first
+		return a.index - b.index
+	})
+
+	vals := make([]cty.Value, 0, len(mappers))
+	for _, v := range mappers {
+		vals = append(vals, v.val)
+	}
+
+	return vals, nil
+}
+
 func Mapd(ectx map[string]cty.Value, file string, name string) (map[string]cty.Value, error) {
 	data := ectx[FilesKey].AsValueMap()[file].AsValueMap()
 
@@ -465,15 +510,6 @@ func MapdFile(ectx map[string]cty.Value, file string) (map[string]cty.Value, err
 		return nil, terrors.Errorf("file block %s has no meta", file)
 	}
 
-	// mapper := make(map[string]cty.Value)
-	// for k, v := range data {
-	// 	d := v.AsValueMap()
-	// 	if d[MetaKey] == cty.NilVal || d[MetaKey].AsValueMap()["block_type"] == cty.NilVal {
-	// 		return nil, terrors.Errorf("block %s:%s has no meta", name, k)
-	// 	}
-	// 	mapper[k] = v
-	// }
-
 	return data, nil
 }
 
@@ -499,12 +535,7 @@ func NewContextualizedFunctionMap(ectx map[string]cty.Value, file string) map[st
 				return cty.NilVal, err
 			}
 
-			mapd := make(map[string]cty.Value)
-			for k, v := range resp {
-				mapd[k] = v
-			}
-
-			return cty.ObjectVal(mapd), nil
+			return cty.ObjectVal(resp), nil
 		},
 	})
 
@@ -523,17 +554,12 @@ func NewContextualizedFunctionMap(ectx map[string]cty.Value, file string) map[st
 		Type: function.StaticReturnType(cty.DynamicPseudoType),
 		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
 
-			resp, err := Mapd(ectx, file, args[0].AsString())
+			resp, err := Listd(ectx, file, args[0].AsString())
 			if err != nil {
 				return cty.NilVal, err
 			}
 
-			vals := make([]cty.Value, 0, len(resp))
-			for _, v := range resp {
-				vals = append(vals, v)
-			}
-
-			return cty.TupleVal(vals), nil
+			return cty.TupleVal(resp), nil
 		}},
 	)
 

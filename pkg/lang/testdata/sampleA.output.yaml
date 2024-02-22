@@ -67,6 +67,10 @@ tasks:
             - go work vendor
     zroll:
         - cmds:
+            - go mod tidy
+            - cd tools && go mod tidy
+            - go work vendor
+        - cmds:
             - |
               ./tools/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template a --path=./proto
             - find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete
@@ -80,10 +84,6 @@ tasks:
             - proto/**/*.proto
             - ./tools/bin/buf
             - ./a
-        - cmds:
-            - go mod tidy
-            - cd tools && go mod tidy
-            - go work vendor
         - cmds:
             - go get -u -v ./... && go mod tidy
             - cd tools && go get -u -v ./... && go mod tidy

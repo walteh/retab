@@ -49,13 +49,7 @@ task tidy {
 }
 
 
-task update {
-	cmds = [
-		"go get -u -v ./... && go mod tidy",
-		"cd ${TOOLS_DIR} && go get -u -v ./... && go mod tidy",
-		"go work vendor"
-	]
-}
+
 
 BUF_OUTPUT     = "a"
 MOCKERY_OUTPUT = "b"
@@ -71,5 +65,14 @@ task buf-gen {
 	EOF
 		,
 		"find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete"
+	]
+}
+
+
+task update {
+	cmds = [
+		"go get -u -v ./... && go mod tidy",
+		"cd ${TOOLS_DIR} && go get -u -v ./... && go mod tidy",
+		"go work vendor"
 	]
 }

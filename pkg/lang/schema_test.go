@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/walteh/retab/pkg/diff"
 )
@@ -58,10 +59,23 @@ func TestRetab3Schema(t *testing.T) {
 	require.Empty(t, diags)
 
 	_, diags, err = NewGenBlockEvaluation(ctx, ectx, got)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	for _, c := range diags {
 		fmt.Println(c)
 	}
+
+	data, err = testdata.ReadFile("testdata/retab4.retab")
+	require.NoError(t, err)
+
+	_, ectx, got, diags, errd = NewContextFromFile(ctx, data, "test2.hcl")
+	require.NoError(t, errd)
 	require.Empty(t, diags)
+
+	_, diags, err = NewGenBlockEvaluation(ctx, ectx, got)
+	assert.NoError(t, err)
+	for _, c := range diags {
+		fmt.Println(c)
+	}
+	require.NotEmpty(t, diags)
 
 }
