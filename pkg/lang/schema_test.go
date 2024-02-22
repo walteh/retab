@@ -1,4 +1,4 @@
-package hclread
+package lang
 
 import (
 	"context"

@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/walteh/retab/cmd/root/resolvers"
-	"github.com/walteh/retab/pkg/hclread"
+	"github.com/walteh/retab/pkg/lang"
 	"github.com/walteh/snake"
 )
 
@@ -35,7 +35,7 @@ func (me *Handler) Run(ctx context.Context, fls afero.Fs, fle afero.File) error 
 		return err
 	}
 
-	bodies, diags, err := hclread.ProccessBulk(ctx, fls, fles)
+	bodies, diags, err := lang.ProccessBulk(ctx, fls, fles)
 	if err != nil {
 		return err
 	}

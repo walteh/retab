@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/walteh/retab/cmd/root/resolvers"
-	"github.com/walteh/retab/pkg/hclread"
+	"github.com/walteh/retab/pkg/lang"
 	"github.com/walteh/snake"
 )
 
@@ -35,7 +35,7 @@ func (me *Handler) Run(ctx context.Context, fls afero.Fs, fle afero.File, stdout
 	}
 
 	for _, fle := range fles {
-		_, diags, err := hclread.Process(ctx, fls, fle)
+		_, diags, err := lang.Process(ctx, fls, fle)
 		if err != nil {
 			return err
 		}

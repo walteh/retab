@@ -1,4 +1,4 @@
-package hclread
+package lang
 
 import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
