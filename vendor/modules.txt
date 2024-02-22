@@ -821,6 +821,9 @@ github.com/kulti/thelper/pkg/analyzer
 # github.com/kunwardeep/paralleltest v1.0.10
 ## explicit; go 1.17
 github.com/kunwardeep/paralleltest/pkg/paralleltest
+# github.com/kylelemons/godebug v0.0.0-20170820004349-d65d576e9348
+## explicit
+github.com/kylelemons/godebug/diff
 # github.com/kyoh86/exportloopref v0.1.11
 ## explicit; go 1.18
 github.com/kyoh86/exportloopref

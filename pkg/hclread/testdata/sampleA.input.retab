@@ -1,0 +1,75 @@
+TOOLS_DIR = "tools"
+
+bins = {
+	"task"          = "github.com/go-task/task/v3/cmd/task"
+	"buf"           = "github.com/bufbuild/buf/cmd/buf",
+}
+
+gen taskfile {
+	// schema = "https://taskfile.dev/schema.json"
+	path   = "../taskfile.yaml"
+	data = {
+		version = 3
+		tasks = merge(
+			{
+				for bin, zpath in bins : "${bin}-bin" => {
+					generates = ["bin/${bin}"]
+					dir       = "${TOOLS_DIR}"
+					sources   = ["go.mod", "go.sum", "main.go"]
+					cmds = [
+						"go build -mod=vendor -o ./bin/${bin} ${zpath}"
+					]
+				}
+			},
+			alloffun,
+			{
+				default = { deps = ["tools", "gen", "lint", "test"] }
+				tools = {
+					deps = [for bin, _ in bins : "${bin}-bin"]
+				}
+				gen = {
+					deps = ["retab-gen", "buf-gen", "mockery-gen"]
+				}
+		},
+		{ 		zroll = alloffunarray}
+		)
+	}
+}
+
+
+alloffun = allof("task")
+alloffunarray = allofarray("task")
+
+task tidy {
+	cmds = [
+		"go mod tidy",
+		"cd ${TOOLS_DIR} && go mod tidy",
+		"go work vendor"
+	]
+}
+
+
+task update {
+	cmds = [
+		"go get -u -v ./... && go mod tidy",
+		"cd ${TOOLS_DIR} && go get -u -v ./... && go mod tidy",
+		"go work vendor"
+	]
+}
+
+BUF_OUTPUT     = "a"
+MOCKERY_OUTPUT = "b"
+
+task buf-gen {
+	deps      = ["buf-bin", "retab-gen"]
+	generates = ["gen/buf/**/*"]
+	dir       = "."
+	sources   = ["proto/**/*.proto", "./${TOOLS_DIR}/bin/buf", "./${BUF_OUTPUT}"]
+	cmds = [
+		<<EOF
+		./${TOOLS_DIR}/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template ${BUF_OUTPUT} --path=./proto
+	EOF
+		,
+		"find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete"
+	]
+}

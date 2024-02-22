@@ -24,6 +24,7 @@ type SudoContext struct {
 	Array     []*SudoContext
 	Value     *cty.Value
 	UserFuncs map[string]function.Function
+	done      bool
 }
 
 func (me *SudoContext) ApplyValue(val cty.Value) {
@@ -487,6 +488,7 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parentctx *SudoC
 
 		lastDiags = diags
 		prevRetrys = retrys
+		prevAttrRetrys = retryattrs
 		retryattrs = newAttrRetrys
 		retrys = newRetrys
 	}
@@ -770,6 +772,61 @@ func NewGlobalContextualizedFunctionMap(ectx map[string]cty.Value) map[string]fu
 	}
 }
 func NewContextualizedFunctionMap(ectx map[string]cty.Value, file string) map[string]function.Function {
+
+	getBlockWithValidationErrors := func(name string) (map[string]cty.Value, error) {
+		data := ectx[FilesKey].AsValueMap()[file].AsValueMap()
+
+		if data == nil {
+			return nil, terrors.Errorf("file %s not found", file)
+		}
+
+		data = data[name].AsValueMap()
+
+		if data == nil {
+			return nil, terrors.Errorf("block %s not found", name)
+		}
+
+		mapper := make(map[string]cty.Value)
+		for k, v := range data {
+			d := v.AsValueMap()
+			if d[MetaKey] == cty.NilVal || d[MetaKey].AsValueMap()["block_type"] == cty.NilVal {
+				return nil, terrors.Errorf("block %s has no meta", name)
+			}
+			mapper[k] = v
+		}
+
+		return mapper, nil
+	}
+
+	list := function.New(&function.Spec{
+		Description: `Returns a list of all blocks w\ the given label`,
+		Params: []function.Parameter{
+			{
+				Name:             "block",
+				Type:             cty.String,
+				AllowUnknown:     true,
+				AllowDynamicType: true,
+				AllowNull:        false,
+				AllowMarked:      true,
+			},
+		},
+		Type: function.StaticReturnType(cty.DynamicPseudoType),
+		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+
+			resp, err := getBlockWithValidationErrors(args[0].AsString())
+			if err != nil {
+				return cty.NilVal, err
+			}
+
+			vals := make([]cty.Value, 0, len(resp))
+			for _, v := range resp {
+				vals = append(vals, v)
+			}
+
+			return cty.TupleVal(vals), nil
+		}},
+	)
+
 	return map[string]function.Function{
 
 		"allof": function.New(&function.Spec{
@@ -787,48 +844,20 @@ func NewContextualizedFunctionMap(ectx map[string]cty.Value, file string) map[st
 			Type: function.StaticReturnType(cty.DynamicPseudoType),
 			Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
 
-				mapd := make(map[string]cty.Value)
-
-				for nme, blks := range ectx[FilesKey].AsValueMap()[file].AsValueMap() {
-					if nme == args[0].AsString() {
-						for k, v := range blks.AsValueMap() {
-							mapd[k] = v
-						}
-					}
+				resp, err := getBlockWithValidationErrors(args[0].AsString())
+				if err != nil {
+					return cty.NilVal, err
 				}
+
+				mapd := make(map[string]cty.Value)
+				for k, v := range resp {
+					mapd[k] = v
+				}
+
 				return cty.ObjectVal(mapd), nil
 			},
 		}),
-		"alloflist": function.New(&function.Spec{
-			Description: `Returns a list of all blocks w\ the given label`,
-			Params: []function.Parameter{
-				{
-					Name:             "block",
-					Type:             cty.String,
-					AllowUnknown:     true,
-					AllowDynamicType: true,
-					AllowNull:        false,
-					AllowMarked:      true,
-				},
-			},
-			Type: function.StaticReturnType(cty.DynamicPseudoType),
-			Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
-
-				mapd := make([]cty.Value, 0)
-
-				for nme, blks := range ectx[FilesKey].AsValueMap()[file].AsValueMap() {
-					if nme == args[0].AsString() {
-						for k, v := range blks.AsValueMap() {
-							if len(v.AsValueMap()) == 0 {
-								return cty.NilVal, terrors.Errorf("block %s has no attributes", k)
-							} else {
-								mapd = append(mapd, cty.ObjectVal(v.AsValueMap()))
-							}
-						}
-					}
-				}
-
-				return cty.ListVal(mapd), nil
-			}}),
+		"alloflist":  list,
+		"allofarray": list,
 	}
 }

@@ -37,6 +37,7 @@ gen taskfile {
 	}
 }
 
+allofdem = allof("task")
 
 task tidy {
 	cmds = [
