@@ -65,32 +65,40 @@ func EvaluateAttr(ctx context.Context, name string, attr hclsyntax.Expression, p
 
 	switch e := attr.(type) {
 	case *hclsyntax.ObjectConsExpr:
+
+		diags := hcl.Diagnostics{}
 		for _, v := range e.Items {
 			key, diag := v.KeyExpr.Value(childctx)
 			if diag.HasErrors() {
-				return diag
+				diags = append(diags, diag...)
+				continue
 			}
 
 			diag = EvaluateAttr(ctx, key.AsString(), v.ValueExpr, parentctx.NewChild(name))
 			if diag.HasErrors() {
-				return diag
+				diags = append(diags, diag...)
+				continue
 			}
 		}
+
+		return diags
 
 	case *hclsyntax.TupleConsExpr:
 
 		child := parentctx.NewChild(ArrKey)
 
+		diags := hcl.Diagnostics{}
+
 		for i, v := range e.Exprs {
 			diag := EvaluateAttr(ctx, fmt.Sprintf("%d", i), v, child)
-			if diag.HasErrors() {
-				return diag
-			}
+			diags = append(diags, diag...)
 		}
 
 		delete(parentctx.Map, ArrKey)
 
 		parentctx.ApplyKeyVal(name, child.ToValue())
+
+		return diags
 
 	default:
 
@@ -103,7 +111,7 @@ func EvaluateAttr(ctx context.Context, name string, attr hclsyntax.Expression, p
 
 	}
 
-	return nil
+	return hcl.Diagnostics{}
 }
 
 func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parentctx *SudoContext) hcl.Diagnostics {
