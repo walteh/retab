@@ -12,10 +12,10 @@ jobs:
     say-hello:
         runs-on: ubuntu-latest
         steps:
+            - name: Run tests ubuntu-latest
+              run: |
+                echo "Hello world"
             - name: Checkout
               uses: actions/checkout@v4
               with:
                 fetch-depth: 1
-            - name: Run tests
-              run: |
-                echo "Hello world"

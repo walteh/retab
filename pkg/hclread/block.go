@@ -129,7 +129,7 @@ func NewGenBlockEvaluation(ctx context.Context, sctx *SudoContext, file *hclsynt
 
 			cnt := yaml.MapSlice{}
 
-			slc, diags, err := roll(attr.Expr, ectx)
+			slc, diags, err := EncodeExpression(attr.Expr, ectx)
 			if err != nil || diags.HasErrors() {
 				return nil, diags, err
 			}
@@ -193,7 +193,7 @@ func NewGenBlockEvaluation(ctx context.Context, sctx *SudoContext, file *hclsynt
 	return blk, diags, nil
 }
 
-func roll(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, hcl.Diagnostics, error) {
+func EncodeExpression(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, hcl.Diagnostics, error) {
 
 	if x, ok := e.(*hclsyntax.ObjectConsExpr); ok {
 		group := make(yaml.MapSlice, 0)
@@ -205,7 +205,7 @@ func roll(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, hcl.Diagnostics, 
 			if kvf.AsString() == MetaKey {
 				continue
 			}
-			rz, diags, errd := roll(rr.ValueExpr, ectx)
+			rz, diags, errd := EncodeExpression(rr.ValueExpr, ectx)
 			if errd != nil || diags.HasErrors() {
 				return nil, diags, errd
 			}
@@ -218,7 +218,7 @@ func roll(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, hcl.Diagnostics, 
 	} else if x, ok := e.(*hclsyntax.TupleConsExpr); ok {
 		wrk := make([]any, 0)
 		for _, exp := range x.Exprs {
-			r, diags, err := roll(exp, ectx)
+			r, diags, err := EncodeExpression(exp, ectx)
 			if err != nil || diags.HasErrors() {
 				return nil, diags, err
 			}

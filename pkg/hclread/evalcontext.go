@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/userfunc"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	pp "github.com/k0kubun/pp/v3"
 	"github.com/walteh/terrors"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -20,6 +21,7 @@ type SudoContext struct {
 	ParentKey string
 	Parent    *SudoContext
 	Map       map[string]*SudoContext
+	Array     []*SudoContext
 	Value     *cty.Value
 	UserFuncs map[string]function.Function
 }
@@ -28,48 +30,113 @@ func (me *SudoContext) ApplyValue(val cty.Value) {
 	if val.Type().IsObjectType() {
 		me.ApplyValueMap(val.AsValueMap())
 	} else {
-		// if me.Value != nil {
-		// 	fmt.Println("-------")
-		// 	fmt.Println("old: ", me.Value.GoString())
-		// 	fmt.Println("new: ", val.GoString())
-		// 	panic("cannot apply value to context with existing value" + fmt.Sprintf("%s", me.Value.GoString()))
-		// }
 		me.Value = &val
+		// me.resolved = true
 	}
 }
 
 func (me *SudoContext) ApplyKeyVal(key string, val cty.Value) {
+	// if me.ParentKey == ArrKey {
+	// 	me.Parent.ApplyValue(me.ToValue())
+	// } else {
 	me.NewChild(key).ApplyValue(val)
+	// }
 }
 
 func (me *SudoContext) ApplyValueMap(val map[string]cty.Value) {
 	for k, v := range val {
-
 		me.ApplyKeyVal(k, v)
 	}
+}
+
+func (me *SudoContext) ApplyArray(arr []cty.Value) {
+	if me.ParentKey != ArrKey {
+		me.ApplyValue(cty.TupleVal(arr))
+		return
+	}
+	for _, v := range arr {
+		me.Array = append(me.Array, &SudoContext{
+			Parent: me,
+			Value:  &v,
+		})
+	}
+}
+
+func (me *SudoContext) ToValue() cty.Value {
+	if me.Value != nil {
+		return *me.Value
+	}
+
+	if me.ParentKey == ArrKey {
+		vars := me.BuildStaticVarsList()
+		return cty.TupleVal(vars)
+	}
+
+	if me.Array != nil {
+		arr := make([]cty.Value, len(me.Array))
+		for i, v := range me.Array {
+			arr[i] = v.ToValue()
+		}
+		return cty.TupleVal(arr)
+	}
+
+	obj := make(map[string]cty.Value, len(me.Map))
+	for k, v := range me.Map {
+		obj[k] = v.ToValue()
+	}
+	return cty.ObjectVal(obj)
 }
 
 func (me *SudoContext) BuildStaticEvalVars() map[string]cty.Value {
 
 	wrk := map[string]cty.Value{}
 	for k, v := range me.Map {
-		if v.Value != nil {
-			wrk[k] = *v.Value
-		} else {
-			wrk[k] = cty.ObjectVal(v.BuildStaticEvalVars())
-		}
+		wrk[k] = v.ToValue()
 	}
 
 	return wrk
 
 }
 
+func (me *SudoContext) BuildStaticVarsList() []cty.Value {
+
+	type sorter struct {
+		Key   string
+		Value cty.Value
+	}
+
+	wrk := make([]sorter, 0, len(me.Map))
+	for srt, v := range me.Map {
+		if v.Value != nil {
+			wrk = append(wrk, sorter{
+				Key:   srt,
+				Value: *v.Value,
+			})
+		} else {
+			wrk = append(wrk, sorter{
+				Key:   srt,
+				Value: cty.ObjectVal(v.BuildStaticEvalVars()),
+			})
+		}
+	}
+
+	slices.SortFunc(wrk, func(a, b sorter) int {
+		intr, _ := strconv.Atoi(a.Key)
+		intr2, _ := strconv.Atoi(b.Key)
+		return intr - intr2
+	})
+
+	vals := make([]cty.Value, len(wrk))
+	for i, v := range wrk {
+		vals[i] = v.Value
+	}
+
+	return vals
+
+}
+
 func (me *SudoContext) Functions() map[string]function.Function {
 	fn := NewFunctionMap()
-
-	// for k, v := range NewContextualizedFunctionMap(me.BuildStaticEvalVars()) {
-	// 	fn[k] = v
-	// }
 
 	for k, v := range NewGlobalContextualizedFunctionMap(me.Root().BuildStaticEvalVars()) {
 		fn[k] = v
@@ -90,6 +157,10 @@ func (me *SudoContext) NewNestedChild(key ...string) *SudoContext {
 		wrk = wrk.NewChild(v)
 	}
 	return wrk
+}
+
+func (me *SudoContext) NewArrayChild() *SudoContext {
+	return me.NewChild(ArrKey)
 }
 
 func (me *SudoContext) NewChild(key string) *SudoContext {
@@ -120,20 +191,38 @@ func (wc *SudoContext) BuildStaticEvalContext() *hcl.EvalContext {
 
 func (wc *SudoContext) BuildStaticEvalContextWithFileData(file string) *hcl.EvalContext {
 
-	internalParent := wc.Root().BuildStaticEvalContext().Variables[FilesKey].AsValueMap()[file].AsValueMap()
+	internalParent := wc.Root().BuildStaticEvalContext().Variables[FilesKey].AsValueMap()
+
+	if internalParent == nil {
+		internalParent = map[string]cty.Value{}
+
+	}
+
+	if internalParent[file] == cty.NilVal {
+		internalParent[file] = cty.ObjectVal(map[string]cty.Value{})
+	}
+
+	internalParent = internalParent[file].AsValueMap()
 
 	wrk := &hcl.EvalContext{
 		Functions: wc.Functions(),
 		Variables: map[string]cty.Value{
-			// FilesKey: internalParent[FilesKey],
+			"self": cty.ObjectVal(wc.BuildStaticEvalVars()),
 		},
+	}
+
+	if wc.Parent != nil {
+		wrk.Variables["parent"] = cty.ObjectVal(wc.Parent.BuildStaticEvalVars())
+		if wc.Parent.Parent != nil {
+			wrk.Variables["grandparent"] = cty.ObjectVal(wc.Parent.Parent.BuildStaticEvalVars())
+		}
 	}
 
 	for k, v := range internalParent {
 		wrk.Variables[k] = v
 	}
 
-	for k, v := range NewContextualizedFunctionMap(wrk.Variables) {
+	for k, v := range NewContextualizedFunctionMap(wc.Root().BuildStaticEvalVars(), file) {
 		wrk.Functions[k] = v
 	}
 
@@ -206,13 +295,6 @@ func NewContextFromFiles(ctx context.Context, fle map[string][]byte, parent *hcl
 
 	_, diags, err := NewContextFromBody(ctx, root, mectx)
 
-	// for k, v := range mectx.Map {
-	// 	fmt.Println(k)
-	// 	for k, v := range v.BuildStaticEvalVars() {
-	// 		fmt.Printf("\t%s: %s\n", k, v.GoString())
-	// 	}
-	// }
-
 	if err != nil || diags.HasErrors() {
 		return nil, nil, nil, nil, diags, err
 	}
@@ -227,23 +309,25 @@ func NewContextFromFile(ctx context.Context, fle []byte, name string) (*hcl.File
 		return nil, nil, nil, errd, nil
 	}
 
-	// ectx := &hcl.EvalContext{
-	// 	Functions: NewFunctionMap(),
-	// 	Variables: map[string]cty.Value{},
-	// }
-
-	// ctxfuncs := NewContextualizedFunctionMap(ectx)
-	// for k, v := range ctxfuncs {
-	// 	ectx.Functions[k] = v
-	// }
-
 	// will always work
 	bdy := hcldata.Body.(*hclsyntax.Body)
 
 	ectx := &SudoContext{
 		Parent:    nil,
 		ParentKey: "",
-		Map:       make(map[string]*SudoContext),
+		Map:       map[string]*SudoContext{},
+	}
+
+	ectx.Map[FilesKey] = &SudoContext{
+		Parent:    ectx,
+		ParentKey: FilesKey,
+		Map:       map[string]*SudoContext{},
+	}
+
+	ectx.Map[name] = &SudoContext{
+		Parent:    ectx,
+		ParentKey: name,
+		Map:       map[string]*SudoContext{},
 	}
 
 	_, diags, err := NewContextFromBody(ctx, bdy, ectx)
@@ -261,81 +345,13 @@ func NewContextFromBody(ctx context.Context, body *hclsyntax.Body, parent *SudoC
 	childctx.Variables = map[string]cty.Value{}
 	childctx.Functions = map[string]function.Function{}
 
-	// funcs, diag := ExtractUserFuncs(ctx, body, childctx)
-	// if diag.HasErrors() {
-	// 	return nil, diag, nil
-	// }
-
-	// if childctx.Functions == nil {
-	// 	childctx.Functions = map[string]function.Function{}
-	// }
-
-	// for k, v := range funcs {
-	// 	childctx.Functions[k] = v
-	// }
-
 	diag := ExtractVariables(ctx, body, parent)
 	if diag.HasErrors() {
 		return nil, diag, nil
 	}
 
-	// if childctx.Variables == nil {
-	// 	childctx.Variables = map[string]cty.Value{}
-	// }
-
-	// for k, v := range vars {
-	// 	childctx.Variables[k] = v
-	// }
-
 	return childctx, hcl.Diagnostics{}, nil
 }
-
-// func BuildFileSpecificContext(ctx context.Context, tange hcl.Range, parent *SudoContext) *hcl.EvalContext {
-// 	// fmt.Println("building context for", tange.Filename)
-// 	// child := parent.BuildStaticEvalContext().NewChild()
-// 	child := parent.BuildStaticEvalContextWithFileData(tange.Filename)
-// 	child.Variables = map[string]cty.Value{}
-// 	child.Functions = map[string]function.Function{}
-// 	// fle := map[string]map[string]cty.Value{}
-// 	// child.Variables = map[string]cty.Value{}
-
-// 	// if parent.Variables[FilesKey] == cty.NilVal {
-// 	// 	parent.Variables[FilesKey] = cty.ObjectVal(map[string]cty.Value{})
-// 	// }
-
-// 	// files := parent.Variables[FilesKey].AsValueMap()
-// 	// if files == nil {
-// 	// 	files = map[string]cty.Value{}
-// 	// }
-
-// 	// if files[tange.Filename] == cty.NilVal {
-// 	// 	files[tange.Filename] = cty.ObjectVal(map[string]cty.Value{})
-// 	// }
-
-// 	myfile := files[tange.Filename].AsValueMap()
-// 	if myfile == nil {
-// 		myfile = map[string]cty.Value{}
-// 	}
-
-// 	child.Variables = map[string]cty.Value{}
-
-// 	for k, v := range myfile {
-// 		child.Variables[k] = v
-// 	}
-
-// 	child.Functions = NewContextualizedFunctionMap(child)
-
-// 	for k, v := range NewGlobalContextualizedFunctionMap(child) {
-// 		child.Functions[k] = v
-// 	}
-// 	// for k, v := range NewContextualizedFunctionMap(child) {
-// 	// 	child.Functions[k] = v
-// 	// }
-
-// 	// child.Variables[FilesKey] = cty.ObjectVal(files)
-
-// 	return child
-// }
 
 func ApplyFileSpecificToContext(ctx context.Context, tange hcl.Range, child *hcl.EvalContext) {
 
@@ -361,54 +377,57 @@ func ApplyFileSpecificToContext(ctx context.Context, tange hcl.Range, child *hcl
 
 	tmp[tange.Filename] = cty.ObjectVal(files)
 
-	// parent.Variables[FilesKey] = cty.ObjectVal(files)
 }
 
-func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parentctx *SudoContext) hcl.Diagnostics {
+const ArrKey = "____arr"
 
-	// childctx := parentctx.NewChild()
-	// childctx.Variables = map[string]cty.Value{}
-	// childctx.Functions = map[string]function.Function{}
+func EvaluateAttr(ctx context.Context, name string, attr hclsyntax.Expression, parentctx *SudoContext) hcl.Diagnostics {
+	childctx := parentctx.BuildStaticEvalContextWithFileData(attr.StartRange().Filename)
 
-	reevaluateAttr := func(name string, attr *hclsyntax.Attribute) hcl.Diagnostics {
-		// fmt.Println(" ================== attr", name, attr.NameRange.Filename)
+	switch e := attr.(type) {
+	case *hclsyntax.ObjectConsExpr:
+		for _, v := range e.Items {
+			key, diag := v.KeyExpr.Value(childctx)
+			if diag.HasErrors() {
+				return diag
+			}
 
-		childctx := parentctx.BuildStaticEvalContextWithFileData(attr.NameRange.Filename)
-		// for k, v := range childctx.Variables {
-		// 	fmt.Printf("\t ---- %s: %s\n", k, v.GoString())
-		// }
-		val, diag := attr.Expr.Value(childctx)
+			diag = EvaluateAttr(ctx, key.AsString(), v.ValueExpr, parentctx.NewChild(name))
+			if diag.HasErrors() {
+				return diag
+			}
+		}
+
+	case *hclsyntax.TupleConsExpr:
+
+		child := parentctx.NewChild(ArrKey)
+
+		for i, v := range e.Exprs {
+			diag := EvaluateAttr(ctx, fmt.Sprintf("%d", i), v, child)
+			if diag.HasErrors() {
+				return diag
+			}
+		}
+
+		delete(parentctx.Map, ArrKey)
+
+		parentctx.ApplyKeyVal(name, child.ToValue())
+
+	default:
+
+		val, diag := attr.Value(childctx)
 		if diag.HasErrors() {
 			return diag
 		}
 
 		parentctx.ApplyKeyVal(name, val)
 
-		// parentctx.Map[attr.Name] = childctx
-
-		// childctx.Variables[name] = val
-
-		// ApplyFileSpecificToContext(ctx, attr.NameRange, parentctx, childctx)
-
-		return nil
 	}
 
-	reevaluate := func(blk *hclsyntax.Block) hcl.Diagnostics {
-		// childctx := parentctx.BuildStaticEvalContextWithFileData(blk.TypeRange.Filename)
+	return nil
+}
 
-		diags := NewUnknownBlockEvaluation(ctx, parentctx, blk)
-		if diags.HasErrors() {
-			return diags
-		}
-
-		// parentctx.ApplyKeyVal(key, blks)
-
-		// childctx.Variables[key] = blks
-
-		// ApplyFileSpecificToContext(ctx, blk.TypeRange, parentctx, childctx)
-
-		return nil
-	}
+func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parentctx *SudoContext) hcl.Diagnostics {
 
 	type attr struct {
 		Name  string
@@ -439,7 +458,7 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parentctx *SudoC
 		for v := range len(retryattrs) + len(retrys) {
 			if v < len(retryattrs) {
 				attr := retryattrs[v]
-				diagd := reevaluateAttr(attr.Name, attr.Attri)
+				diagd := EvaluateAttr(ctx, attr.Name, attr.Attri.Expr, parentctx)
 				if diagd.HasErrors() {
 					diags = append(diags, diagd...)
 					newAttrRetrys = append(newAttrRetrys, attr)
@@ -451,7 +470,7 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parentctx *SudoC
 					save = attr.Body.Attributes["data"]
 					delete(attr.Body.Attributes, "data")
 				}
-				diagd := reevaluate(attr)
+				diagd := NewUnknownBlockEvaluation(ctx, parentctx, attr)
 				if save != nil {
 					attr.Body.Attributes["data"] = save
 				}
@@ -466,22 +485,11 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parentctx *SudoC
 			start = true
 		}
 
-		// updateBlocks()
-
 		lastDiags = diags
 		prevRetrys = retrys
 		retryattrs = newAttrRetrys
 		retrys = newRetrys
 	}
-
-	// if parentctx.Parent() != nil && parentctx.Parent().Parent().Parent() == nil || parentctx.Parent().Parent().Parent().Parent() == nil {
-	// 	for key, attr := range parentctx.Variables[FilesKey].AsValueMap() {
-	// 		fmt.Println("file", key)
-	// 		for k, v := range attr.AsValueMap() {
-	// 			fmt.Printf("\t%s: %s\n", k, v.GoString())
-	// 		}
-	// 	}
-	// }
 
 	return lastDiags
 }
@@ -491,18 +499,6 @@ const FilesKey = "____files"
 
 func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, block *hclsyntax.Block) (diags hcl.Diagnostics) {
 
-	// if block.Type == "func" {
-	// 	return hcl.Diagnostics{}
-	// }
-
-	// func ExtractUserFuncs(ctx context.Context, ibdy hcl.Body, parent *hcl.EvalContext) (map[string]function.Function, hcl.Diagnostics) {
-	// 	userfuncs, _, diag := userfunc.DecodeUserFunctions(ibdy, "func", func() *hcl.EvalContext { return parent })
-	// 	if diag.HasErrors() {
-	// 		return nil, diag
-	// 	}
-
-	// 	return userfuncs, nil
-	// }
 	strs := []string{block.Type}
 	strs = append(strs, block.Labels...)
 
@@ -520,79 +516,18 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 		return diag
 	}
 
-	// vars = vars[FilesKey].AsValueMap()
-	// if vars == nil {
-	// 	vars = map[string]cty.Value{
-	// 		block.TypeRange.Filename: cty.ObjectVal(map[string]cty.Value{}),
-	// 	}
-	// }
-
-	// if vars[block.TypeRange.Filename] == cty.NilVal {
-	// 	vars[block.TypeRange.Filename] = cty.ObjectVal(map[string]cty.Value{})
-	// }
-
-	// vars = vars[block.TypeRange.Filename].AsValueMap()
-
-	// if vars == nil {
-	// 	vars = map[string]cty.Value{}
-	// }
-
-	// for _, attr := range block.Body.Attributes {
-	// 	// Evaluate the attribute's expression to get a cty.Value
-	// 	val, err := attr.Expr.Value(ectx)
-	// 	if err.HasErrors() {
-	// 		return "", cty.Value{}, err
-	// 	}
-
-	// 	tmp[attr.Name] = val
-	// }
-
 	meta := map[string]cty.Value{
 		"label": cty.StringVal(strings.Join(block.Labels, ".")),
 	}
 
 	if block.Type == "gen" {
-		pp.ColoringEnabled = false
-		// pp.Println(vars)
-		// if len(vars) != 0 {
 		meta["source"] = cty.StringVal(block.TypeRange.Filename)
 		meta["root_relative_path"] = cty.StringVal(sanatizeGenPath(child.Map["path"].Value.AsString()))
-		// }
-
 	}
 
+	meta["block_type"] = cty.StringVal(block.Type)
+
 	child.ApplyKeyVal(MetaKey, cty.ObjectVal(meta))
-
-	// vars[MetaKey] = cty.ObjectVal(meta)
-
-	// for _, blkd := range block.Body.Blocks {
-
-	// 	key, blks, diags := NewUnknownBlockEvaluation(ctx, ectx, blkd)
-	// 	if diags.HasErrors() {
-	// 		return "", cty.Value{}, diags
-	// 	}
-
-	// 	if tmp[key] == cty.NilVal {
-	// 		tmp[key] = cty.ObjectVal(map[string]cty.Value{})
-	// 	}
-
-	// 	wrk := tmp[key].AsValueMap()
-	// 	if wrk == nil {
-	// 		wrk = map[string]cty.Value{}
-	// 	}
-
-	// 	for k, v := range blks.AsValueMap() {
-	// 		wrk[k] = v
-	// 	}
-
-	// 	tmp[key] = cty.ObjectVal(wrk)
-	// }
-
-	// for _, lab := range block.Labels {
-	// 	vars = map[string]cty.Value{
-	// 		lab: cty.ObjectVal(vars),
-	// 	}
-	// }
 
 	return hcl.Diagnostics{}
 
@@ -834,7 +769,7 @@ func NewGlobalContextualizedFunctionMap(ectx map[string]cty.Value) map[string]fu
 		}),
 	}
 }
-func NewContextualizedFunctionMap(ectx map[string]cty.Value) map[string]function.Function {
+func NewContextualizedFunctionMap(ectx map[string]cty.Value, file string) map[string]function.Function {
 	return map[string]function.Function{
 
 		"allof": function.New(&function.Spec{
@@ -854,15 +789,13 @@ func NewContextualizedFunctionMap(ectx map[string]cty.Value) map[string]function
 
 				mapd := make(map[string]cty.Value)
 
-				for nme, blks := range ectx {
+				for nme, blks := range ectx[FilesKey].AsValueMap()[file].AsValueMap() {
 					if nme == args[0].AsString() {
-						objd := blks.AsValueMap()
-						for k, v := range objd {
+						for k, v := range blks.AsValueMap() {
 							mapd[k] = v
 						}
 					}
 				}
-
 				return cty.ObjectVal(mapd), nil
 			},
 		}),
@@ -883,11 +816,14 @@ func NewContextualizedFunctionMap(ectx map[string]cty.Value) map[string]function
 
 				mapd := make([]cty.Value, 0)
 
-				for nme, blks := range ectx {
+				for nme, blks := range ectx[FilesKey].AsValueMap()[file].AsValueMap() {
 					if nme == args[0].AsString() {
-						objd := blks.AsValueMap()
-						for _, v := range objd {
-							mapd = append(mapd, v)
+						for k, v := range blks.AsValueMap() {
+							if len(v.AsValueMap()) == 0 {
+								return cty.NilVal, terrors.Errorf("block %s has no attributes", k)
+							} else {
+								mapd = append(mapd, cty.ObjectVal(v.AsValueMap()))
+							}
 						}
 					}
 				}
@@ -896,45 +832,3 @@ func NewContextualizedFunctionMap(ectx map[string]cty.Value) map[string]function
 			}}),
 	}
 }
-
-// type BrokenExpression struct {
-// 	hclsyntax.Node
-
-// 	// Node
-
-// 	// // The hcl.Expression methods are duplicated here, rather than simply
-// 	// // embedded, because both Node and hcl.Expression have a Range method
-// 	// // and so they conflict.
-
-// 	// Value(ctx *hcl.EvalContext) (cty.Value, hcl.Diagnostics)
-// 	// Variables() []hcl.Traversal
-// 	// StartRange() hcl.Range
-// }
-
-// func NewBrokenExpression() *BrokenExpression {
-// 	return &BrokenExpression{}
-// }
-
-// var _ hclsyntax.Expression = (*BrokenExpression)(nil)
-
-// func (be *BrokenExpression) Value(ctx *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
-// 	val, err := ctx.Functions["jsondecode"].Proxy()(cty.StringVal(`{"error": "broken expression"}`))
-// 	if err != nil {
-// 		return cty.NilVal, hcl.Diagnostics{
-// 			{
-// 				Summary:  "broken expression",
-// 				Detail:   "broken expression",
-// 				Severity: hcl.DiagError,
-// 			},
-// 		}
-// 	}
-// 	return val, nil
-// }
-
-// func (be *BrokenExpression) Variables() []hcl.Traversal {
-// 	return nil
-// }
-
-// func (be *BrokenExpression) StartRange() hcl.Range {
-// 	return hcl.Range{}
-// }

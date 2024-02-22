@@ -12,35 +12,82 @@ import (
 )
 
 const validHCL = `
-gen "default" {
-	path = "./.github/workflows/def.yaml"
-	schema = "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json"
+TOOLS_DIR = "tools"
+
+bins = {
+	"task"          = "github.com/go-task/task/v3/cmd/task"
+	"buf"           = "github.com/bufbuild/buf/cmd/buf",
+	"mockery"       = "github.com/vektra/mockery/v2",
+	"gotestsum"     = "gotest.tools/gotestsum",
+	"golangci-lint" = "github.com/golangci/golangci-lint/cmd/golangci-lint",
+}
+
+gen taskfile {
+	// schema = "https://taskfile.dev/schema.json"
+	path   = "../taskfile.yaml"
 	data = {
-		name = "test"
-		on = {
-		  push = {
-			  branches = ["main"]
-		  }
-	  }
-		jobs = {
-		  build = {
-			  runs-on = "ubuntu-latest"
-			  steps = [
-				  {
-					  name = "Checkout"
-					  uses = "actions/checkout@v2"
-				  },
-				  {
-					  name = "Run tests"
-					  run  = <<SHELL
-					  echo "Hello world"
-				  SHELL
-				  },
-			  ]
-			}
-		}
+		version = 3
+		tasks = merge(
+			{
+				for bin, zpath in bins : "${bin}-bin" => {
+					generates = ["bin/${bin}"]
+					dir       = "${TOOLS_DIR}"
+					sources   = ["go.mod", "go.sum", "main.go"]
+					cmds = [
+						"go build -mod=vendor -o ./bin/${bin} ${zpath}"
+					]
+				}
+			},
+			allof("task"),
+			{
+				default = { deps = ["tools", "gen", "lint", "test"] }
+				tools = {
+					deps = [for bin, _ in bins : "${bin}-bin"]
+				}
+				gen = {
+					deps = ["retab-gen", "buf-gen", "mockery-gen"]
+				}
+		})
+
+		roll = allof("task")
 	}
 }
+
+
+task tidy {
+	cmds = [
+		"go mod tidy",
+		"cd ${TOOLS_DIR} && go mod tidy",
+		"go work vendor"
+	]
+}
+
+
+task update {
+	cmds = [
+		"go get -u -v ./... && go mod tidy",
+		"cd ${TOOLS_DIR} && go get -u -v ./... && go mod tidy",
+		"go work vendor"
+	]
+}
+
+BUF_OUTPUT     = "a"
+MOCKERY_OUTPUT = "b"
+
+task buf-gen {
+	deps      = ["buf-bin", "retab-gen"]
+	generates = ["gen/buf/**/*"]
+	dir       = "."
+	sources   = ["proto/**/*.proto", "./${TOOLS_DIR}/bin/buf", "./${BUF_OUTPUT}"]
+	cmds = [
+		<<EOF
+		./${TOOLS_DIR}/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template ${BUF_OUTPUT} --path=./proto
+	EOF
+		,
+		"find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete"
+	]
+}
+
 `
 
 func TestValidHCLDecoding(t *testing.T) {
@@ -60,11 +107,11 @@ func TestValidHCLDecoding(t *testing.T) {
 	}
 
 	// load schema file
-	_, ectx, got, diags, errd := NewContextFromFile(ctx, fle, "test.hcl")
+	_, ectx, _, flebdy, diags, errd := NewContextFromFiles(ctx, map[string][]byte{"test.hcl": fle}, nil)
 	assert.NoError(t, errd)
 	assert.Empty(t, diags)
 
-	blk, diags, err := NewGenBlockEvaluation(ctx, ectx, got)
+	blk, diags, err := NewGenBlockEvaluation(ctx, ectx, flebdy["test.hcl"])
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -20,25 +20,11 @@ import (
 
 func ProccessBulk(ctx context.Context, fs afero.Fs, files []string) ([]*FileBlockEvaluation, hcl.Diagnostics, error) {
 	var out []*FileBlockEvaluation
-	diags := hcl.Diagnostics{}
-
-	// globalFiles := make(map[string]cty.Value)
 
 	global := &hcl.EvalContext{
 		Variables: map[string]cty.Value{},
 		Functions: map[string]function.Function{},
 	}
-
-	for k, v := range NewFunctionMap() {
-		global.Functions[k] = v
-	}
-
-	for k, v := range NewGlobalContextualizedFunctionMap(global.Variables) {
-		global.Functions[k] = v
-	}
-
-	// ectxs := make(map[string]*hcl.EvalContext)
-	// blks := make(map[string]*hclsyntax.Body)
 
 	fles := make(map[string][]byte)
 
@@ -53,47 +39,12 @@ func ProccessBulk(ctx context.Context, fs afero.Fs, files []string) ([]*FileBloc
 
 	}
 
-	// _, eectx, bdy, diags, err := NewContextFromFiles(ctx, fles,  global)
-	// if err != nil || diags.HasErrors() {
-	// 	return nil, diags, err
-	// }
-
-	// 	_, ectx, blk, diags, err := NewContextFromFile(ctx, opn, file, global)
-	// 	if err != nil || diags.HasErrors() {
-	// 		return nil, diags, err
-	// 	}
-
-	// 	ectxs[file] = ectx
-	// 	blks[file] = blk
-
-	// 	basenoext := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-
-	// 	globalFiles[basenoext] = cty.ObjectVal(ectx.Variables)
-
-	// }
-
-	// global.Variables[FilesKey] = cty.ObjectVal(globalFiles)
-
-	// gfuncs := NewGlobalContextualizedFunctionMap(global)
-
-	for k, v := range NewContextualizedFunctionMap(global.Variables) {
-		global.Functions[k] = v
-	}
-
 	_, eectx, _, filed, diags, err := NewContextFromFiles(ctx, fles, global)
 	if err != nil || diags.HasErrors() {
 		return nil, diags, err
 	}
 
-	// for k, v := range NewContextualizedFunctionMap(eectx.Variables) {
-	// 	global.Functions[k] = v
-	// }
-
 	for _, file := range filed {
-
-		// for k, v := range gfuncs {
-		// 	ectxs[file].Functions[k] = v
-		// }
 
 		eval, diags, err := NewGenBlockEvaluation(ctx, eectx, file)
 		if err != nil || diags.HasErrors() {

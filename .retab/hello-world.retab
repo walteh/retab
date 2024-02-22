@@ -2,8 +2,8 @@
 BRANCH = "main"
 
 gen "hello-world-github-workflow" {
-	path   = "./.github/workflows/hello-world.yaml"
-	schema = "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json"
+	path = "./.github/workflows/hello-world.yaml"
+	// schema = "https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json"
 	data = {
 		name = "hello-world"
 
@@ -25,18 +25,18 @@ my_custom_type "my_custom_name" {
 			runs-on = "ubuntu-latest"
 			steps = [
 				{
+					run  = <<SHELL
+							echo "Hello world"
+						SHELL
+					name = "Run tests ${grandparent.runs-on}"
+				},
+				{
 					name = "Checkout"
 					uses = "actions/checkout@v4"
 					with = {
 						fetch-depth = 1
 					}
 				},
-				{
-					name = "Run tests"
-					run  = <<SHELL
-							echo "Hello world"
-						SHELL
-				}
 			]
 		}
 	}
