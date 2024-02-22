@@ -28,7 +28,7 @@ my_custom_type "my_custom_name" {
 					run  = <<SHELL
 							echo "Hello world"
 						SHELL
-					name = "Run tests ${grandparent.runs-on}"
+					name = "Run tests ${self(-2).runs-on}"
 				},
 				{
 					name = "Checkout"

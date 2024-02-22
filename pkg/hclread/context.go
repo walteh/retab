@@ -219,6 +219,10 @@ func (wc *SudoContext) BuildStaticEvalContextWithFileData(file string) *hcl.Eval
 		wrk.Functions[k] = v
 	}
 
+	for k, v := range NewDynamicContextualizedFunctionMap(wc) {
+		wrk.Functions[k] = v
+	}
+
 	return wrk
 }
 

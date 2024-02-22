@@ -552,39 +552,65 @@ func NewContextualizedFunctionMap(ectx map[string]cty.Value, file string) map[st
 		},
 	})
 
-	// takes in some negative number and returns the nested parent -x levels
-	// selfer := function.New(&function.Spec{
-	// 	Description: `Returns the parent block of the current block`,
-	// 	Params: []function.Parameter{
-	// 		{
-	// 			Name:             "block",
-	// 			Type:             cty.Number,
-	// 			AllowUnknown:     false,
-	// 			AllowDynamicType: false,
-	// 			AllowNull:        true,
-	// 		},
-	// 	},
-	// 	Type: function.StaticReturnType(cty.DynamicPseudoType),
-	// 	Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
-
-	// 		if len(args) != 1 {
-	// 			// default to 0
-	// 			args = append(args, cty.NumberIntVal(0))
-	// 		}
-
-	// 		num := args[0].AsBigFloat()
-	// 		if !num.IsInt() {
-	// 			return cty.NilVal, terrors.Errorf("expected int, got %s", args[0].GoString())
-	// 		}
-
-	// 		if num.Cmp(cty.Zero.AsBigFloat()) >= 0 {
-	// 			return cty.NilVal, terrors.Errorf("expected positive int, got %s", args[0].GoString())
-	// 		}
-
 	return map[string]function.Function{
 		"file":       filed,
 		"allof":      mapp,
 		"alloflist":  list,
 		"allofarray": list,
+	}
+}
+
+func NewDynamicContextualizedFunctionMap(ectx *SudoContext) map[string]function.Function {
+	// takes in some negative number and returns the nested parent -x levels
+	selfer := function.New(&function.Spec{
+		Description: `Returns the parent block of the current block`,
+		Params:      []function.Parameter{
+			// {
+			// 	Name:             "levels",
+			// 	Type:             cty.Number,
+			// 	AllowUnknown:     false,
+			// 	AllowDynamicType: false,
+			// 	AllowNull:        true,
+			// 	Description:      "The number of levels to go up",
+			// },
+		},
+		VarParam: &function.Parameter{
+			Name: "levels",
+			Type: cty.Number,
+		},
+		Type: function.StaticReturnType(cty.DynamicPseudoType),
+		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+
+			if len(args) != 1 {
+				// default to 0
+				args = append(args, cty.NumberIntVal(0))
+			}
+
+			num := args[0].AsBigFloat()
+			if !num.IsInt() {
+				return cty.NilVal, terrors.Errorf("expected int, got %s", args[0].GoString())
+			}
+
+			count, _ := num.Int64()
+
+			if count > 0 {
+				return cty.NilVal, terrors.Errorf("expected negative int, got %s", args[0].GoString())
+			}
+
+			wrk := ectx
+
+			for range count * -1 {
+				if wrk.Parent == nil {
+					return cty.NilVal, nil
+				}
+				wrk = wrk.Parent
+			}
+
+			return wrk.ToValue(), nil
+		},
+	})
+
+	return map[string]function.Function{
+		"self": selfer,
 	}
 }
