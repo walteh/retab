@@ -3,6 +3,7 @@ package lang
 import (
 	"context"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -13,6 +14,7 @@ type Meta interface {
 	// Range() hcl.Range
 	// Value() cty.Value
 	Range() hcl.Range
+	Variables() map[string]cty.Value
 }
 
 var (
@@ -22,6 +24,7 @@ var (
 	_ Meta      = (*SimpleNameMeta)(nil)
 	_ BlockMeta = (*BasicBlockMeta)(nil)
 	_ BlockMeta = (*GenBlockMeta)(nil)
+	_ Meta      = (*BlockLabelMeta)(nil)
 )
 
 type BlockMeta interface {
@@ -41,9 +44,23 @@ func (me *BasicBlockMeta) Range() hcl.Range {
 	return me.HCL.TypeRange
 }
 
+func (me *BasicBlockMeta) Variables() map[string]cty.Value {
+	vals := make(map[string]cty.Value)
+
+	vals["label"] = cty.StringVal(strings.Join(me.HCL.Labels, "."))
+	vals["type"] = cty.StringVal(me.HCL.Type)
+
+	return vals
+}
+
 type AttrMeta struct {
 	HCL   *hclsyntax.Attribute
 	Value cty.Value
+}
+
+// Variables implements Meta.
+func (*AttrMeta) Variables() map[string]cty.Value {
+	return map[string]cty.Value{}
 }
 
 func (me *AttrMeta) Range() hcl.Range {
@@ -51,12 +68,17 @@ func (me *AttrMeta) Range() hcl.Range {
 }
 
 type GenBlockMeta struct {
-	HCL         *hclsyntax.Block
+	BasicBlockMeta
 	RootRelPath string
 }
 
 type SimpleNameMeta struct {
 	NameRange hcl.Range
+}
+
+// Variables implements Meta.
+func (*SimpleNameMeta) Variables() map[string]cty.Value {
+	return map[string]cty.Value{}
 }
 
 func NewSimpleNameMeta(parent hcl.Range) *SimpleNameMeta {
@@ -75,12 +97,26 @@ func (me *GenBlockMeta) Block() *hclsyntax.Block {
 	return me.HCL
 }
 
+func (me *GenBlockMeta) Variables() map[string]cty.Value {
+	vals := me.BasicBlockMeta.Variables()
+
+	vals["resolved_output"] = cty.StringVal(me.RootRelPath)
+	vals["source"] = cty.StringVal(me.HCL.TypeRange.Filename)
+
+	return vals
+}
+
 type BlockLabelMeta struct {
 	HCL hcl.Range
 }
 
 func (me *BlockLabelMeta) Range() hcl.Range {
 	return me.HCL
+}
+
+func (me *BlockLabelMeta) Variables() map[string]cty.Value {
+	return map[string]cty.Value{}
+
 }
 
 func NewFuncArgAttribute(index int, expr hclsyntax.Expression) *hclsyntax.Attribute {

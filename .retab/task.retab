@@ -9,8 +9,8 @@ bins = {
 }
 
 gen taskfile {
-	schema = "https://taskfile.dev/schema.json"
-	path   = "../taskfile.yaml"
+	// schema = "https://taskfile.dev/schema.json"
+	path = "../taskfile.yaml"
 	data = {
 		version = 3
 		tasks = merge(
@@ -36,7 +36,7 @@ gen taskfile {
 		})
 	}
 }
-
+//
 allofdem = allof("task")
 
 task tidy {
@@ -52,34 +52,6 @@ task update {
 		"go get -u -v ./... && go mod tidy",
 		"cd ${TOOLS_DIR} && go get -u -v ./... && go mod tidy",
 		"go work vendor"
-	]
-}
-
-BUF_OUTPUT     = output(file("buf").gen.buf)
-MOCKERY_OUTPUT = output(file("mockery").gen.mockery)
-
-task buf-gen {
-	deps      = ["buf-bin", "retab-gen"]
-	generates = ["gen/buf/**/*"]
-	dir       = "."
-	sources   = ["proto/**/*.proto", "./${TOOLS_DIR}/bin/buf", "./${BUF_OUTPUT}"]
-	cmds = [
-		<<EOF
-		./${TOOLS_DIR}/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template ${BUF_OUTPUT} --path=./proto
-	EOF
-		,
-		"find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete"
-	]
-}
-
-task mockery-gen {
-	deps      = ["mockery-bin", "retab-gen"]
-	generates = ["gen/mockery/**/*"]
-	dir       = "."
-	sources   = ["**/*.go", "./${MOCKERY_OUTPUT} ", "./${TOOLS_DIR}/bin/mockery"]
-	cmds = [
-		"./${TOOLS_DIR}/bin/mockery --dir ./gen/mockery --config ./${MOCKERY_OUTPUT} ",
-		"find ./gen/mockery -type f -mmin +1 -delete"
 	]
 }
 
@@ -116,5 +88,33 @@ task test-ci {
 	preconditions = ["which go"]
 	cmds = [
 		"./tools/bin/gotestsum --junitfile test-reports/junit.xml -- -v -coverprofile=coverage.out -coverpkg=./... ./..."
+	]
+}
+
+BUF_OUTPUT     = file("buf").gen.buf.resolved_output
+MOCKERY_OUTPUT = file("mockery").gen.mockery.resolved_output
+
+task buf-gen {
+	deps      = ["buf-bin", "retab-gen"]
+	generates = ["gen/buf/**/*"]
+	dir       = "."
+	sources   = ["proto/**/*.proto", "./${TOOLS_DIR}/bin/buf", "./${BUF_OUTPUT}"]
+	cmds = [
+		<<EOF
+		./${TOOLS_DIR}/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template ${BUF_OUTPUT} --path=./proto
+	EOF
+		,
+		"find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete"
+	]
+}
+
+task mockery-gen {
+	deps      = ["mockery-bin", "retab-gen"]
+	generates = ["gen/mockery/**/*"]
+	dir       = "."
+	sources   = ["**/*.go", "./${MOCKERY_OUTPUT} ", "./${TOOLS_DIR}/bin/mockery"]
+	cmds = [
+		"./${TOOLS_DIR}/bin/mockery --dir ./gen/mockery --config ./${MOCKERY_OUTPUT} ",
+		"find ./gen/mockery -type f -mmin +1 -delete"
 	]
 }

@@ -39,6 +39,35 @@ func (parent *SudoContext) ApplyBody(ctx context.Context, body *hclsyntax.Body) 
 	return ExtractVariables(ctx, body, parent)
 }
 
+func (me *SudoContext) ToValueWithExtraContext() cty.Value {
+
+	var val cty.Value
+
+	if me.Value != nil {
+		val = *me.Value
+	} else {
+		if me.isArray || strings.HasPrefix(me.ParentKey, FuncKey) {
+			lst := me.List()
+			vals := make([]cty.Value, len(lst))
+			for i, v := range lst {
+				vals[i] = v.ToValueWithExtraContext()
+			}
+			val = cty.TupleVal(vals)
+		} else {
+			obj := make(map[string]cty.Value, len(me.Map))
+			for k, v := range me.Map {
+				obj[k] = v.ToValueWithExtraContext()
+			}
+			for k, v := range me.Meta.Variables() {
+				obj[k] = v
+			}
+			val = cty.ObjectVal(obj)
+		}
+	}
+
+	return val.Mark(me.Meta.Range())
+}
+
 func (me *SudoContext) ToValue() cty.Value {
 
 	var val cty.Value
@@ -91,7 +120,7 @@ func (me *SudoContext) List() []*SudoContext {
 func (me *SudoContext) BuildStaticEvalVars() map[string]cty.Value {
 	obj := make(map[string]cty.Value, len(me.Map))
 	for k, v := range me.Map {
-		obj[k] = v.ToValue()
+		obj[k] = v.ToValueWithExtraContext()
 	}
 
 	return obj
@@ -129,7 +158,7 @@ func (me *SudoContext) BuildStaticVarsList() []cty.Value {
 	ctxs := me.List()
 	vals := make([]cty.Value, len(ctxs))
 	for i, v := range ctxs {
-		vals[i] = v.ToValue()
+		vals[i] = v.ToValueWithExtraContext()
 	}
 
 	return vals
@@ -200,32 +229,10 @@ func (wc *SudoContext) GetAllTemporaryFileLevelVars() map[string]cty.Value {
 
 func (wc *SudoContext) BuildStaticEvalContextWithFileData(file string) *hcl.EvalContext {
 
-	inp := wc.Root().BuildStaticEvalContext().Variables[FilesKey]
-	if inp.IsMarked() {
-		inp, _ = inp.Unmark()
-	}
+	wrk := wc.Root().Map[FilesKey].Map[file].BuildStaticEvalContext()
 
-	internalParent := inp.AsValueMap()
-
-	if internalParent == nil {
-		internalParent = map[string]cty.Value{}
-	}
-
-	if internalParent[file] == cty.NilVal {
-		internalParent[file] = cty.ObjectVal(map[string]cty.Value{})
-	}
-
-	internalParentz, _ := internalParent[file].Unmark()
-
-	internalParent = internalParentz.AsValueMap()
-
-	wrk := &hcl.EvalContext{
-		Functions: wc.Functions(),
-		Variables: map[string]cty.Value{},
-	}
-
-	for k, v := range internalParent {
-		wrk.Variables[k] = v
+	for k, v := range wc.Functions() {
+		wrk.Functions[k] = v
 	}
 
 	for k, v := range NewContextualizedFunctionMap(wc.Root(), file) {
@@ -338,10 +345,9 @@ func (me *SudoContext) GetAllFileLevelBlocksOfType(name string) []*SudoContext {
 }
 
 type Sorter struct {
-	Range         []hcl.Range
-	resolvedRange hcl.Range
-	Key           string
-	Value         cty.Value
+	Range []hcl.Range
+	Key   string
+	Value cty.Value
 }
 
 func (me *Sorter) Array() []hcl.Range {
@@ -349,25 +355,12 @@ func (me *Sorter) Array() []hcl.Range {
 }
 
 func valRange(key string, me cty.Value) *Sorter {
-	// var rng hcl.Range
+
 	me, r := me.Unmark()
-	// for z := range r {
-	// 	if intre, ok := z.(hcl.Range); ok {
-	// 		rng = intre
-	// 	}
-	// }
+
 	if len(r) == 0 {
 		panic(fmt.Sprintf("no range found for %s", me.GoString()))
 	}
-	// if len(r) > 1 {
-	// 	fmt.Println("------------------------")
-	// 	for z := range r {
-	// 		if intre, ok := z.(hcl.Range); ok {
-	// 			fmt.Println(intre.String())
-	// 		}
-	// 	}
-	// 	panic(fmt.Sprintf("multiple ranges found for %s", me.GoString()))
-	// }
 
 	ranges := make([]hcl.Range, 0, len(r))
 	for z := range r {
@@ -384,10 +377,6 @@ func valRange(key string, me cty.Value) *Sorter {
 	})
 
 	return &Sorter{Range: ranges, Key: key, Value: me}
-	// if intre, ok := z.(hcl.Range); ok {
-	// 	rng = intre
-	// }
-	// return me, rng
 }
 
 func sortem(val cty.Value) []*Sorter {
@@ -436,6 +425,9 @@ func UnmarkToSortedArray(me cty.Value) (any, error) {
 
 		wrk := make(yaml.MapSlice, 0, len(out))
 		for _, v := range out {
+			if v.Key == MetaKey || strings.Contains(v.Key, FuncKey) {
+				continue
+			}
 			res, err := UnmarkToSortedArray(v.Value)
 			if err != nil {
 				return nil, err
@@ -457,6 +449,5 @@ func UnmarkToSortedArray(me cty.Value) (any, error) {
 		return wrk, nil
 	}
 
-	//
 	return noMetaJsonEncode(me)
 }

@@ -83,15 +83,11 @@ func evalGenBlock(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (re
 			}}, nil
 		}
 
-		// Evaluate the attribute's expression to get a cty.Value
-		val, diag := attr.Expr.Value(ectx)
-		if diag.HasErrors() {
-			return nil, diag, nil
-		}
-
 		switch attr.Name {
 		case "path":
-			blk.Path = val.AsString()
+			unrk, _ := sctx.Map["path"].ToValue().Unmark()
+
+			blk.Path = unrk.AsString()
 
 			blk.Path = sanatizeGenPath(blk.Path)
 
@@ -99,7 +95,9 @@ func evalGenBlock(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (re
 
 			defer delete(ectx.Functions, "ref")
 		case "schema":
-			blk.Schema = val.AsString()
+			unrk, _ := sctx.Map["schema"].ToValue().Unmark()
+
+			blk.Schema = unrk.AsString()
 		case "data":
 
 			cnt := yaml.MapSlice{}
@@ -139,7 +137,6 @@ func evalGenBlock(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (re
 			dataAttr = attr.Expr
 
 		default:
-			// ignore unknown attributes
 			continue
 		}
 	}
@@ -278,6 +275,7 @@ func noMetaJsonEncode(v cty.Value) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	ok, _ = ok.Unmark()
 	oks := reg1.ReplaceAllString(ok.AsString(), "")
 	oks = reg2.ReplaceAllString(oks, "{")
 	ok = cty.StringVal(oks)
@@ -287,9 +285,6 @@ func noMetaJsonEncode(v cty.Value) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	// if strings.Contains(ok.AsString(), MetaKey) {
-	// 	fmt.Println("found meta, skipping", ok)
-	// }
 	return ok2, nil
 }
 

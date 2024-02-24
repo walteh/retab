@@ -5,138 +5,138 @@
 
 version: 3
 tasks:
-    buf-bin:
-        cmds:
-            - go build -mod=vendor -o ./bin/buf github.com/bufbuild/buf/cmd/buf
+    task-bin:
+        generates:
+            - bin/task
         dir: tools
+        sources:
+            - go.mod
+            - go.sum
+            - main.go
+        cmds:
+            - go build -mod=vendor -o ./bin/task github.com/go-task/task/v3/cmd/task
+    buf-bin:
         generates:
             - bin/buf
-        sources:
-            - go.mod
-            - go.sum
-            - main.go
-    buf-gen:
-        cmds:
-            - |
-              ./tools/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template buf.gen.yaml --path=./proto
-            - find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete
-        deps:
-            - buf-bin
-            - retab-gen
-        dir: .
-        generates:
-            - gen/buf/**/*
-        sources:
-            - proto/**/*.proto
-            - ./tools/bin/buf
-            - ./buf.gen.yaml
-    default:
-        deps:
-            - tools
-            - gen
-            - lint
-            - test
-    gen:
-        deps:
-            - retab-gen
-            - buf-gen
-            - mockery-gen
-    golangci-lint-bin:
-        cmds:
-            - go build -mod=vendor -o ./bin/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint
         dir: tools
-        generates:
-            - bin/golangci-lint
         sources:
             - go.mod
             - go.sum
             - main.go
+        cmds:
+            - go build -mod=vendor -o ./bin/buf github.com/bufbuild/buf/cmd/buf
+    mockery-bin:
+        generates:
+            - bin/mockery
+        dir: tools
+        sources:
+            - go.mod
+            - go.sum
+            - main.go
+        cmds:
+            - go build -mod=vendor -o ./bin/mockery github.com/vektra/mockery/v2
     gotestsum-bin:
-        cmds:
-            - go build -mod=vendor -o ./bin/gotestsum gotest.tools/gotestsum
-        dir: tools
         generates:
             - bin/gotestsum
+        dir: tools
         sources:
             - go.mod
             - go.sum
             - main.go
-    lint:
         cmds:
-            - GOWORK=off ./tools/bin/golangci-lint run --config ./.golangci.yml
+            - go build -mod=vendor -o ./bin/gotestsum gotest.tools/gotestsum
+    golangci-lint-bin:
+        generates:
+            - bin/golangci-lint
+        dir: tools
+        sources:
+            - go.mod
+            - go.sum
+            - main.go
+        cmds:
+            - go build -mod=vendor -o ./bin/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint
+    tidy:
+        cmds:
+            - go mod tidy
+            - cd tools && go mod tidy
+            - go work vendor
+    update:
+        cmds:
+            - go get -u -v ./... && go mod tidy
+            - cd tools && go get -u -v ./... && go mod tidy
+            - go work vendor
+    retab-gen:
+        deps: []
+        generates: []
+        dir: .
+        sources:
+            - .retab/*.retab
+        cmds:
+            - go run ./cmd/retab fmt && go run ./cmd/retab gen
+    lint:
         deps:
             - golangci-lint-bin
         sources:
             - '**/*.go'
             - exclude: tools/**/*
             - ./tools/bin/golangci-lint
-    mockery-bin:
         cmds:
-            - go build -mod=vendor -o ./bin/mockery github.com/vektra/mockery/v2
-        dir: tools
-        generates:
-            - bin/mockery
-        sources:
-            - go.mod
-            - go.sum
-            - main.go
-    mockery-gen:
-        cmds:
-            - './tools/bin/mockery --dir ./gen/mockery --config ./.mockery.yaml '
-            - find ./gen/mockery -type f -mmin +1 -delete
-        deps:
-            - mockery-bin
-            - retab-gen
-        dir: .
-        generates:
-            - gen/mockery/**/*
-        sources:
-            - '**/*.go'
-            - './.mockery.yaml '
-            - ./tools/bin/mockery
-    retab-gen:
-        cmds:
-            - go run ./cmd/retab fmt && go run ./cmd/retab gen
-        deps: []
-        dir: .
-        generates: []
-        sources:
-            - .retab/*.retab
-    task-bin:
-        cmds:
-            - go build -mod=vendor -o ./bin/task github.com/go-task/task/v3/cmd/task
-        dir: tools
-        generates:
-            - bin/task
-        sources:
-            - go.mod
-            - go.sum
-            - main.go
+            - GOWORK=off ./tools/bin/golangci-lint run --config ./.golangci.yml
     test-ci:
-        cmds:
-            - ./tools/bin/gotestsum --junitfile test-reports/junit.xml -- -v -coverprofile=coverage.out -coverpkg=./... ./...
         deps:
             - gotestsum-bin
-        preconditions:
-            - which go
         sources:
             - '**/*.go'
             - exclude: tools/**/*
             - ./tools/bin/gotestsum
-    tidy:
+        preconditions:
+            - which go
         cmds:
-            - go mod tidy
-            - cd tools && go mod tidy
-            - go work vendor
-    tools:
+            - ./tools/bin/gotestsum --junitfile test-reports/junit.xml -- -v -coverprofile=coverage.out -coverpkg=./... ./...
+    buf-gen:
         deps:
             - buf-bin
-            - golangci-lint-bin
-            - gotestsum-bin
-            - mockery-bin
-            - task-bin
-    update:
+            - retab-gen
+        generates:
+            - gen/buf/**/*
+        dir: .
+        sources:
+            - proto/**/*.proto
+            - ./tools/bin/buf
+            - ./buf.gen.yaml
         cmds:
-            - go get -u -v ./... && go mod tidy
-            - cd tools && go get -u -v ./... && go mod tidy
-            - go work vendor
+            - |
+              ./tools/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template buf.gen.yaml --path=./proto
+            - find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete
+    mockery-gen:
+        deps:
+            - mockery-bin
+            - retab-gen
+        generates:
+            - gen/mockery/**/*
+        dir: .
+        sources:
+            - '**/*.go'
+            - './.mockery.yaml '
+            - ./tools/bin/mockery
+        cmds:
+            - './tools/bin/mockery --dir ./gen/mockery --config ./.mockery.yaml '
+            - find ./gen/mockery -type f -mmin +1 -delete
+    default:
+        deps:
+            - tools
+            - gen
+            - lint
+            - test
+    tools:
+        deps:
+            - task-bin
+            - buf-bin
+            - mockery-bin
+            - gotestsum-bin
+            - golangci-lint-bin
+    gen:
+        deps:
+            - retab-gen
+            - buf-gen
+            - mockery-gen

@@ -40,7 +40,10 @@ tsks = merge(
 	{
 		zroll = alloffunarray
 	},
-	allofnotask
+	allofnotask,
+	{
+		wrk = notask.def.label
+	}
 )
 
 allofnotask   = allof("notask")

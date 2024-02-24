@@ -98,10 +98,6 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 
 			if len(diags) == 0 {
 
-				if key.AsString() == "genz" {
-					fmt.Println("here")
-				}
-
 				child.Map[key.AsString()].Meta = &SimpleNameMeta{v.KeyExpr.Range()}
 			}
 		}
@@ -332,18 +328,9 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 			return diag
 		}
 
-		if strings.Contains(val.GoString(), "cd tools && go get -u -v ") {
-			fmt.Println("here")
-		}
-
-		if strings.Contains(val.GoString(), "cty.NumberIntVal(3)") {
-			fmt.Println("here2 ", attr.NameRange.String())
-		}
-
+		// we want to remark this value with the name attirbutes
 		val, _ = val.Unmark()
 
-		// val = val.Mark(attr.NameRange)
-		// parentctx.Meta = &AttrMeta{HCL: attr}
 		parentctx.ApplyKeyVal(attr.Name, val, attr.NameRange)
 	}
 
@@ -467,8 +454,8 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 		// meta["ref"] = cty.StringVal(block.Labels[0])
 		// meta["source"] = cty.StringVal(sanatizeGenPath(child.Map["path"].Value.(*AttrMeta).Value.AsString()))
 		metad = &GenBlockMeta{
-			HCL:         block,
-			RootRelPath: sanatizeGenPath(um.AsString()),
+			BasicBlockMeta: *blkmeta,
+			RootRelPath:    sanatizeGenPath(um.AsString()),
 		}
 	}
 
@@ -484,97 +471,38 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 	return hcl.Diagnostics{}
 }
 
-func NewGetMetaKeyFunc(str string) function.Function {
-	return function.New(&function.Spec{
-		Description: fmt.Sprintf(`Gets the meta %s of an hcl block`, str),
-		Params: []function.Parameter{
-			{
-				Name:             "block",
-				Type:             cty.DynamicPseudoType,
-				AllowUnknown:     true,
-				AllowDynamicType: true,
-				AllowNull:        false,
-				AllowMarked:      true,
-			},
-		},
-		Type: function.StaticReturnType(cty.String),
-		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
-			if len(args) != 1 {
-				return cty.NilVal, terrors.Errorf("expected 1 argument, got %d", len(args))
-			}
+// func NewGetMetaKeyFunc(str string) function.Function {
+// 	return function.New(&function.Spec{
+// 		Description: fmt.Sprintf(`Gets the meta %s of an hcl block`, str),
+// 		Params: []function.Parameter{
+// 			{
+// 				Name:             "block",
+// 				Type:             cty.DynamicPseudoType,
+// 				AllowUnknown:     true,
+// 				AllowDynamicType: true,
+// 				AllowNull:        false,
+// 				AllowMarked:      true,
+// 			},
+// 		},
+// 		Type: function.StaticReturnType(cty.String),
+// 		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
 
-			mp := args[0].AsValueMap()
-			if mp == nil {
-				return cty.NilVal, terrors.Errorf("expected map, got %s", args[0].GoString())
-			}
-
-			if mp[MetaKey] == cty.NilVal {
-				return cty.NilVal, terrors.Errorf("expected map with _label, got %s", args[0].GoString())
-			}
-
-			mp = mp[MetaKey].AsValueMap()
-			if mp == nil {
-				return cty.NilVal, terrors.Errorf("expected map with _label, got %s", args[0].GoString())
-			}
-
-			return cty.StringVal(mp[str].AsString()), nil
-		},
-	})
-}
+//				return cty.StringVal(mp[str].AsString()), nil
+//			},
+//		})
+//	}
 func NewFunctionMap() map[string]function.Function {
 
 	return map[string]function.Function{
-		"jsonencode": stdlib.JSONEncodeFunc,
-		"jsondecode": stdlib.JSONDecodeFunc,
-		"csvdecode":  stdlib.CSVDecodeFunc,
-		"equal":      stdlib.EqualFunc,
-		"notequal":   stdlib.NotEqualFunc,
-		"concat":     stdlib.ConcatFunc,
-		"format":     stdlib.FormatFunc,
-		"join":       stdlib.JoinFunc,
-		"merge":      MergeFunc,
-		// "merge": function.New(&function.Spec{
-		// 	Description: `Merges a list of objects into a single object.`,
-		// 	VarParam: &function.Parameter{
-		// 		Name:             "objects",
-		// 		Type:             cty.DynamicPseudoType,
-		// 		AllowUnknown:     true,
-		// 		AllowDynamicType: true,
-		// 		AllowNull:        false,
-		// 		AllowMarked:      true,
-		// 	},
-		// 	Type: function.StaticReturnType(cty.DynamicPseudoType),
-		// 	Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
-		// 		outputMap := make(map[string]cty.Value)
-		// 		var markses []cty.ValueMarks // remember any marked maps/objects we find
-
-		// 		for _, arg := range args {
-		// 			if arg.IsNull() {
-		// 				continue
-		// 			}
-		// 			arg, argMarks := arg.Unmark()
-		// 			if len(argMarks) > 0 {
-		// 				markses = append(markses, argMarks)
-		// 			}
-		// 			for it := arg.ElementIterator(); it.Next(); {
-		// 				k, v := it.Element()
-		// 				outputMap[k.AsString()] = v
-		// 			}
-		// 		}
-
-		// 		switch {
-		// 		case retType.IsMapType():
-		// 			if len(outputMap) == 0 {
-		// 				return cty.MapValEmpty(retType.ElementType()).WithMarks(markses...), nil
-		// 			}
-		// 			return cty.MapVal(outputMap).WithMarks(markses...), nil
-		// 		case retType.IsObjectType(), retType.Equals(cty.DynamicPseudoType):
-		// 			return cty.ObjectVal(outputMap).WithMarks(markses...), nil
-		// 		default:
-		// 			panic(fmt.Sprintf("unexpected return type: %#v", retType))
-		// 		}
-		// 	},
-		// }),
+		"jsonencode":             stdlib.JSONEncodeFunc,
+		"jsondecode":             stdlib.JSONDecodeFunc,
+		"csvdecode":              stdlib.CSVDecodeFunc,
+		"equal":                  stdlib.EqualFunc,
+		"notequal":               stdlib.NotEqualFunc,
+		"concat":                 stdlib.ConcatFunc,
+		"format":                 stdlib.FormatFunc,
+		"join":                   stdlib.JoinFunc,
+		"merge":                  ChildMarkMergeFunc,
 		"length":                 stdlib.LengthFunc,
 		"keys":                   stdlib.KeysFunc,
 		"values":                 stdlib.ValuesFunc,
@@ -804,12 +732,9 @@ func NewContextualizedFunctionMap(ectx *SudoContext, file string) map[string]fun
 		Type: function.StaticReturnType(cty.DynamicPseudoType),
 		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
 
-			mapper, err := MapdFile(ectx, sanitizeFileName(args[0].AsString()))
-			if err != nil {
-				return cty.NilVal, err
-			}
+			resp := ectx.Root().Map[FilesKey].Map[sanitizeFileName(args[0].AsString())]
 
-			return cty.ObjectVal(mapper), nil
+			return resp.ToValueWithExtraContext(), nil
 		},
 	})
 
@@ -825,16 +750,7 @@ func NewDynamicContextualizedFunctionMap(ectx *SudoContext) map[string]function.
 	// takes in some negative number and returns the nested parent -x levels
 	selfer := function.New(&function.Spec{
 		Description: `Returns the parent block of the current block`,
-		Params:      []function.Parameter{
-			// {
-			// 	Name:             "levels",
-			// 	Type:             cty.Number,
-			// 	AllowUnknown:     false,
-			// 	AllowDynamicType: false,
-			// 	AllowNull:        true,
-			// 	Description:      "The number of levels to go up",
-			// },
-		},
+		Params:      []function.Parameter{},
 		VarParam: &function.Parameter{
 			Name: "levels",
 			Type: cty.Number,

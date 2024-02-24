@@ -12,9 +12,9 @@ jobs:
     say-hello:
         runs-on: ubuntu-latest
         steps:
-            - name: Run tests ubuntu-latest
-              run: |
+            - run: |
                 echo "Hello world" Run tests ubuntu-latest
+              name: Run tests ubuntu-latest
             - name: Checkout
               uses: actions/checkout@v4
               with:

@@ -5,26 +5,46 @@
 
 version: 3
 tasks:
+    buf-bin:
+        generates:
+            - bin/buf
+        dir: tools
+        cmds:
+            - go build -mod=vendor -o ./bin/buf github.com/bufbuild/buf/cmd/buf
+        sources:
+            - go.sum
+            - go.mod
+            - main.go
     task-bin:
         generates:
             - bin/task
-        sources:
-            - go.mod
-            - go.sum
-            - main.go
+        dir: tools
         cmds:
             - go build -mod=vendor -o ./bin/task github.com/go-task/task/v3/cmd/task
-        dir: tools
-    buf-bin:
-        cmds:
-            - go build -mod=vendor -o ./bin/buf github.com/bufbuild/buf/cmd/buf
-        generates:
-            - bin/buf
         sources:
-            - go.mod
             - go.sum
+            - go.mod
             - main.go
-        dir: tools
+    buf-gen:
+        deps:
+            - buf-bin
+            - retab-gen
+        generates:
+            - gen/buf/**/*
+        dir: .
+        sources:
+            - proto/**/*.proto
+            - ./tools/bin/buf
+            - ./a
+        cmds:
+            - |
+              ./tools/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template a --path=./proto
+            - find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete
+    tidy:
+        cmds:
+            - go mod tidy
+            - cd tools && go mod tidy
+            - go work vendor
     default:
         deps:
             - tools
@@ -44,10 +64,6 @@ tasks:
             - .
         dir: .
     zroll:
-        - cmds:
-            - go mod tidy
-            - cd tools && go mod tidy
-            - go work vendor
         - deps:
             - buf-bin
             - retab-gen
@@ -63,37 +79,23 @@ tasks:
               ./tools/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template a --path=./proto
             - find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete
         - cmds:
-            - go get -u -v ./... && go mod tidy
-            - cd tools && go get -u -v ./... && go mod tidy
-            - go work vendor
-    abc:
-        cmds:
-            - echo "abc"
-    def:
-        cmds:
-            - echo "def"
-    tidy:
-        cmds:
             - go mod tidy
             - cd tools && go mod tidy
             - go work vendor
-    buf-gen:
-        deps:
-            - buf-bin
-            - retab-gen
-        generates:
-            - gen/buf/**/*
-        dir: .
-        sources:
-            - ./a
-            - proto/**/*.proto
-            - ./tools/bin/buf
+    def:
         cmds:
-            - |
-              ./tools/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template a --path=./proto
-            - find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete
+            - z1
+            - z2
+            - z4
+            - z5
+            - z3
+            - z6
+    abc:
+        cmds:
+            - echo "abc"
     update:
         cmds:
-            - cd tools && go get -u -v ./... && go mod tidy
             - go get -u -v ./... && go mod tidy
+            - cd tools && go get -u -v ./... && go mod tidy
             - go work vendor
+    wrk: def
