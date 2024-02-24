@@ -3,6 +3,7 @@ module github.com/walteh/retab
 go 1.22.0
 
 require (
+	github.com/agext/levenshtein v1.2.3
 	github.com/apparentlymart/go-textseg/v13 v13.0.0
 	github.com/bufbuild/protocompile v0.8.0
 	github.com/editorconfig/editorconfig-core-go/v2 v2.6.1
@@ -25,7 +26,6 @@ require (
 )
 
 require (
-	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect

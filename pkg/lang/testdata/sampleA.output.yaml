@@ -5,6 +5,9 @@
 
 version: 3
 tasks:
+    abc:
+        cmds:
+            - echo "abc"
     buf-bin:
         cmds:
             - go build -mod=vendor -o ./bin/buf github.com/bufbuild/buf/cmd/buf
@@ -30,17 +33,23 @@ tasks:
             - proto/**/*.proto
             - ./tools/bin/buf
             - ./a
+    def:
+        cmds:
+            - echo "def"
     default:
         deps:
             - tools
             - gen
             - lint
             - test
-    gen:
+    genz:
         deps:
             - retab-gen
             - buf-gen
             - mockery-gen
+        cmds:
+            - .
+        dir: .
     task-bin:
         cmds:
             - go build -mod=vendor -o ./bin/task github.com/go-task/task/v3/cmd/task

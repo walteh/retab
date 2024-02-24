@@ -7,10 +7,15 @@ bins = {
 
 gen taskfile {
 	// schema = "https://taskfile.dev/schema.json"
-	path   = "../taskfile.yaml"
+	path   = "./sampleB.output.yaml"
 	data = {
 		version = 3
-		tasks = merge(
+		tasks = tsks
+	}
+}
+
+
+tsks = merge(
 			{
 				for bin, zpath in bins : "${bin}-bin" => {
 					generates = ["bin/${bin}"]
@@ -27,18 +32,28 @@ gen taskfile {
 				tools = {
 					deps = [for bin, _ in bins : "${bin}-bin"]
 				}
-				gen = {
+				genz = {
 					deps = ["retab-gen", "buf-gen", "mockery-gen"]
+					cmds = ["${self(-1).dir}"]
+					dir  = "."
 				}
 		},
-		{ 		zroll = alloffunarray}
+		{ 		zroll = alloffunarray},
+		allofnotask
 		)
-	}
-}
 
-
+allofnotask = allof("notask")
 alloffun = allof("task")
 alloffunarray = allofarray("task")
+
+
+notask abc {
+	cmds = ["echo \"abc\""]
+}
+
+notask def {
+	cmds = ["echo \"def\""]
+}
 
 task tidy {
 	cmds = [
@@ -47,9 +62,6 @@ task tidy {
 		"go work vendor"
 	]
 }
-
-
-
 
 BUF_OUTPUT     = "a"
 MOCKERY_OUTPUT = "b"

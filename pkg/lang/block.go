@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"regexp"
+	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -29,7 +30,10 @@ type FileBlockEvaluation struct {
 	Source        string
 }
 
-func evalGenBlock(ctx context.Context, sctx *SudoContext, fblock *hclsyntax.Block, file *BodyBuilder) (res *FileBlockEvaluation, diags hcl.Diagnostics, err error) {
+func evalGenBlock(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (res *FileBlockEvaluation, diags hcl.Diagnostics, err error) {
+
+	gblk := sctx.Meta.(*GenBlockMeta)
+	fblock := gblk.HCL
 
 	ectx := sctx.BuildStaticEvalContextWithFileData(fblock.TypeRange.Filename)
 
@@ -100,10 +104,19 @@ func evalGenBlock(ctx context.Context, sctx *SudoContext, fblock *hclsyntax.Bloc
 
 			cnt := yaml.MapSlice{}
 
-			slc, diags, err := EncodeExpression(attr.Expr, ectx)
-			if err != nil || diags.HasErrors() {
-				return nil, diags, err
+			// sctx.Map["data"].ToValue()
+
+			slc, err := UnmarkToSortedArray(sctx.Map["data"].ToValue())
+			if err != nil {
+				return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem encoding yaml")
 			}
+
+			// cnt = append(cnt, cls...)
+
+			// slc, diags, err := EncodeExpression(attr.Expr, ectx)
+			// if err != nil || diags.HasErrors() {
+			// 	return nil, diags, err
+			// }
 
 			if x, ok := slc.(yaml.MapSlice); ok {
 				cnt = append(cnt, x...)
@@ -112,14 +125,14 @@ func evalGenBlock(ctx context.Context, sctx *SudoContext, fblock *hclsyntax.Bloc
 				cnt = append(cnt, x)
 			}
 
-			mta, err := noMetaJsonEncode(val)
-			if err != nil {
-				return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem encoding json")
-			}
+			// mta, err := noMetaJsonEncode(val)
+			// if err != nil {
+			// 	return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem encoding json")
+			// }
 
 			blk.OrderedOutput = cnt
 
-			blk.RawOutput = mta
+			// blk.RawOutput = mta
 
 			dataAttr = attr.Expr
 
@@ -165,7 +178,7 @@ func evalGenBlock(ctx context.Context, sctx *SudoContext, fblock *hclsyntax.Bloc
 
 func NewGenBlockEvaluation(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (res []*FileBlockEvaluation, diags hcl.Diagnostics, err error) {
 
-	fblocks := file.GetAllBlocksOfType("gen")
+	fblocks := sctx.GetAllFileLevelBlocksOfType("gen")
 
 	if len(fblocks) == 0 {
 		return nil, hcl.Diagnostics{&hcl.Diagnostic{
@@ -179,7 +192,7 @@ func NewGenBlockEvaluation(ctx context.Context, sctx *SudoContext, file *BodyBui
 	output := make([]*FileBlockEvaluation, 0)
 
 	for _, fblock := range fblocks {
-		res, diags, err := evalGenBlock(ctx, sctx, fblock, file)
+		res, diags, err := evalGenBlock(ctx, fblock, file)
 		if err != nil || diags.HasErrors() {
 			return nil, diags, err
 		}
@@ -194,7 +207,13 @@ func NewGenBlockEvaluation(ctx context.Context, sctx *SudoContext, file *BodyBui
 func EncodeExpression(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, hcl.Diagnostics, error) {
 
 	if x, ok := e.(*hclsyntax.ObjectConsExpr); ok {
-		group := make(yaml.MapSlice, 0)
+
+		type kv struct {
+			index int
+			key   string
+			value any
+		}
+		group := make([]kv, 0)
 		for _, rr := range x.Items {
 			kvf, diags := rr.KeyExpr.Value(ectx)
 			if diags.HasErrors() {
@@ -210,9 +229,20 @@ func EncodeExpression(e hclsyntax.Expression, ectx *hcl.EvalContext) (any, hcl.D
 			if rz == nil {
 				continue
 			}
-			group = append(group, yaml.MapItem{Key: kvf.AsString(), Value: rz})
+
+			group = append(group, kv{index: rr.KeyExpr.Range().Start.Line, key: kvf.AsString(), value: rz})
 		}
-		return group, hcl.Diagnostics{}, nil
+
+		slices.SortFunc(group, func(a, b kv) int {
+			return a.index - b.index
+		})
+
+		wrk := make(yaml.MapSlice, 0)
+		for _, g := range group {
+			wrk = append(wrk, yaml.MapItem{Key: g.key, Value: g.value})
+		}
+
+		return wrk, hcl.Diagnostics{}, nil
 	} else if x, ok := e.(*hclsyntax.TupleConsExpr); ok {
 		wrk := make([]any, 0)
 		for _, exp := range x.Exprs {

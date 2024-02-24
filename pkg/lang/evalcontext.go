@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -61,10 +60,12 @@ func NewContextFromFile(ctx context.Context, fle []byte, name string) (*hcl.File
 
 const ArrKey = "____arr"
 
-func EvaluateAttr(ctx context.Context, name string, attr hclsyntax.Expression, parentctx *SudoContext) hcl.Diagnostics {
-	childctx := parentctx.BuildStaticEvalContextWithFileData(attr.StartRange().Filename)
+const FuncKey = "____func"
 
-	switch e := attr.(type) {
+func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *SudoContext) hcl.Diagnostics {
+	childctx := parentctx.BuildStaticEvalContextWithFileData(attr.NameRange.Filename)
+
+	switch e := attr.Expr.(type) {
 	case *hclsyntax.ObjectConsExpr:
 
 		diags := hcl.Diagnostics{}
@@ -75,10 +76,18 @@ func EvaluateAttr(ctx context.Context, name string, attr hclsyntax.Expression, p
 				continue
 			}
 
-			diag = EvaluateAttr(ctx, key.AsString(), v.ValueExpr, parentctx.NewChild(name))
+			attrn := NewObjectItemAttribute(key.AsString(), v.ValueExpr)
+			attrn.NameRange = v.KeyExpr.Range()
+
+			child := parentctx.NewChild(attr.Name)
+
+			diag = EvaluateAttr(ctx, attrn, child)
 			if diag.HasErrors() {
 				diags = append(diags, diag...)
-				continue
+			}
+
+			if len(diags) == 0 {
+				child.Meta = &SimpleNameMeta{attr.NameRange}
 			}
 		}
 
@@ -86,30 +95,148 @@ func EvaluateAttr(ctx context.Context, name string, attr hclsyntax.Expression, p
 
 	case *hclsyntax.TupleConsExpr:
 
-		child := parentctx.NewChild(ArrKey)
+		child := parentctx.NewChild(attr.Name)
+		child.isArray = true
 
 		diags := hcl.Diagnostics{}
 
 		for i, v := range e.Exprs {
-			diag := EvaluateAttr(ctx, fmt.Sprintf("%d", i), v, child)
+			attrn := NewArrayItemAttribute(i, v)
+			attrn.NameRange = v.Range()
+			diag := EvaluateAttr(ctx, attrn, child)
 			diags = append(diags, diag...)
 		}
 
-		delete(parentctx.Map, ArrKey)
+		if len(diags) > 0 {
+			return diags
+		}
 
-		parentctx.ApplyKeyVal(name, child.ToValue())
+		child.Meta = &SimpleNameMeta{attr.NameRange}
+
+		// // we don't keep the array in its normal state, we convert it to a real array
+		// delete(parentctx.Map, ArrKey)
+
+		// parentctx.ApplyArray(child.List())
 
 		return diags
+	// case *hclsyntax.TemplateExpr:
+	// 	diags := hcl.Diagnostics{}
+
+	// 	child := parentctx.NewChild(FuncKey)
+
+	// 	for _, v := range e.Parts {
+	// 		diag := EvaluateAttr(ctx, name, v, parentctx)
+	// 		diags = append(diags, diag...)
+	// 	}
+
+	// 	delete(parentctx.Map, FuncKey)
+
+	// 	if len(diags) > 0 {
+	// 		return diags
+	// 	}
+
+	// 	hi := child.ToValue()
+
+	// 	parentctx.ApplyKeyVal(name, hi)
+
+	case *hclsyntax.FunctionCallExpr:
+
+		child := parentctx.NewChild(FuncKey + ":" + e.StartRange().String())
+
+		diags := hcl.Diagnostics{}
+
+		for i, v := range e.Args {
+			attrn := NewFuncArgAttribute(i, v)
+			diag := EvaluateAttr(ctx, attrn, child)
+			diags = append(diags, diag...)
+		}
+
+		if len(diags) > 0 {
+			return diags
+		}
+
+		funct, ok := child.BuildStaticEvalContextWithFileData(attr.NameRange.Filename).Functions[e.Name]
+		if !ok {
+			return append(diags, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  fmt.Sprintf("function %s not found", e.Name),
+				Subject:  e.NameRange.Ptr(),
+			})
+		}
+
+		// if e.Name == "merge" {
+
+		// 	// diags := hcl.Diagnostics{}
+		// 	argv := child.List()
+
+		// 	wrk := make(map[string]*SudoContext)
+		// 	for _, v := range argv {
+		// 		if v.Value == nil {
+		// 			diags = append(diags, &hcl.Diagnostic{
+		// 				Severity: hcl.DiagError,
+		// 				Summary:  fmt.Sprintf("function %s failed", e.Name),
+		// 				Subject:  e.NameRange.Ptr(),
+		// 				Detail:   "merge requires all arguments to be objects",
+		// 			})
+		// 			continue
+		// 		}
+		// 		for _, v := range v.List() {
+		// 			wrk[v.ParentKey] = v
+		// 		}
+		// 	}
+
+		// 	// if
+
+		// 	// argv = SudoContextMap(wrk).List()
+		// 	parentctx.Map[attr.Name] = &SudoContext{
+		// 		Parent:    parentctx,
+		// 		ParentKey: attr.Name,
+		// 		Map:       wrk,
+		// 		Value:     &SimpleNameMeta{attr.NameRange},
+		// 	}
+
+		// 	return hcl.Diagnostics{}
+		// }
+
+		argv := child.ToValue().AsValueSlice()
+
+		val, err := funct.Call(argv)
+		if err != nil {
+			return append(diags, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  fmt.Sprintf("function %s failed", e.Name),
+				Subject:  e.NameRange.Ptr(),
+				Detail:   err.Error(),
+			})
+		}
+
+		// parentctx.ApplyKeyVal(attr.Name, &AttrMeta{
+		// 	HCL:   attr,
+		// 	Value: val,
+		// })
+
+		parentctx.ApplyKeyVal(attr.Name, val, attr.NameRange)
+
+	// case *hclsyntax.TemplateExpr:
+	// 	diags := hcl.Diagnostics{}
+
+	// 	for _, v := range e.Parts {
+	// 		diag := EvaluateAttr(ctx, name, v, parentctx)
+	// 		diags = append(diags, diag...)
+	// 	}
+
+	// 	return diags
 
 	default:
 
-		val, diag := attr.Value(childctx)
+		val, diag := attr.Expr.Value(childctx)
 		if diag.HasErrors() {
 			return diag
 		}
 
-		parentctx.ApplyKeyVal(name, val)
-
+		// val = val.Mark(attr.NameRange)
+		// parentctx.Meta = &AttrMeta{HCL: attr}
+		parentctx.ApplyKeyVal(attr.Name, val, attr.NameRange)
 	}
 
 	return hcl.Diagnostics{}
@@ -134,11 +261,11 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parentctx *SudoC
 	retrys := bdy.Blocks
 	prevRetrys := []*hclsyntax.Block{}
 	lastDiags := hcl.Diagnostics{}
-	start := true
+	start := 3
 
-	for ((len(retrys) > 0 || len(retryattrs) > 0) && (len(prevRetrys) > len(retrys) || len(prevAttrRetrys) > len(retryattrs))) || start {
+	for ((len(retrys) > 0 || len(retryattrs) > 0) && (len(prevRetrys) > len(retrys) || len(prevAttrRetrys) > len(retryattrs))) || start > 0 {
 
-		start = false
+		start--
 		newRetrys := []*hclsyntax.Block{}
 		newAttrRetrys := []*attr{}
 		diags := hcl.Diagnostics{}
@@ -146,22 +273,22 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parentctx *SudoC
 		for v := range len(retryattrs) + len(retrys) {
 			if v < len(retryattrs) {
 				attr := retryattrs[v]
-				diagd := EvaluateAttr(ctx, attr.Name, attr.Attri.Expr, parentctx)
+				diagd := EvaluateAttr(ctx, attr.Attri, parentctx)
 				if diagd.HasErrors() {
 					diags = append(diags, diagd...)
 					newAttrRetrys = append(newAttrRetrys, attr)
 				}
 			} else {
 				attr := retrys[v-len(retryattrs)]
-				var save *hclsyntax.Attribute
-				if attr.Type == "gen" {
-					save = attr.Body.Attributes["data"]
-					delete(attr.Body.Attributes, "data")
-				}
+				// var save *hclsyntax.Attribute
+				// if attr.Type == "gen" {
+				// 	save = attr.Body.Attributes["data"]
+				// 	delete(attr.Body.Attributes, "data")
+				// }
 				diagd := NewUnknownBlockEvaluation(ctx, parentctx, attr)
-				if save != nil {
-					attr.Body.Attributes["data"] = save
-				}
+				// if save != nil {
+				// 	attr.Body.Attributes["data"] = save
+				// }
 				if diagd.HasErrors() {
 					diags = append(diags, diagd...)
 					newRetrys = append(newRetrys, attr)
@@ -170,7 +297,7 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parentctx *SudoC
 		}
 
 		if len(diags) < len(lastDiags) {
-			start = true
+			start = 3
 		}
 
 		lastDiags = diags
@@ -194,14 +321,15 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parentctx *SudoC
 }
 
 const MetaKey = "____meta"
+
 const FilesKey = "____files"
 
 func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, block *hclsyntax.Block) (diags hcl.Diagnostics) {
 
-	strs := []string{block.Type}
-	strs = append(strs, block.Labels...)
+	// strs := []string{block.Type}
+	// strs = append(strs, block.Labels...)
 
-	child := parentctx.NewNestedChild(strs...)
+	child := parentctx.NewChild(block.Type).NewNestedChildBlockLabels(block.Labels, block.LabelRanges)
 
 	userfuncs, _, diag := userfunc.DecodeUserFunctions(block.Body, "func", child.BuildStaticEvalContext)
 	if diag.HasErrors() {
@@ -209,29 +337,43 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 	}
 
 	child.UserFuncs = userfuncs
-
+	// child.ApplyBlock(block)
 	diag = ExtractVariables(ctx, block.Body, child)
 	if diag.HasErrors() {
 		return diag
 	}
 
-	meta := map[string]cty.Value{
-		"label": cty.StringVal(strings.Join(block.Labels, ".")),
+	var metad Meta
+	blkmeta := &BasicBlockMeta{
+		HCL: block,
 	}
+	metad = blkmeta
+
+	// meta := map[string]cty.Value{
+	// 	"label": cty.StringVal(strings.Join(block.Labels, ".")),
+	// }
 
 	if block.Type == "gen" {
-		meta["source"] = cty.StringVal(block.TypeRange.Filename)
-		meta["root_relative_path"] = cty.StringVal(sanatizeGenPath(child.Map["path"].Value.AsString()))
+		um, _ := child.Map["path"].Value.Unmark()
+
+		// meta["ref"] = cty.StringVal(block.Labels[0])
+		// meta["source"] = cty.StringVal(sanatizeGenPath(child.Map["path"].Value.(*AttrMeta).Value.AsString()))
+		metad = &GenBlockMeta{
+			HCL:         block,
+			RootRelPath: sanatizeGenPath(um.AsString()),
+		}
 	}
 
-	meta["block_type"] = cty.StringVal(block.Type)
-	meta["done"] = cty.BoolVal(true)
-	meta["file_line_number"] = cty.NumberIntVal(int64(block.TypeRange.Start.Line))
-
-	child.ApplyKeyVal(MetaKey, cty.ObjectVal(meta))
+	// meta["block_type"] = cty.StringVal(block.Type)
+	// meta["done"] = cty.BoolVal(true)
+	// meta["file_line_number"] = cty.NumberIntVal(int64(block.TypeRange.Start.Line))
+	// meta["file_line_position"] = cty.NumberIntVal(int64(block.TypeRange.Start.Byte))
+	// applyMetaFromRange(meta, block.TypeRange)
+	child.Meta = metad
+	// child.ApplyKeyVal(MetaKey, metad)
+	// child.Meta = metad
 
 	return hcl.Diagnostics{}
-
 }
 
 func NewGetMetaKeyFunc(str string) function.Function {
@@ -274,15 +416,57 @@ func NewGetMetaKeyFunc(str string) function.Function {
 func NewFunctionMap() map[string]function.Function {
 
 	return map[string]function.Function{
-		"jsonencode":             stdlib.JSONEncodeFunc,
-		"jsondecode":             stdlib.JSONDecodeFunc,
-		"csvdecode":              stdlib.CSVDecodeFunc,
-		"equal":                  stdlib.EqualFunc,
-		"notequal":               stdlib.NotEqualFunc,
-		"concat":                 stdlib.ConcatFunc,
-		"format":                 stdlib.FormatFunc,
-		"join":                   stdlib.JoinFunc,
-		"merge":                  stdlib.MergeFunc,
+		"jsonencode": stdlib.JSONEncodeFunc,
+		"jsondecode": stdlib.JSONDecodeFunc,
+		"csvdecode":  stdlib.CSVDecodeFunc,
+		"equal":      stdlib.EqualFunc,
+		"notequal":   stdlib.NotEqualFunc,
+		"concat":     stdlib.ConcatFunc,
+		"format":     stdlib.FormatFunc,
+		"join":       stdlib.JoinFunc,
+		"merge":      stdlib.MergeFunc,
+		// "merge": function.New(&function.Spec{
+		// 	Description: `Merges a list of objects into a single object.`,
+		// 	VarParam: &function.Parameter{
+		// 		Name:             "objects",
+		// 		Type:             cty.DynamicPseudoType,
+		// 		AllowUnknown:     true,
+		// 		AllowDynamicType: true,
+		// 		AllowNull:        false,
+		// 		AllowMarked:      true,
+		// 	},
+		// 	Type: function.StaticReturnType(cty.DynamicPseudoType),
+		// 	Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+		// 		outputMap := make(map[string]cty.Value)
+		// 		var markses []cty.ValueMarks // remember any marked maps/objects we find
+
+		// 		for _, arg := range args {
+		// 			if arg.IsNull() {
+		// 				continue
+		// 			}
+		// 			arg, argMarks := arg.Unmark()
+		// 			if len(argMarks) > 0 {
+		// 				markses = append(markses, argMarks)
+		// 			}
+		// 			for it := arg.ElementIterator(); it.Next(); {
+		// 				k, v := it.Element()
+		// 				outputMap[k.AsString()] = v
+		// 			}
+		// 		}
+
+		// 		switch {
+		// 		case retType.IsMapType():
+		// 			if len(outputMap) == 0 {
+		// 				return cty.MapValEmpty(retType.ElementType()).WithMarks(markses...), nil
+		// 			}
+		// 			return cty.MapVal(outputMap).WithMarks(markses...), nil
+		// 		case retType.IsObjectType(), retType.Equals(cty.DynamicPseudoType):
+		// 			return cty.ObjectVal(outputMap).WithMarks(markses...), nil
+		// 		default:
+		// 			panic(fmt.Sprintf("unexpected return type: %#v", retType))
+		// 		}
+		// 	},
+		// }),
 		"length":                 stdlib.LengthFunc,
 		"keys":                   stdlib.KeysFunc,
 		"values":                 stdlib.ValuesFunc,
@@ -353,10 +537,10 @@ func NewFunctionMap() map[string]function.Function {
 		"coelscelist":            stdlib.CoalesceListFunc,
 		"reverse":                stdlib.ReverseFunc,
 		"sort":                   stdlib.SortFunc,
-		"ref":                    NewGetMetaKeyFunc("ref"),
-		"source":                 NewGetMetaKeyFunc("source"),
-		"output":                 NewGetMetaKeyFunc("root_relative_path"),
-		"label":                  NewGetMetaKeyFunc("label"),
+		// "ref":                    NewGetMetaKeyFunc("ref"),
+		// "source":                 NewGetMetaKeyFunc("source"),
+		// "output":                 NewGetMetaKeyFunc("root_relative_path"),
+		// "label":                  NewGetMetaKeyFunc("label"),
 		"base64encode": function.New(&function.Spec{
 			Description: `Returns the Base64-encoded version of the given string.`,
 			Params: []function.Parameter{
@@ -429,91 +613,60 @@ func sanitizeFileName(str string) string {
 	return str
 }
 
-func Listd(ectx map[string]cty.Value, file string, name string) ([]cty.Value, error) {
-	data := ectx[FilesKey].AsValueMap()[file].AsValueMap()
+func Listd(ectx *SudoContext, file string, name string) ([]cty.Value, error) {
 
-	if data == nil {
-		return nil, terrors.Errorf("file %s not found", file)
+	ok := ectx.Root().Map[FilesKey].Map[file].BlocksOfType(name)
+	if len(ok) == 0 {
+		return nil, terrors.Errorf("block %s not found", name)
 	}
 
-	if name != "" {
-		data = data[name].AsValueMap()
-
-		if data == nil {
-			return nil, terrors.Errorf("block %s not found", name)
-		}
-	}
-
-	type mapper struct {
-		val   cty.Value
-		index int
-	}
-
-	mappers := make([]mapper, 0, len(data))
-	for k, v := range data {
-		d := v.AsValueMap()
-		if d[MetaKey] == cty.NilVal || d[MetaKey].AsValueMap()["block_type"] == cty.NilVal {
-			return nil, terrors.Errorf("block %s:%s has no meta", name, k)
-		}
-		i, _ := d[MetaKey].AsValueMap()["file_line_number"].AsBigFloat().Int64()
-		mappers = append(mappers, mapper{val: v, index: int(i)})
-	}
-
-	slices.SortFunc(mappers, func(a, b mapper) int {
-		// a - b because the lower line numbers should be first
-		return a.index - b.index
-	})
-
-	vals := make([]cty.Value, 0, len(mappers))
-	for _, v := range mappers {
-		vals = append(vals, v.val)
-	}
-
-	return vals, nil
+	return ok.ToValue().AsValueSlice(), nil
 }
 
-func Mapd(ectx map[string]cty.Value, file string, name string) (map[string]cty.Value, error) {
-	data := ectx[FilesKey].AsValueMap()[file].AsValueMap()
+func Mapd(ectx *SudoContext, file string, name string) (map[string]cty.Value, error) {
+	// data := ectx[FilesKey].AsValueMap()[file].AsValueMap()
 
-	if data == nil {
-		return nil, terrors.Errorf("file %s not found", file)
+	// if data == nil {
+	// 	return nil, terrors.Errorf("file %s not found", file)
+	// }
+
+	// if name != "" {
+	// 	data = data[name].AsValueMap()
+
+	// 	if data == nil {
+	// 		return nil, terrors.Errorf("block %s not found", name)
+	// 	}
+	// }
+
+	// mapper := make(map[string]cty.Value)
+	// for k, v := range data {
+	// 	d := v.AsValueMap()
+	// 	if d[MetaKey] == cty.NilVal || d[MetaKey].AsValueMap()["block_type"] == cty.NilVal {
+	// 		return nil, terrors.Errorf("block %s:%s has no meta", name, k)
+	// 	}
+	// 	mapper[k] = v
+	// }
+
+	ok := ectx.Root().Map[FilesKey].Map[file].BlocksOfType(name)
+
+	if len(ok) == 0 {
+		return nil, terrors.Errorf("block %s not found", name)
 	}
 
-	if name != "" {
-		data = data[name].AsValueMap()
-
-		if data == nil {
-			return nil, terrors.Errorf("block %s not found", name)
-		}
+	resp := make(map[string]cty.Value, len(ok))
+	for _, v := range ok {
+		resp[v.ParentKey] = v.ToValue()
 	}
 
-	mapper := make(map[string]cty.Value)
-	for k, v := range data {
-		d := v.AsValueMap()
-		if d[MetaKey] == cty.NilVal || d[MetaKey].AsValueMap()["block_type"] == cty.NilVal {
-			return nil, terrors.Errorf("block %s:%s has no meta", name, k)
-		}
-		mapper[k] = v
-	}
-
-	return mapper, nil
+	return resp, nil
 }
 
-func MapdFile(ectx map[string]cty.Value, file string) (map[string]cty.Value, error) {
-	data := ectx[FilesKey].AsValueMap()[file].AsValueMap()
+func MapdFile(ectx *SudoContext, file string) (map[string]cty.Value, error) {
 
-	if data == nil {
-		return nil, terrors.Errorf("file %s not found", file)
-	}
-
-	if data[MetaKey] == cty.NilVal || data[MetaKey].AsValueMap()["block_type"] == cty.NilVal {
-		return nil, terrors.Errorf("file block %s has no meta", file)
-	}
-
-	return data, nil
+	return ectx.Root().Map[FilesKey].Map[file].ToValue().AsValueMap(), nil
 }
 
-func NewContextualizedFunctionMap(ectx map[string]cty.Value, file string) map[string]function.Function {
+func NewContextualizedFunctionMap(ectx *SudoContext, file string) map[string]function.Function {
 
 	mapp := function.New(&function.Spec{
 		Description: `Returns a map of all blocks w\ the given label`,
@@ -530,12 +683,33 @@ func NewContextualizedFunctionMap(ectx map[string]cty.Value, file string) map[st
 		Type: function.StaticReturnType(cty.DynamicPseudoType),
 		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
 
-			resp, err := Mapd(ectx, file, args[0].AsString())
-			if err != nil {
-				return cty.NilVal, err
+			// resp, err := Mapd(ectx, file, args[0].AsString())
+			// if err != nil {
+			// 	return cty.NilVal, err
+			// }
+
+			unmarked, mrk := args[0].Unmark()
+
+			ok := ectx.Root().Map[FilesKey].Map[file].BlocksOfType(unmarked.AsString())
+			if len(ok) == 0 {
+				return cty.NilVal, terrors.Errorf("block %s not found", unmarked.AsString())
 			}
 
-			return cty.ObjectVal(resp), nil
+			resp := make(map[string]cty.Value, len(ok))
+			for _, v := range ok {
+				resp[v.ParentKey] = v.ToValue().Mark(v.Meta.Range())
+			}
+
+			// slce := yaml.MapSlice{}
+			// for _, v := range ok {
+			// 	yyy, err := ToYAML(v)
+			// 	if err != nil {
+			// 		return cty.NilVal, err
+			// 	}
+			// 	slce = append(slce, yyy...)
+			// }
+
+			return cty.ObjectVal(resp).WithMarks(mrk), nil
 		},
 	})
 
@@ -554,12 +728,25 @@ func NewContextualizedFunctionMap(ectx map[string]cty.Value, file string) map[st
 		Type: function.StaticReturnType(cty.DynamicPseudoType),
 		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
 
-			resp, err := Listd(ectx, file, args[0].AsString())
-			if err != nil {
-				return cty.NilVal, err
+			unmarked, mrk := args[0].Unmark()
+
+			ok := ectx.Root().Map[FilesKey].Map[file].BlocksOfType(unmarked.AsString())
+			if len(ok) == 0 {
+				return cty.NilVal, terrors.Errorf("block %s not found", unmarked.AsString())
 			}
 
-			return cty.TupleVal(resp), nil
+			return ok.ToValue().WithMarks(mrk), nil
+
+			// slce := yaml.MapSlice{}
+			// for _, v := range ok {
+			// 	yyy, err := ToYAML(v)
+			// 	if err != nil {
+			// 		return cty.NilVal, err
+			// 	}
+			// 	slce = append(slce, yyy...)
+			// }
+
+			// return cty.CapsuleVal(yamlcapsule, &slce), nil
 		}},
 	)
 

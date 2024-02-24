@@ -1,6 +1,7 @@
 package lang
 
 import (
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/walteh/terrors"
 )
@@ -20,6 +21,10 @@ func (me *BodyBuilder) NewRoot() *hclsyntax.Body {
 			Type:   FilesKey,
 			Body:   v,
 			Labels: []string{k},
+			LabelRanges: []hcl.Range{
+				v.Range(),
+			},
+			TypeRange: v.Range(),
 		}
 		root.Blocks = append(root.Blocks, sudoblock)
 	}

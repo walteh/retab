@@ -24,6 +24,9 @@ func TestValidHCLDecoding(t *testing.T) {
 	// load schema file
 	_, ectx, bb, diags, errd := NewContextFromFiles(ctx, map[string][]byte{"sampleA.input.retab": sampleAInput})
 	require.NoError(t, errd)
+	for _, c := range diags {
+		fmt.Println(c)
+	}
 	require.Empty(t, diags)
 
 	blk, diags, err := NewGenBlockEvaluation(ctx, ectx, bb)
