@@ -2,6 +2,7 @@ package lang
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -14,118 +15,63 @@ import (
 )
 
 type SudoContext struct {
-	ParentKey string
-	Parent    *SudoContext
-	Map       map[string]*SudoContext
-	// Array     []*SudoContext
-	Value     *cty.Value
-	isArray   bool
-	UserFuncs map[string]function.Function
-	Meta      Meta
+	ParentKey        string
+	Parent           *SudoContext
+	Map              map[string]*SudoContext
+	Value            *cty.Value
+	isArray          bool
+	UserFuncs        map[string]function.Function
+	Meta             Meta
+	TmpFileLevelVars map[string]cty.Value
 }
 
 type RemappableSudoContextArray []*SudoContext
 
-func (me *SudoContext) ApplyValue(met cty.Value, r hcl.Range) {
-	// val := met.Value()
-	// if val.Type().IsObjectType() {
-	// 	vm := map[string]Meta{}
-	// 	for k, v := range val.AsValueMap() {
-	// 		vm[k] = NewSimpleKeyMeta(me, -1, v)
-	// 	}
-	// } else {
-	resp := met.Mark(r)
-	me.Value = &resp
-	// me.Meta = met
-	// }/
+func (me *SudoContext) ApplyValue(met cty.Value) {
+	me.Value = &met
 }
 
 func (me *SudoContext) ApplyKeyVal(key string, val cty.Value, r hcl.Range) {
-	me.NewChild(key).ApplyValue(val, r)
+	me.NewChild(key, r).ApplyValue(val)
 }
-
-// func (me *SudoContext) ApplyValueMap(val map[string]Meta) {
-// 	for k, v := range val {
-// 		me.ApplyKeyVal(k, v)
-// 	}
-// }
-
-// func (me *SudoContext) ApplyBlock(block *hclsyntax.Block) {
-// 	me.Meta = &BasicBlockMeta{HCL: block}
-// }
-
-// func (me *SudoContext) ApplyAttr(attr *hclsyntax.Attribute) {
-// 	me.Meta = &AttrMeta{HCL: attr}
-// }
 
 func (parent *SudoContext) ApplyBody(ctx context.Context, body *hclsyntax.Body) hcl.Diagnostics {
 	return ExtractVariables(ctx, body, parent)
 }
 
-type SudoContextArray []*SudoContext
-type SudoContextMap map[string]*SudoContext
-
 func (me *SudoContext) ToValue() cty.Value {
-	// if me.Value != nil {
-	// 	return me.Value
-	// }
+
+	var val cty.Value
 
 	if me.Value != nil {
-		return *me.Value
-	}
-
-	if me.isArray || strings.HasPrefix(me.ParentKey, FuncKey) {
-		return me.List().ToValue()
-	}
-
-	return SudoContextMap(me.Map).ToValue()
-}
-
-func (me SudoContextArray) ToValue() cty.Value {
-	vals := make([]cty.Value, len(me))
-	for i, v := range me {
-		if v.Meta == nil {
-			vals[i] = v.ToValue()
+		val = *me.Value
+	} else {
+		if me.isArray || strings.HasPrefix(me.ParentKey, FuncKey) {
+			lst := me.List()
+			vals := make([]cty.Value, len(lst))
+			for i, v := range lst {
+				vals[i] = v.ToValue()
+			}
+			val = cty.TupleVal(vals)
 		} else {
-
-			vals[i] = v.ToValue().Mark(v.Meta.Range())
+			obj := make(map[string]cty.Value, len(me.Map))
+			for k, v := range me.Map {
+				obj[k] = v.ToValue()
+			}
+			val = cty.ObjectVal(obj)
 		}
 	}
-	return cty.TupleVal(vals)
+
+	return val.Mark(me.Meta.Range())
 }
 
-func (me SudoContextMap) ToValue() cty.Value {
-	obj := make(map[string]cty.Value, len(me))
-	for k, v := range me {
-		if v.Meta == nil {
-			obj[k] = v.ToValue()
-		} else {
-			obj[k] = v.ToValue().Mark(v.Meta.Range())
-		}
-	}
-	return cty.ObjectVal(obj)
-}
-
-func (me *SudoContext) List() SudoContextArray {
+func (me *SudoContext) List() []*SudoContext {
 	if me.isArray || strings.HasPrefix(me.ParentKey, FuncKey) {
 		return sortMappedIntegerKeys(me.Map)
 	}
 
-	return SudoContextMap(me.Map).List()
-}
-
-func (me *SudoContext) BuildStaticEvalVars() map[string]cty.Value {
-	wrk := map[string]cty.Value{}
-	for k, v := range me.Map {
-		wrk[k] = v.ToValue()
-	}
-
-	return wrk
-}
-
-func (me SudoContextMap) List() SudoContextArray {
-	ctxs := make([]*SudoContext, 0, len(me))
-	for _, v := range me {
+	ctxs := make([]*SudoContext, 0, len(me.Map))
+	for _, v := range me.Map {
 		ctxs = append(ctxs, v)
 	}
 
@@ -138,7 +84,17 @@ func (me SudoContextMap) List() SudoContextArray {
 		}
 		return a.Meta.Range().Start.Line - b.Meta.Range().Start.Line
 	})
+
 	return ctxs
+}
+
+func (me *SudoContext) BuildStaticEvalVars() map[string]cty.Value {
+	obj := make(map[string]cty.Value, len(me.Map))
+	for k, v := range me.Map {
+		obj[k] = v.ToValue()
+	}
+
+	return obj
 }
 
 func sortMappedIntegerKeys[K any](m map[string]K) []K {
@@ -170,7 +126,6 @@ func sortMappedIntegerKeys[K any](m map[string]K) []K {
 }
 
 func (me *SudoContext) BuildStaticVarsList() []cty.Value {
-
 	ctxs := me.List()
 	vals := make([]cty.Value, len(ctxs))
 	for i, v := range ctxs {
@@ -178,7 +133,6 @@ func (me *SudoContext) BuildStaticVarsList() []cty.Value {
 	}
 
 	return vals
-
 }
 
 func (me *SudoContext) Functions() map[string]function.Function {
@@ -196,26 +150,25 @@ func (me *SudoContext) Functions() map[string]function.Function {
 func (me *SudoContext) NewNestedChildBlockLabels(key []string, ranges []hcl.Range) *SudoContext {
 	wrk := me
 	for i, v := range key {
-		wrk = wrk.NewChild(v)
-		wrk.Meta = &BlockLabelMeta{HCL: ranges[i]}
+		wrk = wrk.NewChild(v, ranges[i])
 	}
 	return wrk
 }
 
-func (me *SudoContext) NewArrayChild() *SudoContext {
-	return me.NewChild(ArrKey)
-}
-
-func (me *SudoContext) NewChild(key string) *SudoContext {
+func (me *SudoContext) NewChild(key string, rnge hcl.Range) *SudoContext {
 
 	if me.Map[key] != nil {
+		me.Map[key].Meta = &SimpleNameMeta{rnge}
 		return me.Map[key]
 	}
 
 	build := &SudoContext{
-		ParentKey: key,
-		Parent:    me,
-		Map:       make(map[string]*SudoContext),
+		ParentKey:        key,
+		Parent:           me,
+		Map:              make(map[string]*SudoContext),
+		UserFuncs:        make(map[string]function.Function),
+		Meta:             &SimpleNameMeta{rnge},
+		TmpFileLevelVars: make(map[string]cty.Value),
 	}
 
 	me.Map[key] = build
@@ -232,13 +185,30 @@ func (wc *SudoContext) BuildStaticEvalContext() *hcl.EvalContext {
 	return wrk
 }
 
+func (wc *SudoContext) GetAllTemporaryFileLevelVars() map[string]cty.Value {
+	mine := map[string]cty.Value{}
+	if wc.Parent != nil {
+		for k, v := range wc.Parent.GetAllTemporaryFileLevelVars() {
+			mine[k] = v
+		}
+	}
+	for k, v := range wc.TmpFileLevelVars {
+		mine[k] = v
+	}
+	return mine
+}
+
 func (wc *SudoContext) BuildStaticEvalContextWithFileData(file string) *hcl.EvalContext {
 
-	internalParent := wc.Root().BuildStaticEvalContext().Variables[FilesKey].AsValueMap()
+	inp := wc.Root().BuildStaticEvalContext().Variables[FilesKey]
+	if inp.IsMarked() {
+		inp, _ = inp.Unmark()
+	}
+
+	internalParent := inp.AsValueMap()
 
 	if internalParent == nil {
 		internalParent = map[string]cty.Value{}
-
 	}
 
 	if internalParent[file] == cty.NilVal {
@@ -251,16 +221,7 @@ func (wc *SudoContext) BuildStaticEvalContextWithFileData(file string) *hcl.Eval
 
 	wrk := &hcl.EvalContext{
 		Functions: wc.Functions(),
-		Variables: map[string]cty.Value{
-			"self": cty.ObjectVal(wc.BuildStaticEvalVars()),
-		},
-	}
-
-	if wc.Parent != nil {
-		wrk.Variables["parent"] = cty.ObjectVal(wc.Parent.BuildStaticEvalVars())
-		if wc.Parent.Parent != nil {
-			wrk.Variables["grandparent"] = cty.ObjectVal(wc.Parent.Parent.BuildStaticEvalVars())
-		}
+		Variables: map[string]cty.Value{},
 	}
 
 	for k, v := range internalParent {
@@ -273,6 +234,10 @@ func (wc *SudoContext) BuildStaticEvalContextWithFileData(file string) *hcl.Eval
 
 	for k, v := range NewDynamicContextualizedFunctionMap(wc) {
 		wrk.Functions[k] = v
+	}
+
+	for k, v := range wc.GetAllTemporaryFileLevelVars() {
+		wrk.Variables[k] = v
 	}
 
 	return wrk
@@ -315,43 +280,36 @@ func (me *SudoContext) ToYAML() (any, error) {
 	}
 
 	if me.isArray {
-		return me.List().ToYAML()
-	}
+		lst := me.List()
+		out := make([]any, len(lst))
+		for i, v := range lst {
+			enc, err := v.ToYAML()
+			if err != nil {
+				return nil, err
+			}
+			out[i] = enc
+		}
+		return out, nil
+	} else {
+		wrk := make(yaml.MapSlice, 0)
 
-	return SudoContextMap(me.Map).ToYAML()
+		list := me.List()
+		for _, g := range list {
+			if g.ParentKey == MetaKey || strings.Contains(g.ParentKey, FuncKey) {
+				continue
+			}
+			yml, err := g.ToYAML()
+			if err != nil {
+				return nil, err
+			}
+			wrk = append(wrk, yaml.MapItem{Key: g.ParentKey, Value: yml})
+		}
+
+		return wrk, nil
+	}
 }
 
-func (me SudoContextArray) ToYAML() (any, error) {
-	out := make([]any, len(me))
-	for i, v := range me {
-		enc, err := v.ToYAML()
-		if err != nil {
-			return nil, err
-		}
-		out[i] = enc
-	}
-	return out, nil
-}
-
-func (me SudoContextMap) ToYAML() (any, error) {
-	wrk := make(yaml.MapSlice, 0)
-
-	list := me.List()
-	for _, g := range list {
-		if g.ParentKey == MetaKey || strings.Contains(g.ParentKey, FuncKey) {
-			continue
-		}
-		yml, err := g.ToYAML()
-		if err != nil {
-			return nil, err
-		}
-		wrk = append(wrk, yaml.MapItem{Key: g.ParentKey, Value: yml})
-	}
-
-	return wrk, nil
-}
-
-func (me *SudoContext) BlocksOfType(name string) SudoContextArray {
+func (me *SudoContext) BlocksOfType(name string) []*SudoContext {
 	blks := []*SudoContext{}
 	for k, v := range me.Map {
 		if k == name {
@@ -370,62 +328,112 @@ func (me *SudoContext) BlocksOfType(name string) SudoContextArray {
 	return blks
 }
 
-func (me *SudoContext) GetAllFileLevelBlocksOfType(name string) SudoContextArray {
+func (me *SudoContext) GetAllFileLevelBlocksOfType(name string) []*SudoContext {
 	files := me.Map[FilesKey].Map
 	out := []*SudoContext{}
 	for _, v := range files {
-		for _, blk := range v.BlocksOfType(name) {
-			out = append(out, blk)
-		}
+		out = append(out, v.BlocksOfType(name)...)
 	}
 	return out
 }
 
-// func valRange(z cty.Value) (cty.Value, hcl.Range) {
-// 	me, _ := z.Unmark()
-// 	rnge := me.EncapsulatedValue().(hcl.Range)
+type Sorter struct {
+	Range         []hcl.Range
+	resolvedRange hcl.Range
+	Key           string
+	Value         cty.Value
+}
 
-//		return me, rnge
-//	}
-func valRange(me cty.Value) (cty.Value, hcl.Range) {
-	var rng hcl.Range
+func (me *Sorter) Array() []hcl.Range {
+	return me.Range
+}
+
+func valRange(key string, me cty.Value) *Sorter {
+	// var rng hcl.Range
 	me, r := me.Unmark()
-	for z := range r {
-		if intre, ok := z.(hcl.Range); ok {
-			rng = intre
-		}
+	// for z := range r {
+	// 	if intre, ok := z.(hcl.Range); ok {
+	// 		rng = intre
+	// 	}
+	// }
+	if len(r) == 0 {
+		panic(fmt.Sprintf("no range found for %s", me.GoString()))
 	}
-	// okay := any(r)
-
-	// for _, v := range r {
-	// 	fmt.Println(v)
+	// if len(r) > 1 {
+	// 	fmt.Println("------------------------")
+	// 	for z := range r {
+	// 		if intre, ok := z.(hcl.Range); ok {
+	// 			fmt.Println(intre.String())
+	// 		}
+	// 	}
+	// 	panic(fmt.Sprintf("multiple ranges found for %s", me.GoString()))
 	// }
 
-	return me, rng
+	ranges := make([]hcl.Range, 0, len(r))
+	for z := range r {
+		if intre, ok := z.(hcl.Range); ok {
+			ranges = append(ranges, intre)
+		}
+	}
+
+	slices.SortFunc(ranges, func(a, b hcl.Range) int {
+		if a.Start.Line == b.Start.Line {
+			return a.Start.Byte - b.Start.Byte
+		}
+		return a.Start.Line - b.Start.Line
+	})
+
+	return &Sorter{Range: ranges, Key: key, Value: me}
+	// if intre, ok := z.(hcl.Range); ok {
+	// 	rng = intre
+	// }
+	// return me, rng
+}
+
+func sortem(val cty.Value) []*Sorter {
+
+	out := make([]*Sorter, 0)
+	if val.Type().IsObjectType() {
+		objs := val.AsValueMap()
+		for k, v := range objs {
+			rng := valRange(k, v)
+			out = append(out, rng)
+		}
+	} else if val.Type().IsTupleType() {
+		objs := val.AsValueSlice()
+		for _, v := range objs {
+			rng := valRange("", v)
+			out = append(out, rng)
+		}
+	}
+
+	slices.SortFunc(out, func(a, b *Sorter) int {
+		for i, x := range a.Range {
+			if i >= len(b.Range) {
+				return 1
+			}
+			y := b.Range[i]
+			if x.Start.Line == y.Start.Line {
+				if x.Start.Column == y.Start.Column {
+					continue
+				}
+				return x.Start.Column - y.Start.Column
+			}
+			return x.Start.Line - y.Start.Line
+		}
+		return 0
+	})
+
+	return out
 }
 
 func UnmarkToSortedArray(me cty.Value) (any, error) {
-	me, _ = valRange(me)
+	me, _ = me.Unmark()
+
+	out := sortem(me)
 
 	if me.Type().IsObjectType() {
-		type Sorter struct {
-			Range hcl.Range
-			Key   string
-			Value cty.Value
-		}
 
-		objs := me.AsValueMap()
-		out := make([]Sorter, 0, len(objs))
-		for k, v := range objs {
-			v, rng := valRange(v)
-			out = append(out, Sorter{Range: rng, Key: k, Value: v})
-		}
-		slices.SortFunc(out, func(a, b Sorter) int {
-			if a.Range.Start.Line == b.Range.Start.Line {
-				return a.Range.Start.Byte - b.Range.Start.Byte
-			}
-			return a.Range.Start.Line - b.Range.Start.Line
-		})
 		wrk := make(yaml.MapSlice, 0, len(out))
 		for _, v := range out {
 			res, err := UnmarkToSortedArray(v.Value)
@@ -438,23 +446,6 @@ func UnmarkToSortedArray(me cty.Value) (any, error) {
 	}
 
 	if me.Type().IsTupleType() {
-		type Sorter struct {
-			Range hcl.Range
-			Value cty.Value
-		}
-
-		objs := me.AsValueSlice()
-		out := make([]Sorter, 0, len(objs))
-		for _, v := range objs {
-			v, rng := valRange(v)
-			out = append(out, Sorter{Range: rng, Value: v})
-		}
-		slices.SortFunc(out, func(a, b Sorter) int {
-			if a.Range.Start.Line == b.Range.Start.Line {
-				return a.Range.Start.Byte - b.Range.Start.Byte
-			}
-			return a.Range.Start.Line - b.Range.Start.Line
-		})
 		wrk := make([]any, 0, len(out))
 		for _, v := range out {
 			res, err := UnmarkToSortedArray(v.Value)
@@ -466,6 +457,6 @@ func UnmarkToSortedArray(me cty.Value) (any, error) {
 		return wrk, nil
 	}
 
+	//
 	return noMetaJsonEncode(me)
-
 }

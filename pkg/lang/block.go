@@ -106,7 +106,9 @@ func evalGenBlock(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (re
 
 			// sctx.Map["data"].ToValue()
 
-			slc, err := UnmarkToSortedArray(sctx.Map["data"].ToValue())
+			dat := sctx.Map["data"].ToValue()
+
+			slc, err := UnmarkToSortedArray(dat)
 			if err != nil {
 				return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem encoding yaml")
 			}

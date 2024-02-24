@@ -1,59 +1,69 @@
 TOOLS_DIR = "tools"
 
 bins = {
-	"task"          = "github.com/go-task/task/v3/cmd/task"
-	"buf"           = "github.com/bufbuild/buf/cmd/buf",
+		"buf"  = "github.com/bufbuild/buf/cmd/buf",
+	"task" = "github.com/go-task/task/v3/cmd/task"
 }
 
 gen taskfile {
 	// schema = "https://taskfile.dev/schema.json"
-	path   = "./sampleB.output.yaml"
+	path = "./sampleB.output.yaml"
 	data = {
 		version = 3
-		tasks = tsks
+		tasks   = tsks
 	}
 }
 
-
 tsks = merge(
-			{
-				for bin, zpath in bins : "${bin}-bin" => {
-					generates = ["bin/${bin}"]
-					dir       = "${TOOLS_DIR}"
-					sources   = ["go.mod", "go.sum", "main.go"]
-					cmds = [
-						"go build -mod=vendor -o ./bin/${bin} ${zpath}"
-					]
-				}
-			},
-			alloffun,
-			{
-				default = { deps = ["tools", "gen", "lint", "test"] }
-				tools = {
-					deps = [for bin, _ in bins : "${bin}-bin"]
-				}
-				genz = {
-					deps = ["retab-gen", "buf-gen", "mockery-gen"]
-					cmds = ["${self(-1).dir}"]
-					dir  = "."
-				}
-		},
-		{ 		zroll = alloffunarray},
-		allofnotask
-		)
+	{
+		for bin, zpath in bins : "${bin}-bin" => {
+			generates = ["bin/${bin}"]
+			dir       = "${TOOLS_DIR}"
+			sources   = ["go.sum", "go.mod",  "main.go"]
+			cmds = [
+				"go build -mod=vendor -o ./bin/${bin} ${zpath}"
+			]
+		}
+	},
+	alloffun,
+	{
+		default = { deps = ["tools", "gen", "lint", "test"] }
+		tools = {
+			deps = [for bin, _ in bins : "${bin}-bin"]
+		}
+		genz = {
+			deps = ["retab-gen", "buf-gen", "mockery-gen"]
+			cmds = ["${self(-1).dir}"]
+			dir  = "."
+		}
+	},
+	{
+		zroll = alloffunarray
+	},
+	allofnotask
+)
 
-allofnotask = allof("notask")
-alloffun = allof("task")
+allofnotask   = allof("notask")
+alloffun      = allof("task")
 alloffunarray = allofarray("task")
 
+notask def {
+	cmds = [
+		"z1",
+		"z2",
+		"z4",
+		"z5",
+				"z3",
+		"z6",
+	]
+
+}
 
 notask abc {
 	cmds = ["echo \"abc\""]
 }
 
-notask def {
-	cmds = ["echo \"def\""]
-}
+
 
 task tidy {
 	cmds = [
@@ -74,14 +84,13 @@ task buf-gen {
 	cmds = [
 		<<EOF
 		./${TOOLS_DIR}/bin/buf generate --include-imports --include-wkt --exclude-path="./vendor" --template ${BUF_OUTPUT} --path=./proto
-	EOF
+		EOF
 		,
 		"find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete"
 	]
 }
 
-
-task update {
+notask update {
 	cmds = [
 		"go get -u -v ./... && go mod tidy",
 		"cd ${TOOLS_DIR} && go get -u -v ./... && go mod tidy",
