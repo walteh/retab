@@ -19,10 +19,10 @@ tsks = merge(
 		for bin, zpath in bins : "${bin}-bin" => {
 			generates = ["bin/${bin}"]
 			dir       = "${TOOLS_DIR}"
-			sources   = ["go.sum", "go.mod",  "main.go"]
 			cmds = [
 				"go build -mod=vendor -o ./bin/${bin} ${zpath}"
 			]
+						sources   = ["go.sum", "go.mod",  "main.go"]
 		}
 	},
 	alloffun,
@@ -63,16 +63,6 @@ notask abc {
 	cmds = ["echo \"abc\""]
 }
 
-
-
-task tidy {
-	cmds = [
-		"go mod tidy",
-		"cd ${TOOLS_DIR} && go mod tidy",
-		"go work vendor"
-	]
-}
-
 BUF_OUTPUT     = "a"
 MOCKERY_OUTPUT = "b"
 
@@ -89,6 +79,17 @@ task buf-gen {
 		"find ./gen/buf -maxdepth 5 -type f -mmin +1 -delete"
 	]
 }
+
+
+
+task tidy {
+	cmds = [
+		"go mod tidy",
+		"cd ${TOOLS_DIR} && go mod tidy",
+		"go work vendor"
+	]
+}
+
 
 notask update {
 	cmds = [

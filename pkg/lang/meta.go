@@ -101,11 +101,11 @@ func NewArrayItemAttribute(index int, expr hclsyntax.Expression) *hclsyntax.Attr
 	}
 }
 
-func NewObjectItemAttribute(key string, expr hclsyntax.Expression) *hclsyntax.Attribute {
+func NewObjectItemAttribute(key string, nameRange hcl.Range, expr hclsyntax.Expression) *hclsyntax.Attribute {
 	return &hclsyntax.Attribute{
 		Name:      key,
 		Expr:      expr,
-		NameRange: expr.Range(),
+		NameRange: nameRange,
 		SrcRange:  expr.Range(),
 	}
 }

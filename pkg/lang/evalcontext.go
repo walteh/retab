@@ -77,6 +77,8 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 	switch e := attr.Expr.(type) {
 	case *hclsyntax.ObjectConsExpr:
 
+		child := parentctx.NewChild(attr.Name, attr.NameRange)
+
 		diags := hcl.Diagnostics{}
 		for _, v := range e.Items {
 			key, diag := v.KeyExpr.Value(childctx)
@@ -86,19 +88,26 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 				continue
 			}
 
-			attrn := NewObjectItemAttribute(key.AsString(), v.ValueExpr)
-			attrn.NameRange = v.KeyExpr.Range()
-
-			child := parentctx.NewChild(attr.Name, v.KeyExpr.Range())
+			attrn := NewObjectItemAttribute(key.AsString(), v.KeyExpr.Range(), v.ValueExpr)
+			attrn.NameRange = v.ValueExpr.Range()
 
 			diag = EvaluateAttr(ctx, attrn, child)
 			if diag.HasErrors() {
 				diags = append(diags, diag...)
 			}
 
-			// if len(diags) == 0 {
-			// 	child.Meta = &SimpleNameMeta{attr.NameRange}
-			// }
+			if len(diags) == 0 {
+
+				if key.AsString() == "genz" {
+					fmt.Println("here")
+				}
+
+				child.Map[key.AsString()].Meta = &SimpleNameMeta{v.KeyExpr.Range()}
+			}
+		}
+
+		if len(diags) == 0 {
+			child.Meta = &SimpleNameMeta{attr.NameRange}
 		}
 
 		return diags
@@ -266,9 +275,26 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 
 	case *hclsyntax.FunctionCallExpr:
 
+		if len(e.Args) == 0 {
+			return EvaluateAttr(ctx, attr, parentctx)
+		}
+
+		if _, ok := e.Args[0].(*PreCalcExpr); ok {
+			val, diag := attr.Expr.Value(childctx)
+			if diag.HasErrors() {
+				return diag
+			}
+			val, _ = val.Unmark()
+			parentctx.ApplyKeyVal(attr.Name, val, attr.NameRange)
+			return hcl.Diagnostics{}
+		}
+		// val, _ = val.Unmark()
+
 		child := parentctx.NewChild(FuncKey+":"+e.StartRange().String(), e.StartRange())
 
 		diags := hcl.Diagnostics{}
+
+		newargs := map[hclsyntax.Expression]hclsyntax.Expression{}
 
 		for i, v := range e.Args {
 			attrn := NewFuncArgAttribute(i, v)
@@ -280,41 +306,24 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 			return diags
 		}
 
-		funct, ok := child.BuildStaticEvalContextWithFileData(attr.NameRange.Filename).Functions[e.Name]
-		if !ok {
-			return append(diags, &hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  fmt.Sprintf("function %s not found", e.Name),
-				Subject:  e.NameRange.Ptr(),
-			})
+		for k, v := range e.Args {
+			argsud := child.Map[fmt.Sprintf("func_arg:%d", k)]
+			// if e.Name == "merge" {
+			// 	for _, g := range argsud.Map {
+			// 		g.Meta = &SimpleNameMeta{v.Range()}
+			// 	}
+			// }
+			newargs[v] = &PreCalcExpr{
+				Expression: v,
+				Val:        argsud.ToValue().Mark(v.Range()),
+			}
 		}
 
-		val, _ := child.ToValue().Unmark()
-		argv := val.AsValueSlice()
-
-		val, err := funct.Call(argv)
-		if err != nil {
-			return append(diags, &hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  fmt.Sprintf("function %s failed", e.Name),
-				Subject:  e.NameRange.Ptr(),
-				Detail:   err.Error(),
-			})
+		for k, v := range e.Args {
+			e.Args[k] = newargs[v]
 		}
 
-		val, _ = val.Unmark()
-
-		parentctx.ApplyKeyVal(attr.Name, val, attr.NameRange)
-
-	// case *hclsyntax.TemplateExpr:
-	// 	diags := hcl.Diagnostics{}
-
-	// 	for _, v := range e.Parts {
-	// 		diag := EvaluateAttr(ctx, name, v, parentctx)
-	// 		diags = append(diags, diag...)
-	// 	}
-
-	// 	return diags
+		return EvaluateAttr(ctx, attr, parentctx)
 
 	default:
 
@@ -523,7 +532,7 @@ func NewFunctionMap() map[string]function.Function {
 		"concat":     stdlib.ConcatFunc,
 		"format":     stdlib.FormatFunc,
 		"join":       stdlib.JoinFunc,
-		"merge":      stdlib.MergeFunc,
+		"merge":      MergeFunc,
 		// "merge": function.New(&function.Spec{
 		// 	Description: `Merges a list of objects into a single object.`,
 		// 	VarParam: &function.Parameter{
@@ -712,54 +721,6 @@ func sanitizeFileName(str string) string {
 	return str
 }
 
-// func Listd(ectx *SudoContext, file string, name string) ([]cty.Value, error) {
-
-// 	ok := ectx.Root().Map[FilesKey].Map[file].BlocksOfType(name)
-// 	if len(ok) == 0 {
-// 		return nil, terrors.Errorf("block %s not found", name)
-// 	}
-
-// 	return ok.ToValue().AsValueSlice(), nil
-// }
-
-// func Mapd(ectx *SudoContext, file string, name string) (map[string]cty.Value, error) {
-// 	// data := ectx[FilesKey].AsValueMap()[file].AsValueMap()
-
-// 	// if data == nil {
-// 	// 	return nil, terrors.Errorf("file %s not found", file)
-// 	// }
-
-// 	// if name != "" {
-// 	// 	data = data[name].AsValueMap()
-
-// 	// 	if data == nil {
-// 	// 		return nil, terrors.Errorf("block %s not found", name)
-// 	// 	}
-// 	// }
-
-// 	// mapper := make(map[string]cty.Value)
-// 	// for k, v := range data {
-// 	// 	d := v.AsValueMap()
-// 	// 	if d[MetaKey] == cty.NilVal || d[MetaKey].AsValueMap()["block_type"] == cty.NilVal {
-// 	// 		return nil, terrors.Errorf("block %s:%s has no meta", name, k)
-// 	// 	}
-// 	// 	mapper[k] = v
-// 	// }
-
-// 	ok := ectx.Root().Map[FilesKey].Map[file].BlocksOfType(name)
-
-// 	if len(ok) == 0 {
-// 		return nil, terrors.Errorf("block %s not found", name)
-// 	}
-
-// 	resp := make(map[string]cty.Value, len(ok))
-// 	for _, v := range ok {
-// 		resp[v.ParentKey] = v.ToValue()
-// 	}
-
-// 	return resp, nil
-// }
-
 func MapdFile(ectx *SudoContext, file string) (map[string]cty.Value, error) {
 
 	return ectx.Root().Map[FilesKey].Map[file].ToValue().AsValueMap(), nil
@@ -782,12 +743,7 @@ func NewContextualizedFunctionMap(ectx *SudoContext, file string) map[string]fun
 		Type: function.StaticReturnType(cty.DynamicPseudoType),
 		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
 
-			// resp, err := Mapd(ectx, file, args[0].AsString())
-			// if err != nil {
-			// 	return cty.NilVal, err
-			// }
-
-			unmarked, _ := args[0].Unmark()
+			unmarked, mrk := args[0].Unmark()
 
 			ok := ectx.Root().Map[FilesKey].Map[file].BlocksOfType(unmarked.AsString())
 			if len(ok) == 0 {
@@ -799,7 +755,7 @@ func NewContextualizedFunctionMap(ectx *SudoContext, file string) map[string]fun
 				resp[v.ParentKey] = v.ToValue()
 			}
 
-			return cty.ObjectVal(resp), nil
+			return cty.ObjectVal(resp).WithMarks(mrk), nil
 		},
 	})
 
@@ -818,7 +774,7 @@ func NewContextualizedFunctionMap(ectx *SudoContext, file string) map[string]fun
 		Type: function.StaticReturnType(cty.DynamicPseudoType),
 		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
 
-			unmarked, _ := args[0].Unmark()
+			unmarked, mrk := args[0].Unmark()
 
 			ok := ectx.Root().Map[FilesKey].Map[file].BlocksOfType(unmarked.AsString())
 			if len(ok) == 0 {
@@ -830,7 +786,7 @@ func NewContextualizedFunctionMap(ectx *SudoContext, file string) map[string]fun
 				resp[i] = v.ToValue()
 			}
 
-			return cty.TupleVal(resp), nil
+			return cty.TupleVal(resp).WithMarks(mrk), nil
 		}},
 	)
 

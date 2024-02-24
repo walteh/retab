@@ -398,3 +398,128 @@ func Value(ctx *hcl.EvalContext, e *hclsyntax.FunctionCallExpr) (cty.Value, hcl.
 
 	return resultVal, diags
 }
+
+// MergeFunc constructs a function that takes an arbitrary number of maps or
+// objects, and returns a single value that contains a merged set of keys and
+// values from all of the inputs.
+//
+// If more than one given map or object defines the same key then the one that
+// is later in the argument sequence takes precedence.
+var MergeFunc = function.New(&function.Spec{
+	Description: `Merges all of the elements from the given maps into a single map, or the attributes from given objects into a single object.`,
+	Params:      []function.Parameter{},
+	VarParam: &function.Parameter{
+		Name:             "maps",
+		Type:             cty.DynamicPseudoType,
+		AllowDynamicType: true,
+		AllowNull:        true,
+		AllowMarked:      true,
+	},
+	Type: func(args []cty.Value) (cty.Type, error) {
+		// empty args is accepted, so assume an empty object since we have no
+		// key-value types.
+		if len(args) == 0 {
+			return cty.EmptyObject, nil
+		}
+
+		// collect the possible object attrs
+		attrs := map[string]cty.Type{}
+
+		first := cty.NilType
+		matching := true
+		attrsKnown := true
+		for i, arg := range args {
+			ty := arg.Type()
+			// any dynamic args mean we can't compute a type
+			if ty.Equals(cty.DynamicPseudoType) {
+				return cty.DynamicPseudoType, nil
+			}
+
+			// check for invalid arguments
+			if !ty.IsMapType() && !ty.IsObjectType() {
+				return cty.NilType, fmt.Errorf("arguments must be maps or objects, got %#v", ty.FriendlyName())
+			}
+			// marks are attached to values, so ignore while determining type
+			arg, _ = arg.Unmark()
+
+			switch {
+			case ty.IsObjectType() && !arg.IsNull():
+				for attr, aty := range ty.AttributeTypes() {
+					attrs[attr] = aty
+				}
+			case ty.IsMapType():
+				switch {
+				case arg.IsNull():
+					// pass, nothing to add
+				case arg.IsKnown():
+					ety := arg.Type().ElementType()
+					for it := arg.ElementIterator(); it.Next(); {
+						attr, _ := it.Element()
+						attrs[attr.AsString()] = ety
+					}
+				default:
+					// any unknown maps means we don't know all possible attrs
+					// for the return type
+					attrsKnown = false
+				}
+			}
+
+			// record the first argument type for comparison
+			if i == 0 {
+				first = arg.Type()
+				continue
+			}
+
+			if !ty.Equals(first) && matching {
+				matching = false
+			}
+		}
+
+		// the types all match, so use the first argument type
+		if matching {
+			return first, nil
+		}
+
+		// We had a mix of unknown maps and objects, so we can't predict the
+		// attributes
+		if !attrsKnown {
+			return cty.DynamicPseudoType, nil
+		}
+
+		return cty.Object(attrs), nil
+	},
+	// RefineResult: refineNonNull,
+	Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+		outputMap := make(map[string]cty.Value)
+		var markses []cty.ValueMarks // remember any marked maps/objects we find
+
+		for _, arg := range args {
+			if arg.IsNull() {
+				continue
+			}
+			arg, argMarks := arg.Unmark()
+			// if len(argMarks) > 0 {
+			// 	markses = append(markses, argMarks)
+			// }
+			for it := arg.ElementIterator(); it.Next(); {
+				k, v := it.Element()
+				if k.AsString() == "genz" {
+					fmt.Println("genz")
+				}
+				outputMap[k.AsString()] = v.WithMarks(argMarks)
+			}
+		}
+
+		switch {
+		case retType.IsMapType():
+			if len(outputMap) == 0 {
+				return cty.MapValEmpty(retType.ElementType()).WithMarks(markses...), nil
+			}
+			return cty.MapVal(outputMap).WithMarks(markses...), nil
+		case retType.IsObjectType(), retType.Equals(cty.DynamicPseudoType):
+			return cty.ObjectVal(outputMap).WithMarks(markses...), nil
+		default:
+			panic(fmt.Sprintf("unexpected return type: %#v", retType))
+		}
+	},
+})
