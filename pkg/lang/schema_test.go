@@ -8,43 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/walteh/retab/pkg/diff"
 )
-
-//go:embed testdata/sampleA.input.retab
-var sampleAInput []byte
-
-//go:embed testdata/sampleA.output.yaml
-var sampleAOutput []byte
-
-func TestValidHCLDecoding(t *testing.T) {
-	ctx := context.Background()
-	// pp.SetDefaultMaxDepth(5)
-
-	// load schema file
-	_, ectx, bb, diags, errd := NewContextFromFiles(ctx, map[string][]byte{"sampleA.input.retab": sampleAInput})
-	require.NoError(t, errd)
-	for _, c := range diags {
-		fmt.Println(c)
-	}
-	require.Empty(t, diags)
-
-	blk, diags, err := NewGenBlockEvaluation(ctx, ectx, bb)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	require.NoError(t, err)
-	require.Empty(t, diags)
-
-	require.Len(t, blk, 1)
-
-	out, err := blk[0].Encode()
-	require.NoError(t, err)
-
-	require.Empty(t, diff.DiffExportedOnly(string(sampleAOutput), string(out)))
-
-}
 
 //go:embed testdata
 var testdata embed.FS

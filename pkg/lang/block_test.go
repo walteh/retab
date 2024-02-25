@@ -123,9 +123,10 @@ func TestParseBlocksFromFile(t *testing.T) {
 				return
 			}
 
-			require.Len(t, be, 1)
+			require.Equal(t, 1, len(be))
+			require.NotNil(t, be["default.yaml"])
 
-			assert.Equal(t, tt.want.RawOutput, be[0].RawOutput)
+			assert.Equal(t, tt.want.RawOutput, be["default.yaml"].RawOutput)
 		})
 	}
 }
@@ -282,9 +283,10 @@ func TestParseBlocksWithReference(t *testing.T) {
 				return
 			}
 
-			require.Len(t, be, 1)
+			require.Equal(t, 1, len(be))
+			require.NotNil(t, be["default.yaml"])
 
-			assert.Equal(t, tt.want.RawOutput, be[0].RawOutput)
+			assert.Equal(t, tt.want.RawOutput, be["default.yaml"].RawOutput)
 
 			// assert.Empty(t, resp)
 

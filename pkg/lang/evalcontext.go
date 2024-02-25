@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -37,15 +38,19 @@ func NewContextFromFiles(ctx context.Context, fle map[string][]byte) (*hcl.File,
 		// will always work
 		bdy := hcldata.Body.(*hclsyntax.Body)
 
-		bodys[k] = bdy
+		bodys[sanitizeFileName(k)] = bdy
 	}
 
 	root := &BodyBuilder{files: bodys}
 
 	mectx := &SudoContext{
-		Parent:    nil,
-		ParentKey: "",
-		Map:       make(map[string]*SudoContext),
+		Parent:           nil,
+		ParentKey:        "",
+		Map:              make(map[string]*SudoContext),
+		UserFuncs:        map[string]function.Function{},
+		Meta:             &SimpleNameMeta{hcl.Range{}},
+		TmpFileLevelVars: map[string]cty.Value{},
+		isArray:          false,
 	}
 
 	diags := mectx.ApplyBody(ctx, root.NewRoot())
@@ -100,10 +105,6 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 
 				child.Map[key.AsString()].Meta = &SimpleNameMeta{v.KeyExpr.Range()}
 			}
-		}
-
-		if len(diags) == 0 {
-			child.Meta = &SimpleNameMeta{attr.NameRange}
 		}
 
 		return diags
@@ -204,71 +205,6 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 
 		return EvaluateAttr(ctx, attr, parentctx)
 
-		// e.ValExpr = &WrappedExpression{
-		// 	Node: e,
-		// 	Expr: e.ValExpr,
-		// 	Sudo: parentctx,
-		// }
-
-		// if e.KeyExpr == nil {
-		// 	// map
-		// } else {
-		// 	// touple
-		// 	vals := []cty.Value{}
-
-		// 	it := collVal.ElementIterator()
-
-		// 	known := true
-		// 	for it.Next() {
-		// 		k, v := it.Element()
-		// 		childCtx := ctx.NewChild()
-		// 		childCtx.Variables = map[string]cty.Value{}
-		// 		if e.KeyVar != "" {
-		// 			childCtx.Variables[e.KeyVar] = k
-		// 		}
-		// 		childCtx.Variables[e.ValVar] = v
-
-		// 		val, valDiags := e.ValExpr.Value(childCtx)
-		// 		diags = append(diags, valDiags...)
-		// 		vals = append(vals, val)
-		// 	}
-
-		// 	if !known {
-		// 		return cty.DynamicVal, diags
-		// 	}
-
-		// 	return cty.TupleVal(vals).WithMarks(marks...), diags
-		// }
-
-		// if e.CollExpr != nil {
-		// 	child := parentctx.NewChild(attr.Name, attr.NameRange)
-
-		// 	attrn := NewForAttribute(e.KeyVar, e.ValVar, e.CollExpr, e.ValExpr)
-
-		// 	diag := EvaluateAttr(ctx, attrn, child)
-		// 	diags = append(diags, diag...)
-
-		// 	// this is an array
-		// }
-
-		// if e.ValExpr != nil {
-		// 	// this is a map
-		// }
-
-		// // if e.KeyVar == "" {
-		// // 	// this is a map
-		// // 	// child := parentctx.NewChild(ArrKey, e.CollExpr.Range()
-		// // }
-
-		// child := parentctx.NewChild(ArrKey, e.Group)
-
-		// diags := hcl.Diagnostics{}
-
-		// val, diag := e.Val.Value(childctx)
-		// if diag.HasErrors() {
-		// 	return diag
-		// }
-
 	case *hclsyntax.FunctionCallExpr:
 
 		if len(e.Args) == 0 {
@@ -304,11 +240,6 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 
 		for k, v := range e.Args {
 			argsud := child.Map[fmt.Sprintf("func_arg:%d", k)]
-			// if e.Name == "merge" {
-			// 	for _, g := range argsud.Map {
-			// 		g.Meta = &SimpleNameMeta{v.Range()}
-			// 	}
-			// }
 			newargs[v] = &PreCalcExpr{
 				Expression: v,
 				Val:        argsud.ToValue().Mark(v.Range()),
@@ -426,6 +357,12 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 
 	child := parentctx.NewChild(block.Type, block.TypeRange).NewNestedChildBlockLabels(block.Labels, block.LabelRanges)
 
+	for _, attr := range block.Body.Blocks {
+		// just init the children so we know that one is missing if it is not completed
+		childr := child.NewChild(attr.Type, attr.TypeRange).NewNestedChildBlockLabels(attr.Labels, attr.LabelRanges)
+		childr.Meta = &IncomleteBlockMeta{attr}
+	}
+
 	userfuncs, _, diag := userfunc.DecodeUserFunctions(block.Body, "func", child.BuildStaticEvalContext)
 	if diag.HasErrors() {
 		return diag
@@ -451,46 +388,17 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 	if block.Type == "gen" {
 		um, _ := child.Map["path"].Value.Unmark()
 
-		// meta["ref"] = cty.StringVal(block.Labels[0])
-		// meta["source"] = cty.StringVal(sanatizeGenPath(child.Map["path"].Value.(*AttrMeta).Value.AsString()))
 		metad = &GenBlockMeta{
 			BasicBlockMeta: *blkmeta,
 			RootRelPath:    sanatizeGenPath(um.AsString()),
 		}
 	}
 
-	// meta["block_type"] = cty.StringVal(block.Type)
-	// meta["done"] = cty.BoolVal(true)
-	// meta["file_line_number"] = cty.NumberIntVal(int64(block.TypeRange.Start.Line))
-	// meta["file_line_position"] = cty.NumberIntVal(int64(block.TypeRange.Start.Byte))
-	// applyMetaFromRange(meta, block.TypeRange)
 	child.Meta = metad
-	// child.ApplyKeyVal(MetaKey, metad)
-	// child.Meta = metad
 
 	return hcl.Diagnostics{}
 }
 
-// func NewGetMetaKeyFunc(str string) function.Function {
-// 	return function.New(&function.Spec{
-// 		Description: fmt.Sprintf(`Gets the meta %s of an hcl block`, str),
-// 		Params: []function.Parameter{
-// 			{
-// 				Name:             "block",
-// 				Type:             cty.DynamicPseudoType,
-// 				AllowUnknown:     true,
-// 				AllowDynamicType: true,
-// 				AllowNull:        false,
-// 				AllowMarked:      true,
-// 			},
-// 		},
-// 		Type: function.StaticReturnType(cty.String),
-// 		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
-
-//				return cty.StringVal(mp[str].AsString()), nil
-//			},
-//		})
-//	}
 func NewFunctionMap() map[string]function.Function {
 
 	return map[string]function.Function{
@@ -573,10 +481,6 @@ func NewFunctionMap() map[string]function.Function {
 		"coelscelist":            stdlib.CoalesceListFunc,
 		"reverse":                stdlib.ReverseFunc,
 		"sort":                   stdlib.SortFunc,
-		// "ref":                    NewGetMetaKeyFunc("ref"),
-		// "source":                 NewGetMetaKeyFunc("source"),
-		// "output":                 NewGetMetaKeyFunc("root_relative_path"),
-		// "label":                  NewGetMetaKeyFunc("label"),
 		"base64encode": function.New(&function.Spec{
 			Description: `Returns the Base64-encoded version of the given string.`,
 			Params: []function.Parameter{
@@ -638,23 +542,21 @@ func NewFunctionMap() map[string]function.Function {
 }
 
 func sanitizeFileName(str string) string {
-	if !strings.HasPrefix(str, ".retab/") {
-		str = ".retab/" + str
-	}
+
+	str = filepath.Base(str)
 
 	if !strings.HasSuffix(str, ".retab") {
 		str = str + ".retab"
 	}
 
+	// return strings.TrimPrefix(str, ".retab/")
+
 	return str
 }
 
-func MapdFile(ectx *SudoContext, file string) (map[string]cty.Value, error) {
-
-	return ectx.Root().Map[FilesKey].Map[file].ToValue().AsValueMap(), nil
-}
-
 func NewContextualizedFunctionMap(ectx *SudoContext, file string) map[string]function.Function {
+
+	file = sanitizeFileName(file)
 
 	mapp := function.New(&function.Spec{
 		Description: `Returns a map of all blocks w\ the given label`,
@@ -673,9 +575,20 @@ func NewContextualizedFunctionMap(ectx *SudoContext, file string) map[string]fun
 
 			unmarked, mrk := args[0].Unmark()
 
-			ok := ectx.Root().Map[FilesKey].Map[file].BlocksOfType(unmarked.AsString())
+			fle := ectx.Root().Map[FilesKey].Map[file]
+
+			if fle == nil {
+				return cty.NilVal, terrors.Errorf("file %s not found", file)
+			}
+
+			ok := fle.BlocksOfType(unmarked.AsString())
 			if len(ok) == 0 {
 				return cty.NilVal, terrors.Errorf("block %s not found", unmarked.AsString())
+			}
+
+			err = CheckForAnyIncompletedBlock(ok)
+			if err != nil {
+				return cty.NilVal, err
 			}
 
 			resp := make(map[string]cty.Value, len(ok))
@@ -704,9 +617,21 @@ func NewContextualizedFunctionMap(ectx *SudoContext, file string) map[string]fun
 
 			unmarked, mrk := args[0].Unmark()
 
-			ok := ectx.Root().Map[FilesKey].Map[file].BlocksOfType(unmarked.AsString())
+			// we do not care whether the file is complete or not, just the internal blocks
+			fle := ectx.Root().Map[FilesKey].Map[file]
+
+			if fle == nil {
+				return cty.NilVal, terrors.Errorf("file %s not found", file)
+			}
+
+			ok := fle.BlocksOfType(unmarked.AsString())
 			if len(ok) == 0 {
 				return cty.NilVal, terrors.Errorf("block %s not found", unmarked.AsString())
+			}
+
+			err = CheckForAnyIncompletedBlock(ok)
+			if err != nil {
+				return cty.NilVal, err
 			}
 
 			resp := make([]cty.Value, len(ok))
@@ -732,9 +657,16 @@ func NewContextualizedFunctionMap(ectx *SudoContext, file string) map[string]fun
 		Type: function.StaticReturnType(cty.DynamicPseudoType),
 		Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
 
-			resp := ectx.Root().Map[FilesKey].Map[sanitizeFileName(args[0].AsString())]
+			unmarked, mrk := args[0].Unmark()
 
-			return resp.ToValueWithExtraContext(), nil
+			fne := sanitizeFileName(unmarked.AsString())
+
+			resp, err := CheckForCompletedBlock(ectx.Map[FilesKey], fne)
+			if err != nil {
+				return cty.NilVal, err
+			}
+
+			return resp.ToValueWithExtraContext().WithMarks(mrk), nil
 		},
 	})
 
@@ -744,6 +676,37 @@ func NewContextualizedFunctionMap(ectx *SudoContext, file string) map[string]fun
 		"alloflist":  list,
 		"allofarray": list,
 	}
+}
+
+func CheckForCompletedBlock(ectx *SudoContext, file string) (*SudoContext, error) {
+	resp := ectx.Map[file]
+
+	if resp == nil {
+		options := []string{}
+		for k := range ectx.Map {
+			options = append(options, k)
+		}
+		return nil, terrors.Errorf("block %q not found: (options: %v)", file, options)
+	}
+
+	_, ok := resp.Meta.(*IncomleteBlockMeta)
+	if ok {
+		return nil, terrors.Errorf("the block %q is not complete", file)
+	}
+	return resp, nil
+}
+
+func CheckForAnyIncompletedBlock(ectx []*SudoContext) error {
+
+	for _, v := range ectx {
+		// fmt.Println(v.ParentKey, reflect.TypeOf(v.Meta).String())
+		_, okd := v.Meta.(*IncomleteBlockMeta)
+		if okd {
+			return terrors.Errorf("the block %s is not complete", v.ParentKey)
+		}
+	}
+
+	return nil
 }
 
 func NewDynamicContextualizedFunctionMap(ectx *SudoContext) map[string]function.Function {

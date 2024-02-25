@@ -20,6 +20,8 @@ type Meta interface {
 var (
 	_ Meta      = (*BasicBlockMeta)(nil)
 	_ Meta      = (*AttrMeta)(nil)
+	_ Meta      = (*IncomleteBlockMeta)(nil)
+	_ BlockMeta = (*IncomleteBlockMeta)(nil)
 	_ Meta      = (*GenBlockMeta)(nil)
 	_ Meta      = (*SimpleNameMeta)(nil)
 	_ BlockMeta = (*BasicBlockMeta)(nil)
@@ -44,13 +46,31 @@ func (me *BasicBlockMeta) Range() hcl.Range {
 	return me.HCL.TypeRange
 }
 
+type ignoreFromYaml struct{}
+
 func (me *BasicBlockMeta) Variables() map[string]cty.Value {
 	vals := make(map[string]cty.Value)
 
-	vals["label"] = cty.StringVal(strings.Join(me.HCL.Labels, "."))
-	vals["type"] = cty.StringVal(me.HCL.Type)
+	vals["label"] = cty.StringVal(strings.Join(me.HCL.Labels, ".")).Mark(&ignoreFromYaml{})
+	vals["type"] = cty.StringVal(me.HCL.Type).Mark(&ignoreFromYaml{})
 
 	return vals
+}
+
+type IncomleteBlockMeta struct {
+	HCL *hclsyntax.Block
+}
+
+func (me *IncomleteBlockMeta) Block() *hclsyntax.Block {
+	return me.HCL
+}
+
+func (me *IncomleteBlockMeta) Range() hcl.Range {
+	return me.HCL.TypeRange
+}
+
+func (me *IncomleteBlockMeta) Variables() map[string]cty.Value {
+	return map[string]cty.Value{}
 }
 
 type AttrMeta struct {
@@ -100,8 +120,8 @@ func (me *GenBlockMeta) Block() *hclsyntax.Block {
 func (me *GenBlockMeta) Variables() map[string]cty.Value {
 	vals := me.BasicBlockMeta.Variables()
 
-	vals["resolved_output"] = cty.StringVal(me.RootRelPath)
-	vals["source"] = cty.StringVal(me.HCL.TypeRange.Filename)
+	vals["resolved_output"] = cty.StringVal(me.RootRelPath).Mark(&ignoreFromYaml{})
+	vals["source"] = cty.StringVal(me.HCL.TypeRange.Filename).Mark(&ignoreFromYaml{})
 
 	return vals
 }

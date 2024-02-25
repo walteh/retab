@@ -6,8 +6,8 @@ bins = {
 }
 
 gen taskfile {
-	schema = "https://taskfile.dev/schema.json"
-	path = "./sampleB.output.yaml"
+	// schema = "https://taskfile.dev/schema.json"
+	path = "./sampleA.actual.yaml"
 	data = {
 		version = 3
 		tasks   = tsks

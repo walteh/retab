@@ -3,6 +3,7 @@ package lang
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -28,7 +29,6 @@ type SudoContext struct {
 func (me *SudoContext) IdentifyChild(strs ...string) *SudoContext {
 	wrk := me
 	for _, v := range strs {
-		fmt.Println(v)
 		wrkd, ok := wrk.Map[v]
 		if !ok {
 			return nil
@@ -200,7 +200,6 @@ func (me *SudoContext) NewNestedChildBlockLabels(key []string, ranges []hcl.Rang
 func (me *SudoContext) NewChild(key string, rnge hcl.Range) *SudoContext {
 
 	if me.Map[key] != nil {
-		me.Map[key].Meta = &SimpleNameMeta{rnge}
 		return me.Map[key]
 	}
 
@@ -242,7 +241,11 @@ func (wc *SudoContext) GetAllTemporaryFileLevelVars() map[string]cty.Value {
 
 func (wc *SudoContext) BuildStaticEvalContextWithFileData(file string) *hcl.EvalContext {
 
-	wrk := wc.Root().Map[FilesKey].Map[file].BuildStaticEvalContext()
+	wrkd := wc.Root().Map[FilesKey].Map[sanitizeFileName(file)]
+	if wrkd == nil {
+		panic(fmt.Sprintf("file %s not found", file))
+	}
+	wrk := wrkd.BuildStaticEvalContext()
 
 	for k, v := range wc.Functions() {
 		wrk.Functions[k] = v
@@ -271,62 +274,23 @@ func (wc *SudoContext) Root() *SudoContext {
 	return wc.Parent.Root()
 }
 
-func ToYAML(ctx *SudoContext) (yaml.MapSlice, error) {
-	cnt := yaml.MapSlice{}
+func (me *SudoContext) ToYAML() (yaml.MapSlice, error) {
+	resp := yaml.MapSlice{}
 
-	slc, err := ctx.ToYAML()
+	item, err := UnmarkToSortedArray(me.ToValue())
 	if err != nil {
 		return nil, err
 	}
 
-	if x, ok := slc.(yaml.MapSlice); ok {
-		cnt = append(cnt, x...)
-	}
-	if x, ok := slc.(yaml.MapItem); ok {
-		cnt = append(cnt, x)
+	if x, ok := item.(yaml.MapSlice); ok {
+		resp = append(resp, x...)
 	}
 
-	return cnt, nil
-}
-func (me *SudoContext) ToYAML() (any, error) {
-	if me.Value != nil {
-		// if val, ok := me.Value.(*AttrMeta); ok {
-		enc, err := noMetaJsonEncode(*me.Value)
-		if err != nil {
-			return nil, err
-		}
-		return enc, nil
-		// }
+	if x, ok := item.(yaml.MapItem); ok {
+		resp = append(resp, x)
 	}
 
-	if me.isArray {
-		lst := me.List()
-		out := make([]any, len(lst))
-		for i, v := range lst {
-			enc, err := v.ToYAML()
-			if err != nil {
-				return nil, err
-			}
-			out[i] = enc
-		}
-		return out, nil
-	} else {
-		wrk := make(yaml.MapSlice, 0)
-
-		list := me.List()
-		for _, g := range list {
-			if g.ParentKey == MetaKey || strings.Contains(g.ParentKey, FuncKey) {
-				continue
-			}
-			yml, err := g.ToYAML()
-			if err != nil {
-				return nil, err
-			}
-			wrk = append(wrk, yaml.MapItem{Key: g.ParentKey, Value: yml})
-		}
-
-		return wrk, nil
-	}
+	return resp, nil
 }
 
 func (me *SudoContext) BlocksOfType(name string) []*SudoContext {
@@ -338,6 +302,7 @@ func (me *SudoContext) BlocksOfType(name string) []*SudoContext {
 					d = d.List()[0]
 				}
 				if bm, ok := d.Meta.(BlockMeta); ok {
+					// fmt.Println(name, bm.Block().Labels, reflect.TypeOf(bm).String())
 					if bm.Block().Type == name {
 						blks = append(blks, d)
 					}
@@ -358,9 +323,10 @@ func (me *SudoContext) GetAllFileLevelBlocksOfType(name string) []*SudoContext {
 }
 
 type Sorter struct {
-	Range []hcl.Range
-	Key   string
-	Value cty.Value
+	Range   []hcl.Range
+	Key     string
+	Value   cty.Value
+	Ignored bool
 }
 
 func (me *Sorter) Array() []hcl.Range {
@@ -372,13 +338,18 @@ func valRange(key string, me cty.Value) *Sorter {
 	me, r := me.Unmark()
 
 	if len(r) == 0 {
-		panic(fmt.Sprintf("no range found for %s", me.GoString()))
+		panic(fmt.Sprintf("no range or ignore found for %s", me.GoString()))
 	}
 
 	ranges := make([]hcl.Range, 0, len(r))
 	for z := range r {
-		if intre, ok := z.(hcl.Range); ok {
-			ranges = append(ranges, intre)
+		switch e := z.(type) {
+		case hcl.Range:
+			ranges = append(ranges, e)
+		case ignoreFromYaml, *ignoreFromYaml:
+			return &Sorter{Ignored: true, Key: key, Value: me}
+		default:
+			panic(fmt.Sprintf("unexpected type %s", reflect.TypeOf(e).String()))
 		}
 	}
 
@@ -408,6 +379,10 @@ func sortem(val cty.Value) []*Sorter {
 			out = append(out, rng)
 		}
 	}
+
+	out = slices.DeleteFunc(out, func(a *Sorter) bool {
+		return a.Ignored
+	})
 
 	slices.SortFunc(out, func(a, b *Sorter) int {
 		for i, x := range a.Range {

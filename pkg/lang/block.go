@@ -100,25 +100,12 @@ func evalGenBlock(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (re
 			blk.Schema = unrk.AsString()
 		case "data":
 
-			cnt := yaml.MapSlice{}
-
-			// sctx.Map["data"].ToValue()
-
-			dat := sctx.Map["data"].ToValue()
-
-			slc, err := UnmarkToSortedArray(dat)
+			dat, err := sctx.Map["data"].ToYAML()
 			if err != nil {
 				return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem encoding yaml")
 			}
 
-			if x, ok := slc.(yaml.MapSlice); ok {
-				cnt = append(cnt, x...)
-			}
-			if x, ok := slc.(yaml.MapItem); ok {
-				cnt = append(cnt, x)
-			}
-
-			mar, err := json.Marshal(cnt)
+			mar, err := json.Marshal(dat)
 			if err != nil {
 				return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem encoding json")
 			}
@@ -129,7 +116,7 @@ func evalGenBlock(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (re
 				return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem encoding json")
 			}
 
-			blk.OrderedOutput = cnt
+			blk.OrderedOutput = dat
 
 			blk.RawOutput = unmar
 
@@ -174,7 +161,7 @@ func evalGenBlock(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (re
 
 }
 
-func NewGenBlockEvaluation(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (res []*FileBlockEvaluation, diags hcl.Diagnostics, err error) {
+func NewGenBlockEvaluation(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (res map[string]*FileBlockEvaluation, diags hcl.Diagnostics, err error) {
 
 	fblocks := sctx.GetAllFileLevelBlocksOfType("gen")
 
@@ -187,7 +174,7 @@ func NewGenBlockEvaluation(ctx context.Context, sctx *SudoContext, file *BodyBui
 		}}, nil
 	}
 
-	output := make([]*FileBlockEvaluation, 0)
+	output := make(map[string]*FileBlockEvaluation, 0)
 
 	for _, fblock := range fblocks {
 		res, diags, err := evalGenBlock(ctx, fblock, file)
@@ -195,7 +182,16 @@ func NewGenBlockEvaluation(ctx context.Context, sctx *SudoContext, file *BodyBui
 			return nil, diags, err
 		}
 
-		output = append(output, res)
+		if output[res.Path] != nil {
+			return nil, hcl.Diagnostics{&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "duplicate path",
+				Detail:   "a file must have unique paths",
+				Subject:  &fblock.Meta.(*GenBlockMeta).HCL.TypeRange,
+			}}, nil
+		}
+
+		output[res.Path] = res
 	}
 
 	return output, diags, nil

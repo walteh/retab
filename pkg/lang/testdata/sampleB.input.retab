@@ -1,0 +1,12 @@
+gen another {
+	// schema = "https://taskfile.dev/schema.json"
+	path = "./sampleB.actual.yaml"
+	data = {
+		g = merge(
+			{ x = "y" },
+			{ a = file("sampleA.input").gen.taskfile },
+			{ b = "c" }
+			)
+	}
+}
+

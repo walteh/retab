@@ -15,8 +15,7 @@ import (
 	"github.com/walteh/yaml"
 )
 
-func ProccessBulk(ctx context.Context, fs afero.Fs, files []string) ([]*FileBlockEvaluation, hcl.Diagnostics, error) {
-	var out []*FileBlockEvaluation
+func ProccessBulk(ctx context.Context, fs afero.Fs, files []string) (map[string]*FileBlockEvaluation, hcl.Diagnostics, error) {
 
 	fles := make(map[string][]byte)
 
@@ -36,7 +35,7 @@ func ProccessBulk(ctx context.Context, fs afero.Fs, files []string) ([]*FileBloc
 		return nil, diags, err
 	}
 
-	out, diags, err = NewGenBlockEvaluation(ctx, full, bb)
+	out, diags, err := NewGenBlockEvaluation(ctx, full, bb)
 	if err != nil || diags.HasErrors() {
 		return nil, diags, err
 	}
@@ -44,7 +43,7 @@ func ProccessBulk(ctx context.Context, fs afero.Fs, files []string) ([]*FileBloc
 	return out, diags, nil
 }
 
-func Process(ctx context.Context, fs afero.Fs, file string) ([]*FileBlockEvaluation, hcl.Diagnostics, error) {
+func Process(ctx context.Context, fs afero.Fs, file string) (map[string]*FileBlockEvaluation, hcl.Diagnostics, error) {
 	return ProccessBulk(ctx, fs, []string{file})
 }
 

@@ -1,0 +1,29 @@
+TOOLS_DIR = "tools"
+
+GO_PACKAGE = "github.com/walteh/retab"
+
+pkgs = {
+	"pkg/configuration" = ["Configuration"]
+}
+
+gen mockery {
+	schema = ""
+	path   = "../.mockery.yaml"
+	data = {
+		inpackage     = false
+		with-expecter = true
+		testonly      = false
+		exported      = true
+		outpkg        = "mockery"
+		filename      = "{{.InterfaceName}}.{{.PackageName}}.mockery.go"
+		mockname      = "Mock{{.InterfaceName}}_{{.PackageName}}"
+		packages = {
+			for pkg, interfaces in pkgs : "${GO_PACKAGE}/${pkg}" => {
+				interfaces = {
+					for interface in interfaces : interface => {}
+				}
+			}
+		}
+	}
+}
+
