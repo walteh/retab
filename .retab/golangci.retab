@@ -1,0 +1,117 @@
+
+gen golangci {
+	schema = "https://json.schemastore.org/golangci-lint.json"
+	path   = "../.golangci.yaml"
+	data = {
+		linters = {
+			enable = [
+				"gofmt",
+				"govet",
+				"depguard",
+				"goimports",
+				"misspell",
+				"unused",
+				"revive",
+				"staticcheck",
+				"typecheck",
+				"nolintlint",
+				"gosec",
+				"forbidigo",
+				"bodyclose",
+				"depguard",
+				"errcheck",
+				"gofmt",
+				"goimports",
+				"gosimple",
+				"govet",
+				"ineffassign",
+				"misspell",
+				"nakedret",
+				"prealloc",
+				"revive",
+				"staticcheck",
+				"stylecheck",
+				"typecheck",
+				"unconvert",
+				"unparam",
+				"unused",
+				"zerologlint"
+			]
+			disable-all = true
+		}
+		linters-settings = {
+			depguard = {
+				rules = {
+					include-go-root = {},
+					pacakges = {
+						deny = [
+							{
+								pkg  = "io/ioutil",
+								desc = "deprecated, use io & os"
+							},
+							{
+								pkg  = "github.com/pkg/errors",
+								desc = "unmaintained, use github.com/go-faster/errors"
+							},
+							{
+								pkg  = "golang.org/x/xerrors",
+								desc = "unmaintained, use github.com/go-faster/errors"
+							}
+						]
+					}
+				}
+			},
+			forbidigo = {
+				forbid = [
+					"^fmt\\.Errorf(# use errors\\.Errorf instead)?$"
+				]
+			},
+			gosec = {
+				excludes = [
+					"G204",
+					"G402"
+				],
+				config = {
+					G306 = "0644"
+				}
+			}
+		}
+		issues = {
+			exclude-rules = [
+				{
+					linters = [
+						"revive"
+					],
+					text = "stutters"
+				},
+				{
+					linters = [
+						"revive"
+					],
+					text = "underscore in package name"
+				},
+				{
+					linters = [
+						"stylecheck"
+					],
+					text = "underscores in package name"
+				}
+			]
+		}
+		presets = [
+			"bugs",
+			"comment",
+			"complexity",
+			"error",
+			"format",
+			"import",
+			"metalinter",
+			"module",
+			"performance",
+			"sql",
+			"style",
+			"test",
+			"unused"
+		]
+	}
+}
