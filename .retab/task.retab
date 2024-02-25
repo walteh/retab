@@ -7,6 +7,8 @@ bins = {
 	"gotestsum"     = "gotest.tools/gotestsum",
 	"golangci-lint" = "github.com/golangci/golangci-lint/cmd/golangci-lint",
 }
+
+// gen = "hello"
 //
 gen taskfile {
 	schema = "https://taskfile.dev/schema.json"

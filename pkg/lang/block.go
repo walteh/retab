@@ -163,7 +163,10 @@ func evalGenBlock(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (re
 
 func NewGenBlockEvaluation(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (res map[string]*FileBlockEvaluation, diags hcl.Diagnostics, err error) {
 
-	fblocks := sctx.GetAllFileLevelBlocksOfType("gen")
+	fblocks, err := sctx.GetAllFileLevelBlocksOfType("gen")
+	if err != nil {
+		return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem getting gen blocks")
+	}
 
 	if len(fblocks) == 0 {
 		return nil, hcl.Diagnostics{&hcl.Diagnostic{

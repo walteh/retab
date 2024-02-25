@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/walteh/terrors"
 	"github.com/walteh/yaml"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -44,8 +45,18 @@ func (me *SudoContext) ApplyValue(met cty.Value) {
 	me.Value = &met
 }
 
-func (me *SudoContext) ApplyKeyVal(key string, val cty.Value, r hcl.Range) {
-	me.NewChild(key, r).ApplyValue(val)
+func (me *SudoContext) ApplyKeyVal(key string, val cty.Value, r hcl.Range) hcl.Diagnostics {
+	child, err := me.NewNonBlockChild(key, r)
+	if err != nil {
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "unable to apply key value, key already exists as block",
+			Detail:   err.Error(),
+			Subject:  &r,
+		}}
+	}
+	child.ApplyValue(val)
+	return nil
 }
 
 func (parent *SudoContext) ApplyBody(ctx context.Context, body *hclsyntax.Body) hcl.Diagnostics {
@@ -189,17 +200,56 @@ func (me *SudoContext) Functions() map[string]function.Function {
 	return fn
 }
 
-func (me *SudoContext) NewNestedChildBlockLabels(key []string, ranges []hcl.Range) *SudoContext {
-	wrk := me
-	for i, v := range key {
-		wrk = wrk.NewChild(v, ranges[i])
+func (me *SudoContext) NewBlockLabelChild(label string, rnge hcl.Range) (*SudoContext, error) {
+	wrk := me.NewChild(label, rnge)
+	_, isBlock := wrk.Meta.(*BlockLabelMeta)
+	isNew := wrk.Meta.Range().String() == rnge.String()
+
+	if !isNew && !isBlock {
+		return nil, terrors.Errorf("block %q already exists at %s - cant create at %s", label, wrk.Meta.Range().String(), rnge.String())
 	}
-	return wrk
+
+	wrk.Meta = &BlockLabelMeta{rnge}
+
+	return wrk, nil
+}
+
+func (me *SudoContext) NewBlockChild(typ *hclsyntax.Block) (*SudoContext, error) {
+	wrk, err := me.NewBlockLabelChild(typ.Type, typ.TypeRange)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, v := range typ.LabelRanges {
+		wrk = wrk.NewChild(typ.Labels[i], v)
+		wrk.Meta = &BlockLabelMeta{v}
+	}
+
+	for _, v := range typ.Body.Blocks {
+		_, err := wrk.NewBlockChild(v)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	wrk.Meta = &IncomleteBlockMeta{typ}
+
+	return wrk, nil
+}
+
+func (me *SudoContext) NewNonBlockChild(key string, rnge hcl.Range) (*SudoContext, error) {
+	wrk := me.NewChild(key, rnge)
+	if _, ok := wrk.Meta.(*BlockLabelMeta); ok {
+		return nil, terrors.Errorf("block %q already exists at %s - cant create at %s", key, wrk.Meta.Range().String(), rnge.String())
+	}
+
+	return wrk, nil
 }
 
 func (me *SudoContext) NewChild(key string, rnge hcl.Range) *SudoContext {
 
 	if me.Map[key] != nil {
+
 		return me.Map[key]
 	}
 
@@ -293,7 +343,7 @@ func (me *SudoContext) ToYAML() (yaml.MapSlice, error) {
 	return resp, nil
 }
 
-func (me *SudoContext) BlocksOfType(name string) []*SudoContext {
+func (me *SudoContext) BlocksOfType(name string) ([]*SudoContext, error) {
 	blks := []*SudoContext{}
 	for k, v := range me.Map {
 		if k == name {
@@ -306,20 +356,26 @@ func (me *SudoContext) BlocksOfType(name string) []*SudoContext {
 					if bm.Block().Type == name {
 						blks = append(blks, d)
 					}
+				} else {
+					return nil, terrors.Errorf("unable to find blocks  of type %q - item at %s is not a block", name, v.Meta.Range().String())
 				}
 			}
 		}
 	}
-	return blks
+	return blks, nil
 }
 
-func (me *SudoContext) GetAllFileLevelBlocksOfType(name string) []*SudoContext {
+func (me *SudoContext) GetAllFileLevelBlocksOfType(name string) ([]*SudoContext, error) {
 	files := me.Map[FilesKey].Map
 	out := []*SudoContext{}
 	for _, v := range files {
-		out = append(out, v.BlocksOfType(name)...)
+		fleblks, err := v.BlocksOfType(name)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, fleblks...)
 	}
-	return out
+	return out, nil
 }
 
 type Sorter struct {

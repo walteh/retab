@@ -82,7 +82,17 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 	switch e := attr.Expr.(type) {
 	case *hclsyntax.ObjectConsExpr:
 
-		child := parentctx.NewChild(attr.Name, attr.NameRange)
+		child, err := parentctx.NewNonBlockChild(attr.Name, attr.NameRange)
+		if err != nil {
+			return hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "block already exists with this name",
+					Detail:   err.Error(),
+					Subject:  &attr.NameRange,
+				},
+			}
+		}
 
 		diags := hcl.Diagnostics{}
 		for _, v := range e.Items {
@@ -111,7 +121,17 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 
 	case *hclsyntax.TupleConsExpr:
 
-		child := parentctx.NewChild(attr.Name, attr.NameRange)
+		child, err := parentctx.NewNonBlockChild(attr.Name, attr.NameRange)
+		if err != nil {
+			return hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "block already exists with this name",
+					Detail:   err.Error(),
+					Subject:  &attr.NameRange,
+				},
+			}
+		}
 		child.isArray = true
 
 		diags := hcl.Diagnostics{}
@@ -163,12 +183,12 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 				return diag
 			}
 			val, _ = val.Unmark()
-			parentctx.ApplyKeyVal(attr.Name, val, attr.NameRange)
-			return hcl.Diagnostics{}
+			return parentctx.ApplyKeyVal(attr.Name, val, attr.NameRange)
 		}
 
 		nme := "for:" + e.StartRange().String()
 
+		// no need to check if this is already a block, it is not possible
 		child := parentctx.NewChild(nme, e.StartRange())
 
 		diags := hcl.Diagnostics{}
@@ -217,8 +237,7 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 				return diag
 			}
 			val, _ = val.Unmark()
-			parentctx.ApplyKeyVal(attr.Name, val, attr.NameRange)
-			return hcl.Diagnostics{}
+			return parentctx.ApplyKeyVal(attr.Name, val, attr.NameRange)
 		}
 		// val, _ = val.Unmark()
 
@@ -262,10 +281,9 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 		// we want to remark this value with the name attirbutes
 		val, _ = val.Unmark()
 
-		parentctx.ApplyKeyVal(attr.Name, val, attr.NameRange)
+		return parentctx.ApplyKeyVal(attr.Name, val, attr.NameRange)
 	}
 
-	return hcl.Diagnostics{}
 }
 
 func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parentctx *SudoContext) hcl.Diagnostics {
@@ -355,13 +373,26 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 	// strs := []string{block.Type}
 	// strs = append(strs, block.Labels...)
 
-	child := parentctx.NewChild(block.Type, block.TypeRange).NewNestedChildBlockLabels(block.Labels, block.LabelRanges)
-
-	for _, attr := range block.Body.Blocks {
-		// just init the children so we know that one is missing if it is not completed
-		childr := child.NewChild(attr.Type, attr.TypeRange).NewNestedChildBlockLabels(attr.Labels, attr.LabelRanges)
-		childr.Meta = &IncomleteBlockMeta{attr}
+	child, err := parentctx.NewBlockChild(block)
+	if err != nil {
+		return hcl.Diagnostics{
+			{
+				Severity: hcl.DiagError,
+				Summary:  "failed to create block",
+				Detail:   err.Error(),
+				Subject:  &block.TypeRange,
+			},
+		}
 	}
+
+	// for _, attr := range block.Body.Blocks {
+	// 	// just init the children so we know that one is missing if it is not completed
+	// 	childr := child.NewChild(attr.Type, attr.TypeRange).NewNestedChildBlockLabels(attr.Labels, attr.LabelRanges)
+
+	// 	if childr.Meta
+
+	// 	childr.Meta = &IncomleteBlockMeta{attr}
+	// }
 
 	userfuncs, _, diag := userfunc.DecodeUserFunctions(block.Body, "func", child.BuildStaticEvalContext)
 	if diag.HasErrors() {
@@ -581,7 +612,10 @@ func NewContextualizedFunctionMap(ectx *SudoContext, file string) map[string]fun
 				return cty.NilVal, terrors.Errorf("file %s not found", file)
 			}
 
-			ok := fle.BlocksOfType(unmarked.AsString())
+			ok, err := fle.BlocksOfType(unmarked.AsString())
+			if err != nil {
+				return cty.NilVal, err
+			}
 			if len(ok) == 0 {
 				return cty.NilVal, terrors.Errorf("block %s not found", unmarked.AsString())
 			}
@@ -624,7 +658,10 @@ func NewContextualizedFunctionMap(ectx *SudoContext, file string) map[string]fun
 				return cty.NilVal, terrors.Errorf("file %s not found", file)
 			}
 
-			ok := fle.BlocksOfType(unmarked.AsString())
+			ok, err := fle.BlocksOfType(unmarked.AsString())
+			if err != nil {
+				return cty.NilVal, err
+			}
 			if len(ok) == 0 {
 				return cty.NilVal, terrors.Errorf("block %s not found", unmarked.AsString())
 			}
