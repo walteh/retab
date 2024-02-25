@@ -41,7 +41,7 @@ func TestRetab3Schema(t *testing.T) {
 	require.Empty(t, diags)
 
 	_, diags, err = NewGenBlockEvaluation(ctx, ectx, got)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	for _, c := range diags {
 		fmt.Println(c)
 	}

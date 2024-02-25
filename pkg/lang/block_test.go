@@ -124,9 +124,9 @@ func TestParseBlocksFromFile(t *testing.T) {
 			}
 
 			require.Equal(t, 1, len(be))
-			require.NotNil(t, be["default.yaml"])
+			require.NotNil(t, be[".github/workflows/default.yaml"])
 
-			assert.Equal(t, tt.want.RawOutput, be["default.yaml"].RawOutput)
+			assert.Equal(t, tt.want.RawOutput, be[".github/workflows/default.yaml"].RawOutput)
 		})
 	}
 }
@@ -236,7 +236,7 @@ func TestParseBlocksWithReference(t *testing.T) {
 					Summary:  "missing properties: 'on', 'jobs'",
 					Detail:   "/required",
 					Subject: &hcl.Range{
-						Filename: "test.hcl",
+						Filename: "test.hcl.retab",
 						Start: hcl.Pos{
 							Line:   5,
 							Column: 9,
@@ -279,14 +279,18 @@ func TestParseBlocksWithReference(t *testing.T) {
 			}
 			assert.ElementsMatch(t, tt.schemaDiags, diags)
 
+			// for _, diag := range tt.schemaDiags {
+			// 	assert.Contains(t, diags.Errs(), error(diag))
+			// }
+
 			if len(diags) > 0 {
 				return
 			}
 
 			require.Equal(t, 1, len(be))
-			require.NotNil(t, be["default.yaml"])
+			require.NotNil(t, be[".github/workflows/default.yaml"])
 
-			assert.Equal(t, tt.want.RawOutput, be["default.yaml"].RawOutput)
+			assert.Equal(t, tt.want.RawOutput, be[".github/workflows/default.yaml"].RawOutput)
 
 			// assert.Empty(t, resp)
 

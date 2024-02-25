@@ -136,7 +136,7 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file *BodyBui
 				&hcl.Diagnostic{
 					Severity: hcl.DiagError,
 					Summary:  "Invalid expression",
-					Detail:   "unable to find instance loc",
+					Detail:   err.Error(),
 					Subject:  e.Range().Ptr(),
 				},
 			}

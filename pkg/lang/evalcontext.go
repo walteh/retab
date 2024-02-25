@@ -60,7 +60,7 @@ func NewContextFromFiles(ctx context.Context, fle map[string][]byte) (*hcl.File,
 }
 
 func NewContextFromFile(ctx context.Context, fle []byte, name string) (*hcl.File, *SudoContext, *BodyBuilder, hcl.Diagnostics, error) {
-	return NewContextFromFiles(ctx, map[string][]byte{name: fle})
+	return NewContextFromFiles(ctx, map[string][]byte{sanitizeFileName(name): fle})
 }
 
 const ArrKey = "____arr"
