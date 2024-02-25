@@ -1,4 +1,4 @@
-// Copyright 2021-2023 The Connect Authors
+// Copyright 2021-2024 The Connect Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package connect
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -45,7 +46,7 @@ type envelope struct {
 	offset int64
 }
 
-var _ messsagePayload = (*envelope)(nil)
+var _ messagePayload = (*envelope)(nil)
 
 func (e *envelope) IsSet(flag uint8) bool {
 	return e.Flags&flag == flag
@@ -117,6 +118,7 @@ func (e *envelope) Len() int {
 }
 
 type envelopeWriter struct {
+	ctx              context.Context //nolint:containedctx
 	sender           messageSender
 	codec            Codec
 	compressMinBytes int
@@ -208,7 +210,7 @@ func (w *envelopeWriter) marshal(message any) *Error {
 
 func (w *envelopeWriter) write(env *envelope) *Error {
 	if _, err := w.sender.Send(env); err != nil {
-		err = wrapIfContextError(err)
+		err = wrapIfContextDone(w.ctx, err)
 		if connectErr, ok := asError(err); ok {
 			return connectErr
 		}
@@ -218,7 +220,9 @@ func (w *envelopeWriter) write(env *envelope) *Error {
 }
 
 type envelopeReader struct {
+	ctx             context.Context //nolint:containedctx
 	reader          io.Reader
+	bytesRead       int64 // detect trailers-only gRPC responses
 	codec           Codec
 	last            envelope
 	compressionPool *compressionPool
@@ -228,11 +232,21 @@ type envelopeReader struct {
 
 func (r *envelopeReader) Unmarshal(message any) *Error {
 	buffer := r.bufferPool.Get()
-	defer r.bufferPool.Put(buffer)
+	var dontRelease *bytes.Buffer
+	defer func() {
+		if buffer != dontRelease {
+			r.bufferPool.Put(buffer)
+		}
+	}()
 
 	env := &envelope{Data: buffer}
 	err := r.Read(env)
 	switch {
+	case err == nil && env.IsSet(flagEnvelopeCompressed) && r.compressionPool == nil:
+		return errorf(
+			CodeInternal,
+			"protocol error: sent compressed message without compression support",
+		)
 	case err == nil &&
 		(env.Flags == 0 || env.Flags == flagEnvelopeCompressed) &&
 		env.Data.Len() == 0:
@@ -249,14 +263,12 @@ func (r *envelopeReader) Unmarshal(message any) *Error {
 
 	data := env.Data
 	if data.Len() > 0 && env.IsSet(flagEnvelopeCompressed) {
-		if r.compressionPool == nil {
-			return errorf(
-				CodeInvalidArgument,
-				"protocol error: sent compressed message without compression support",
-			)
-		}
 		decompressed := r.bufferPool.Get()
-		defer r.bufferPool.Put(decompressed)
+		defer func() {
+			if decompressed != dontRelease {
+				r.bufferPool.Put(decompressed)
+			}
+		}()
 		if err := r.compressionPool.Decompress(decompressed, data, int64(r.readMaxBytes)); err != nil {
 			return err
 		}
@@ -265,7 +277,9 @@ func (r *envelopeReader) Unmarshal(message any) *Error {
 
 	if env.Flags != 0 && env.Flags != flagEnvelopeCompressed {
 		// Drain the rest of the stream to ensure there is no extra data.
-		if numBytes, err := discard(r.reader); err != nil {
+		numBytes, err := discard(r.reader)
+		r.bytesRead += numBytes
+		if err != nil {
 			err = wrapIfContextError(err)
 			if connErr, ok := asError(err); ok {
 				return connErr
@@ -276,14 +290,13 @@ func (r *envelopeReader) Unmarshal(message any) *Error {
 		}
 		// One of the protocol-specific flags are set, so this is the end of the
 		// stream. Save the message for protocol-specific code to process and
-		// return a sentinel error. Since we've deferred functions to return env's
-		// underlying buffer to a pool, we need to keep a copy.
-		copiedData := make([]byte, data.Len())
-		copy(copiedData, data.Bytes())
+		// return a sentinel error. We alias the buffer with dontRelease as a
+		// way of marking it so above defers don't release it to the pool.
 		r.last = envelope{
-			Data:  bytes.NewBuffer(copiedData),
+			Data:  data,
 			Flags: env.Flags,
 		}
+		dontRelease = data
 		return errSpecialEnvelope
 	}
 
@@ -297,25 +310,21 @@ func (r *envelopeReader) Read(env *envelope) *Error {
 	prefixes := [5]byte{}
 	// io.ReadFull reads the number of bytes requested, or returns an error.
 	// io.EOF will only be returned if no bytes were read.
-	if _, err := io.ReadFull(r.reader, prefixes[:]); err != nil {
+	n, err := io.ReadFull(r.reader, prefixes[:])
+	r.bytesRead += int64(n)
+	if err != nil {
 		if errors.Is(err, io.EOF) {
 			// The stream ended cleanly. That's expected, but we need to propagate an EOF
 			// to the user so that they know that the stream has ended. We shouldn't
 			// add any alarming text about protocol errors, though.
 			return NewError(CodeUnknown, err)
 		}
-		err = wrapIfContextError(err)
+		err = wrapIfMaxBytesError(err, "read 5 byte message prefix")
+		err = wrapIfContextDone(r.ctx, err)
 		if connectErr, ok := asError(err); ok {
 			return connectErr
 		}
 		// Something else has gone wrong - the stream didn't end cleanly.
-		if connectErr, ok := asError(err); ok {
-			return connectErr
-		}
-		if maxBytesErr := asMaxBytesError(err, "read 5 byte message prefix"); maxBytesErr != nil {
-			// We're reading from an http.MaxBytesHandler, and we've exceeded the read limit.
-			return maxBytesErr
-		}
 		return errorf(
 			CodeInvalidArgument,
 			"protocol error: incomplete envelope: %w", err,
@@ -323,7 +332,8 @@ func (r *envelopeReader) Read(env *envelope) *Error {
 	}
 	size := int64(binary.BigEndian.Uint32(prefixes[1:5]))
 	if r.readMaxBytes > 0 && size > int64(r.readMaxBytes) {
-		_, err := io.CopyN(io.Discard, r.reader, size)
+		n, err := io.CopyN(io.Discard, r.reader, size)
+		r.bytesRead += n
 		if err != nil && !errors.Is(err, io.EOF) {
 			return errorf(CodeResourceExhausted, "message is larger than configured max %d - unable to determine message size: %w", r.readMaxBytes, err)
 		}
@@ -332,11 +342,9 @@ func (r *envelopeReader) Read(env *envelope) *Error {
 	// We've read the prefix, so we know how many bytes to expect.
 	// CopyN will return an error if it doesn't read the requested
 	// number of bytes.
-	if readN, err := io.CopyN(env.Data, r.reader, size); err != nil {
-		if maxBytesErr := asMaxBytesError(err, "read %d byte message", size); maxBytesErr != nil {
-			// We're reading from an http.MaxBytesHandler, and we've exceeded the read limit.
-			return maxBytesErr
-		}
+	readN, err := io.CopyN(env.Data, r.reader, size)
+	r.bytesRead += readN
+	if err != nil {
 		if errors.Is(err, io.EOF) {
 			// We've gotten fewer bytes than we expected, so the stream has ended
 			// unexpectedly.
@@ -347,7 +355,8 @@ func (r *envelopeReader) Read(env *envelope) *Error {
 				readN,
 			)
 		}
-		err = wrapIfContextError(err)
+		err = wrapIfMaxBytesError(err, "read %d byte message", size)
+		err = wrapIfContextDone(r.ctx, err)
 		if connectErr, ok := asError(err); ok {
 			return connectErr
 		}

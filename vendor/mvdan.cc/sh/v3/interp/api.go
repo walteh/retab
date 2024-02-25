@@ -18,6 +18,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"maps"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -83,7 +85,7 @@ type Runner struct {
 
 	// readDirHandler is a function responsible for reading directories during
 	// glob expansion. It must be non-nil.
-	readDirHandler ReadDirHandlerFunc
+	readDirHandler ReadDirHandlerFunc2
 
 	// statHandler is a function responsible for getting file stat. It must be non-nil.
 	statHandler StatHandlerFunc
@@ -186,7 +188,7 @@ func New(opts ...RunnerOption) (*Runner, error) {
 	r := &Runner{
 		usedNew:        true,
 		openHandler:    DefaultOpenHandler(),
-		readDirHandler: DefaultReadDirHandler(),
+		readDirHandler: DefaultReadDirHandler2(),
 		statHandler:    DefaultStatHandler(),
 	}
 	r.dirStack = r.dirBootstrap[:0]
@@ -383,7 +385,27 @@ func OpenHandler(f OpenHandlerFunc) RunnerOption {
 }
 
 // ReadDirHandler sets the read directory handler. See [ReadDirHandlerFunc] for more info.
+//
+// Deprecated: use [ReadDirHandler2].
 func ReadDirHandler(f ReadDirHandlerFunc) RunnerOption {
+	return func(r *Runner) error {
+		r.readDirHandler = func(ctx context.Context, path string) ([]fs.DirEntry, error) {
+			infos, err := f(ctx, path)
+			if err != nil {
+				return nil, err
+			}
+			entries := make([]fs.DirEntry, len(infos))
+			for i, info := range infos {
+				entries[i] = fs.FileInfoToDirEntry(info)
+			}
+			return entries, nil
+		}
+		return nil
+	}
+}
+
+// ReadDirHandler2 sets the read directory handler. See [ReadDirHandlerFunc2] for more info.
+func ReadDirHandler2(f ReadDirHandlerFunc2) RunnerOption {
 	return func(r *Runner) error {
 		r.readDirHandler = f
 		return nil
@@ -646,9 +668,7 @@ func (r *Runner) Reset() {
 	if r.Vars == nil {
 		r.Vars = make(map[string]expand.Variable)
 	} else {
-		for k := range r.Vars {
-			delete(r.Vars, k)
-		}
+		clear(r.Vars)
 	}
 	// TODO(v4): Use the supplied Env directly if it implements enough methods.
 	r.writeEnv = &overlayEnviron{parent: r.Env}
@@ -793,39 +813,13 @@ func (r *Runner) Subshell() *Runner {
 
 		origStdout: r.origStdout, // used for process substitutions
 	}
-	// Env vars and funcs are copied, since they might be modified.
-	// TODO(v4): lazy copying? it would probably be enough to add a
-	// copyOnWrite bool field to Variable, then a Modify method that must be
-	// used when one needs to modify a variable. ideally with some way to
-	// catch direct modifications without the use of Modify and panic,
-	// perhaps via a check when getting or setting vars at some level.
-	oenv := &overlayEnviron{parent: expand.ListEnviron()}
-	r.writeEnv.Each(func(name string, vr expand.Variable) bool {
-		vr2 := vr
-		// Make deeper copies of List and Map, but ensure that they remain nil
-		// if they are nil in vr.
-		vr2.List = append([]string(nil), vr.List...)
-		if vr.Map != nil {
-			vr2.Map = make(map[string]string, len(vr.Map))
-			for k, vr := range vr.Map {
-				vr2.Map[k] = vr
-			}
-		}
-		oenv.Set(name, vr2)
-		return true
-	})
+	// Funcs are copied, since they might be modified.
+	// Env vars aren't copied; setVar will copy lists and maps as needed.
+	oenv := &overlayEnviron{parent: r.writeEnv}
 	r2.writeEnv = oenv
-	r2.Funcs = make(map[string]*syntax.Stmt, len(r.Funcs))
-	for k, v := range r.Funcs {
-		r2.Funcs[k] = v
-	}
+	r2.Funcs = maps.Clone(r.Funcs)
 	r2.Vars = make(map[string]expand.Variable)
-	if l := len(r.alias); l > 0 {
-		r2.alias = make(map[string]alias, l)
-		for k, v := range r.alias {
-			r2.alias[k] = v
-		}
-	}
+	r2.alias = maps.Clone(r.alias)
 
 	r2.dirStack = append(r2.dirBootstrap[:0], r.dirStack...)
 	r2.fillExpandConfig(r.ectx)

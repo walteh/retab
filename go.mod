@@ -3,7 +3,6 @@ module github.com/walteh/retab
 go 1.22.0
 
 require (
-	github.com/agext/levenshtein v1.2.3
 	github.com/apparentlymart/go-textseg/v13 v13.0.0
 	github.com/bufbuild/protocompile v0.8.0
 	github.com/editorconfig/editorconfig-core-go/v2 v2.6.1
@@ -11,7 +10,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/hcl/v2 v2.19.1
 	github.com/k0kubun/pp/v3 v3.2.0
-	github.com/kylelemons/godebug v0.0.0-20170820004349-d65d576e9348
+	github.com/kylelemons/godebug v1.1.0
 	github.com/rs/zerolog v1.32.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/spf13/afero v1.11.0
@@ -26,6 +25,7 @@ require (
 )
 
 require (
+	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect

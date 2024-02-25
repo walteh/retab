@@ -1,4 +1,4 @@
-// Copyright 2021-2023 The Connect Authors
+// Copyright 2021-2024 The Connect Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,8 +46,14 @@ func DecodeBinaryHeader(data string) ([]byte, error) {
 }
 
 func mergeHeaders(into, from http.Header) {
-	for k, vals := range from {
-		into[k] = append(into[k], vals...)
+	for key, vals := range from {
+		if len(vals) == 0 {
+			// For response trailers, net/http will pre-populate entries
+			// with nil values based on the "Trailer" header. But if there
+			// are no actual values for those keys, we skip them.
+			continue
+		}
+		into[key] = append(into[key], vals...)
 	}
 }
 
@@ -77,11 +83,4 @@ func setHeaderCanonical(h http.Header, key, value string) {
 // know the key is already in canonical form.
 func delHeaderCanonical(h http.Header, key string) {
 	delete(h, key)
-}
-
-// addHeaderCanonical is a shortcut for Header.Add() which
-// bypasses the CanonicalMIMEHeaderKey operation when we
-// know the key is already in canonical form.
-func addHeaderCanonical(h http.Header, key, value string) {
-	h[key] = append(h[key], value)
 }

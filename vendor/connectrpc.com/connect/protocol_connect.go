@@ -1,4 +1,4 @@
-// Copyright 2021-2023 The Connect Authors
+// Copyright 2021-2024 The Connect Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
@@ -147,6 +148,7 @@ func (h *connectHandler) NewConn(
 	responseWriter http.ResponseWriter,
 	request *http.Request,
 ) (handlerConnCloser, bool) {
+	ctx := request.Context()
 	query := request.URL.Query()
 	// We need to parse metadata before entering the interceptor stack; we'll
 	// send the error to the client later on.
@@ -254,6 +256,7 @@ func (h *connectHandler) NewConn(
 			request:        request,
 			responseWriter: responseWriter,
 			marshaler: connectUnaryMarshaler{
+				ctx:              ctx,
 				sender:           writeSender{writer: responseWriter},
 				codec:            codec,
 				compressMinBytes: h.CompressMinBytes,
@@ -264,6 +267,7 @@ func (h *connectHandler) NewConn(
 				sendMaxBytes:     h.SendMaxBytes,
 			},
 			unmarshaler: connectUnaryUnmarshaler{
+				ctx:             ctx,
 				reader:          requestBody,
 				codec:           codec,
 				compressionPool: h.CompressionPools.Get(requestCompression),
@@ -280,6 +284,7 @@ func (h *connectHandler) NewConn(
 			responseWriter: responseWriter,
 			marshaler: connectStreamingMarshaler{
 				envelopeWriter: envelopeWriter{
+					ctx:              ctx,
 					sender:           writeSender{responseWriter},
 					codec:            codec,
 					compressMinBytes: h.CompressMinBytes,
@@ -290,6 +295,7 @@ func (h *connectHandler) NewConn(
 			},
 			unmarshaler: connectStreamingUnmarshaler{
 				envelopeReader: envelopeReader{
+					ctx:             ctx,
 					reader:          requestBody,
 					codec:           codec,
 					compressionPool: h.CompressionPools.Get(requestCompression),
@@ -375,6 +381,7 @@ func (c *connectClient) NewConn(
 			bufferPool:       c.BufferPool,
 			marshaler: connectUnaryRequestMarshaler{
 				connectUnaryMarshaler: connectUnaryMarshaler{
+					ctx:              ctx,
 					sender:           duplexCall,
 					codec:            c.Codec,
 					compressMinBytes: c.CompressMinBytes,
@@ -386,6 +393,7 @@ func (c *connectClient) NewConn(
 				},
 			},
 			unmarshaler: connectUnaryUnmarshaler{
+				ctx:          ctx,
 				reader:       duplexCall,
 				codec:        c.Codec,
 				bufferPool:   c.BufferPool,
@@ -415,6 +423,7 @@ func (c *connectClient) NewConn(
 			codec:            c.Codec,
 			marshaler: connectStreamingMarshaler{
 				envelopeWriter: envelopeWriter{
+					ctx:              ctx,
 					sender:           duplexCall,
 					codec:            c.Codec,
 					compressMinBytes: c.CompressMinBytes,
@@ -425,6 +434,7 @@ func (c *connectClient) NewConn(
 			},
 			unmarshaler: connectStreamingUnmarshaler{
 				envelopeReader: envelopeReader{
+					ctx:          ctx,
 					reader:       duplexCall,
 					codec:        c.Codec,
 					bufferPool:   c.BufferPool,
@@ -509,7 +519,21 @@ func (cc *connectUnaryClientConn) validateResponse(response *http.Response) *Err
 			cc.responseHeader[k] = v
 			continue
 		}
-		cc.responseTrailer[strings.TrimPrefix(k, connectUnaryTrailerPrefix)] = v
+		cc.responseTrailer[k[len(connectUnaryTrailerPrefix):]] = v
+	}
+	if err := connectValidateUnaryResponseContentType(
+		cc.marshaler.codec.Name(),
+		cc.duplexCall.Method(),
+		response.StatusCode,
+		response.Status,
+		getHeaderCanonical(response.Header, headerContentType),
+	); err != nil {
+		if IsNotModifiedError(err) {
+			// Allow access to response headers for this kind of error.
+			// RFC 9110 doesn't allow trailers on 304s, so we only need to include headers.
+			err.meta = cc.responseHeader.Clone()
+		}
+		return err
 	}
 	compression := getHeaderCanonical(response.Header, connectUnaryHeaderCompression)
 	if compression != "" &&
@@ -522,12 +546,7 @@ func (cc *connectUnaryClientConn) validateResponse(response *http.Response) *Err
 			cc.compressionPools.CommaSeparatedNames(),
 		)
 	}
-	if response.StatusCode == http.StatusNotModified && cc.Spec().IdempotencyLevel == IdempotencyNoSideEffects {
-		serverErr := NewWireError(CodeUnknown, errNotModifiedClient)
-		// RFC 9110 doesn't allow trailers on 304s, so we only need to include headers.
-		serverErr.meta = cc.responseHeader.Clone()
-		return serverErr
-	} else if response.StatusCode != http.StatusOK {
+	if response.StatusCode != http.StatusOK {
 		unmarshaler := connectUnaryUnmarshaler{
 			reader:          response.Body,
 			compressionPool: cc.compressionPools.Get(compression),
@@ -642,6 +661,13 @@ func (cc *connectStreamingClientConn) onRequestSend(fn func(*http.Request)) {
 func (cc *connectStreamingClientConn) validateResponse(response *http.Response) *Error {
 	if response.StatusCode != http.StatusOK {
 		return errorf(connectHTTPToCode(response.StatusCode), "HTTP status %v", response.Status)
+	}
+	if err := connectValidateStreamResponseContentType(
+		cc.codec.Name(),
+		cc.spec.StreamType,
+		getHeaderCanonical(response.Header, headerContentType),
+	); err != nil {
+		return err
 	}
 	compression := getHeaderCanonical(response.Header, connectStreamingHeaderCompression)
 	if compression != "" &&
@@ -863,12 +889,15 @@ func (u *connectStreamingUnmarshaler) Unmarshal(message any) *Error {
 	if !errors.Is(err, errSpecialEnvelope) {
 		return err
 	}
-	env := u.envelopeReader.last
+	env := u.last
+	data := env.Data
+	u.last.Data = nil // don't keep a reference to it
+	defer u.bufferPool.Put(data)
 	if !env.IsSet(connectFlagEnvelopeEndStream) {
 		return errorf(CodeInternal, "protocol error: invalid envelope flags %d", env.Flags)
 	}
 	var end connectEndStreamMessage
-	if err := json.Unmarshal(env.Data.Bytes(), &end); err != nil {
+	if err := json.Unmarshal(data.Bytes(), &end); err != nil {
 		return errorf(CodeInternal, "unmarshal end stream message: %w", err)
 	}
 	for name, value := range end.Trailer {
@@ -892,6 +921,7 @@ func (u *connectStreamingUnmarshaler) EndStreamError() *Error {
 }
 
 type connectUnaryMarshaler struct {
+	ctx              context.Context //nolint:containedctx
 	sender           messageSender
 	codec            Codec
 	compressMinBytes int
@@ -1057,6 +1087,7 @@ func (m *connectUnaryRequestMarshaler) writeWithGet(url *url.URL) *Error {
 }
 
 type connectUnaryUnmarshaler struct {
+	ctx             context.Context //nolint:containedctx
 	reader          io.Reader
 	codec           Codec
 	compressionPool *compressionPool
@@ -1083,12 +1114,10 @@ func (u *connectUnaryUnmarshaler) UnmarshalFunc(message any, unmarshal func([]by
 	// ReadFrom ignores io.EOF, so any error here is real.
 	bytesRead, err := data.ReadFrom(reader)
 	if err != nil {
-		err = wrapIfContextError(err)
+		err = wrapIfMaxBytesError(err, "read first %d bytes of message", bytesRead)
+		err = wrapIfContextDone(u.ctx, err)
 		if connectErr, ok := asError(err); ok {
 			return connectErr
-		}
-		if readMaxBytesErr := asMaxBytesError(err, "read first %d bytes of message", bytesRead); readMaxBytesErr != nil {
-			return readMaxBytesErr
 		}
 		return errorf(CodeUnknown, "read message: %w", err)
 	}
@@ -1127,15 +1156,18 @@ func (d *connectWireDetail) MarshalJSON() ([]byte, error) {
 		Value string          `json:"value"`
 		Debug json.RawMessage `json:"debug,omitempty"`
 	}{
-		Type:  typeNameFromURL(d.pb.GetTypeUrl()),
-		Value: base64.RawStdEncoding.EncodeToString(d.pb.GetValue()),
+		Type:  typeNameFromURL(d.pbAny.GetTypeUrl()),
+		Value: base64.RawStdEncoding.EncodeToString(d.pbAny.GetValue()),
 	}
 	// Try to produce debug info, but expect failure when we don't have
 	// descriptors.
-	var codec protoJSONCodec
-	debug, err := codec.Marshal(d.pb)
-	if err == nil && len(debug) > 2 { // don't bother sending `{}`
-		wire.Debug = json.RawMessage(debug)
+	msg, err := d.getInner()
+	if err == nil {
+		var codec protoJSONCodec
+		debug, err := codec.Marshal(msg)
+		if err == nil {
+			wire.Debug = debug
+		}
 	}
 	return json.Marshal(wire)
 }
@@ -1156,13 +1188,20 @@ func (d *connectWireDetail) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("decode base64: %w", err)
 	}
 	*d = connectWireDetail{
-		pb: &anypb.Any{
+		pbAny: &anypb.Any{
 			TypeUrl: wire.Type,
 			Value:   decoded,
 		},
 		wireJSON: string(data),
 	}
 	return nil
+}
+
+func (d *connectWireDetail) getInner() (proto.Message, error) {
+	if d.pbInner != nil {
+		return d.pbInner, nil
+	}
+	return d.pbAny.UnmarshalNew()
 }
 
 type connectWireError struct {
@@ -1266,10 +1305,14 @@ func connectHTTPToCode(httpCode int) Code {
 		return CodeUnimplemented
 	case 408:
 		return CodeDeadlineExceeded
+	case 409:
+		return CodeAborted
 	case 412:
 		return CodeFailedPrecondition
 	case 413:
 		return CodeResourceExhausted
+	case 415:
+		return CodeInternal
 	case 429:
 		return CodeUnavailable
 	case 431:
@@ -1319,4 +1362,83 @@ func queryValueReader(data string, base64Encoded bool) io.Reader {
 		return binaryQueryValueReader(data)
 	}
 	return strings.NewReader(data)
+}
+
+func connectValidateUnaryResponseContentType(
+	requestCodecName string,
+	httpMethod string,
+	statusCode int,
+	statusMsg string,
+	responseContentType string,
+) *Error {
+	if statusCode != http.StatusOK {
+		if statusCode == http.StatusNotModified && httpMethod == http.MethodGet {
+			return NewWireError(CodeUnknown, errNotModifiedClient)
+		}
+		// Error responses must be JSON-encoded.
+		if responseContentType == connectUnaryContentTypePrefix+codecNameJSON ||
+			responseContentType == connectUnaryContentTypePrefix+codecNameJSONCharsetUTF8 {
+			return nil
+		}
+		return NewError(
+			connectHTTPToCode(statusCode),
+			errors.New(statusMsg),
+		)
+	}
+	// Normal responses must have valid content-type that indicates same codec as the request.
+	if !strings.HasPrefix(responseContentType, connectUnaryContentTypePrefix) {
+		// Doesn't even look like a Connect response? Use code "unknown".
+		return errorf(
+			CodeUnknown,
+			"invalid content-type: %q; expecting %q",
+			responseContentType,
+			connectUnaryContentTypePrefix+requestCodecName,
+		)
+	}
+	responseCodecName := connectCodecFromContentType(
+		StreamTypeUnary,
+		responseContentType,
+	)
+	if responseCodecName == requestCodecName {
+		return nil
+	}
+	// HACK: We likely want a better way to handle the optional "charset" parameter
+	//       for application/json, instead of hard-coding. But this suffices for now.
+	if (responseCodecName == codecNameJSON && requestCodecName == codecNameJSONCharsetUTF8) ||
+		(responseCodecName == codecNameJSONCharsetUTF8 && requestCodecName == codecNameJSON) {
+		// Both are JSON
+		return nil
+	}
+	return errorf(
+		CodeInternal,
+		"invalid content-type: %q; expecting %q",
+		responseContentType,
+		connectUnaryContentTypePrefix+requestCodecName,
+	)
+}
+
+func connectValidateStreamResponseContentType(requestCodecName string, streamType StreamType, responseContentType string) *Error {
+	// Responses must have valid content-type that indicates same codec as the request.
+	if !strings.HasPrefix(responseContentType, connectStreamingContentTypePrefix) {
+		// Doesn't even look like a Connect response? Use code "unknown".
+		return errorf(
+			CodeUnknown,
+			"invalid content-type: %q; expecting %q",
+			responseContentType,
+			connectUnaryContentTypePrefix+requestCodecName,
+		)
+	}
+	responseCodecName := connectCodecFromContentType(
+		streamType,
+		responseContentType,
+	)
+	if responseCodecName != requestCodecName {
+		return errorf(
+			CodeInternal,
+			"invalid content-type: %q; expecting %q",
+			responseContentType,
+			connectStreamingContentTypePrefix+requestCodecName,
+		)
+	}
+	return nil
 }
