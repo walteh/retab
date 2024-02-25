@@ -1,10 +1,9 @@
-package hclwrite
+package hclfmt
 
 import (
 	"context"
 	"io"
 
-	"github.com/walteh/retab/pkg/configuration"
 	"github.com/walteh/retab/pkg/format"
 )
 
@@ -21,7 +20,7 @@ func (me *Formatter) Targets() []string {
 	return []string{"*.hcl", "*.hcl2", ".retab/*.retab"}
 }
 
-func (me *Formatter) Format(ctx context.Context, cfg configuration.Configuration, read io.Reader) (io.Reader, error) {
+func (me *Formatter) Format(ctx context.Context, cfg format.Configuration, read io.Reader) (io.Reader, error) {
 
 	reads, err := io.ReadAll(read)
 	if err != nil {

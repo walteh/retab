@@ -1,10 +1,9 @@
-package protowrite
+package protofmt
 
 import (
 	"context"
 	"io"
 
-	"github.com/walteh/retab/pkg/configuration"
 	"github.com/walteh/retab/pkg/format"
 
 	"github.com/bufbuild/protocompile/parser"
@@ -24,7 +23,7 @@ func (me *Formatter) Targets() []string {
 	return []string{"*.proto", "*.proto3"}
 }
 
-func (me *Formatter) Format(ctx context.Context, cfg configuration.Configuration, read io.Reader) (io.Reader, error) {
+func (me *Formatter) Format(ctx context.Context, cfg format.Configuration, read io.Reader) (io.Reader, error) {
 
 	fileNode, err := parser.Parse("retab.protobuf-parser", read, reporter.NewHandler(nil))
 	if err != nil {

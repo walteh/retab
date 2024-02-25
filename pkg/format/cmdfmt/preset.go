@@ -1,4 +1,4 @@
-package externalwrite
+package cmdfmt
 
 import (
 	"github.com/walteh/retab/pkg/format"

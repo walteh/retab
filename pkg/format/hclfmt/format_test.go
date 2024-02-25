@@ -1,4 +1,4 @@
-package hclwrite_test
+package hclfmt_test
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/walteh/retab/gen/mockery"
-	"github.com/walteh/retab/pkg/hclwrite"
+	"github.com/walteh/retab/pkg/format/hclfmt"
 )
 
 func TestFormat(t *testing.T) {
@@ -130,7 +130,7 @@ variable "DESTDIR1" {
 			cfg.EXPECT().OneBracketPerLine().Return(tt.oneBracketPerLine)
 
 			// Call the Format function with the provided configuration and source
-			result, err := hclwrite.FormatBytes(cfg, tt.src)
+			result, err := hclfmt.FormatBytes(cfg, tt.src)
 
 			// Check for errors
 			if err != nil {

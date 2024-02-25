@@ -1,10 +1,10 @@
-package hclwrite
+package hclfmt
 
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	"github.com/walteh/retab/pkg/configuration"
+	"github.com/walteh/retab/pkg/format"
 )
 
 // lexConfig uses the hclsyntax scanner to get a token stream and then
@@ -12,7 +12,7 @@ import (
 //
 // Any errors produced during scanning are ignored, so the results of this
 // function should be used with care.
-func lexConfig(src []byte, cfg configuration.Configuration) Tokens {
+func lexConfig(src []byte, cfg format.Configuration) Tokens {
 	mainTokens, _ := hclsyntax.LexConfig(src, "", hcl.Pos{Byte: 0, Line: 1, Column: 1})
 	return writerTokens(mainTokens, cfg)
 }
@@ -24,7 +24,7 @@ func lexConfig(src []byte, cfg configuration.Configuration) Tokens {
 // The resulting list contains the same number of tokens and uses the same
 // indices as the input, allowing the two sets of tokens to be correlated
 // by index.
-func writerTokens(nativeTokens hclsyntax.Tokens, cfg configuration.Configuration) Tokens {
+func writerTokens(nativeTokens hclsyntax.Tokens, cfg format.Configuration) Tokens {
 	if cfg.OneBracketPerLine() {
 		tnt := make([]hclsyntax.Token, 0)
 		myline := []hclsyntax.Token{}

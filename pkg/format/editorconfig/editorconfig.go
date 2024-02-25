@@ -8,7 +8,7 @@ import (
 	"github.com/editorconfig/editorconfig-core-go/v2"
 	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
-	"github.com/walteh/retab/pkg/configuration"
+	"github.com/walteh/retab/pkg/format"
 	"github.com/walteh/terrors"
 )
 
@@ -22,14 +22,14 @@ type EditorConfigConfigurationProvider struct {
 }
 
 type EditorConfigConfigurationDefaults struct {
-	Defaults configuration.Configuration
+	Defaults format.Configuration
 }
 
-func (me *EditorConfigConfigurationDefaults) GetConfigurationForFileType(ctx context.Context, str string) (configuration.Configuration, error) {
+func (me *EditorConfigConfigurationDefaults) GetConfigurationForFileType(ctx context.Context, str string) (format.Configuration, error) {
 	return me.Defaults, nil
 }
 
-func (me *EditorConfigConfigurationProvider) GetConfigurationForFileType(ctx context.Context, str string) (configuration.Configuration, error) {
+func (me *EditorConfigConfigurationProvider) GetConfigurationForFileType(ctx context.Context, str string) (format.Configuration, error) {
 	def, err := me.definitions.GetDefinitionForFilename(str)
 	if err != nil {
 
@@ -47,13 +47,13 @@ func (me *EditorConfigConfigurationProvider) GetConfigurationForFileType(ctx con
 	}, nil
 }
 
-func NewEditorConfigConfigurationProvider(ctx context.Context, fls afero.Fs) (configuration.Provider, error) {
+func NewEditorConfigConfigurationProvider(ctx context.Context, fls afero.Fs) (format.ConfigurationProvider, error) {
 
 	fle, err := fls.Open(".editorconfig")
 	if err != nil {
 		zerolog.Ctx(ctx).Debug().Err(err).Msg("failed to open .editorconfig -- using defaults")
 		return &EditorConfigConfigurationDefaults{
-			Defaults: configuration.NewBasicConfigurationProvider(true, 4, true, false),
+			Defaults: format.NewBasicConfigurationProvider(true, 4, true, false),
 		}, nil
 	}
 
@@ -71,7 +71,7 @@ func NewEditorConfigConfigurationProvider(ctx context.Context, fls afero.Fs) (co
 
 }
 
-var _ configuration.Configuration = &EditorConfigConfiguration{}
+var _ format.Configuration = &EditorConfigConfiguration{}
 
 func (x *EditorConfigConfiguration) IndentSize() int {
 	return x.parsedIndentSize

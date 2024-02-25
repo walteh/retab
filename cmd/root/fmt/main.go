@@ -10,14 +10,12 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/walteh/retab/cmd/root/resolvers"
-	"github.com/walteh/retab/pkg/configuration"
 	"github.com/walteh/retab/pkg/format"
-	"github.com/walteh/retab/pkg/hclwrite"
+	"github.com/walteh/retab/pkg/format/hclfmt"
 	"github.com/walteh/snake"
 )
 
 type Handler struct {
-	All bool `usage:"format all supported files, not just .retab files - .hcl, .proto, .tf, .tfvars, .dart"`
 }
 
 func (me *Handler) RegisterRunFunc() snake.RunFunc {
@@ -33,14 +31,14 @@ func (me *Handler) CobraCommand() *cobra.Command {
 	return cmd
 }
 
-func (me *Handler) Run(ctx context.Context, fls afero.Fs, fle afero.File, ecfg configuration.Provider, out snake.Stdout) error {
+func (me *Handler) Run(ctx context.Context, fls afero.Fs, fle afero.File, ecfg format.ConfigurationProvider, out snake.Stdout) error {
 
 	fles, err := resolvers.GetFileOrGlobDir(ctx, fls, fle, ".retab/*.retab")
 	if err != nil {
 		return err
 	}
 
-	fmtr := hclwrite.NewFormatter()
+	fmtr := hclfmt.NewFormatter()
 
 	err = resolvers.ForAllFilesAtSameTime(ctx, fls, fles, func(ctx context.Context, fle afero.File) (io.Reader, error) {
 		return format.Format(ctx, fmtr, ecfg, fle.Name(), fle)

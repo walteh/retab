@@ -3,7 +3,7 @@ TOOLS_DIR = "tools"
 GO_PACKAGE = "github.com/walteh/retab"
 
 pkgs = {
-	"pkg/configuration" = ["Configuration"]
+	"pkg/format" = ["Configuration"]
 }
 
 gen mockery {

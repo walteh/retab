@@ -1,4 +1,4 @@
-package protowrite_test
+package protofmt_test
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/walteh/retab/gen/mockery"
-	"github.com/walteh/retab/pkg/protowrite"
+	"github.com/walteh/retab/pkg/format/protofmt"
 )
 
 func TestFormatUnit(t *testing.T) {
@@ -158,7 +158,7 @@ service OgWebServerService {
 			cfg.EXPECT().IndentSize().Return(tt.indentSize)
 
 			// Call the Format function with the provided configuration and source
-			result, err := protowrite.NewFormatter().Format(ctx, cfg, bytes.NewReader(tt.src))
+			result, err := protofmt.NewFormatter().Format(ctx, cfg, bytes.NewReader(tt.src))
 
 			// Check for errors
 			if err != nil {

@@ -1,8 +1,8 @@
-package configuration
+package format
 
 import "context"
 
-type Provider interface {
+type ConfigurationProvider interface {
 	GetConfigurationForFileType(ctx context.Context, filename string) (Configuration, error)
 }
 

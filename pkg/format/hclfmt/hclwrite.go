@@ -1,4 +1,4 @@
-package hclwrite
+package hclfmt
 
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0

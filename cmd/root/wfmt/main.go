@@ -10,11 +10,10 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/walteh/retab/cmd/root/resolvers"
-	"github.com/walteh/retab/pkg/configuration"
-	"github.com/walteh/retab/pkg/externalwrite"
 	"github.com/walteh/retab/pkg/format"
-	"github.com/walteh/retab/pkg/hclwrite"
-	"github.com/walteh/retab/pkg/protowrite"
+	"github.com/walteh/retab/pkg/format/cmdfmt"
+	"github.com/walteh/retab/pkg/format/hclfmt"
+	"github.com/walteh/retab/pkg/format/protofmt"
 	"github.com/walteh/snake"
 	"github.com/walteh/terrors"
 )
@@ -39,23 +38,23 @@ func (me *Handler) CobraCommand() *cobra.Command {
 	return cmd
 }
 
-func (me *Handler) Run(ctx context.Context, fls afero.Fs, fle afero.File, ecfg configuration.Provider, out snake.Stdout) error {
+func (me *Handler) Run(ctx context.Context, fls afero.Fs, fle afero.File, ecfg format.ConfigurationProvider, out snake.Stdout) error {
 	fmtrs := []format.Provider{}
 
 	if me.Hcl {
-		fmtrs = append(fmtrs, hclwrite.NewFormatter())
+		fmtrs = append(fmtrs, hclfmt.NewFormatter())
 	}
 
 	if me.Proto {
-		fmtrs = append(fmtrs, protowrite.NewFormatter())
+		fmtrs = append(fmtrs, protofmt.NewFormatter())
 	}
 
 	if me.Dart {
-		fmtrs = append(fmtrs, externalwrite.NewDartFormatter("dart"))
+		fmtrs = append(fmtrs, cmdfmt.NewDartFormatter("dart"))
 	}
 
 	if me.Tf {
-		fmtrs = append(fmtrs, externalwrite.NewTerraformFormatter("terraform"))
+		fmtrs = append(fmtrs, cmdfmt.NewTerraformFormatter("terraform"))
 	}
 
 	if len(fmtrs) == 0 {

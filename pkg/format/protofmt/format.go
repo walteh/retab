@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package protowrite
+package protofmt
 
 import (
 	"io"
@@ -24,7 +24,7 @@ import (
 
 	"github.com/bufbuild/protocompile/ast"
 	"github.com/go-faster/errors"
-	"github.com/walteh/retab/pkg/configuration"
+	"github.com/walteh/retab/pkg/format"
 	"github.com/walteh/terrors"
 	"go.uber.org/multierr"
 )
@@ -33,7 +33,7 @@ import (
 type formatter struct {
 	writer   io.Writer
 	fileNode *ast.FileNode
-	cfg      configuration.Configuration
+	cfg      format.Configuration
 
 	// Current level of indentation.
 	indent int
@@ -74,7 +74,7 @@ type formatter struct {
 func newFormatter(
 	writer io.Writer,
 	fileNode *ast.FileNode,
-	cfg configuration.Configuration,
+	cfg format.Configuration,
 ) *formatter {
 	return &formatter{
 		writer:   writer,

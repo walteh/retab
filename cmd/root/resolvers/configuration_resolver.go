@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/spf13/afero"
-	"github.com/walteh/retab/pkg/configuration"
-	"github.com/walteh/retab/pkg/editorconfig"
+	"github.com/walteh/retab/pkg/format"
+	"github.com/walteh/retab/pkg/format/editorconfig"
 	"github.com/walteh/snake"
 	"github.com/walteh/terrors"
 )
@@ -20,7 +20,7 @@ type ConfigurationResolver struct {
 	TrimMultipleEmptyLines bool `default:"true" help:"Trim multiple empty lines"`
 }
 
-func (me *ConfigurationResolver) Run(ctx context.Context, fls afero.Fs) (configuration.Provider, error) {
+func (me *ConfigurationResolver) Run(ctx context.Context, fls afero.Fs) (format.ConfigurationProvider, error) {
 
 	efg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, fls)
 	if err != nil {
