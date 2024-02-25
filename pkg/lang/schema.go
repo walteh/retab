@@ -15,7 +15,7 @@ import (
 
 // load json or yaml schema file
 
-func LoadValidationErrors(ctx context.Context, cnt hclsyntax.Expression, ectx *hcl.EvalContext, errv error, bdy *BodyBuilder) (hcl.Diagnostics, error) {
+func LoadValidationErrors(ctx context.Context, cnt hclsyntax.Expression, ectx *hcl.EvalContext, errv error, bdy *BodyBuilder, sudo *SudoContext) (hcl.Diagnostics, error) {
 
 	berr := errv
 	for errors.Unwrap(berr) != nil {
@@ -28,7 +28,7 @@ func LoadValidationErrors(ctx context.Context, cnt hclsyntax.Expression, ectx *h
 
 		if len(verr.Causes) > 0 {
 			for _, cause := range verr.Causes {
-				if ve, err := LoadValidationErrors(ctx, cnt, ectx, cause, bdy); err != nil {
+				if ve, err := LoadValidationErrors(ctx, cnt, ectx, cause, bdy, sudo); err != nil {
 					return nil, err
 				} else {
 					// basically, if one of our children has an error,
@@ -36,17 +36,21 @@ func LoadValidationErrors(ctx context.Context, cnt hclsyntax.Expression, ectx *h
 				}
 			}
 		} else {
-			rng, diagd := InstanceLocationStringToHCLRange(verr.InstanceLocation, verr.Message, cnt, ectx, bdy)
+			ctxd, diagd := InstanceLocationStringToHCLRange(verr.InstanceLocation, verr.Message, cnt, ectx, sudo, bdy)
 			if diagd.HasErrors() {
 				return nil, diagd
+			}
+
+			if ctxd == nil {
+				return nil, terrors.Errorf("unable to find instance loc %q", verr.InstanceLocation)
 			}
 
 			diag := &hcl.Diagnostic{
 				Severity:    hcl.DiagError,
 				Summary:     verr.Message,
 				Detail:      verr.DetailedOutput().KeywordLocation,
-				Subject:     rng.Range().Ptr(),
-				Expression:  rng,
+				Subject:     ctxd.Range().Ptr(),
+				Expression:  ctxd,
 				EvalContext: ectx,
 			}
 
@@ -59,7 +63,7 @@ func LoadValidationErrors(ctx context.Context, cnt hclsyntax.Expression, ectx *h
 	return diags, nil
 }
 
-func InstanceLocationStringToHCLRange(instLoc string, msg string, cnt hclsyntax.Expression, ectx *hcl.EvalContext, file *BodyBuilder) (hcl.Expression, hcl.Diagnostics) {
+func InstanceLocationStringToHCLRange(instLoc string, msg string, cnt hclsyntax.Expression, ectx *hcl.EvalContext, sudo *SudoContext, file *BodyBuilder) (hcl.Expression, hcl.Diagnostics) {
 	splt := strings.Split(strings.TrimPrefix(instLoc, "/"), "/")
 
 	cmp := regexp.MustCompile("additionalProperties '(.*)' not allowed")
@@ -67,6 +71,10 @@ func InstanceLocationStringToHCLRange(instLoc string, msg string, cnt hclsyntax.
 	if len(matches) == 2 {
 		splt = append(splt, matches[1])
 	}
+	// fmt.Println(splt)
+	// ctxd := sudo.IdentifyChild(splt...)
+
+	// return ctxd, hcl.Diagnostics{}
 
 	return roll2(splt, cnt, ectx, file)
 }
@@ -133,8 +141,6 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file *BodyBui
 				},
 			}
 		}
-
-		// if bdy, ok := fle.(*hclsyntax.Body); ok {
 	HERE:
 		for _, blk := range bdy.Blocks {
 			if blk.Type == name {
@@ -147,13 +153,9 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file *BodyBui
 					}
 				}
 				splt = append(labs[len(blk.Labels):], splt...)
-				// pp.Println("found block", blk.Type, blk.Labels, labs, splt)
 				for zz, k := range blk.Body.Attributes {
 					if zz == splt[0] {
-						// pp.Println("hello", k.Expr.Range(), k.Range())
 						if len(splt) == 1 {
-							// pp.Println(k.Expr.Range())
-							// pp.Println(k.Range())
 							return k.Expr, nil
 						}
 						return roll2(splt[1:], k.Expr, ectx, file)
@@ -166,48 +168,6 @@ func roll2(splt []string, e hcl.Expression, ectx *hcl.EvalContext, file *BodyBui
 
 	return e, nil
 }
-
-// func (me *FileBlockEvaluation) GetJSONSchema(ctx context.Context) (*jsonschema.Schema, error) {
-// 	s, err := schemas.LoadJSONSchema(ctx, me.Schema)
-// 	if err != nil {
-// 		return s, terrors.Wrap(err, "problem getting schema").Event(func(e *zerolog.Event) *zerolog.Event {
-// 			return e.Int("schema_size", len(me.Schema))
-// 		})
-// 	}
-
-// 	return s, nil
-// }
-
-// func (me *FileBlockEvaluation) GetProperties(ctx context.Context) (map[string]*jsonschema.Schema, error) {
-// 	schema, err := me.GetJSONSchema(ctx)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	m := make(map[string]*jsonschema.Schema)
-
-// 	getAllDefs("root", schema, m)
-
-// 	return m, nil
-// }
-
-// func (me *FileBlockEvaluation) ValidateJSONSchemaProperty(ctx context.Context, prop string) error {
-// 	if prop == MetaKey {
-// 		return nil
-// 	}
-
-// 	schema, err := me.GetProperties(ctx)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	if schema[prop] == nil {
-// 		return terrors.Errorf("property %q not found", prop)
-// 	}
-
-// 	return schema[prop].Validate(me.RawOutput)
-
-// }
 
 func getAllDefs(parent string, schema *jsonschema.Schema, defs map[string]*jsonschema.Schema) {
 	////////////////////////////////////////
@@ -262,82 +222,3 @@ func getAllDefs(parent string, schema *jsonschema.Schema, defs map[string]*jsons
 		}
 	}
 }
-
-// func InstanceLocationToHCLRange(splt []string, cnt hcl.Expression, ectx *hcl.EvalContext) (*hcl.Range, error) {
-// 	if len(splt) == 0 {
-// 		return cnt.Range().Ptr(), nil
-// 	}
-
-// 	// fmt.Println(reflect.TypeOf(cnt))
-
-// 	switch t := cnt.(type) {
-// 	case *hclsyntax.ObjectConsExpr:
-// 		{
-// 			for _, item := range t.Items {
-// 				v, err := item.KeyExpr.Value(ectx)
-// 				if err != nil {
-// 					return nil, err
-// 				}
-
-// 				// if v.Type() == cty.String {
-// 				// fmt.Println(v.AsString(), splt[0])
-// 				// fmt.Println(v.Type(), v.AsString(), splt)
-// 				if v.AsString() == splt[0] {
-// 					if len(splt) == 1 {
-// 						return item.ValueExpr.Range().Ptr(), nil
-// 					}
-// 					return InstanceLocationToHCLRange(splt[1:], item.ValueExpr, ectx)
-// 				}
-// 				// }
-// 			}
-// 		}
-// 	case *hclsyntax.TupleConsExpr:
-// 		{
-// 			intr, err := strconv.Atoi(splt[0])
-// 			if err != nil {
-// 				return nil, hcl.Diagnostics{
-// 					&hcl.Diagnostic{
-// 						Severity: hcl.DiagError,
-// 						Summary:  "Invalid expression",
-// 						Detail:   "unexpected tuple index",
-// 						Subject:  cnt.Range().Ptr(),
-// 					},
-// 				}
-// 			}
-// 			return InstanceLocationToHCLRange(splt[1:], t.Exprs[intr], ectx)
-// 		}
-// 	case *hclsyntax.ScopeTraversalExpr:
-// 		{
-// 			// debug when a value hits here, it means it is a block reference
-// 			// will need to traverse the ectx to find the variable this is referencing
-
-// 			// OR just return the range of this block as the error,
-// 			// but then we need to seperatly validate the other block (in the test the step.checkout block)
-// 			return &t.SrcRange, nil
-
-// 			// tbh we prob need to return an array in this func, and its parent. think multiple validation errors
-// 		}
-// 	case *hclsyntax.IndexExpr:
-// 		{
-// 			// TODO: this is just a placeholder, not the right way to do this
-// 			return &t.SrcRange, nil
-// 		}
-// 	case *hclsyntax.TemplateExpr:
-// 		{
-// 			// TODO: this is just a placeholder, not the right way to do this
-// 			return &t.SrcRange, nil
-// 		}
-// 	}
-
-// 	// return nil, hcl.Diagnostics{
-// 	// 	&hcl.Diagnostic{
-// 	// 		Severity: hcl.DiagError,
-// 	// 		Summary:  "Invalid expression",
-// 	// 		Detail:   "unable to find instance loc",
-// 	// 		Subject:  cnt.Range().Ptr(),
-// 	// 	},
-// 	// }
-
-// 	return cnt.Range().Ptr(), nil
-
-// }

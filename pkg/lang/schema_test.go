@@ -67,6 +67,8 @@ func TestRetab3Schema(t *testing.T) {
 		fmt.Println(c)
 	}
 
+	require.Empty(t, diags)
+
 	data, err = testdata.ReadFile("testdata/retab4.retab")
 	require.NoError(t, err)
 

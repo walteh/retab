@@ -63,7 +63,7 @@ func evalGenBlock(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (re
 		Source: fblock.TypeRange.Filename,
 	}
 
-	var dataAttr hclsyntax.Expression
+	var d hclsyntax.Expression
 
 	attrs := []string{"path", "schema", "data"}
 
@@ -111,13 +111,6 @@ func evalGenBlock(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (re
 				return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem encoding yaml")
 			}
 
-			// cnt = append(cnt, cls...)
-
-			// slc, diags, err := EncodeExpression(attr.Expr, ectx)
-			// if err != nil || diags.HasErrors() {
-			// 	return nil, diags, err
-			// }
-
 			if x, ok := slc.(yaml.MapSlice); ok {
 				cnt = append(cnt, x...)
 			}
@@ -125,23 +118,29 @@ func evalGenBlock(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (re
 				cnt = append(cnt, x)
 			}
 
-			// mta, err := noMetaJsonEncode(val)
-			// if err != nil {
-			// 	return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem encoding json")
-			// }
+			mar, err := json.Marshal(cnt)
+			if err != nil {
+				return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem encoding json")
+			}
+
+			var unmar any
+			err = json.Unmarshal(mar, &unmar)
+			if err != nil {
+				return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem encoding json")
+			}
 
 			blk.OrderedOutput = cnt
 
-			// blk.RawOutput = mta
+			blk.RawOutput = unmar
 
-			dataAttr = attr.Expr
+			d = attr.Expr
 
 		default:
 			continue
 		}
 	}
 
-	if dataAttr == nil {
+	if d == nil {
 		return nil, hcl.Diagnostics{&hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  "missing data attribute",
@@ -163,7 +162,7 @@ func evalGenBlock(ctx context.Context, sctx *SudoContext, file *BodyBuilder) (re
 
 		// Validate the block body against the schema
 		if errv := s.Validate(blk.RawOutput); errv != nil {
-			if lerr, err := LoadValidationErrors(ctx, dataAttr, ectx, errv, file); err != nil {
+			if lerr, err := LoadValidationErrors(ctx, d, ectx, errv, file, sctx.Map["data"]); err != nil {
 				return nil, hcl.Diagnostics{}, terrors.Wrap(err, "problem loading validation errors")
 			} else {
 				diags = append(diags, lerr...)

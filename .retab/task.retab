@@ -9,8 +9,8 @@ bins = {
 }
 
 gen taskfile {
-	// schema = "https://taskfile.dev/schema.json"
-	path = "../taskfile.yaml"
+	schema = "https://taskfile.dev/schema.json"
+	path   = "../taskfile.yaml"
 	data = {
 		version = 3
 		tasks = merge(

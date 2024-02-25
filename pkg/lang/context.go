@@ -25,6 +25,19 @@ type SudoContext struct {
 	TmpFileLevelVars map[string]cty.Value
 }
 
+func (me *SudoContext) IdentifyChild(strs ...string) *SudoContext {
+	wrk := me
+	for _, v := range strs {
+		fmt.Println(v)
+		wrkd, ok := wrk.Map[v]
+		if !ok {
+			return nil
+		}
+		wrk = wrkd
+	}
+	return wrk
+}
+
 type RemappableSudoContextArray []*SudoContext
 
 func (me *SudoContext) ApplyValue(met cty.Value) {
