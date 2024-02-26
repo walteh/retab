@@ -254,46 +254,39 @@ func (me *AugmentedForValueExpr) Value(ectx *hcl.EvalContext) (cty.Value, hcl.Di
 
 	child := me.Sudo.NewChild("tmp", me.StartRange())
 
+	// no need for the parent to have a reference to the child
+	// delete(me.Sudo.Map, "tmp")
+	// child.Parent = nil
 	var mrk hcl.Range
 
 	srtr := valRange("", ectx.Variables[me.ForExpr.ValVar])
-	// child.ApplyKeyVal(me.ForExpr.ValVar, v, mrkd)
 	if mrk.Empty() {
 		mrk = srtr.Range[0]
 	}
-
-	// if me.ForExpr.KeyVar != "" {
-	// 	// v, mrkd := valRange(ectx.Variables[me.ForExpr.KeyVar])
-	// 	// child.ApplyKeyVal(me.ForExpr.KeyVar, ectx.Variables[me.ForExpr.KeyVar], mrk)
-	// 	// mrk = mrkd
-	// }
-
-	// suppEctx := &hcl.EvalContext{
-	// 	Variables: make(map[string]cty.Value),
-	// 	Functions: make(map[string]function.Function),
-	// }
-
-	// var mrk cty.ValueMarks
 
 	if me.ForExpr.KeyVar != "" {
 		// mrk = ectx.Variables[me.ForExpr.KeyVar].Marks()
 		child.TmpFileLevelVars[me.ForExpr.KeyVar] = ectx.Variables[me.ForExpr.KeyVar]
 	}
 
-	// if len(mrk) == 0 {
-	// 	mrk = ectx.Variables[me.ForExpr.ValVar].Marks()
-	// }
-
 	child.TmpFileLevelVars[me.ForExpr.ValVar] = ectx.Variables[me.ForExpr.ValVar]
 
+	// defer func() {
+	// 	delete(child.TmpFileLevelVars, me.ForExpr.ValVar)
+	// 	delete(child.TmpFileLevelVars, me.ForExpr.KeyVar)
+	// }()
+
 	diags := EvaluateAttr(me.Ctx, NewForCollectionAttribute(me.Expression), child)
-	delete(me.Sudo.Map, "tmp")
 
 	if diags.HasErrors() {
 		return cty.DynamicVal, diags
 	}
 
+	delete(me.Sudo.Map, "tmp")
+
 	vals := child.Map["for_collection"].ToValue()
+
+	// delete(child.Map, "for_collection")
 
 	return vals.Mark(mrk), hcl.Diagnostics{}
 

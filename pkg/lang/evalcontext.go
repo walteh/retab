@@ -118,7 +118,6 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 		}
 
 		return diags
-
 	case *hclsyntax.TupleConsExpr:
 
 		child, err := parentctx.NewNonBlockChild(attr.Name, attr.NameRange)
@@ -155,56 +154,48 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 		// parentctx.ApplyArray(child.List())
 
 		return diags
-	// case *hclsyntax.TemplateExpr:
-	// 	diags := hcl.Diagnostics{}
-
-	// 	child := parentctx.NewChild(FuncKey)
-
-	// 	for _, v := range e.Parts {
-	// 		diag := EvaluateAttr(ctx, name, v, parentctx)
-	// 		diags = append(diags, diag...)
-	// 	}
-
-	// 	delete(parentctx.Map, FuncKey)
-
-	// 	if len(diags) > 0 {
-	// 		return diags
-	// 	}
-
-	// 	hi := child.ToValue()
-
-	// 	parentctx.ApplyKeyVal(name, hi)
-
 	case *hclsyntax.ForExpr:
 
-		if _, ok := e.CollExpr.(*PreCalcExpr); ok {
+		if pce, ok := e.CollExpr.(*PreCalcExpr); ok {
+			// if vce, ok := e.ValExpr.(*AugmentedForValueExpr); ok {
+
 			val, diag := attr.Expr.Value(childctx)
 			if diag.HasErrors() {
 				return diag
 			}
 			val, _ = val.Unmark()
+
+			// we have to reset or subsequent calls will break
+			// this resolves issue #33
+			e.CollExpr = pce.Expression
+
 			return parentctx.ApplyKeyVal(attr.Name, val, attr.NameRange)
 		}
 
 		nme := "for:" + e.StartRange().String()
 
 		// no need to check if this is already a block, it is not possible
-		child := parentctx.NewChild(nme, e.StartRange())
+		child := parentctx.NewChild(nme, e.CollExpr.Range())
 
 		diags := hcl.Diagnostics{}
 
 		attrn := NewForCollectionAttribute(e.CollExpr)
 		diag := EvaluateAttr(ctx, attrn, child)
 		diags = append(diags, diag...)
-		delete(parentctx.Map, nme)
 
 		if len(diags) > 0 {
 			return diags
 		}
 
+		// to prevent the child from being used in the parent
+		// we only do it after the diags check - that way evaluation is not duplicated
+		delete(parentctx.Map, nme)
+
+		vald := child.Map["for_collection"].ToValue()
+
 		e.CollExpr = &PreCalcExpr{
 			Expression: e.CollExpr,
-			Val:        child.Map["for_collection"].ToValue(),
+			Val:        vald,
 		}
 
 		e.ValExpr = &AugmentedForValueExpr{

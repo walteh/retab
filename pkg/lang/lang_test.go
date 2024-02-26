@@ -152,24 +152,78 @@ func TestIssue31(t *testing.T) {
 		} else {
 			ok++
 		}
-
-		// printer := pp.New()
-		// printer.SetColoringEnabled(false)
-		//		bufd := ectx.Map[lang.FilesKey].Map["task.retab"]
-
-		// if broken == 1 {
-		// 	err = afero.WriteFile(afero.NewOsFs(), "./testdata/tmp/broken.txt", []byte(printer.Sprint(bufd)), 0755)
-		// 	require.NoError(t, err)
-		// }
-
-		// if ok == 1 {
-		// 	err = afero.WriteFile(afero.NewOsFs(), "./testdata/tmp/ok.txt", []byte(printer.Sprint(bufd)), 0755)
-		// 	require.NoError(t, err)
-		// }
-
-		// fmt.Println()
 	}
 
 	assert.Equal(t, 0, broken)
+
+}
+
+//go:embed testdata/issue33/mockery.retab
+var issue33_input []byte
+
+//go:embed testdata/issue33/mockery.expected.yaml
+var issue33_expected []byte
+
+func TestIssue33(t *testing.T) {
+
+	ctx := context.Background()
+
+	_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{
+		"mockery.retab": issue33_input,
+	})
+	require.NoError(t, err)
+	for _, c := range diags {
+		t.Log(c)
+	}
+	require.Empty(t, diags)
+
+	blk, diags, err := lang.NewGenBlockEvaluation(ctx, ectx, bb)
+	require.NoError(t, err)
+	for _, c := range diags {
+		t.Log(c)
+	}
+	require.Empty(t, diags)
+
+	require.NotNil(t, blk[".mockery.yaml"])
+
+	out, err := blk[".mockery.yaml"].Encode()
+	require.NoError(t, err)
+
+	require.Empty(t, diff.DiffExportedOnly(string(issue33_expected), string(out)))
+
+}
+
+//go:embed testdata/issue34/task.retab
+var issue34_input []byte
+
+//go:embed testdata/issue34/task.expected.yaml
+var issue34_expected []byte
+
+func TestIssue34(t *testing.T) {
+
+	ctx := context.Background()
+
+	_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{
+		"task.retab": issue34_input,
+	})
+	require.NoError(t, err)
+	for _, c := range diags {
+		t.Log(c)
+	}
+	require.Empty(t, diags)
+
+	blk, diags, err := lang.NewGenBlockEvaluation(ctx, ectx, bb)
+	require.NoError(t, err)
+	for _, c := range diags {
+		t.Log(c)
+	}
+	require.Empty(t, diags)
+
+	require.NotNil(t, blk["taskfile.yaml"])
+
+	out, err := blk["taskfile.yaml"].Encode()
+	require.NoError(t, err)
+
+	require.Empty(t, diff.DiffExportedOnly(string(issue34_expected), string(out)))
 
 }
