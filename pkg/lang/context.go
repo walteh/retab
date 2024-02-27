@@ -379,14 +379,20 @@ func (me *SudoContext) GetAllFileLevelBlocksOfType(name string) ([]*SudoContext,
 }
 
 type Sorter struct {
-	Range   []hcl.Range
-	Key     string
-	Value   cty.Value
-	Ignored bool
+	Range      []hcl.Range
+	MergeRange []mergeRange
+	Key        string
+	Value      cty.Value
+	Ignored    bool
 }
 
 func (me *Sorter) Array() []hcl.Range {
 	return me.Range
+}
+
+type mergeRange struct {
+	rng  hcl.Range
+	self string
 }
 
 func valRange(key string, me cty.Value) *Sorter {
@@ -398,16 +404,37 @@ func valRange(key string, me cty.Value) *Sorter {
 	}
 
 	ranges := make([]hcl.Range, 0, len(r))
+	mergedRanges := make([]mergeRange, 0)
 	for z := range r {
 		switch e := z.(type) {
 		case hcl.Range:
 			ranges = append(ranges, e)
 		case ignoreFromYaml, *ignoreFromYaml:
 			return &Sorter{Ignored: true, Key: key, Value: me}
+		case *mergeMarker:
+			for z := range e.ref {
+				switch g := z.(type) {
+				case hcl.Range:
+					mergedRanges = append(mergedRanges, mergeRange{g, e.common})
+				}
+			}
 		default:
 			panic(fmt.Sprintf("unexpected type %s", reflect.TypeOf(e).String()))
 		}
 	}
+
+	slices.SortFunc(mergedRanges, func(a, b mergeRange) int {
+		if a.self == b.self {
+			if a.rng.Start.Line == b.rng.Start.Line {
+				if a.rng.Start.Column == b.rng.Start.Column {
+					return 0
+				}
+				return a.rng.Start.Column - b.rng.Start.Column
+			}
+			return a.rng.Start.Line - b.rng.Start.Line
+		}
+		return 0
+	})
 
 	slices.SortFunc(ranges, func(a, b hcl.Range) int {
 		if a.Start.Line == b.Start.Line {
@@ -416,7 +443,7 @@ func valRange(key string, me cty.Value) *Sorter {
 		return a.Start.Line - b.Start.Line
 	})
 
-	return &Sorter{Range: ranges, Key: key, Value: me}
+	return &Sorter{Range: ranges, Key: key, Value: me, MergeRange: mergedRanges}
 }
 
 func sortem(val cty.Value) []*Sorter {
@@ -441,6 +468,22 @@ func sortem(val cty.Value) []*Sorter {
 	})
 
 	slices.SortFunc(out, func(a, b *Sorter) int {
+
+		for i, x := range a.MergeRange {
+			if i >= len(b.MergeRange) {
+				continue
+			}
+			y := b.MergeRange[i]
+			if x.self == y.self {
+				if x.rng.Start.Line == y.rng.Start.Line {
+					if x.rng.Start.Column == y.rng.Start.Column {
+						continue
+					}
+					return x.rng.Start.Column - y.rng.Start.Column
+				}
+				return x.rng.Start.Line - y.rng.Start.Line
+			}
+		}
 		for i, x := range a.Range {
 			if i >= len(b.Range) {
 				return 1
@@ -454,6 +497,7 @@ func sortem(val cty.Value) []*Sorter {
 			}
 			return x.Start.Line - y.Start.Line
 		}
+
 		return 0
 	})
 

@@ -4,54 +4,54 @@ gen taskfile {
 	schema = ""
 	path   = "../.vscode/retab.code-workspace"
 	data = {
-		"folders" : [
+		folders = [
 			{
-				"path" : "../"
+				path = "../"
 			}
-		],
+		]
 
-		"settings" : {
+		settings = {
 
-			"editor.formatOnSave" : true,
+			"editor.formatOnSave" = true,
 
-			"editor.formatOnSaveTimeout" : 5000,
-			"editor.formatOnSaveMode" : "file",
-			"go.testFlags" : [
+			"editor.formatOnSaveTimeout" = 5000
+			"editor.formatOnSaveMode"    = "file"
+			"go.testFlags" = [
 				"-count=1",
 				// test timeout at 89s
 				"-timeout=90s"
-			],
+			]
 
-			"gopls" = {
-				"ui.semanticTokens" : true
+			gopls = {
+				"ui.semanticTokens" = true
 			}
 
-			"files.associations" : {
-				"*.retab" : "hcl"
-			},
-			"material-icon-theme.folders.associations" : {
-				"chain" : "contract"
-			},
-			"emeraldwalk.runonsave" : {
-				"commands" : [
+			"files.associations" = {
+				"*.retab" = "hcl"
+			}
+			"material-icon-theme.folders.associations" = {
+				chain = "contract"
+			}
+			"emeraldwalk.runonsave" = {
+				commands = [
 					{
-						"match" : "\\.retab$",
-						"cmd" : "./${file("task").TOOLS_DIR}/bin/task retab-gen"
+						match = "\\.retab$"
+						cmd   = "./${file("task").TOOLS_DIR}/bin/task retab-gen"
 					},
 					{
-						"match" : "\\.proto$",
-						"cmd" : "go run ./cmd/retab wfmt --file=$${file} --proto"
+						match = "\\.proto$"
+						cmd   = "go run ./cmd/retab wfmt --file=$${file} --proto"
 					},
 					{
-						"match" : "\\.proto$",
-						"cmd" : "./${file("task").TOOLS_DIR}/bin/task  buf-gen"
+						match = "\\.proto$"
+						cmd   = "./${file("task").TOOLS_DIR}/bin/task  buf-gen"
 					},
 					{
-						"match" : "\\.go$",
-						"cmd" : "./${file("task").TOOLS_DIR}/bin/task  mockery-gen"
+						match = "\\${join("\\", [for _, z in file("mockery").LocalFilesToWatch : "${z}"])}$"
+						cmd   = "./${file("task").TOOLS_DIR}/bin/task  mockery-gen"
 					}
 				]
-			},
+			}
 		}
 	}
 }

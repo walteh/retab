@@ -41,7 +41,7 @@
 					"cmd": "./tools/bin/task  buf-gen"
 				},
 				{
-					"match": "\\.go$",
+					"match": "\\./pkg/format/*.go\\./pkg/lang/*.go$",
 					"cmd": "./tools/bin/task  mockery-gen"
 				}
 			]

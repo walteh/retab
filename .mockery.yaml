@@ -14,3 +14,6 @@ packages:
     github.com/walteh/retab/pkg/format:
         interfaces:
             Configuration: {}
+    github.com/walteh/retab/pkg/lang:
+        interfaces:
+            Meta: {}

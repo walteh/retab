@@ -4,7 +4,12 @@ GO_PACKAGE = "github.com/walteh/retab"
 
 pkgs = {
 	"pkg/format" = ["Configuration"]
+	"pkg/lang"   = ["Meta"]
 }
+
+LocalFilesToWatch = [
+	for pkg, _ in pkgs : "./${pkg}/*.go"
+]
 
 gen mockery {
 	schema = ""

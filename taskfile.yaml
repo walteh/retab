@@ -66,6 +66,7 @@ tasks:
             - cd tools && go get -u -v ./... && go mod tidy
             - go work vendor
     retab-gen:
+        run: when_changed
         deps: []
         generates: []
         dir: .
@@ -116,9 +117,10 @@ tasks:
             - gen/mockery/**/*
         dir: .
         sources:
-            - '**/*.go'
             - './.mockery.yaml '
             - ./tools/bin/mockery
+            - ./pkg/format/*.go
+            - ./pkg/lang/*.go
         cmds:
             - './tools/bin/mockery --dir ./gen/mockery --config ./.mockery.yaml '
             - find ./gen/mockery -type f -mmin +1 -delete

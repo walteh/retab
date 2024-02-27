@@ -58,6 +58,7 @@ task update {
 }
 
 task retab-gen {
+	run       = "when_changed"
 	deps      = []
 	generates = []
 	dir       = "."
@@ -114,7 +115,7 @@ task mockery-gen {
 	deps      = ["mockery-bin", "retab-gen"]
 	generates = ["gen/mockery/**/*"]
 	dir       = "."
-	sources   = ["**/*.go", "./${MOCKERY_OUTPUT} ", "./${TOOLS_DIR}/bin/mockery"]
+	sources   = merge(["./${MOCKERY_OUTPUT} ", "./${TOOLS_DIR}/bin/mockery"], file("mockery").LocalFilesToWatch, )
 	cmds = [
 		"./${TOOLS_DIR}/bin/mockery --dir ./gen/mockery --config ./${MOCKERY_OUTPUT} ",
 		"find ./gen/mockery -type f -mmin +1 -delete"

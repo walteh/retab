@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
 	"github.com/walteh/terrors"
 	"github.com/walteh/yaml"
@@ -29,6 +30,8 @@ func ProccessBulk(ctx context.Context, fs afero.Fs, files []string) (map[string]
 		fles[file] = opn
 
 	}
+
+	zerolog.Ctx(ctx).Debug().Strs("files", files).Msg("processing files")
 
 	_, full, bb, diags, err := NewContextFromFiles(ctx, fles)
 	if err != nil || diags.HasErrors() {

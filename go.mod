@@ -11,6 +11,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.19.1
 	github.com/k0kubun/pp/v3 v3.2.0
 	github.com/kylelemons/godebug v1.1.0
+	github.com/rs/xid v1.5.0
 	github.com/rs/zerolog v1.32.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/spf13/afero v1.11.0
