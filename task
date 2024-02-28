@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+if ! [ -f "tools/bin/task" ]; then
+	(
+		cd tools && go generate
+	)
+fi
+
+export ROOT_TASKFILE=./taskfile.yaml
+export ROOT_DIR=.
+export USER_WORKING_DIR=.
+
+./tools/bin/task "$@"
