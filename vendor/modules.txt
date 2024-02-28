@@ -309,7 +309,7 @@ github.com/bufbuild/protocompile/protoutil
 github.com/bufbuild/protocompile/reporter
 github.com/bufbuild/protocompile/sourceinfo
 github.com/bufbuild/protocompile/walk
-# github.com/bufbuild/protovalidate-go v0.5.2
+# github.com/bufbuild/protovalidate-go v0.6.0
 ## explicit; go 1.19
 github.com/bufbuild/protovalidate-go
 github.com/bufbuild/protovalidate-go/celext
@@ -372,7 +372,7 @@ github.com/cpuguy83/go-md2man/v2/md2man
 ## explicit; go 1.18
 github.com/curioswitch/go-reassign
 github.com/curioswitch/go-reassign/internal/analyzer
-# github.com/daixiang0/gci v0.12.3
+# github.com/daixiang0/gci v0.13.0
 ## explicit; go 1.18
 github.com/daixiang0/gci/pkg/config
 github.com/daixiang0/gci/pkg/format
@@ -479,7 +479,7 @@ github.com/ghostiam/protogetter
 # github.com/go-chi/chi/v5 v5.0.12
 ## explicit; go 1.14
 github.com/go-chi/chi/v5
-# github.com/go-critic/go-critic v0.11.1
+# github.com/go-critic/go-critic v0.11.2
 ## explicit; go 1.18
 github.com/go-critic/go-critic/checkers
 github.com/go-critic/go-critic/checkers/internal/astwalk
@@ -499,8 +499,8 @@ github.com/go-logr/stdr
 # github.com/go-task/slim-sprig/v3 v3.0.0
 ## explicit; go 1.20
 github.com/go-task/slim-sprig/v3
-# github.com/go-task/task/v3 v3.34.1
-## explicit; go 1.20
+# github.com/go-task/task/v3 v3.35.0
+## explicit; go 1.21
 github.com/go-task/task/v3
 github.com/go-task/task/v3/args
 github.com/go-task/task/v3/cmd/task
@@ -510,6 +510,7 @@ github.com/go-task/task/v3/internal/deepcopy
 github.com/go-task/task/v3/internal/editors
 github.com/go-task/task/v3/internal/env
 github.com/go-task/task/v3/internal/execext
+github.com/go-task/task/v3/internal/exp
 github.com/go-task/task/v3/internal/experiments
 github.com/go-task/task/v3/internal/filepathext
 github.com/go-task/task/v3/internal/fingerprint
@@ -690,7 +691,7 @@ github.com/google/go-containerregistry/pkg/v1/remote/transport
 github.com/google/go-containerregistry/pkg/v1/stream
 github.com/google/go-containerregistry/pkg/v1/tarball
 github.com/google/go-containerregistry/pkg/v1/types
-# github.com/google/pprof v0.0.0-20240225044709-fd706174c886
+# github.com/google/pprof v0.0.0-20240227163752-401108e1b7e7
 ## explicit; go 1.19
 github.com/google/pprof/profile
 # github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
@@ -962,8 +963,8 @@ github.com/pmezard/go-difflib/difflib
 # github.com/polyfloyd/go-errorlint v1.4.8
 ## explicit; go 1.20
 github.com/polyfloyd/go-errorlint/errorlint
-# github.com/prometheus/client_golang v1.18.0
-## explicit; go 1.19
+# github.com/prometheus/client_golang v1.19.0
+## explicit; go 1.20
 github.com/prometheus/client_golang/prometheus
 github.com/prometheus/client_golang/prometheus/internal
 github.com/prometheus/client_golang/prometheus/testutil/promlint
@@ -1286,7 +1287,7 @@ github.com/zeebo/xxh3
 # gitlab.com/bosi/decorder v0.4.1
 ## explicit; go 1.20
 gitlab.com/bosi/decorder
-# go-simpler.org/musttag v0.8.0
+# go-simpler.org/musttag v0.9.0
 ## explicit; go 1.20
 go-simpler.org/musttag
 # go-simpler.org/sloglint v0.4.0
@@ -1349,7 +1350,7 @@ go.uber.org/zap/internal/exit
 go.uber.org/zap/internal/pool
 go.uber.org/zap/internal/stacktrace
 go.uber.org/zap/zapcore
-# golang.org/x/crypto v0.19.0
+# golang.org/x/crypto v0.20.0
 ## explicit; go 1.18
 golang.org/x/crypto/sha3
 # golang.org/x/exp v0.0.0-20240222234643-814bf88cf225
@@ -1497,10 +1498,10 @@ golang.org/x/tools/internal/tokeninternal
 golang.org/x/tools/internal/typeparams
 golang.org/x/tools/internal/typesinternal
 golang.org/x/tools/internal/versions
-# google.golang.org/genproto/googleapis/api v0.0.0-20240221002015-b0ce06bbee7c
+# google.golang.org/genproto/googleapis/api v0.0.0-20240228224816-df926f6c8641
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/api/expr/v1alpha1
-# google.golang.org/genproto/googleapis/rpc v0.0.0-20240221002015-b0ce06bbee7c
+# google.golang.org/genproto/googleapis/rpc v0.0.0-20240228224816-df926f6c8641
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/protobuf v1.32.0

@@ -14,6 +14,36 @@ type Tasks struct {
 	omap.OrderedMap[string, *Task]
 }
 
+type MatchingTask struct {
+	Task      *Task
+	Wildcards []string
+}
+
+func (t *Tasks) FindMatchingTasks(call *Call) []*MatchingTask {
+	if call == nil {
+		return nil
+	}
+	var task *Task
+	var matchingTasks []*MatchingTask
+	// If there is a direct match, return it
+	if task = t.OrderedMap.Get(call.Task); task != nil {
+		matchingTasks = append(matchingTasks, &MatchingTask{Task: task, Wildcards: nil})
+		return matchingTasks
+	}
+	// Attempt a wildcard match
+	// For now, we can just nil check the task before each loop
+	_ = t.Range(func(key string, value *Task) error {
+		if match, wildcards := value.WildcardMatch(call.Task); match {
+			matchingTasks = append(matchingTasks, &MatchingTask{
+				Task:      value,
+				Wildcards: wildcards,
+			})
+		}
+		return nil
+	})
+	return matchingTasks
+}
+
 func (t1 *Tasks) Merge(t2 Tasks, include *Include) {
 	_ = t2.Range(func(k string, v *Task) error {
 		// We do a deep copy of the task struct here to ensure that no data can

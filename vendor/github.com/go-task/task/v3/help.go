@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 	"text/tabwriter"
@@ -121,14 +120,7 @@ func (e *Executor) ListTasks(o ListOptions) (bool, error) {
 // ListTaskNames prints only the task names in a Taskfile.
 // Only tasks with a non-empty description are printed if allTasks is false.
 // Otherwise, all task names are printed.
-func (e *Executor) ListTaskNames(allTasks bool) {
-	// if called from cmd/task.go, e.Taskfile has not yet been parsed
-	if e.Taskfile == nil {
-		if err := e.readTaskfile(); err != nil {
-			log.Fatal(err)
-			return
-		}
-	}
+func (e *Executor) ListTaskNames(allTasks bool) error {
 	// use stdout if no output defined
 	var w io.Writer = os.Stdout
 	if e.Stdout != nil {
@@ -157,6 +149,7 @@ func (e *Executor) ListTaskNames(allTasks bool) {
 	for _, t := range taskNames {
 		fmt.Fprintln(w, t)
 	}
+	return nil
 }
 
 func (e *Executor) ToEditorOutput(tasks []*ast.Task, noStatus bool) (*editors.Taskfile, error) {
