@@ -227,3 +227,38 @@ func TestIssue34(t *testing.T) {
 	require.Empty(t, diff.DiffExportedOnly(string(issue34_expected), string(out)))
 
 }
+
+//go:embed testdata/issue39/task.retab
+var issue39_input []byte
+
+//go:embed testdata/issue39/task.expected.yaml
+var issue39_expected []byte
+
+func TestIssue39(t *testing.T) {
+
+	ctx := context.Background()
+
+	_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{
+		"task.retab": issue39_input,
+	})
+	require.NoError(t, err)
+	for _, c := range diags {
+		t.Log(c)
+	}
+	require.Empty(t, diags)
+
+	blk, diags, err := lang.NewGenBlockEvaluation(ctx, ectx, bb)
+	require.NoError(t, err)
+	for _, c := range diags {
+		t.Log(c)
+	}
+	require.Empty(t, diags)
+
+	require.NotNil(t, blk["taskfile.yaml"])
+
+	out, err := blk["taskfile.yaml"].Encode()
+	require.NoError(t, err)
+
+	require.Empty(t, diff.DiffExportedOnly(string(issue39_expected), string(out)))
+
+}

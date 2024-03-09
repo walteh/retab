@@ -66,7 +66,7 @@ func (me *SudoContext) ToValueWithExtraContext() cty.Value {
 	var val cty.Value
 
 	if me.Value != nil {
-		val = *me.Value
+		val = me.ToValue()
 	} else {
 		if me.isArray || strings.HasPrefix(me.ParentKey, FuncKey) {
 			lst := me.List()
@@ -287,6 +287,19 @@ func (wc *SudoContext) GetAllTemporaryFileLevelVars() map[string]cty.Value {
 	return mine
 }
 
+func (wc *SudoContext) GetAllUserFuncs() map[string]function.Function {
+	mine := map[string]function.Function{}
+	if wc.Parent != nil {
+		for k, v := range wc.Parent.GetAllUserFuncs() {
+			mine[k] = v
+		}
+	}
+	for k, v := range wc.UserFuncs {
+		mine[k] = v
+	}
+	return mine
+}
+
 func (wc *SudoContext) BuildStaticEvalContextWithFileData(file string) *hcl.EvalContext {
 
 	wrkd := wc.Root().Map[FilesKey].Map[sanitizeFileName(file)]
@@ -309,6 +322,10 @@ func (wc *SudoContext) BuildStaticEvalContextWithFileData(file string) *hcl.Eval
 
 	for k, v := range wc.GetAllTemporaryFileLevelVars() {
 		wrk.Variables[k] = v
+	}
+
+	for k, v := range wc.GetAllUserFuncs() {
+		wrk.Functions[k] = v
 	}
 
 	return wrk

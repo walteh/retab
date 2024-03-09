@@ -16,8 +16,10 @@ import (
 	"github.com/zclconf/go-cty/cty/function/stdlib"
 )
 
-func ExtractUserFuncs(ctx context.Context, ibdy hcl.Body, parent *hcl.EvalContext) (map[string]function.Function, hcl.Diagnostics) {
-	userfuncs, _, diag := userfunc.DecodeUserFunctions(ibdy, "func", func() *hcl.EvalContext { return parent })
+const UserFuncBlockType = "func"
+
+func ExtractUserFuncs(ctx context.Context, ibdy hcl.Body, parent *SudoContext) (map[string]function.Function, hcl.Diagnostics) {
+	userfuncs, _, diag := userfunc.DecodeUserFunctions(ibdy, UserFuncBlockType, func() *hcl.EvalContext { return parent.BuildStaticEvalContext() })
 	if diag.HasErrors() {
 		return nil, diag
 	}
@@ -364,6 +366,23 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 	// strs := []string{block.Type}
 	// strs = append(strs, block.Labels...)
 
+	if block.Type == UserFuncBlockType {
+		// since we go back to the parent, we don't need to process the functions if they are already there
+		// if len(parentctx.Parent.UserFuncs) == 0 {
+		// 	userfuncs, diags := ExtractUserFuncs(ctx, block.Body, parentctx.Parent)
+		// 	if diags.HasErrors() {
+		// 		return diags
+		// 	}
+
+		// 	parentctx.Parent.UserFuncs = userfuncs
+
+		// 	return diags
+		// }
+
+		// skip normal processing of extra user functions
+		return hcl.Diagnostics{}
+	}
+
 	child, err := parentctx.NewBlockChild(block)
 	if err != nil {
 		return hcl.Diagnostics{
@@ -376,22 +395,12 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 		}
 	}
 
-	// for _, attr := range block.Body.Blocks {
-	// 	// just init the children so we know that one is missing if it is not completed
-	// 	childr := child.NewChild(attr.Type, attr.TypeRange).NewNestedChildBlockLabels(attr.Labels, attr.LabelRanges)
-
-	// 	if childr.Meta
-
-	// 	childr.Meta = &IncomleteBlockMeta{attr}
-	// }
-
 	userfuncs, _, diag := userfunc.DecodeUserFunctions(block.Body, "func", child.BuildStaticEvalContext)
 	if diag.HasErrors() {
 		return diag
 	}
 
 	child.UserFuncs = userfuncs
-	// child.ApplyBlock(block)
 	diag = ExtractVariables(ctx, block.Body, child)
 	if diag.HasErrors() {
 		return diag
@@ -402,10 +411,6 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 		HCL: block,
 	}
 	metad = blkmeta
-
-	// meta := map[string]cty.Value{
-	// 	"label": cty.StringVal(strings.Join(block.Labels, ".")),
-	// }
 
 	if block.Type == "gen" {
 		um, _ := child.Map["path"].Value.Unmark()
@@ -692,7 +697,9 @@ func NewContextualizedFunctionMap(ectx *SudoContext, file string) map[string]fun
 				return cty.NilVal, err
 			}
 
-			return resp.ToValueWithExtraContext().WithMarks(mrk), nil
+			r := resp.ToValueWithExtraContext()
+
+			return r.WithMarks(mrk), nil
 		},
 	})
 

@@ -106,7 +106,7 @@ func (me *GenBlockMeta) Enhance(v cty.Value, ok []any) (cty.Value, error) {
 			if err != nil {
 				return cty.DynamicVal, err
 			}
-			return cty.StringVal(res), nil
+			return cty.StringVal(res).Mark(&ignoreFromYaml{}), nil
 		}
 	}
 
