@@ -1,4 +1,4 @@
-// Copyright 2020-2023 Buf Technologies, Inc.
+// Copyright 2020-2024 Buf Technologies, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -456,6 +456,12 @@ func validateField(res *result, syntax syntaxType, name protoreflect.FullName, f
 	}
 
 	node := res.FieldNode(fld)
+	if fld.Number == nil {
+		fieldTagNodeInfo := res.file.NodeInfo(node)
+		if err := handler.HandleErrorf(fieldTagNodeInfo, "%s: missing field tag number", scope); err != nil {
+			return err
+		}
+	}
 	if syntax != syntaxProto2 {
 		if fld.GetType() == descriptorpb.FieldDescriptorProto_TYPE_GROUP {
 			groupNodeInfo := res.file.NodeInfo(node.GetGroupKeyword())

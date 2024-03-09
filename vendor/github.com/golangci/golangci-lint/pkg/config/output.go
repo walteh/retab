@@ -1,5 +1,11 @@
 package config
 
+import (
+	"errors"
+	"fmt"
+	"slices"
+)
+
 const (
 	OutFormatJSON              = "json"
 	OutFormatLineNumber        = "line-number"
@@ -28,14 +34,26 @@ var OutFormats = []string{
 }
 
 type Output struct {
-	Format              string
-	PrintIssuedLine     bool   `mapstructure:"print-issued-lines"`
-	PrintLinterName     bool   `mapstructure:"print-linter-name"`
-	UniqByLine          bool   `mapstructure:"uniq-by-line"`
-	SortResults         bool   `mapstructure:"sort-results"`
-	PrintWelcomeMessage bool   `mapstructure:"print-welcome"`
-	PathPrefix          string `mapstructure:"path-prefix"`
+	Format          string   `mapstructure:"format"`
+	PrintIssuedLine bool     `mapstructure:"print-issued-lines"`
+	PrintLinterName bool     `mapstructure:"print-linter-name"`
+	UniqByLine      bool     `mapstructure:"uniq-by-line"`
+	SortResults     bool     `mapstructure:"sort-results"`
+	SortOrder       []string `mapstructure:"sort-order"`
+	PathPrefix      string   `mapstructure:"path-prefix"`
+	ShowStats       bool     `mapstructure:"show-stats"`
+}
 
-	// only work with CLI flags because the setup of logs is done before the config file parsing.
-	Color string
+func (o *Output) Validate() error {
+	if !o.SortResults && len(o.SortOrder) > 0 {
+		return errors.New("sort-results should be 'true' to use sort-order")
+	}
+
+	for _, order := range o.SortOrder {
+		if !slices.Contains([]string{"linter", "file", "severity"}, order) {
+			return fmt.Errorf("unsupported sort-order name %q", order)
+		}
+	}
+
+	return nil
 }

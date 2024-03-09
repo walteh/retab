@@ -57,6 +57,7 @@ const (
 
 const (
 	DebugKeyGoCritic  = "gocritic"  // Debugs `go-critic` linter.
+	DebugKeyGovet     = "govet"     // Debugs `govet` linter.
 	DebugKeyMegacheck = "megacheck" // Debugs `staticcheck` related linters.
 	DebugKeyNolint    = "nolint"    // Debugs a filter excluding issues by `//nolint` comments.
 	DebugKeyRevive    = "revive"    // Debugs `revive` linter.
@@ -99,8 +100,15 @@ func HaveDebugTag(tag string) bool {
 	return enabledDebugs[tag]
 }
 
+var verbose bool
+
 func SetupVerboseLog(log Log, isVerbose bool) {
 	if isVerbose {
+		verbose = isVerbose
 		log.SetLevel(LogLevelInfo)
 	}
+}
+
+func IsVerbose() bool {
+	return verbose
 }

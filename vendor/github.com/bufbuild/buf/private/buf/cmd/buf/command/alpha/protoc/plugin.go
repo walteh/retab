@@ -19,10 +19,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bufbuild/buf/private/buf/bufcli"
 	"github.com/bufbuild/buf/private/bufpkg/bufimage"
 	"github.com/bufbuild/buf/private/bufpkg/bufpluginexec"
-	"github.com/bufbuild/buf/private/bufpkg/bufwasm"
 	"github.com/bufbuild/buf/private/pkg/app"
 	"github.com/bufbuild/buf/private/pkg/command"
 	"github.com/bufbuild/buf/private/pkg/storage/storageos"
@@ -48,7 +46,6 @@ func executePlugin(
 	logger *zap.Logger,
 	storageosProvider storageos.Provider,
 	runner command.Runner,
-	wasmPluginExecutor bufwasm.PluginExecutor,
 	container app.EnvStderrContainer,
 	images []bufimage.Image,
 	pluginName string,
@@ -58,30 +55,26 @@ func executePlugin(
 		logger,
 		storageosProvider,
 		runner,
-		wasmPluginExecutor,
 	)
-	var options []bufpluginexec.GenerateOption
-	if pluginInfo.Path != "" {
-		options = append(options, bufpluginexec.GenerateWithPluginPath(pluginInfo.Path))
-	}
-	wasmEnabled, err := bufcli.IsAlphaWASMEnabled(container)
+	requests, err := bufimage.ImagesToCodeGeneratorRequests(
+		images,
+		strings.Join(pluginInfo.Opt, ","),
+		bufpluginexec.DefaultVersion,
+		false,
+		false,
+	)
 	if err != nil {
 		return nil, err
 	}
-	if wasmEnabled {
-		options = append(options, bufpluginexec.GenerateWithWASMEnabled())
+	var options []bufpluginexec.GenerateOption
+	if pluginInfo.Path != "" {
+		options = append(options, bufpluginexec.GenerateWithPluginPath(pluginInfo.Path))
 	}
 	response, err := generator.Generate(
 		ctx,
 		container,
 		pluginName,
-		bufimage.ImagesToCodeGeneratorRequests(
-			images,
-			strings.Join(pluginInfo.Opt, ","),
-			bufpluginexec.DefaultVersion,
-			false,
-			false,
-		),
+		requests,
 		options...,
 	)
 	if err != nil {
