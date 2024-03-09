@@ -80,6 +80,8 @@ func NewSorter(key string, me cty.Value) *Sorter {
 					mergedRanges = append(mergedRanges, mergeRange{g, e.common})
 				}
 			}
+		case *makePathRelative:
+			knownMarks = append(knownMarks, e)
 		default:
 			fmt.Println("unknown mark", e)
 			knownMarks = append(knownMarks, e)
@@ -109,24 +111,24 @@ func NewSorter(key string, me cty.Value) *Sorter {
 	return &Sorter{Range: ranges, Key: key, Ignored: ignored, Value: me, MergeRange: mergedRanges, KnownMarks: knownMarks}
 }
 
-func NewSorterList(val cty.Value) []*Sorter {
-
+func NewSorterList(val cty.Value) (*Sorter, []*Sorter) {
+	self := NewSorter("", val)
 	out := make([]*Sorter, 0)
-	if val.Type().IsObjectType() {
-		objs := val.AsValueMap()
+
+	if self.Value.Type().IsObjectType() {
+		objs := self.Value.AsValueMap()
 		for k, v := range objs {
 			rng := NewSorter(k, v)
 			out = append(out, rng)
 		}
-	} else if val.Type().IsTupleType() {
-		objs := val.AsValueSlice()
+	} else if self.Value.Type().IsTupleType() {
+		objs := self.Value.AsValueSlice()
 		for _, v := range objs {
 			rng := NewSorter("", v)
 			out = append(out, rng)
 		}
 	} else {
-		rng := NewSorter("", val)
-		out = append(out, rng)
+		return self, out
 	}
 
 	slices.SortFunc(out, func(a, b *Sorter) int {
@@ -146,6 +148,15 @@ func NewSorterList(val cty.Value) []*Sorter {
 				return x.rng.Start.Line - y.rng.Start.Line
 			}
 		}
+
+		if len(a.Range) == 0 {
+			if len(b.Range) == 0 {
+				return 0
+			} else {
+				return -1
+			}
+		}
+
 		for i, x := range a.Range {
 			if i >= len(b.Range) {
 				return 1
@@ -163,19 +174,25 @@ func NewSorterList(val cty.Value) []*Sorter {
 		return 0
 	})
 
-	return out
+	return self, out
 }
 
 func UnmarkToSortedArray(me cty.Value, enhance SortEnhancer) (any, error) {
-	me, _ = me.Unmark()
 
-	out := NewSorterList(me)
+	self, out := NewSorterList(me)
+	if self.Ignored {
+		return nil, nil
+	}
+
+	if len(out) == 0 {
+		return noMetaJsonEncode(self.Value)
+	}
 
 	if me.Type().IsObjectType() {
 
 		wrk := make(yaml.MapSlice, 0, len(out))
 		for _, v := range out {
-			if v.Key == MetaKey || strings.Contains(v.Key, FuncKey) {
+			if v.Key == MetaKey || strings.Contains(v.Key, FuncKey) || v.Ignored {
 				continue
 			}
 			res, err := UnmarkToSortedArray(v.Value, enhance)
@@ -191,7 +208,9 @@ func UnmarkToSortedArray(me cty.Value, enhance SortEnhancer) (any, error) {
 	if me.Type().IsTupleType() {
 		wrk := make([]any, 0, len(out))
 		for _, v := range out {
-
+			if v.Ignored {
+				continue
+			}
 			res, err := UnmarkToSortedArray(v.Value, enhance)
 			if err != nil {
 				return nil, err
@@ -218,5 +237,5 @@ func UnmarkToSortedArray(me cty.Value, enhance SortEnhancer) (any, error) {
 	// 	out[0].Value = res
 	// }
 
-	return noMetaJsonEncode(out[0].Value)
+	return nil, fmt.Errorf("not a list or map")
 }
