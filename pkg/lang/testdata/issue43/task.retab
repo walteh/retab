@@ -1,0 +1,22 @@
+
+
+gen file_a {
+	path = "../some/nested/chicken/egg.yaml"
+	data = {
+		chicken = "bock bock"
+	}
+}
+
+gen file_b {
+	path = "../some/nested/new.yaml"
+	data = {
+		cow = "${gen.file_a.resolved_output} ${gen.file_c.resolved_output}"
+	}
+}
+
+gen file_c {
+	path = "../some/nested/turkey/bacon.yaml"
+	data = {
+		turkey = "gobble gobble"
+	}
+}

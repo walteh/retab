@@ -114,7 +114,7 @@ func (me *GenBlockMeta) Enhance(val cty.Value, ok []any) (cty.Value, error) {
 			// even if its not intended to be resolved by the user
 			final := strings.ReplaceAll(val.AsString(), t.to, res)
 
-			return cty.StringVal(final).WithSameMarks(val), nil
+			val = cty.StringVal(final).WithSameMarks(val)
 		}
 	}
 
