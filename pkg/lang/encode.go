@@ -34,6 +34,9 @@ type makePathRelative struct {
 	to string
 }
 
+type isIncompleteBlock struct {
+}
+
 func (me *SudoContext) ToYAML() (yaml.MapSlice, error) {
 	resp := yaml.MapSlice{}
 

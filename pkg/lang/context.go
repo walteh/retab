@@ -87,6 +87,10 @@ func (me *SudoContext) ToValueWithExtraContext() cty.Value {
 		}
 	}
 
+	if _, ok := me.Meta.(*IncomleteBlockMeta); ok {
+		val = val.Mark(isIncompleteBlock{})
+	}
+
 	return val.Mark(me.Meta.Range())
 }
 
