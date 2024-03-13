@@ -1,0 +1,16 @@
+
+
+
+
+gen taskfile {
+	path = "./tmp.yaml"
+	data = {
+		cow = sample.hello
+	}
+}
+
+
+
+sample "hello" {
+	chicken = "world"
+}
