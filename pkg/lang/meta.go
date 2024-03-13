@@ -98,7 +98,7 @@ type GenBlockMeta struct {
 }
 
 // Enhance implements SortEnhancer.
-func (me *GenBlockMeta) Enhance(v cty.Value, ok []any) (cty.Value, error) {
+func (me *GenBlockMeta) Enhance(val cty.Value, ok []any) (cty.Value, error) {
 	for _, v := range ok {
 		switch t := v.(type) {
 		case *makePathRelative:
@@ -106,11 +106,19 @@ func (me *GenBlockMeta) Enhance(v cty.Value, ok []any) (cty.Value, error) {
 			if err != nil {
 				return cty.DynamicVal, err
 			}
-			return cty.StringVal(res).Mark(&ignoreFromYaml{}), nil
+
+			res = strings.TrimPrefix(res, "../")
+
+			// TODO: this is a hack to be able to handle template strings correctly,
+			// if for some reason the path is repeated in the string, it will be replaced multiple times
+			// even if its not intended to be resolved by the user
+			final := strings.ReplaceAll(val.AsString(), t.to, res)
+
+			return cty.StringVal(final).WithSameMarks(val), nil
 		}
 	}
 
-	return v, nil
+	return val, nil
 }
 
 type SimpleNameMeta struct {

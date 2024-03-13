@@ -453,9 +453,11 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 	return hcl.Diagnostics{}
 }
 
-func unmarkCheckingForIncompleteBlock(v cty.Value) (cty.Value, hcl.Diagnostics) {
+func unmarkCheckingForIncompleteBlock(val cty.Value) (cty.Value, hcl.Diagnostics) {
 
-	mrks := v.Marks()
+	markstokeep := cty.ValueMarks{}
+
+	mrks := val.Marks()
 	if len(mrks) > 0 {
 		for v := range mrks {
 			if _, ok := v.(isIncompleteBlock); ok {
@@ -467,12 +469,19 @@ func unmarkCheckingForIncompleteBlock(v cty.Value) (cty.Value, hcl.Diagnostics) 
 					},
 				}
 			}
+			// if _, ok := v.(*ignoreFromYaml); ok {
+			// 	markstokeep[v] = struct{}{}
+			// }
+			if z, ok := v.(*makePathRelative); ok {
+				markstokeep[z] = struct{}{}
+				// val = cty.StringVal("CAN_BE_" + val.AsString() + "RELATIVE_" z)
+			}
 		}
 	}
 
-	unmrk, _ := v.Unmark()
+	unmrk, _ := val.Unmark()
 
-	return unmrk, hcl.Diagnostics{}
+	return unmrk.WithMarks(markstokeep), hcl.Diagnostics{}
 }
 
 func NewFunctionMap() map[string]function.Function {

@@ -11,12 +11,14 @@ import (
 )
 
 type Sorter struct {
-	Range      []hcl.Range
-	MergeRange []mergeRange
-	Key        string
-	Value      cty.Value
-	Ignored    bool
-	KnownMarks []any
+	OGValue         cty.Value
+	Range           []hcl.Range
+	MergeRange      []mergeRange
+	Key             string
+	Value           cty.Value
+	Ignored         bool
+	KnownMarks      []any
+	knownValueMarks cty.ValueMarks
 }
 
 type SortEnhancer interface {
@@ -40,7 +42,9 @@ type isIncompleteBlock struct {
 func (me *SudoContext) ToYAML() (yaml.MapSlice, error) {
 	resp := yaml.MapSlice{}
 
-	item, err := UnmarkToSortedArray(me.ToValue(), me.ParentBlockMeta())
+	v := me.ToValueWithExtraContext()
+
+	item, err := UnmarkToSortedArray(v, me.ParentBlockMeta())
 	if err != nil {
 		return nil, err
 	}
@@ -56,18 +60,19 @@ func (me *SudoContext) ToYAML() (yaml.MapSlice, error) {
 	return resp, nil
 }
 
-func NewSorter(key string, me cty.Value) *Sorter {
+func NewSorter(key string, og cty.Value) *Sorter {
 
-	me, r := me.Unmark()
+	me, r := og.Unmark()
 
 	knownMarks := make([]any, 0)
+	knownValueMarks := cty.ValueMarks{}
 	ranges := make([]hcl.Range, 0, len(r))
 	mergedRanges := make([]mergeRange, 0)
 	ignored := false
 
 	if len(r) == 0 {
 		// panic(fmt.Sprintf("no range or ignore found for %s", me.GoString()))
-		return &Sorter{Key: key, Value: me, Ignored: false, Range: ranges, MergeRange: mergedRanges, KnownMarks: knownMarks}
+		return &Sorter{Key: key, Value: me, Ignored: false, Range: ranges, MergeRange: mergedRanges, KnownMarks: knownMarks, knownValueMarks: knownValueMarks, OGValue: og}
 	}
 
 	for z := range r {
@@ -91,6 +96,10 @@ func NewSorter(key string, me cty.Value) *Sorter {
 		}
 	}
 
+	for _, v := range knownMarks {
+		knownValueMarks[v] = struct{}{}
+	}
+
 	slices.SortFunc(mergedRanges, func(a, b mergeRange) int {
 		if a.self == b.self {
 			if a.rng.Start.Line == b.rng.Start.Line {
@@ -111,7 +120,7 @@ func NewSorter(key string, me cty.Value) *Sorter {
 		return a.Start.Line - b.Start.Line
 	})
 
-	return &Sorter{Range: ranges, Key: key, Ignored: ignored, Value: me, MergeRange: mergedRanges, KnownMarks: knownMarks}
+	return &Sorter{Range: ranges, Key: key, Ignored: ignored, Value: me, MergeRange: mergedRanges, KnownMarks: knownMarks, knownValueMarks: knownValueMarks, OGValue: og}
 }
 
 func NewSorterList(val cty.Value) (*Sorter, []*Sorter) {
@@ -188,6 +197,13 @@ func UnmarkToSortedArray(me cty.Value, enhance SortEnhancer) (any, error) {
 	}
 
 	if len(out) == 0 {
+		if enhance != nil {
+			res, err := enhance.Enhance(self.Value, self.KnownMarks)
+			if err != nil {
+				return nil, err
+			}
+			return noMetaJsonEncode(res)
+		}
 		return noMetaJsonEncode(self.Value)
 	}
 
@@ -198,7 +214,7 @@ func UnmarkToSortedArray(me cty.Value, enhance SortEnhancer) (any, error) {
 			if v.Key == MetaKey || strings.Contains(v.Key, FuncKey) || v.Ignored {
 				continue
 			}
-			res, err := UnmarkToSortedArray(v.Value, enhance)
+			res, err := UnmarkToSortedArray(v.OGValue, enhance)
 			if err != nil {
 				return nil, err
 			}
@@ -214,7 +230,7 @@ func UnmarkToSortedArray(me cty.Value, enhance SortEnhancer) (any, error) {
 			if v.Ignored {
 				continue
 			}
-			res, err := UnmarkToSortedArray(v.Value, enhance)
+			res, err := UnmarkToSortedArray(v.OGValue, enhance)
 			if err != nil {
 				return nil, err
 			}
@@ -226,19 +242,6 @@ func UnmarkToSortedArray(me cty.Value, enhance SortEnhancer) (any, error) {
 	if len(out) != 1 {
 		return nil, fmt.Errorf("not a list or map")
 	}
-
-	// TODO - this does not work, we will need to more string template handling to properly pull this off
-
-	// if enhance != nil {
-	// 	fmt.Println("enhancing", out[0].KnownMarks)
-	// 	res, err := enhance.Enhance(out[0].Value, out[0].KnownMarks)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	fmt.Println("enhancing", res)
-
-	// 	out[0].Value = res
-	// }
 
 	return nil, fmt.Errorf("not a list or map")
 }

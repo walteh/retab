@@ -228,6 +228,42 @@ func TestIssue34(t *testing.T) {
 
 }
 
+//go:embed testdata/issue38/task.retab
+var issue38_input []byte
+
+//go:embed testdata/issue38/task.expected.yaml
+var issue38_expected []byte
+
+func TestIssue38(t *testing.T) {
+
+	ctx := context.Background()
+
+	_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{
+		"task.retab": issue38_input,
+	})
+	require.NoError(t, err)
+	for _, c := range diags {
+		t.Log(c)
+	}
+	require.Empty(t, diags)
+
+	blk, diags, err := lang.NewGenBlockEvaluation(ctx, ectx, bb)
+	require.NoError(t, err)
+	for _, c := range diags {
+		t.Log(c)
+	}
+	require.Empty(t, diags)
+
+	require.NotNil(t, blk["some/nested/new.yaml"])
+	require.NotNil(t, blk["some/nested/dir/tmp.yaml"])
+
+	out, err := blk["some/nested/new.yaml"].Encode()
+	require.NoError(t, err)
+
+	require.Empty(t, diff.DiffExportedOnly(string(issue38_expected), string(out)))
+
+}
+
 //go:embed testdata/issue39/task.retab
 var issue39_input []byte
 
