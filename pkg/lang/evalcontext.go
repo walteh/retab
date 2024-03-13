@@ -99,7 +99,12 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 		diags := hcl.Diagnostics{}
 		for _, v := range e.Items {
 			key, diag := v.KeyExpr.Value(childctx)
-			key, _ = key.Unmark()
+			if diag.HasErrors() {
+				diags = append(diags, diag...)
+				continue
+			}
+
+			key, diag = unmarkCheckingForIncompleteBlock(key)
 			if diag.HasErrors() {
 				diags = append(diags, diag...)
 				continue
@@ -165,7 +170,10 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 			if diag.HasErrors() {
 				return diag
 			}
-			val, _ = val.Unmark()
+			val, diags := unmarkCheckingForIncompleteBlock(val)
+			if diags.HasErrors() {
+				return diags
+			}
 
 			// we have to reset or subsequent calls will break
 			// this resolves issue #33
@@ -229,7 +237,10 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 			if diag.HasErrors() {
 				return diag
 			}
-			val, _ = val.Unmark()
+			val, diags := unmarkCheckingForIncompleteBlock(val)
+			if diags.HasErrors() {
+				return diags
+			}
 			return parentctx.ApplyKeyVal(attr.Name, val, attr.NameRange)
 		}
 		// val, _ = val.Unmark()
@@ -272,7 +283,10 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 		}
 
 		// we want to remark this value with the name attirbutes
-		val, _ = val.Unmark()
+		val, diags := unmarkCheckingForIncompleteBlock(val)
+		if diags.HasErrors() {
+			return diags
+		}
 
 		return parentctx.ApplyKeyVal(attr.Name, val, attr.NameRange)
 	}
@@ -413,7 +427,20 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 	metad = blkmeta
 
 	if block.Type == "gen" {
-		um, _ := child.Map["path"].Value.Unmark()
+		if child.Map["path"] == nil || child.Map["path"].Value == nil {
+			return hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "missing attribute",
+					Detail:   "a gen block must have a path attribute",
+					Subject:  &block.TypeRange,
+				},
+			}
+		}
+		um, diags := unmarkCheckingForIncompleteBlock(*child.Map["path"].Value)
+		if diags.HasErrors() {
+			return diags
+		}
 
 		metad = &GenBlockMeta{
 			BasicBlockMeta: *blkmeta,
@@ -424,6 +451,28 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 	child.Meta = metad
 
 	return hcl.Diagnostics{}
+}
+
+func unmarkCheckingForIncompleteBlock(v cty.Value) (cty.Value, hcl.Diagnostics) {
+
+	mrks := v.Marks()
+	if len(mrks) > 0 {
+		for v := range mrks {
+			if _, ok := v.(isIncompleteBlock); ok {
+				return cty.NilVal, hcl.Diagnostics{
+					{
+						Severity: hcl.DiagError,
+						Summary:  "incomplete block",
+						Detail:   "this block is incomplete",
+					},
+				}
+			}
+		}
+	}
+
+	unmrk, _ := v.Unmark()
+
+	return unmrk, hcl.Diagnostics{}
 }
 
 func NewFunctionMap() map[string]function.Function {
