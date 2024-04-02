@@ -326,15 +326,7 @@ func ExtractVariables(ctx context.Context, bdy *hclsyntax.Body, parentctx *SudoC
 				}
 			} else {
 				attr := retrys[v-len(retryattrs)]
-				// var save *hclsyntax.Attribute
-				// if attr.Type == "gen" {
-				// 	save = attr.Body.Attributes["data"]
-				// 	delete(attr.Body.Attributes, "data")
-				// }
 				diagd := NewUnknownBlockEvaluation(ctx, parentctx, attr)
-				// if save != nil {
-				// 	attr.Body.Attributes["data"] = save
-				// }
 				if diagd.HasErrors() {
 					diags = append(diags, diagd...)
 					newRetrys = append(newRetrys, attr)

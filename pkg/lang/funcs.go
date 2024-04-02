@@ -172,7 +172,7 @@ var regexType = cty.Object(map[string]cty.Type{
 	"regex": cty.String,
 })
 
-func dangerouslyParseRegexArgs(args cty.Value) (keys []string, regex string, err error) {
+func dangerouslyParseRegexArgs(args cty.Value) (keys []string, regex cty.Value, err error) {
 	um, _ := args.UnmarkDeep()
 
 	m := um.AsValueMap()
@@ -182,7 +182,7 @@ func dangerouslyParseRegexArgs(args cty.Value) (keys []string, regex string, err
 		return
 	}
 
-	reg := m["regex"].AsString()
+	reg := m["regex"]
 	key := m["key"].AsValueSlice()
 
 	if len(key) == 0 {
@@ -264,7 +264,7 @@ func NewContextualizedFunctionMap(ectx *SudoContext, file string) map[string]fun
 
 			resp := make(map[string]cty.Value, len(ok))
 			for _, v := range ok {
-				resp[v.ParentKey] = v.ToValue()
+				resp[v.ParentKey] = v.ToValueWithExtraContext()
 			}
 
 			return cty.ObjectVal(resp).WithMarks(mrk), nil

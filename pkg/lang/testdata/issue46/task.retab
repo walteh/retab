@@ -1,0 +1,15 @@
+ben abc {
+}
+
+ben def {
+}
+
+ben ghi {
+}
+
+all_file_yamls = allof("ben", { key= ["label"], regex = "^abc$" })
+
+gen out {
+    path = "out/file.yaml"
+    data = { afy = [for x in all_file_yamls: x.label] }
+}

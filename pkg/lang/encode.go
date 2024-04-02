@@ -39,6 +39,18 @@ type makePathRelative struct {
 type isIncompleteBlock struct {
 }
 
+func rangeOf(v cty.Value) hcl.Range {
+	_, mrks := v.Unmark()
+
+	for r := range mrks {
+		if r, ok := r.(hcl.Range); ok {
+			return r
+		}
+	}
+
+	return hcl.Range{}
+}
+
 func (me *SudoContext) ToYAML() (yaml.MapSlice, error) {
 	resp := yaml.MapSlice{}
 

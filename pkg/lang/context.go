@@ -391,39 +391,36 @@ func (me *SudoContext) GetAllFileLevelBlocksOfType(name string) ([]*SudoContext,
 	return out, nil
 }
 
-func (me *SudoContext) Match(keys []string, val string) (bool, hcl.Diagnostics) {
-	vv := me
+func (me *SudoContext) Match(keys []string, val cty.Value) (bool, hcl.Diagnostics) {
+	vv := me.ToValueWithExtraContext()
 	for _, k := range keys {
-		if vv.Map[k] == nil {
-			break
-		} else {
-			vv = vv.Map[k]
+		vv = vv.GetAttr(k)
+		if vv == cty.NilVal {
+			return false, nil
 		}
 	}
 
-	if vv == nil {
+	if val.Type() != cty.String {
 		return false, nil
 	}
 
-	reg, err := regexp.Compile(val)
+	reg, err := regexp.Compile(val.AsString())
 	if err != nil {
 		return false, hcl.Diagnostics{{
 			Severity: hcl.DiagError,
 			Summary:  "unable to compile regex",
 			Detail:   err.Error(),
-			Subject:  vv.Meta.Range().Ptr(),
+			Subject:  rangeOf(val).Ptr(),
 		}}
 	}
 
-	if vv.Value.Type() != cty.String {
-		return false, nil
-	}
+	vv, _ = vv.Unmark()
 
-	return reg.MatchString(vv.Value.AsString()), nil
+	return reg.MatchString(vv.AsString()), nil
 
 }
 
-func FilterSudoContextWithRegex(sctx []*SudoContext, keys []string, reg string) ([]*SudoContext, error) {
+func FilterSudoContextWithRegex(sctx []*SudoContext, keys []string, reg cty.Value) ([]*SudoContext, error) {
 	filtered := make([]*SudoContext, 0)
 	for _, vv := range sctx {
 		mok, err := vv.Match(keys, reg)
