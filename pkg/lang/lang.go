@@ -15,8 +15,6 @@ import (
 	"github.com/spf13/afero"
 	"github.com/walteh/terrors"
 	"github.com/walteh/yaml"
-
-	"github.com/k0kubun/pp/v3"
 )
 
 func ProccessBulk(ctx context.Context, fs afero.Fs, files []string) (map[string]*FileBlockEvaluation, hcl.Diagnostics, error) {
@@ -90,8 +88,6 @@ func (me *FileBlockEvaluation) Encode() ([]byte, error) {
 	if ok {
 		vers = v.Main.Version
 	}
-
-	pp.Println(v)
 
 	vers = strings.TrimSpace(vers)
 	if vers == "" {
