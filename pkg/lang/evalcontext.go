@@ -22,7 +22,7 @@ func ExtractUserFuncs(ctx context.Context, ibdy hcl.Body, parent *SudoContext) (
 	return userfuncs, nil
 }
 
-func NewContextFromFiles(ctx context.Context, fle map[string][]byte) (*hcl.File, *SudoContext, *BodyBuilder, hcl.Diagnostics, error) {
+func NewContextFromFiles(ctx context.Context, fle map[string][]byte, env map[string]string) (*hcl.File, *SudoContext, *BodyBuilder, hcl.Diagnostics, error) {
 
 	bodys := make(map[string]*hclsyntax.Body)
 
@@ -50,6 +50,10 @@ func NewContextFromFiles(ctx context.Context, fle map[string][]byte) (*hcl.File,
 		isArray:          false,
 	}
 
+	for k, v := range env {
+		mectx.TmpFileLevelVars[k] = cty.StringVal(v)
+	}
+
 	diags := mectx.ApplyBody(ctx, root.NewRoot())
 
 	return nil, mectx, root, diags, nil
@@ -57,7 +61,7 @@ func NewContextFromFiles(ctx context.Context, fle map[string][]byte) (*hcl.File,
 }
 
 func NewContextFromFile(ctx context.Context, fle []byte, name string) (*hcl.File, *SudoContext, *BodyBuilder, hcl.Diagnostics, error) {
-	return NewContextFromFiles(ctx, map[string][]byte{sanitizeFileName(name): fle})
+	return NewContextFromFiles(ctx, map[string][]byte{sanitizeFileName(name): fle}, map[string]string{})
 }
 
 const ArrKey = "____arr"

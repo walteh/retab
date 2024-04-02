@@ -1,7 +1,7 @@
 
 gen golangci {
 	// schema = "https://json.schemastore.org/golangci-lint.json"
-	path   = "../.golangci.yaml"
+	path = "../.golangci.yaml"
 	data = {
 		linters = {
 			enable = [

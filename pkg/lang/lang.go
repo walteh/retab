@@ -34,7 +34,12 @@ func ProccessBulk(ctx context.Context, fs afero.Fs, files []string) (map[string]
 
 	zerolog.Ctx(ctx).Debug().Strs("files", files).Msg("processing files")
 
-	_, full, bb, diags, err := NewContextFromFiles(ctx, fles)
+	env, err := LoadGlobalEnvVars(fs, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	_, full, bb, diags, err := NewContextFromFiles(ctx, fles, env)
 	if err != nil || diags.HasErrors() {
 		return nil, diags, err
 	}

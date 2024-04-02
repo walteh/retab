@@ -2,15 +2,64 @@ package lang_test
 
 import (
 	"context"
-	_ "embed"
+	"embed"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/walteh/retab/pkg/diff"
 	"github.com/walteh/retab/pkg/lang"
 	"github.com/walteh/yaml"
 )
+
+//go:embed testdata/issue22/*
+var issue22_files embed.FS
+
+//go:embed testdata/issue22/task.retab
+var issue22_input []byte
+
+//go:embed testdata/issue22/task.expected.yaml
+var issue22_expected []byte
+
+func TestIssue22(t *testing.T) {
+
+	ctx := context.Background()
+
+	fs := afero.FromIOFS{FS: issue22_files}
+
+	bse := afero.NewBasePathFs(fs, "testdata/issue22/sample")
+
+	env, err := lang.LoadGlobalEnvVars(bse, &lang.LoadGlobalEnvVarOpts{
+		GoModFileName:  "go.modz",
+		DotEnvFileName: "dotenv",
+	})
+	require.NoError(t, err)
+
+	_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{
+		"task.retab": issue22_input,
+	}, env)
+	require.NoError(t, err)
+	for _, c := range diags {
+		t.Log(c)
+	}
+	require.Empty(t, diags)
+
+	blk, diags, err := lang.NewGenBlockEvaluation(ctx, ectx, bb)
+	require.NoError(t, err)
+	for _, c := range diags {
+		t.Log(c)
+	}
+	require.Empty(t, diags)
+
+	require.NotNil(t, blk["tmp.yaml"])
+
+	out, err := blk["tmp.yaml"].Encode()
+	require.NoError(t, err)
+
+	require.Empty(t, diff.DiffExportedOnly(string(issue22_expected), string(out)))
+
+}
 
 //go:embed testdata/sampleA.input.retab
 var sampleAInput []byte
@@ -42,7 +91,7 @@ func TestEncoding(t *testing.T) {
 
 			ctx := context.Background()
 
-			_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{"sampleA.input.retab": sampleAInput})
+			_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{"sampleA.input.retab": sampleAInput}, nil)
 			require.NoError(t, err)
 			for _, c := range diags {
 				t.Log(c)
@@ -74,7 +123,7 @@ func TestFileRef(t *testing.T) {
 	_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{
 		"sampleA.input.retab": sampleAInput,
 		"sampleB.input.retab": sampleBInput,
-	})
+	}, nil)
 	require.NoError(t, err)
 	for _, c := range diags {
 		t.Log(c)
@@ -121,7 +170,7 @@ func TestIssue31(t *testing.T) {
 			"mockery.retab": issue31_mockeryInput,
 			"buf.retab":     issue31_bufInput,
 			"task.retab":    issue31_taskInput,
-		})
+		}, nil)
 		require.NoError(t, err)
 		for _, c := range diags {
 			t.Log(c)
@@ -170,7 +219,7 @@ func TestIssue33(t *testing.T) {
 
 	_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{
 		"mockery.retab": issue33_input,
-	})
+	}, nil)
 	require.NoError(t, err)
 	for _, c := range diags {
 		t.Log(c)
@@ -205,7 +254,7 @@ func TestIssue34(t *testing.T) {
 
 	_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{
 		"task.retab": issue34_input,
-	})
+	}, nil)
 	require.NoError(t, err)
 	for _, c := range diags {
 		t.Log(c)
@@ -240,7 +289,7 @@ func TestIssue38(t *testing.T) {
 
 	_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{
 		"task.retab": issue38_input,
-	})
+	}, nil)
 	require.NoError(t, err)
 	for _, c := range diags {
 		t.Log(c)
@@ -276,7 +325,7 @@ func TestIssue39(t *testing.T) {
 
 	_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{
 		"task.retab": issue39_input,
-	})
+	}, nil)
 	require.NoError(t, err)
 	for _, c := range diags {
 		t.Log(c)
@@ -311,7 +360,7 @@ func TestIssue41(t *testing.T) {
 
 	_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{
 		"task.retab": issue41_input,
-	})
+	}, nil)
 	require.NoError(t, err)
 	for _, c := range diags {
 		t.Log(c)
@@ -346,7 +395,7 @@ func TestIssue43(t *testing.T) {
 
 	_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{
 		"task.retab": issue43_input,
-	})
+	}, nil)
 	require.NoError(t, err)
 	for _, c := range diags {
 		t.Log(c)
@@ -383,7 +432,7 @@ func TestIssue44(t *testing.T) {
 
 	_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{
 		"task.retab": issue44_input,
-	})
+	}, nil)
 	require.NoError(t, err)
 	for _, c := range diags {
 		t.Log(c)
@@ -418,7 +467,7 @@ func TestIssue46(t *testing.T) {
 
 	_, ectx, bb, diags, err := lang.NewContextFromFiles(ctx, map[string][]byte{
 		"task.retab": issue46_input,
-	})
+	}, nil)
 	require.NoError(t, err)
 	for _, c := range diags {
 		t.Log(c)

@@ -1,0 +1,7 @@
+gen taskfile {
+	path = "./tmp.yaml"
+	data = {
+		cow = GO_MODULE_PACKAGE
+		wut = SUP
+	}
+}
