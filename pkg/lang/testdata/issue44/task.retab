@@ -1,0 +1,18 @@
+working abc {
+    path = "my/dir/abc/file.yaml"
+}
+
+working def {
+    path = "your/dir/file.yaml"
+}
+
+working ghi {
+    path = "your/dir/file-no.yaml"
+}
+
+all_file_yamls = allof("working", { key= ["path"], regex = "^.*file.yaml$" })
+
+gen out {
+    path = "out/file.yaml"
+    data = { afy = [for x in all_file_yamls: x.path] }
+}

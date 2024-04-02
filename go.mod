@@ -21,6 +21,7 @@ require (
 	github.com/walteh/terrors v0.19.0
 	github.com/walteh/yaml v0.0.0-20240212175823-ac6e39d6b02d
 	github.com/zclconf/go-cty v1.14.3
+	gitlab.com/tozd/go/errors v0.8.1
 	go.uber.org/multierr v1.11.0
 	golang.org/x/mod v0.16.0
 )
@@ -42,6 +43,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
