@@ -3,6 +3,7 @@ package lang
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -388,4 +389,51 @@ func (me *SudoContext) GetAllFileLevelBlocksOfType(name string) ([]*SudoContext,
 		out = append(out, fleblks...)
 	}
 	return out, nil
+}
+
+func (me *SudoContext) Match(keys []string, val string) (bool, hcl.Diagnostics) {
+	vv := me
+	for _, k := range keys {
+		if vv.Map[k] == nil {
+			break
+		} else {
+			vv = vv.Map[k]
+		}
+	}
+
+	if vv == nil {
+		return false, nil
+	}
+
+	reg, err := regexp.Compile(val)
+	if err != nil {
+		return false, hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "unable to compile regex",
+			Detail:   err.Error(),
+			Subject:  vv.Meta.Range().Ptr(),
+		}}
+	}
+
+	if vv.Value.Type() != cty.String {
+		return false, nil
+	}
+
+	return reg.MatchString(vv.Value.AsString()), nil
+
+}
+
+func FilterSudoContextWithRegex(sctx []*SudoContext, keys []string, reg string) ([]*SudoContext, error) {
+	filtered := make([]*SudoContext, 0)
+	for _, vv := range sctx {
+		mok, err := vv.Match(keys, reg)
+		if err != nil {
+			return nil, err
+		}
+		if mok {
+			filtered = append(filtered, vv)
+		}
+	}
+
+	return filtered, nil
 }
