@@ -52,5 +52,5 @@ server:
 ## Additional Features
 
 * **Advanced Formatting:** Format HCL, Terraform (.tf), Protocol Buffers (.proto), and Dart (.dart) files.
-* **Schema Validation:** (Coming soon) Ensure your configurations adhere to defined schemas.
+* **Schema Validation:** Ensure your configurations adhere to defined schemas.
 
