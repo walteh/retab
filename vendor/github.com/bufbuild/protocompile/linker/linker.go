@@ -18,7 +18,6 @@ import (
 	"fmt"
 
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/types/descriptorpb"
 
 	"github.com/bufbuild/protocompile/ast"
 	"github.com/bufbuild/protocompile/parser"
@@ -68,8 +67,10 @@ func Link(parsed parser.Result, dependencies Files, symbols *Symbols, handler *r
 		prefix:               prefix,
 		optionQualifiedNames: map[ast.IdentValueNode]string{},
 	}
+	// First, we create the hierarchy of descendant descriptors.
+	r.createDescendants()
 
-	// First, we put all symbols into a single pool, which lets us ensure there
+	// Then we can put all symbols into a single pool, which lets us ensure there
 	// are no duplicate symbols and will also let us resolve and revise all type
 	// references in next step.
 	if err := symbols.importResult(r, handler); err != nil {
@@ -115,7 +116,7 @@ type Result interface {
 	// be done after options are interpreted. Any errors or warnings encountered
 	// will be reported via the given handler. If any error is reported, this
 	// function returns a non-nil error.
-	ValidateOptions(handler *reporter.Handler) error
+	ValidateOptions(handler *reporter.Handler, symbols *Symbols) error
 	// CheckForUnusedImports is used to report warnings for unused imports. This
 	// should be called after options have been interpreted. Otherwise, the logic
 	// could incorrectly report imports as unused if the only symbol used were a
@@ -127,30 +128,6 @@ type Result interface {
 	// step separate from linking, because computing source code info requires
 	// interpreting options (which is done after linking).
 	PopulateSourceCodeInfo()
-
-	// CanonicalProto returns the file descriptor proto in a form that
-	// will be serialized in a canonical way. The "canonical" way matches
-	// the way that "protoc" emits option values, which is a way that
-	// mostly matches the way options are defined in source, including
-	// ordering and de-structuring. Unlike the FileDescriptorProto() method,
-	// this method is more expensive and results in a new descriptor proto
-	// being constructed with each call.
-	//
-	// The returned value will have all options (fields of the various
-	// descriptorpb.*Options message types) represented via unrecognized
-	// fields. So the returned value will serialize as desired, but it
-	// is otherwise not useful since all option values are treated as
-	// unknown.
-	//
-	// Note that CanonicalProto is a no-op if the options in this file
-	// were not interpreted by this module (e.g. the underlying descriptor
-	// proto was provided, with options already interpreted, instead of
-	// parsed from source). If the underlying descriptor proto was provided,
-	// but with a mix of interpreted and uninterpreted options, this method
-	// will effectively clear the already-interpreted fields and only the
-	// options actually interpreted by the compile operation will be
-	// retained.
-	CanonicalProto() *descriptorpb.FileDescriptorProto
 
 	// RemoveAST drops the AST information from this result.
 	RemoveAST()

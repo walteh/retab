@@ -48,7 +48,7 @@ const (
 	connectFlagEnvelopeEndStream = 0b00000010
 
 	connectUnaryContentTypePrefix     = "application/"
-	connectUnaryContentTypeJSON       = connectUnaryContentTypePrefix + "json"
+	connectUnaryContentTypeJSON       = connectUnaryContentTypePrefix + codecNameJSON
 	connectStreamingContentTypePrefix = "application/connect+"
 
 	connectUnaryEncodingQueryParameter    = "encoding"
@@ -172,21 +172,9 @@ func (h *connectHandler) NewConn(
 	if failed == nil {
 		failed = checkServerStreamsCanFlush(h.Spec, responseWriter)
 	}
-	if failed == nil && request.Method == http.MethodGet {
-		version := query.Get(connectUnaryConnectQueryParameter)
-		if version == "" && h.RequireConnectProtocolHeader {
-			failed = errorf(CodeInvalidArgument, "missing required query parameter: set %s to %q", connectUnaryConnectQueryParameter, connectUnaryConnectQueryValue)
-		} else if version != "" && version != connectUnaryConnectQueryValue {
-			failed = errorf(CodeInvalidArgument, "%s must be %q: got %q", connectUnaryConnectQueryParameter, connectUnaryConnectQueryValue, version)
-		}
-	}
-	if failed == nil && request.Method == http.MethodPost {
-		version := getHeaderCanonical(request.Header, connectHeaderProtocolVersion)
-		if version == "" && h.RequireConnectProtocolHeader {
-			failed = errorf(CodeInvalidArgument, "missing required header: set %s to %q", connectHeaderProtocolVersion, connectProtocolVersion)
-		} else if version != "" && version != connectProtocolVersion {
-			failed = errorf(CodeInvalidArgument, "%s must be %q: got %q", connectHeaderProtocolVersion, connectProtocolVersion, version)
-		}
+	if failed == nil {
+		required := h.RequireConnectProtocolHeader && (h.Spec.StreamType == StreamTypeUnary)
+		failed = connectCheckProtocolVersion(request, required)
 	}
 
 	var requestBody io.ReadCloser
@@ -546,18 +534,24 @@ func (cc *connectUnaryClientConn) validateResponse(response *http.Response) *Err
 			cc.compressionPools.CommaSeparatedNames(),
 		)
 	}
+	cc.unmarshaler.compressionPool = cc.compressionPools.Get(compression)
 	if response.StatusCode != http.StatusOK {
 		unmarshaler := connectUnaryUnmarshaler{
+			ctx:             cc.unmarshaler.ctx,
 			reader:          response.Body,
-			compressionPool: cc.compressionPools.Get(compression),
+			compressionPool: cc.unmarshaler.compressionPool,
 			bufferPool:      cc.bufferPool,
 		}
 		var wireErr connectWireError
 		if err := unmarshaler.UnmarshalFunc(&wireErr, json.Unmarshal); err != nil {
 			return NewError(
-				connectHTTPToCode(response.StatusCode),
+				httpToCode(response.StatusCode),
 				errors.New(response.Status),
 			)
+		}
+		if wireErr.Code == 0 {
+			// code not set? default to one implied by HTTP status
+			wireErr.Code = httpToCode(response.StatusCode)
 		}
 		serverErr := wireErr.asError()
 		if serverErr == nil {
@@ -567,7 +561,6 @@ func (cc *connectUnaryClientConn) validateResponse(response *http.Response) *Err
 		mergeHeaders(serverErr.meta, cc.responseTrailer)
 		return serverErr
 	}
-	cc.unmarshaler.compressionPool = cc.compressionPools.Get(compression)
 	return nil
 }
 
@@ -660,7 +653,7 @@ func (cc *connectStreamingClientConn) onRequestSend(fn func(*http.Request)) {
 
 func (cc *connectStreamingClientConn) validateResponse(response *http.Response) *Error {
 	if response.StatusCode != http.StatusOK {
-		return errorf(connectHTTPToCode(response.StatusCode), "HTTP status %v", response.Status)
+		return errorf(httpToCode(response.StatusCode), "HTTP status %v", response.Status)
 	}
 	if err := connectValidateStreamResponseContentType(
 		cc.codec.Name(),
@@ -693,7 +686,6 @@ type connectUnaryHandlerConn struct {
 	marshaler       connectUnaryMarshaler
 	unmarshaler     connectUnaryUnmarshaler
 	responseTrailer http.Header
-	wroteBody       bool
 }
 
 func (hc *connectUnaryHandlerConn) Spec() Spec {
@@ -716,8 +708,7 @@ func (hc *connectUnaryHandlerConn) RequestHeader() http.Header {
 }
 
 func (hc *connectUnaryHandlerConn) Send(msg any) error {
-	hc.wroteBody = true
-	hc.writeResponseHeader(nil /* error */)
+	hc.mergeResponseHeader(nil /* error */)
 	if err := hc.marshaler.Marshal(msg); err != nil {
 		return err
 	}
@@ -733,8 +724,8 @@ func (hc *connectUnaryHandlerConn) ResponseTrailer() http.Header {
 }
 
 func (hc *connectUnaryHandlerConn) Close(err error) error {
-	if !hc.wroteBody {
-		hc.writeResponseHeader(err)
+	if !hc.marshaler.wroteHeader {
+		hc.mergeResponseHeader(err)
 		// If the handler received a GET request and the resource hasn't changed,
 		// return a 304.
 		if len(hc.peer.Query) > 0 && IsNotModifiedError(err) {
@@ -742,7 +733,7 @@ func (hc *connectUnaryHandlerConn) Close(err error) error {
 			return hc.request.Body.Close()
 		}
 	}
-	if err == nil {
+	if err == nil || hc.marshaler.wroteHeader {
 		return hc.request.Body.Close()
 	}
 	// In unary Connect, errors always use application/json.
@@ -764,7 +755,7 @@ func (hc *connectUnaryHandlerConn) getHTTPMethod() string {
 	return hc.request.Method
 }
 
-func (hc *connectUnaryHandlerConn) writeResponseHeader(err error) {
+func (hc *connectUnaryHandlerConn) mergeResponseHeader(err error) {
 	header := hc.responseWriter.Header()
 	if hc.request.Method == http.MethodGet {
 		// The response content varies depending on the compression that the client
@@ -773,8 +764,8 @@ func (hc *connectUnaryHandlerConn) writeResponseHeader(err error) {
 		header[headerVary] = append(header[headerVary], connectUnaryHeaderAcceptCompression)
 	}
 	if err != nil {
-		if connectErr, ok := asError(err); ok {
-			mergeHeaders(header, connectErr.meta)
+		if connectErr, ok := asError(err); ok && !connectErr.wireErr {
+			mergeMetadataHeaders(header, connectErr.meta)
 		}
 	}
 	for k, v := range hc.responseTrailer {
@@ -858,8 +849,8 @@ func (m *connectStreamingMarshaler) MarshalEndStream(err error, trailer http.Hea
 	end := &connectEndStreamMessage{Trailer: trailer}
 	if err != nil {
 		end.Error = newConnectWireError(err)
-		if connectErr, ok := asError(err); ok {
-			mergeHeaders(end.Trailer, connectErr.meta)
+		if connectErr, ok := asError(err); ok && !connectErr.wireErr {
+			mergeMetadataHeaders(end.Trailer, connectErr.meta)
 		}
 	}
 	data, marshalErr := json.Marshal(end)
@@ -930,6 +921,7 @@ type connectUnaryMarshaler struct {
 	bufferPool       *bufferPool
 	header           http.Header
 	sendMaxBytes     int
+	wroteHeader      bool
 }
 
 func (m *connectUnaryMarshaler) Marshal(message any) *Error {
@@ -968,6 +960,7 @@ func (m *connectUnaryMarshaler) Marshal(message any) *Error {
 }
 
 func (m *connectUnaryMarshaler) write(data []byte) *Error {
+	m.wroteHeader = true
 	payload := bytes.NewReader(data)
 	if _, err := m.sender.Send(payload); err != nil {
 		err = wrapIfContextError(err)
@@ -1245,6 +1238,26 @@ func (e *connectWireError) asError() *Error {
 	return err
 }
 
+func (e *connectWireError) UnmarshalJSON(data []byte) error {
+	// We want to be lenient if the JSON has an unrecognized or invalid code.
+	// So if that occurs, we leave the code unset but can still de-serialize
+	// the other fields from the input JSON.
+	var wireError struct {
+		Code    string               `json:"code"`
+		Message string               `json:"message"`
+		Details []*connectWireDetail `json:"details"`
+	}
+	err := json.Unmarshal(data, &wireError)
+	if err != nil {
+		return err
+	}
+	e.Message = wireError.Message
+	e.Details = wireError.Details
+	// This will leave e.Code unset if we can't unmarshal the given string.
+	_ = e.Code.UnmarshalText([]byte(wireError.Code))
+	return nil
+}
+
 type connectEndStreamMessage struct {
 	Error   *connectWireError `json:"error,omitempty"`
 	Trailer http.Header       `json:"metadata,omitempty"`
@@ -1255,13 +1268,13 @@ func connectCodeToHTTP(code Code) int {
 	// it easier to compare this function to the Connect specification.
 	switch code {
 	case CodeCanceled:
-		return 408
+		return 499
 	case CodeUnknown:
 		return 500
 	case CodeInvalidArgument:
 		return 400
 	case CodeDeadlineExceeded:
-		return 408
+		return 504
 	case CodeNotFound:
 		return 404
 	case CodeAlreadyExists:
@@ -1271,13 +1284,13 @@ func connectCodeToHTTP(code Code) int {
 	case CodeResourceExhausted:
 		return 429
 	case CodeFailedPrecondition:
-		return 412
+		return 400
 	case CodeAborted:
 		return 409
 	case CodeOutOfRange:
 		return 400
 	case CodeUnimplemented:
-		return 404
+		return 501
 	case CodeInternal:
 		return 500
 	case CodeUnavailable:
@@ -1288,39 +1301,6 @@ func connectCodeToHTTP(code Code) int {
 		return 401
 	default:
 		return 500 // same as CodeUnknown
-	}
-}
-
-func connectHTTPToCode(httpCode int) Code {
-	// As above, literals are easier to compare to the specificaton (vs named
-	// constants).
-	switch httpCode {
-	case 400:
-		return CodeInvalidArgument
-	case 401:
-		return CodeUnauthenticated
-	case 403:
-		return CodePermissionDenied
-	case 404:
-		return CodeUnimplemented
-	case 408:
-		return CodeDeadlineExceeded
-	case 409:
-		return CodeAborted
-	case 412:
-		return CodeFailedPrecondition
-	case 413:
-		return CodeResourceExhausted
-	case 415:
-		return CodeInternal
-	case 429:
-		return CodeUnavailable
-	case 431:
-		return CodeResourceExhausted
-	case 502, 503, 504:
-		return CodeUnavailable
-	default:
-		return CodeUnknown
 	}
 }
 
@@ -1381,7 +1361,7 @@ func connectValidateUnaryResponseContentType(
 			return nil
 		}
 		return NewError(
-			connectHTTPToCode(statusCode),
+			httpToCode(statusCode),
 			errors.New(statusMsg),
 		)
 	}
@@ -1439,6 +1419,28 @@ func connectValidateStreamResponseContentType(requestCodecName string, streamTyp
 			responseContentType,
 			connectStreamingContentTypePrefix+requestCodecName,
 		)
+	}
+	return nil
+}
+
+func connectCheckProtocolVersion(request *http.Request, required bool) *Error {
+	switch request.Method {
+	case http.MethodGet:
+		version := request.URL.Query().Get(connectUnaryConnectQueryParameter)
+		if version == "" && required {
+			return errorf(CodeInvalidArgument, "missing required query parameter: set %s to %q", connectUnaryConnectQueryParameter, connectUnaryConnectQueryValue)
+		} else if version != "" && version != connectUnaryConnectQueryValue {
+			return errorf(CodeInvalidArgument, "%s must be %q: got %q", connectUnaryConnectQueryParameter, connectUnaryConnectQueryValue, version)
+		}
+	case http.MethodPost:
+		version := getHeaderCanonical(request.Header, connectHeaderProtocolVersion)
+		if version == "" && required {
+			return errorf(CodeInvalidArgument, "missing required header: set %s to %q", connectHeaderProtocolVersion, connectProtocolVersion)
+		} else if version != "" && version != connectProtocolVersion {
+			return errorf(CodeInvalidArgument, "%s must be %q: got %q", connectHeaderProtocolVersion, connectProtocolVersion, version)
+		}
+	default:
+		return errorf(CodeInvalidArgument, "unsupported method: %q", request.Method)
 	}
 	return nil
 }

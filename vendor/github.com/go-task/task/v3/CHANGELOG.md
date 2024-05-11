@@ -1,5 +1,51 @@
 # Changelog
 
+## v3.37.1 - 2024-05-09
+
+- Fix bug where non-string values (numbers, bools) added to `env:` weren't been
+  correctly exported (#1640, #1641 by @vmaerten and @andreynering).
+
+## v3.37.0 - 2024-05-08
+
+- Released the
+  [Any Variables experiment](https://taskfile.dev/blog/any-variables), but
+  [_without support for maps_](https://github.com/go-task/task/issues/1415#issuecomment-2044756925)
+  (#1415, #1547 by @pd93).
+- Refactored how Task reads, parses and merges Taskfiles using a DAG (#1563,
+  #1607 by @pd93).
+- Fix a bug which stopped tasks from using `stdin` as input (#1593, #1623 by
+  @pd03).
+- Fix error when a file or directory in the project contained a special char
+  like `&`, `(` or `)` (#1551, #1584 by @andreynering).
+- Added alias `q` for template function `shellQuote` (#1601, #1603 by @vergenzt)
+- Added support for `~` on ZSH completions (#1613 by @jwater7).
+- Added the ability to pass variables by reference using Go template syntax when
+  the
+  [Map Variables experiment](https://taskfile.dev/experiments/map-variables/) is
+  enabled (#1612 by @pd93).
+- Added support for environment variables in the templating engine in `includes`
+  (#1610 by @vmaerten).
+
+## v3.36.0 - 2024-04-08
+
+- Added support for
+  [looping over dependencies](https://taskfile.dev/usage/#looping-over-dependencies)
+  (#1299, #1541 by @pd93).
+- When using the
+  "[Remote Taskfiles](https://taskfile.dev/experiments/remote-taskfiles/)"
+  experiment, you are now able to use
+  [remote Taskfiles as your entrypoint](https://taskfile.dev/experiments/remote-taskfiles/#root-remote-taskfiles).
+  - `includes` in remote Taskfiles will now also resolve correctly (#1347 by
+    @pd93).
+- When using the
+  "[Any Variables](https://taskfile.dev/experiments/any-variables/)"
+  experiments, templating is now supported in collection-type variables (#1477,
+  #1511, #1526 by @pd93).
+- Fixed a bug where variables being passed to an included Taskfile were not
+  available when defining global variables (#1503, #1533 by @pd93).
+- Improved support to customized colors by allowing 8-bit colors and multiple
+  ANSI attributes (#1576 by @pd93).
+
 ## v3.35.1 - 2024-03-04
 
 - Fixed a bug where the `TASKFILE_DIR` variable was sometimes incorrect (#1522,

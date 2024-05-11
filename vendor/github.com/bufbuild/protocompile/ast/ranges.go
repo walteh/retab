@@ -33,7 +33,7 @@ type ExtensionRangeNode struct {
 	Semicolon *RuneNode
 }
 
-func (e *ExtensionRangeNode) msgElement() {}
+func (*ExtensionRangeNode) msgElement() {}
 
 // NewExtensionRangeNode creates a new *ExtensionRangeNode. All args must be
 // non-nil except opts, which may be nil.
@@ -90,6 +90,14 @@ func NewExtensionRangeNode(keyword *KeywordNode, ranges []*RangeNode, commas []*
 	}
 }
 
+func (e *ExtensionRangeNode) RangeOptions(fn func(*OptionNode) bool) {
+	for _, opt := range e.Options.Options {
+		if !fn(opt) {
+			return
+		}
+	}
+}
+
 // RangeDeclNode is a placeholder interface for AST nodes that represent
 // numeric values. This allows NoSourceNode to be used in place of *RangeNode
 // for some usages.
@@ -100,7 +108,7 @@ type RangeDeclNode interface {
 }
 
 var _ RangeDeclNode = (*RangeNode)(nil)
-var _ RangeDeclNode = NoSourceNode{}
+var _ RangeDeclNode = (*NoSourceNode)(nil)
 
 // RangeNode represents a range expression, used in both extension ranges and
 // reserved ranges. Example:

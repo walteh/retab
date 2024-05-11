@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -53,8 +54,7 @@ func newHelpCommand(logger logutils.Log) *helpCommand {
 func (c *helpCommand) preRunE(_ *cobra.Command, _ []string) error {
 	// The command doesn't depend on the real configuration.
 	// It just needs the list of all plugins and all presets.
-	dbManager, err := lintersdb.NewManager(c.log.Child(logutils.DebugKeyLintersDB), config.NewDefault(),
-		lintersdb.NewPluginBuilder(c.log), lintersdb.NewLinterBuilder())
+	dbManager, err := lintersdb.NewManager(c.log.Child(logutils.DebugKeyLintersDB), config.NewDefault(), lintersdb.NewLinterBuilder())
 	if err != nil {
 		return err
 	}
@@ -107,16 +107,23 @@ func (c *helpCommand) printPresets() {
 }
 
 func printLinters(lcs []*linter.Config) {
-	sort.Slice(lcs, func(i, j int) bool {
-		return lcs[i].Name() < lcs[j].Name()
+	slices.SortFunc(lcs, func(a, b *linter.Config) int {
+		if a.IsDeprecated() && b.IsDeprecated() {
+			return strings.Compare(a.Name(), b.Name())
+		}
+
+		if a.IsDeprecated() {
+			return 1
+		}
+
+		if b.IsDeprecated() {
+			return -1
+		}
+
+		return strings.Compare(a.Name(), b.Name())
 	})
 
 	for _, lc := range lcs {
-		altNamesStr := ""
-		if len(lc.AlternativeNames) != 0 {
-			altNamesStr = fmt.Sprintf(" (%s)", strings.Join(lc.AlternativeNames, ", "))
-		}
-
 		// If the linter description spans multiple lines, truncate everything following the first newline
 		linterDescription := lc.Linter.Desc()
 		firstNewline := strings.IndexRune(linterDescription, '\n')
@@ -129,7 +136,7 @@ func printLinters(lcs []*linter.Config) {
 			deprecatedMark = " [" + color.RedString("deprecated") + "]"
 		}
 
-		_, _ = fmt.Fprintf(logutils.StdOut, "%s%s%s: %s [fast: %t, auto-fix: %t]\n",
-			color.YellowString(lc.Name()), altNamesStr, deprecatedMark, linterDescription, !lc.IsSlowLinter(), lc.CanAutoFix)
+		_, _ = fmt.Fprintf(logutils.StdOut, "%s%s: %s [fast: %t, auto-fix: %t]\n",
+			color.YellowString(lc.Name()), deprecatedMark, linterDescription, !lc.IsSlowLinter(), lc.CanAutoFix)
 	}
 }

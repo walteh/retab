@@ -32,12 +32,12 @@ import (
 	"github.com/golangci/golangci-lint/pkg/config"
 	"github.com/golangci/golangci-lint/pkg/exitcodes"
 	"github.com/golangci/golangci-lint/pkg/fsutils"
-	"github.com/golangci/golangci-lint/pkg/golinters/goanalysis/load"
+	"github.com/golangci/golangci-lint/pkg/goanalysis/load"
 	"github.com/golangci/golangci-lint/pkg/goutil"
 	"github.com/golangci/golangci-lint/pkg/lint"
+	"github.com/golangci/golangci-lint/pkg/lint/linter"
 	"github.com/golangci/golangci-lint/pkg/lint/lintersdb"
 	"github.com/golangci/golangci-lint/pkg/logutils"
-	"github.com/golangci/golangci-lint/pkg/packages"
 	"github.com/golangci/golangci-lint/pkg/printers"
 	"github.com/golangci/golangci-lint/pkg/report"
 	"github.com/golangci/golangci-lint/pkg/result"
@@ -87,8 +87,8 @@ type runCommand struct {
 	debugf     logutils.DebugFunc
 	reportData *report.Data
 
-	contextLoader *lint.ContextLoader
-	goenv         *goutil.Env
+	contextBuilder *lint.ContextBuilder
+	goenv          *goutil.Env
 
 	fileCache *fsutils.FileCache
 	lineCache *fsutils.LineCache
@@ -98,12 +98,14 @@ type runCommand struct {
 	exitCode int
 }
 
-func newRunCommand(logger logutils.Log, cfg *config.Config, reportData *report.Data, info BuildInfo) *runCommand {
+func newRunCommand(logger logutils.Log, info BuildInfo) *runCommand {
+	reportData := &report.Data{}
+
 	c := &runCommand{
 		viper:      viper.New(),
-		log:        logger,
+		log:        report.NewLogWrapper(logger, reportData),
 		debugf:     logutils.Debug(logutils.DebugKeyExec),
-		cfg:        cfg,
+		cfg:        config.NewDefault(),
 		reportData: reportData,
 		buildInfo:  info,
 	}
@@ -116,6 +118,7 @@ func newRunCommand(logger logutils.Log, cfg *config.Config, reportData *report.D
 		PostRun:            c.postRun,
 		PersistentPreRunE:  c.persistentPreRunE,
 		PersistentPostRunE: c.persistentPostRunE,
+		SilenceUsage:       true,
 	}
 
 	runCmd.SetOut(logutils.StdOut) // use custom output to properly color it in Windows terminals
@@ -126,7 +129,7 @@ func newRunCommand(logger logutils.Log, cfg *config.Config, reportData *report.D
 
 	// Only for testing purpose.
 	// Don't add other flags here.
-	fs.BoolVar(&cfg.InternalCmdTest, "internal-cmd-test", false,
+	fs.BoolVar(&c.cfg.InternalCmdTest, "internal-cmd-test", false,
 		color.GreenString("Option is used only for testing golangci-lint command, don't use it"))
 	_ = fs.MarkHidden("internal-cmd-test")
 
@@ -144,20 +147,26 @@ func newRunCommand(logger logutils.Log, cfg *config.Config, reportData *report.D
 	return c
 }
 
-func (c *runCommand) persistentPreRunE(cmd *cobra.Command, _ []string) error {
+func (c *runCommand) persistentPreRunE(cmd *cobra.Command, args []string) error {
 	if err := c.startTracing(); err != nil {
 		return err
 	}
 
-	loader := config.NewLoader(c.log.Child(logutils.DebugKeyConfigReader), c.viper, cmd.Flags(), c.opts.LoaderOptions, c.cfg)
+	loader := config.NewLoader(c.log.Child(logutils.DebugKeyConfigReader), c.viper, cmd.Flags(), c.opts.LoaderOptions, c.cfg, args)
 
-	if err := loader.Load(); err != nil {
+	err := loader.Load(config.LoadOptions{CheckDeprecation: true, Validation: true})
+	if err != nil {
 		return fmt.Errorf("can't load config: %w", err)
 	}
 
 	if c.cfg.Run.Concurrency == 0 {
+		backup := runtime.GOMAXPROCS(0)
+
 		// Automatically set GOMAXPROCS to match Linux container CPU quota.
-		_, _ = maxprocs.Set(nil)
+		_, err := maxprocs.Set(maxprocs.Logger(c.log.Infof))
+		if err != nil {
+			runtime.GOMAXPROCS(backup)
+		}
 	} else {
 		runtime.GOMAXPROCS(c.cfg.Run.Concurrency)
 	}
@@ -175,16 +184,16 @@ func (c *runCommand) persistentPostRunE(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func (c *runCommand) preRunE(_ *cobra.Command, _ []string) error {
+func (c *runCommand) preRunE(_ *cobra.Command, args []string) error {
 	dbManager, err := lintersdb.NewManager(c.log.Child(logutils.DebugKeyLintersDB), c.cfg,
-		lintersdb.NewPluginBuilder(c.log), lintersdb.NewLinterBuilder())
+		lintersdb.NewLinterBuilder(), lintersdb.NewPluginModuleBuilder(c.log), lintersdb.NewPluginGoBuilder(c.log))
 	if err != nil {
 		return err
 	}
 
 	c.dbManager = dbManager
 
-	printer, err := printers.NewPrinter(c.log, c.cfg, c.reportData)
+	printer, err := printers.NewPrinter(c.log, &c.cfg.Output, c.reportData)
 	if err != nil {
 		return err
 	}
@@ -203,8 +212,11 @@ func (c *runCommand) preRunE(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to build packages cache: %w", err)
 	}
 
-	c.contextLoader = lint.NewContextLoader(c.cfg, c.log.Child(logutils.DebugKeyLoader), c.goenv,
-		c.lineCache, c.fileCache, pkgCache, load.NewGuard())
+	guard := load.NewGuard()
+
+	pkgLoader := lint.NewPackageLoader(c.log.Child(logutils.DebugKeyLoader), c.cfg, args, c.goenv, guard)
+
+	c.contextBuilder = lint.NewContextBuilder(c.cfg, pkgLoader, c.fileCache, pkgCache, guard)
 
 	if err = initHashSalt(c.buildInfo.Version, c.cfg); err != nil {
 		return fmt.Errorf("failed to init hash salt: %w", err)
@@ -325,9 +337,22 @@ func (c *runCommand) runAndPrint(ctx context.Context, args []string) error {
 		}()
 	}
 
+	enabledLintersMap, err := c.dbManager.GetEnabledLintersMap()
+	if err != nil {
+		return err
+	}
+
+	c.printDeprecatedLinterMessages(enabledLintersMap)
+
 	issues, err := c.runAnalysis(ctx, args)
 	if err != nil {
 		return err // XXX: don't lose type
+	}
+
+	// Fills linters information for the JSON printer.
+	for _, lc := range c.dbManager.GetAllSupportedLinterConfigs() {
+		isEnabled := enabledLintersMap[lc.Name()] != nil
+		c.reportData.AddLinter(lc.Name(), isEnabled, lc.EnabledByDefault)
 	}
 
 	err = c.printer.Print(issues)
@@ -346,36 +371,23 @@ func (c *runCommand) runAndPrint(ctx context.Context, args []string) error {
 
 // runAnalysis executes the linters that have been enabled in the configuration.
 func (c *runCommand) runAnalysis(ctx context.Context, args []string) ([]result.Issue, error) {
-	c.cfg.Run.Args = args
-
 	lintersToRun, err := c.dbManager.GetOptimizedLinters()
 	if err != nil {
 		return nil, err
 	}
 
-	enabledLintersMap, err := c.dbManager.GetEnabledLintersMap()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, lc := range c.dbManager.GetAllSupportedLinterConfigs() {
-		isEnabled := enabledLintersMap[lc.Name()] != nil
-		c.reportData.AddLinter(lc.Name(), isEnabled, lc.EnabledByDefault)
-	}
-
-	lintCtx, err := c.contextLoader.Load(ctx, lintersToRun)
+	lintCtx, err := c.contextBuilder.Build(ctx, c.log.Child(logutils.DebugKeyLintersContext), lintersToRun)
 	if err != nil {
 		return nil, fmt.Errorf("context loading failed: %w", err)
 	}
-	lintCtx.Log = c.log.Child(logutils.DebugKeyLintersContext)
 
-	runner, err := lint.NewRunner(c.log.Child(logutils.DebugKeyRunner),
-		c.cfg, c.goenv, c.lineCache, c.fileCache, c.dbManager, lintCtx.Packages)
+	runner, err := lint.NewRunner(c.log.Child(logutils.DebugKeyRunner), c.cfg, args,
+		c.goenv, c.lineCache, c.fileCache, c.dbManager, lintCtx)
 	if err != nil {
 		return nil, err
 	}
 
-	return runner.Run(ctx, lintersToRun, lintCtx)
+	return runner.Run(ctx, lintersToRun)
 }
 
 func (c *runCommand) setOutputToDevNull() (savedStdout, savedStderr *os.File) {
@@ -396,12 +408,27 @@ func (c *runCommand) setExitCodeIfIssuesFound(issues []result.Issue) {
 	}
 }
 
-func (c *runCommand) printStats(issues []result.Issue) {
-	if c.cfg.Run.ShowStats {
-		c.log.Warnf("The configuration option `run.show-stats` is deprecated, please use `output.show-stats`")
+func (c *runCommand) printDeprecatedLinterMessages(enabledLinters map[string]*linter.Config) {
+	if c.cfg.InternalCmdTest || os.Getenv(logutils.EnvTestRun) == "1" {
+		return
 	}
 
-	if !c.cfg.Run.ShowStats && !c.cfg.Output.ShowStats {
+	for name, lc := range enabledLinters {
+		if !lc.IsDeprecated() {
+			continue
+		}
+
+		var extra string
+		if lc.Deprecation.Replacement != "" {
+			extra = fmt.Sprintf("Replaced by %s.", lc.Deprecation.Replacement)
+		}
+
+		c.log.Warnf("The linter '%s' is deprecated (since %s) due to: %s %s", name, lc.Deprecation.Since, lc.Deprecation.Message, extra)
+	}
+}
+
+func (c *runCommand) printStats(issues []result.Issue) {
+	if !c.cfg.Output.ShowStats {
 		return
 	}
 
@@ -436,7 +463,7 @@ func (c *runCommand) setupExitCode(ctx context.Context) {
 		return
 	}
 
-	needFailOnWarnings := os.Getenv(lintersdb.EnvTestRun) == "1" || os.Getenv(envFailOnWarnings) == "1"
+	needFailOnWarnings := os.Getenv(logutils.EnvTestRun) == "1" || os.Getenv(envFailOnWarnings) == "1"
 	if needFailOnWarnings && len(c.reportData.Warnings) != 0 {
 		c.exitCode = exitcodes.WarningInTest
 		return
@@ -547,27 +574,6 @@ func watchResources(ctx context.Context, done chan struct{}, logger logutils.Log
 func setupConfigFileFlagSet(fs *pflag.FlagSet, cfg *config.LoaderOptions) {
 	fs.StringVarP(&cfg.Config, "config", "c", "", color.GreenString("Read config from file path `PATH`"))
 	fs.BoolVar(&cfg.NoConfig, "no-config", false, color.GreenString("Don't read config file"))
-}
-
-func getDefaultIssueExcludeHelp() string {
-	parts := []string{color.GreenString("Use or not use default excludes:")}
-	for _, ep := range config.DefaultExcludePatterns {
-		parts = append(parts,
-			fmt.Sprintf("  # %s %s: %s", ep.ID, ep.Linter, ep.Why),
-			fmt.Sprintf("  - %s", color.YellowString(ep.Pattern)),
-			"",
-		)
-	}
-	return strings.Join(parts, "\n")
-}
-
-func getDefaultDirectoryExcludeHelp() string {
-	parts := []string{color.GreenString("Use or not use default excluded directories:")}
-	for _, dir := range packages.StdExcludeDirRegexps {
-		parts = append(parts, fmt.Sprintf("  - %s", color.YellowString(dir)))
-	}
-	parts = append(parts, "")
-	return strings.Join(parts, "\n")
 }
 
 func setupRunPersistentFlags(fs *pflag.FlagSet, opts *runOptions) {
