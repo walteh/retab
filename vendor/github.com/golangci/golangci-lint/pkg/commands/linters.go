@@ -30,10 +30,10 @@ type lintersCommand struct {
 	dbManager *lintersdb.Manager
 }
 
-func newLintersCommand(logger logutils.Log, cfg *config.Config) *lintersCommand {
+func newLintersCommand(logger logutils.Log) *lintersCommand {
 	c := &lintersCommand{
 		viper: viper.New(),
-		cfg:   cfg,
+		cfg:   config.NewDefault(),
 		log:   logger,
 	}
 
@@ -44,6 +44,7 @@ func newLintersCommand(logger logutils.Log, cfg *config.Config) *lintersCommand 
 		ValidArgsFunction: cobra.NoFileCompletions,
 		RunE:              c.execute,
 		PreRunE:           c.preRunE,
+		SilenceUsage:      true,
 	}
 
 	fs := lintersCmd.Flags()
@@ -57,15 +58,16 @@ func newLintersCommand(logger logutils.Log, cfg *config.Config) *lintersCommand 
 	return c
 }
 
-func (c *lintersCommand) preRunE(cmd *cobra.Command, _ []string) error {
-	loader := config.NewLoader(c.log.Child(logutils.DebugKeyConfigReader), c.viper, cmd.Flags(), c.opts.LoaderOptions, c.cfg)
+func (c *lintersCommand) preRunE(cmd *cobra.Command, args []string) error {
+	loader := config.NewLoader(c.log.Child(logutils.DebugKeyConfigReader), c.viper, cmd.Flags(), c.opts.LoaderOptions, c.cfg, args)
 
-	if err := loader.Load(); err != nil {
+	err := loader.Load(config.LoadOptions{Validation: true})
+	if err != nil {
 		return fmt.Errorf("can't load config: %w", err)
 	}
 
 	dbManager, err := lintersdb.NewManager(c.log.Child(logutils.DebugKeyLintersDB), c.cfg,
-		lintersdb.NewPluginBuilder(c.log), lintersdb.NewLinterBuilder())
+		lintersdb.NewLinterBuilder(), lintersdb.NewPluginModuleBuilder(c.log), lintersdb.NewPluginGoBuilder(c.log))
 	if err != nil {
 		return err
 	}

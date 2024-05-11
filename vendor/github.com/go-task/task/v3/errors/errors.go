@@ -19,6 +19,8 @@ const (
 	CodeTaskfileCacheNotFound
 	CodeTaskfileVersionCheckError
 	CodeTaskfileNetworkTimeout
+	_ // CodeTaskfileDuplicateInclude
+	CodeTaskfileCycle
 )
 
 // Task related exit codes

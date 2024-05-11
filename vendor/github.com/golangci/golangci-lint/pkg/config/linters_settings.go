@@ -3,6 +3,7 @@ package config
 import (
 	"encoding"
 	"errors"
+	"fmt"
 	"runtime"
 
 	"gopkg.in/yaml.v3"
@@ -143,6 +144,8 @@ var defaultLintersSettings = LintersSettings{
 		NoMixedArgs:    true,
 		KVOnly:         false,
 		AttrOnly:       false,
+		NoGlobal:       "",
+		Context:        "",
 		ContextOnly:    false,
 		StaticMsg:      false,
 		NoRawKeys:      false,
@@ -242,6 +245,7 @@ type LintersSettings struct {
 	MaintIdx        MaintIdxSettings
 	Makezero        MakezeroSettings
 	Misspell        MisspellSettings
+	Mnd             MndSettings
 	MustTag         MustTagSettings
 	Nakedret        NakedretSettings
 	Nestif          NestifSettings
@@ -281,7 +285,17 @@ type LintersSettings struct {
 }
 
 func (s *LintersSettings) Validate() error {
-	return s.Govet.Validate()
+	if err := s.Govet.Validate(); err != nil {
+		return err
+	}
+
+	for name, settings := range s.Custom {
+		if err := settings.Validate(); err != nil {
+			return fmt.Errorf("custom linter %q: %w", name, err)
+		}
+	}
+
+	return nil
 }
 
 type AsasalintSettings struct {
@@ -303,7 +317,8 @@ type BiDiChkSettings struct {
 }
 
 type CopyLoopVarSettings struct {
-	IgnoreAlias bool `mapstructure:"ignore-alias"`
+	IgnoreAlias bool `mapstructure:"ignore-alias"` // Deprecated: use CheckAlias
+	CheckAlias  bool `mapstructure:"check-alias"`
 }
 
 type Cyclop struct {
@@ -369,10 +384,17 @@ type ErrChkJSONSettings struct {
 }
 
 type ErrorLintSettings struct {
-	Errorf      bool `mapstructure:"errorf"`
-	ErrorfMulti bool `mapstructure:"errorf-multi"`
-	Asserts     bool `mapstructure:"asserts"`
-	Comparison  bool `mapstructure:"comparison"`
+	Errorf                bool                 `mapstructure:"errorf"`
+	ErrorfMulti           bool                 `mapstructure:"errorf-multi"`
+	Asserts               bool                 `mapstructure:"asserts"`
+	Comparison            bool                 `mapstructure:"comparison"`
+	AllowedErrors         []ErrorLintAllowPair `mapstructure:"allowed-errors"`
+	AllowedErrorsWildcard []ErrorLintAllowPair `mapstructure:"allowed-errors-wildcard"`
+}
+
+type ErrorLintAllowPair struct {
+	Err string `mapstructure:"err"`
+	Fun string `mapstructure:"fun"`
 }
 
 type ExhaustiveSettings struct {
@@ -441,10 +463,12 @@ type FunlenSettings struct {
 }
 
 type GciSettings struct {
-	LocalPrefixes string   `mapstructure:"local-prefixes"` // Deprecated
 	Sections      []string `mapstructure:"sections"`
 	SkipGenerated bool     `mapstructure:"skip-generated"`
 	CustomOrder   bool     `mapstructure:"custom-order"`
+
+	// Deprecated: use Sections instead.
+	LocalPrefixes string `mapstructure:"local-prefixes"`
 }
 
 type GinkgoLinterSettings struct {
@@ -456,6 +480,9 @@ type GinkgoLinterSettings struct {
 	SuppressTypeCompareWarning bool `mapstructure:"suppress-type-compare-assertion"`
 	ForbidFocusContainer       bool `mapstructure:"forbid-focus-container"`
 	AllowHaveLenZero           bool `mapstructure:"allow-havelen-zero"`
+	ForceExpectTo              bool `mapstructure:"force-expect-to"`
+	ValidateAsyncIntervals     bool `mapstructure:"validate-async-intervals"`
+	ForbidSpecPollution        bool `mapstructure:"forbid-spec-pollution"`
 }
 
 type GocognitSettings struct {
@@ -497,7 +524,7 @@ type GodotSettings struct {
 	Capital bool     `mapstructure:"capital"`
 	Period  bool     `mapstructure:"period"`
 
-	// Deprecated: use `Scope` instead
+	// Deprecated: use Scope instead
 	CheckAll bool `mapstructure:"check-all"`
 }
 
@@ -533,12 +560,12 @@ type GoImportsSettings struct {
 	LocalPrefixes string `mapstructure:"local-prefixes"`
 }
 
+// Deprecated: use MndSettings.
 type GoMndSettings struct {
-	Settings         map[string]map[string]any // Deprecated
-	Checks           []string                  `mapstructure:"checks"`
-	IgnoredNumbers   []string                  `mapstructure:"ignored-numbers"`
-	IgnoredFiles     []string                  `mapstructure:"ignored-files"`
-	IgnoredFunctions []string                  `mapstructure:"ignored-functions"`
+	MndSettings `mapstructure:",squash"`
+
+	// Deprecated: use root level settings instead.
+	Settings map[string]map[string]any
 }
 
 type GoModDirectivesSettings struct {
@@ -584,14 +611,17 @@ type GosmopolitanSettings struct {
 }
 
 type GovetSettings struct {
-	Go             string `mapstructure:"-"`
-	CheckShadowing bool   `mapstructure:"check-shadowing"`
-	Settings       map[string]map[string]any
+	Go string `mapstructure:"-"`
 
 	Enable     []string
 	Disable    []string
 	EnableAll  bool `mapstructure:"enable-all"`
 	DisableAll bool `mapstructure:"disable-all"`
+
+	Settings map[string]map[string]any
+
+	// Deprecated: the linter should be enabled inside Enable.
+	CheckShadowing bool `mapstructure:"check-shadowing"`
 }
 
 func (cfg *GovetSettings) Validate() error {
@@ -702,6 +732,13 @@ type NlreturnSettings struct {
 	BlockSize int `mapstructure:"block-size"`
 }
 
+type MndSettings struct {
+	Checks           []string `mapstructure:"checks"`
+	IgnoredNumbers   []string `mapstructure:"ignored-numbers"`
+	IgnoredFiles     []string `mapstructure:"ignored-files"`
+	IgnoredFunctions []string `mapstructure:"ignored-functions"`
+}
+
 type NoLintLintSettings struct {
 	RequireExplanation bool     `mapstructure:"require-explanation"`
 	RequireSpecific    bool     `mapstructure:"require-specific"`
@@ -783,7 +820,9 @@ type SlogLintSettings struct {
 	NoMixedArgs    bool   `mapstructure:"no-mixed-args"`
 	KVOnly         bool   `mapstructure:"kv-only"`
 	AttrOnly       bool   `mapstructure:"attr-only"`
-	ContextOnly    bool   `mapstructure:"context-only"`
+	NoGlobal       string `mapstructure:"no-global"`
+	Context        string `mapstructure:"context"`
+	ContextOnly    bool   `mapstructure:"context-only"` // Deprecated: use Context instead.
 	StaticMsg      bool   `mapstructure:"static-msg"`
 	NoRawKeys      bool   `mapstructure:"no-raw-keys"`
 	KeyNamingCase  string `mapstructure:"key-naming-case"`
@@ -791,18 +830,19 @@ type SlogLintSettings struct {
 }
 
 type SpancheckSettings struct {
-	Checks                []string `mapstructure:"checks"`
-	IgnoreCheckSignatures []string `mapstructure:"ignore-check-signatures"`
+	Checks                   []string `mapstructure:"checks"`
+	IgnoreCheckSignatures    []string `mapstructure:"ignore-check-signatures"`
+	ExtraStartSpanSignatures []string `mapstructure:"extra-start-span-signatures"`
 }
 
 type StaticCheckSettings struct {
-	// Deprecated: use the global `run.go` instead.
-	GoVersion string `mapstructure:"go"`
-
 	Checks                  []string `mapstructure:"checks"`
 	Initialisms             []string `mapstructure:"initialisms"`                // only for stylecheck
 	DotImportWhitelist      []string `mapstructure:"dot-import-whitelist"`       // only for stylecheck
 	HTTPStatusCodeWhitelist []string `mapstructure:"http-status-code-whitelist"` // only for stylecheck
+
+	// Deprecated: use the global `run.go` instead.
+	GoVersion string `mapstructure:"go"`
 }
 
 func (s *StaticCheckSettings) HasConfiguration() bool {
@@ -876,11 +916,11 @@ type UseStdlibVarsSettings struct {
 	TimeLayout         bool `mapstructure:"time-layout"`
 	CryptoHash         bool `mapstructure:"crypto-hash"`
 	DefaultRPCPath     bool `mapstructure:"default-rpc-path"`
-	OSDevNull          bool `mapstructure:"os-dev-null"`
+	OSDevNull          bool `mapstructure:"os-dev-null"` // Deprecated
 	SQLIsolationLevel  bool `mapstructure:"sql-isolation-level"`
 	TLSSignatureScheme bool `mapstructure:"tls-signature-scheme"`
 	ConstantKind       bool `mapstructure:"constant-kind"`
-	SyslogPriority     bool `mapstructure:"syslog-priority"`
+	SyslogPriority     bool `mapstructure:"syslog-priority"` // Deprecated
 }
 
 type UnconvertSettings struct {
@@ -946,17 +986,15 @@ type WSLSettings struct {
 }
 
 // CustomLinterSettings encapsulates the meta-data of a private linter.
-// For example, a private linter may be added to the golangci config file as shown below.
-//
-//	linters-settings:
-//	 custom:
-//	   example:
-//	     path: /example.so
-//	     description: The description of the linter
-//	     original-url: github.com/golangci/example-linter
 type CustomLinterSettings struct {
+	// Type plugin type.
+	// It can be `goplugin` or `module`.
+	Type string `mapstructure:"type"`
+
 	// Path to a plugin *.so file that implements the private linter.
+	// Only for Go plugin system.
 	Path string
+
 	// Description describes the purpose of the private linter.
 	Description string
 	// OriginalURL The URL containing the source code for the private linter.
@@ -964,4 +1002,20 @@ type CustomLinterSettings struct {
 
 	// Settings plugin settings only work with linterdb.PluginConstructor symbol.
 	Settings any
+}
+
+func (s *CustomLinterSettings) Validate() error {
+	if s.Type == "module" {
+		if s.Path != "" {
+			return errors.New("path not supported with module type")
+		}
+
+		return nil
+	}
+
+	if s.Path == "" {
+		return errors.New("path is required")
+	}
+
+	return nil
 }

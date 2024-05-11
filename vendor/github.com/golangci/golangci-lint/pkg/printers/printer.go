@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
+	"path/filepath"
 
 	"github.com/golangci/golangci-lint/pkg/config"
 	"github.com/golangci/golangci-lint/pkg/logutils"
@@ -13,7 +13,7 @@ import (
 	"github.com/golangci/golangci-lint/pkg/result"
 )
 
-const defaultFileMode = 0644
+const defaultFileMode = 0o644
 
 type issuePrinter interface {
 	Print(issues []result.Issue) error
@@ -21,7 +21,7 @@ type issuePrinter interface {
 
 // Printer prints issues
 type Printer struct {
-	cfg        *config.Config
+	cfg        *config.Output
 	reportData *report.Data
 
 	log logutils.Log
@@ -31,7 +31,7 @@ type Printer struct {
 }
 
 // NewPrinter creates a new Printer.
-func NewPrinter(log logutils.Log, cfg *config.Config, reportData *report.Data) (*Printer, error) {
+func NewPrinter(log logutils.Log, cfg *config.Output, reportData *report.Data) (*Printer, error) {
 	if log == nil {
 		return nil, errors.New("missing log argument in constructor")
 	}
@@ -53,11 +53,8 @@ func NewPrinter(log logutils.Log, cfg *config.Config, reportData *report.Data) (
 
 // Print prints issues based on the formats defined
 func (c *Printer) Print(issues []result.Issue) error {
-	formats := strings.Split(c.cfg.Output.Format, ",")
-
-	for _, item := range formats {
-		format, path, _ := strings.Cut(item, ":")
-		err := c.printReports(issues, path, format)
+	for _, format := range c.cfg.Formats {
+		err := c.printReports(issues, format)
 		if err != nil {
 			return err
 		}
@@ -66,10 +63,10 @@ func (c *Printer) Print(issues []result.Issue) error {
 	return nil
 }
 
-func (c *Printer) printReports(issues []result.Issue, path, format string) error {
-	w, shouldClose, err := c.createWriter(path)
+func (c *Printer) printReports(issues []result.Issue, format config.OutputFormat) error {
+	w, shouldClose, err := c.createWriter(format.Path)
 	if err != nil {
-		return fmt.Errorf("can't create output for %s: %w", path, err)
+		return fmt.Errorf("can't create output for %s: %w", format.Path, err)
 	}
 
 	defer func() {
@@ -78,7 +75,7 @@ func (c *Printer) printReports(issues []result.Issue, path, format string) error
 		}
 	}()
 
-	p, err := c.createPrinter(format, w)
+	p, err := c.createPrinter(format.Format, w)
 	if err != nil {
 		return err
 	}
@@ -99,6 +96,11 @@ func (c *Printer) createWriter(path string) (io.Writer, bool, error) {
 		return c.stdErr, false, nil
 	}
 
+	err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
+	if err != nil {
+		return nil, false, err
+	}
+
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, defaultFileMode)
 	if err != nil {
 		return nil, false, err
@@ -114,11 +116,11 @@ func (c *Printer) createPrinter(format string, w io.Writer) (issuePrinter, error
 	case config.OutFormatJSON:
 		p = NewJSON(c.reportData, w)
 	case config.OutFormatColoredLineNumber, config.OutFormatLineNumber:
-		p = NewText(c.cfg.Output.PrintIssuedLine,
-			format == config.OutFormatColoredLineNumber, c.cfg.Output.PrintLinterName,
+		p = NewText(c.cfg.PrintIssuedLine,
+			format == config.OutFormatColoredLineNumber, c.cfg.PrintLinterName,
 			c.log.Child(logutils.DebugKeyTextPrinter), w)
 	case config.OutFormatTab, config.OutFormatColoredTab:
-		p = NewTab(c.cfg.Output.PrintLinterName,
+		p = NewTab(c.cfg.PrintLinterName,
 			format == config.OutFormatColoredTab,
 			c.log.Child(logutils.DebugKeyTabPrinter), w)
 	case config.OutFormatCheckstyle:
@@ -130,11 +132,11 @@ func (c *Printer) createPrinter(format string, w io.Writer) (issuePrinter, error
 	case config.OutFormatJunitXML:
 		p = NewJunitXML(w)
 	case config.OutFormatGithubActions:
-		p = NewGitHub(w)
+		p = NewGitHubAction(w)
 	case config.OutFormatTeamCity:
 		p = NewTeamCity(w)
 	default:
-		return nil, fmt.Errorf("unknown output format %s", format)
+		return nil, fmt.Errorf("unknown output format %q", format)
 	}
 
 	return p, nil

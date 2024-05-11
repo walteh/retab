@@ -18,7 +18,7 @@ type LocalModule struct {
 }
 
 func (m *LocalModule) MatchSpecificity(spec *parse.GciImports) specificity.MatchSpecificity {
-	if strings.HasPrefix(spec.Path, m.Path) {
+	if spec.Path == m.Path || strings.HasPrefix(spec.Path, m.Path+"/") {
 		return specificity.LocalModule{}
 	}
 
@@ -35,13 +35,16 @@ func (m *LocalModule) Type() string {
 
 // Configure configures the module section by finding the module
 // for the current path
-func (m *LocalModule) Configure() error {
-	modPath, err := findLocalModule()
-	if err != nil {
-		return fmt.Errorf("finding local modules for `localModule` configuration: %w", err)
+func (m *LocalModule) Configure(path string) error {
+	if path != "" {
+		m.Path = path
+	} else {
+		path, err := findLocalModule()
+		if err != nil {
+			return fmt.Errorf("finding local modules for `localModule` configuration: %w", err)
+		}
+		m.Path = path
 	}
-
-	m.Path = modPath
 
 	return nil
 }

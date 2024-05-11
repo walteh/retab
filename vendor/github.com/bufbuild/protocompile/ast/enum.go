@@ -76,6 +76,16 @@ func NewEnumNode(keyword *KeywordNode, name *IdentNode, openBrace *RuneNode, dec
 	}
 }
 
+func (n *EnumNode) RangeOptions(fn func(*OptionNode) bool) {
+	for _, decl := range n.Decls {
+		if opt, ok := decl.(*OptionNode); ok {
+			if !fn(opt) {
+				return
+			}
+		}
+	}
+}
+
 // EnumElement is an interface implemented by all AST nodes that can
 // appear in the body of an enum declaration.
 type EnumElement interface {
@@ -92,13 +102,13 @@ var _ EnumElement = (*EmptyDeclNode)(nil)
 // enum values. This allows NoSourceNode to be used in place of *EnumValueNode
 // for some usages.
 type EnumValueDeclNode interface {
-	Node
+	NodeWithOptions
 	GetName() Node
 	GetNumber() Node
 }
 
 var _ EnumValueDeclNode = (*EnumValueNode)(nil)
-var _ EnumValueDeclNode = NoSourceNode{}
+var _ EnumValueDeclNode = (*NoSourceNode)(nil)
 
 // EnumValueNode represents an enum declaration. Example:
 //
@@ -164,4 +174,12 @@ func (e *EnumValueNode) GetName() Node {
 
 func (e *EnumValueNode) GetNumber() Node {
 	return e.Number
+}
+
+func (e *EnumValueNode) RangeOptions(fn func(*OptionNode) bool) {
+	for _, opt := range e.Options.Options {
+		if !fn(opt) {
+			return
+		}
+	}
 }

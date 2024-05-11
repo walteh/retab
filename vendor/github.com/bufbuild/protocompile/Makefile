@@ -7,6 +7,7 @@ MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 MAKEFLAGS += --no-print-directory
 BIN ?= $(abspath .tmp/bin)
+CACHE := $(abspath .tmp/cache)
 COPYRIGHT_YEARS := 2020-2024
 LICENSE_IGNORE := -e /testdata/
 # Set to use a different compiler. For example, `GO=go1.18rc1 make test`.
@@ -20,7 +21,7 @@ PROTOC_VERSION := $(shell cat ./.protoc_version)
 # For release candidates, the download artifact has a dash between "rc" and the number even
 # though the version tag does not :(
 PROTOC_ARTIFACT_VERSION := $(shell echo $(PROTOC_VERSION) | sed -E 's/-rc([0-9]+)$$/-rc-\1/g')
-PROTOC_DIR ?= $(abspath ./internal/testdata/protoc/$(PROTOC_VERSION))
+PROTOC_DIR := $(abspath $(CACHE)/protoc/$(PROTOC_VERSION))
 PROTOC := $(PROTOC_DIR)/bin/protoc
 
 LOWER_UNAME_OS := $(shell echo $(UNAME_OS) | tr A-Z a-z)
@@ -54,6 +55,7 @@ clean: ## Delete intermediate build artifacts
 .PHONY: test
 test: build ## Run unit tests
 	$(GO) test -race -cover ./...
+	$(GO) test -tags protolegacy ./...
 	cd internal/benchmarks && SKIP_DOWNLOAD_GOOGLEAPIS=true $(GO) test -race -cover ./...
 
 .PHONY: benchmarks
@@ -120,14 +122,14 @@ $(BIN)/goyacc: internal/tools/go.mod internal/tools/go.sum
 	cd $(TOOLS_MOD_DIR) && \
 		GOWORK=off $(GO) build -o $@ golang.org/x/tools/cmd/goyacc
 
-internal/testdata/protoc/cache/protoc-$(PROTOC_VERSION).zip:
+$(CACHE)/protoc-$(PROTOC_VERSION).zip:
 	@mkdir -p $(@D)
 	curl -o $@ -fsSL https://github.com/protocolbuffers/protobuf/releases/download/v$(PROTOC_VERSION)/protoc-$(PROTOC_ARTIFACT_VERSION)-$(PROTOC_ARTIFACT_SUFFIX).zip
 
 .PHONY: protoc
 protoc: $(PROTOC)
 
-$(PROTOC): internal/testdata/protoc/cache/protoc-$(PROTOC_VERSION).zip
+$(PROTOC): $(CACHE)/protoc-$(PROTOC_VERSION).zip
 	@mkdir -p $(@D)
 	unzip -o -q $< -d $(PROTOC_DIR) && \
 	touch $@
@@ -144,8 +146,11 @@ internal/testdata/desc_test_defaults.protoset: $(PROTOC) internal/testdata/desc_
 internal/testdata/desc_test_proto3_optional.protoset: $(PROTOC) internal/testdata/desc_test_proto3_optional.proto
 	cd $(@D) && $(PROTOC) --descriptor_set_out=$(@F) --include_imports -I. $(filter-out protoc,$(^F))
 
-internal/testdata/descriptor_impl_tests.protoset: $(PROTOC) internal/testdata/desc_test2.proto internal/testdata/desc_test_defaults.proto internal/testdata/desc_test_proto3.proto internal/testdata/desc_test_proto3_optional.proto
+internal/testdata/descriptor_impl_tests.protoset: $(PROTOC) internal/testdata/desc_test2.proto internal/testdata/desc_test_complex.proto internal/testdata/desc_test_defaults.proto internal/testdata/desc_test_proto3.proto internal/testdata/desc_test_proto3_optional.proto
 	cd $(@D) && $(PROTOC) --descriptor_set_out=$(@F) --include_imports -I. $(filter-out protoc,$(^F))
+
+internal/testdata/descriptor_editions_impl_tests.protoset: $(PROTOC) internal/testdata/editions/all_default_features.proto internal/testdata/editions/features_with_overrides.proto
+	cd $(@D)/editions && $(PROTOC) --experimental_editions --descriptor_set_out=../$(@F) --include_imports -I. $(filter-out protoc,$(^F))
 
 internal/testdata/editions/all.protoset: $(PROTOC) $(sort $(wildcard internal/testdata/editions/*.proto))
 	cd $(@D) && $(PROTOC) --experimental_editions --descriptor_set_out=$(@F) --include_imports -I. $(filter-out protoc,$(^F))
@@ -153,11 +158,17 @@ internal/testdata/editions/all.protoset: $(PROTOC) $(sort $(wildcard internal/te
 internal/testdata/source_info.protoset: $(PROTOC) internal/testdata/desc_test_options.proto internal/testdata/desc_test_comments.proto internal/testdata/desc_test_complex.proto
 	cd $(@D) && $(PROTOC) --descriptor_set_out=$(@F) --include_source_info -I. $(filter-out protoc,$(^F))
 
+internal/testdata/options/options.protoset: $(PROTOC) internal/testdata/options/options.proto
+	cd $(@D) && $(PROTOC) --descriptor_set_out=$(@F) -I. $(filter-out protoc,$(^F))
+
 internal/testdata/options/test.protoset: $(PROTOC) internal/testdata/options/test.proto
 	cd $(@D) && $(PROTOC) --descriptor_set_out=$(@F) -I. $(filter-out protoc,$(^F))
 
 internal/testdata/options/test_proto3.protoset: $(PROTOC) internal/testdata/options/test_proto3.proto
 	cd $(@D) && $(PROTOC) --descriptor_set_out=$(@F) -I. $(filter-out protoc,$(^F))
+
+internal/testdata/options/test_editions.protoset: $(PROTOC) internal/testdata/options/test_editions.proto
+	cd $(@D) && $(PROTOC) --experimental_editions --descriptor_set_out=$(@F) -I. $(filter-out protoc,$(^F))
 
 .PHONY: test-descriptors
 test-descriptors: internal/testdata/all.protoset
@@ -165,7 +176,10 @@ test-descriptors: internal/testdata/desc_test_complex.protoset
 test-descriptors: internal/testdata/desc_test_defaults.protoset
 test-descriptors: internal/testdata/desc_test_proto3_optional.protoset
 test-descriptors: internal/testdata/descriptor_impl_tests.protoset
+test-descriptors: internal/testdata/descriptor_editions_impl_tests.protoset
 test-descriptors: internal/testdata/editions/all.protoset
 test-descriptors: internal/testdata/source_info.protoset
+test-descriptors: internal/testdata/options/options.protoset
 test-descriptors: internal/testdata/options/test.protoset
 test-descriptors: internal/testdata/options/test_proto3.protoset
+test-descriptors: internal/testdata/options/test_editions.protoset

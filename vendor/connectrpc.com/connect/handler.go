@@ -63,23 +63,9 @@ func NewUnaryHandler[Req, Res any](
 	}
 	// Given a stream, how should we call the unary function?
 	implementation := func(ctx context.Context, conn StreamingHandlerConn) error {
-		var msg Req
-		if err := config.Initializer.maybe(conn.Spec(), &msg); err != nil {
+		request, err := receiveUnaryRequest[Req](conn, config.Initializer)
+		if err != nil {
 			return err
-		}
-		if err := conn.Receive(&msg); err != nil {
-			return err
-		}
-		method := http.MethodPost
-		if hasRequestMethod, ok := conn.(interface{ getHTTPMethod() string }); ok {
-			method = hasRequestMethod.getHTTPMethod()
-		}
-		request := &Request[Req]{
-			Msg:    &msg,
-			spec:   conn.Spec(),
-			peer:   conn.Peer(),
-			header: conn.RequestHeader(),
-			method: method,
 		}
 		response, err := untyped(ctx, request)
 		if err != nil {
@@ -140,24 +126,11 @@ func NewServerStreamHandler[Req, Res any](
 	return newStreamHandler(
 		config,
 		func(ctx context.Context, conn StreamingHandlerConn) error {
-			var msg Req
-			if err := config.Initializer.maybe(conn.Spec(), &msg); err != nil {
+			req, err := receiveUnaryRequest[Req](conn, config.Initializer)
+			if err != nil {
 				return err
 			}
-			if err := conn.Receive(&msg); err != nil {
-				return err
-			}
-			return implementation(
-				ctx,
-				&Request[Req]{
-					Msg:    &msg,
-					spec:   conn.Spec(),
-					peer:   conn.Peer(),
-					header: conn.RequestHeader(),
-					method: http.MethodPost,
-				},
-				&ServerStream[Res]{conn: conn},
-			)
+			return implementation(ctx, req, &ServerStream[Res]{conn: conn})
 		},
 	)
 }
@@ -274,8 +247,6 @@ type handlerConfig struct {
 	Procedure                    string
 	Schema                       any
 	Initializer                  maybeInitializer
-	HandleGRPC                   bool
-	HandleGRPCWeb                bool
 	RequireConnectProtocolHeader bool
 	IdempotencyLevel             IdempotencyLevel
 	BufferPool                   *bufferPool
@@ -290,8 +261,6 @@ func newHandlerConfig(procedure string, streamType StreamType, options []Handler
 		Procedure:        protoPath,
 		CompressionPools: make(map[string]*compressionPool),
 		Codecs:           make(map[string]Codec),
-		HandleGRPC:       true,
-		HandleGRPCWeb:    true,
 		BufferPool:       newBufferPool(),
 		StreamType:       streamType,
 	}
@@ -314,12 +283,10 @@ func (c *handlerConfig) newSpec() Spec {
 }
 
 func (c *handlerConfig) newProtocolHandlers() []protocolHandler {
-	protocols := []protocol{&protocolConnect{}}
-	if c.HandleGRPC {
-		protocols = append(protocols, &protocolGRPC{web: false})
-	}
-	if c.HandleGRPCWeb {
-		protocols = append(protocols, &protocolGRPC{web: true})
+	protocols := []protocol{
+		&protocolConnect{},
+		&protocolGRPC{web: false},
+		&protocolGRPC{web: true},
 	}
 	handlers := make([]protocolHandler, 0, len(protocols))
 	codecs := newReadOnlyCodecs(c.Codecs)
