@@ -1,4 +1,9 @@
-# `retab` ➡️
+
+<p align="center">
+<img src="./img/gopher.png" width="250" >
+</p>
+
+# retab ➡️
 
 Simplify your config management with `retab`. This tool transforms `.retab` files  (using `hcl` syntax)into YAML or JSON, allowing you to write in HCL and enjoy the readability benefits of tab indentation.
 
