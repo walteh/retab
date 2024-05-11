@@ -20,7 +20,8 @@ go install github.com/walteh/retab/cmd/retab
 
 ## Usage
 
-![WARNING]Files must be located in a `.retab` directory and have the `.retab` extension.
+> [!IMPORTANT]
+> Files must be located in a `.retab` directory and have the `.retab` extension.
 
 1. **Write your configuration in HCL**
 2. **Format:** `retab fmt`

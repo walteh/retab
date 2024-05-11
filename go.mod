@@ -1,6 +1,6 @@
 module github.com/walteh/retab
 
-go 1.22.1
+go 1.22.3
 
 require (
 	github.com/apparentlymart/go-textseg/v13 v13.0.0
