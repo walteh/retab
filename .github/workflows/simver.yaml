@@ -8,5 +8,8 @@ on:
         types: [opened, synchronize, reopened, closed]
 jobs:
     simver:
-        uses: walteh/simver/.github/workflows/simver.yaml@wait
-        secrets: inherit
+        runs-on: ubuntu-latest
+        steps:
+            - uses: walteh/simver/cmd/gha-simver@v1
+              with:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
