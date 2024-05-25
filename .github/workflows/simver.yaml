@@ -10,3 +10,4 @@ jobs:
     simver:
         uses: walteh/simver/.github/workflows/simver.yaml@wait
         secrets: inherit
+# Path: .github/workflows/simver.yaml
