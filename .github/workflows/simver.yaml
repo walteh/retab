@@ -8,6 +8,6 @@ on:
         types: [opened, synchronize, reopened, closed]
 jobs:
     simver:
-        uses: walteh/simver/.github/workflows/simver.yaml@2916c123009b22010e96a62575abb61c74752fe6
+        uses: walteh/simver/.github/workflows/simver.yaml@a49526e3841910a5cfc8982c2749164776c5f347
         secrets: inherit
 # Path: .github/workflows/simver.yaml
