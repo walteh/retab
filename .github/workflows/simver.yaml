@@ -10,6 +10,6 @@ jobs:
     simver:
         runs-on: ubuntu-latest
         steps:
-            - uses: walteh/simver/cmd/gha-simver@v1
+            - uses: walteh/simver/cmd/gha-simver@v0
               with:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
