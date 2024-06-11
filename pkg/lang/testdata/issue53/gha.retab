@@ -1,0 +1,203 @@
+runners = ["ubuntu-latest"]
+targets = ["windows/amd64", "linux/amd64", "darwin/arm64"]
+GO_VERSION = "1.22.4"
+
+gen release-action {
+	schema = "https://json.schemastore.org/github-workflow"
+	path   = "out/file.yaml"
+	data = {
+
+		name = "release"
+		concurrency = {
+			group              = "release"
+			cancel-in-progress = true
+		}
+		permissions = {
+			id-token      = "write"
+			contents      = "write"
+			pull-requests = "read"
+		}
+		on = {
+			workflow_dispatch = null
+			push              = { branches = ["main"] }
+			pull_request      = { types = ["opened", "synchronize", "reopened", "closed"] }
+		}
+
+		jobs = {
+			simver = {
+				runs-on = runners
+				outputs = {
+					TAG         = "$${{ steps.get_latest_tag.outputs.TAG }}"
+					RELEASE_URL = "$${{ steps.create_release.outputs.upload_url }}"
+				}
+				steps = [
+					{
+						uses = "walteh/simver/cmd/gha-simver@v0"
+						with = {
+							GITHUB_TOKEN = "$${{ secrets.GITHUB_TOKEN }}"
+						}
+					},
+					{
+						name = "Checkout"
+						uses = "actions/checkout@v4"
+						with = {
+							fetch-depth = 0
+						}
+					},
+					{
+						name = "Get latest tag"
+						id   = "get_latest_tag"
+						run  = <<EOT
+							export LATEST_TAG=$(git tag --merged HEAD | grep -E '^v[0-9]*\.[0-9]*\.[0-9]*$|^v[0-9]*\.[0-9]*\.[0-9]*\-pr.*\+[0-9]*$' | sort -V | tail -n 1)
+							echo "TAG=$LATEST_TAG"
+							echo "TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
+						EOT
+					},
+					{
+						name = "create release"
+						uses = "actions/create-release@v1"
+						id   = "create_release"
+						env = {
+							GITHUB_TOKEN = "$${{ secrets.GITHUB_TOKEN }}"
+						}
+						with = {
+							tag_name     = "$${{ steps.get_latest_tag.outputs.TAG }}"
+							release_name = "$${{ steps.get_latest_tag.outputs.TAG }}"
+							draft        = true
+							prerelease   = true
+						}
+					},
+				]
+			}
+			build_iso = {
+				strategy = {
+					matrix = {
+						application = ["api_validate", "dep-image"]
+						target      = targets
+					}
+				}
+				runs-on = runners
+				steps   = buildsteps("./cmd/og/iso/$${{ matrix.application }}", "$${{ matrix.application }}", "$${{ matrix.target }}").steps
+			}
+			build_og = {
+				strategy = {
+					matrix = {
+						target = targets
+					}
+				}
+				runs-on = runners
+				steps   = buildsteps("./cmd/og", "og", "$${{ matrix.target }}").steps
+			}
+			release_og  = artif("og")
+			release_iso = artif("iso")
+		}
+	}
+}
+
+func buildsteps {
+	params = [path, appname, target]
+	result = { steps = [
+		{
+			name = "Checkout"
+			uses = "actions/checkout@v4"
+			with = {
+				fetch-depth = 0
+			}
+		},
+		{
+			name = "Set up Go"
+			uses = "actions/setup-go@v5"
+			with = {
+				go-version = GO_VERSION
+			}
+		},
+		{
+			name = "get variables",
+			env = {
+				TARGET           = "${target}"
+				APPLICATION_NAME = "${appname}"
+			}
+			run = <<EOT
+				export TARGET_OS=$${TARGET%%/*}
+				export TARGET_ARCH=$${TARGET##*/}
+				export BINARY_NAME=$${APPLICATION_NAME}_$${TARGET_OS}-$${TARGET_ARCH}
+				if [ "$${TARGET_OS}" = "windows" ]; then
+					export BINARY_NAME=$${BINARY_NAME}.exe
+				fi
+				echo "TARGET_OS=$TARGET_OS"
+				echo "TARGET_ARCH=$TARGET_ARCH"
+				echo "BINARY_NAME=$BINARY_NAME"
+				echo "TARGET_OS=$TARGET_OS" >> $GITHUB_ENV
+				echo "TARGET_ARCH=$TARGET_ARCH" >> $GITHUB_ENV
+				echo "BINARY_NAME=$BINARY_NAME" >> $GITHUB_ENV
+			EOT
+		},
+		{
+
+			name = "build apps with go"
+			env = {
+				APPLICATION_NAME = "$${{ matrix.application }}"
+				BINARY_NAME      = "$${{ env.BINARY_NAME }}"
+			}
+			run = <<EOT
+				go build -v -ldflags '-s -w' -o ${path} ./cmd/og/iso/$APPLICATION_NAME
+			EOT
+		},
+		{
+			name = "tar gzip build artifacts",
+			env = {
+				TARGET      = target
+				GOOS        = "$${{ env.TARGET_OS }}"
+				BINARY_NAME = "$${{ env.BINARY_NAME }}"
+			}
+			run = <<EOT
+				mkdir -p ./build-tar
+				tar -czf ./build-tar/$${BINARY_NAME}.tar.gz ./build/$${BINARY_NAME}
+				sha256sum ./build-tar/$${BINARY_NAME}.tar.gz > ./build/$${BINARY_NAME}.tar.gz.sha256
+			EOT
+		},
+		{
+			name = "Upload build artifacts"
+			uses = "actions/upload-artifact@v3"
+			with = {
+				name = "build-iso"
+				path = "./build-tar"
+			}
+		}
+
+	] }
+
+}
+
+func artif {
+	params = [ref]
+	result = {
+		needs   = ["simver", "build_${ref}"]
+		runs-on = runners
+		steps = [
+			{
+				name = "Download build artifacts"
+				uses = "actions/download-artifact@v2"
+				with = {
+					name = "build-${ref}"
+					path = "./build-${ref}"
+				}
+			},
+			{
+				name = "Merge build artifacts"
+				run  = "mkdir -p ./build && cp -r ./build-${ref}/* ./build"
+			},
+			{
+				name = "Upload Release Assets"
+				uses = "glentiki/xbin-release-action@v1.0.0"
+				env = {
+					GITHUB_TOKEN = "$${{ secrets.GITHUB_TOKEN }}"
+				}
+				with = {
+					upload_url  = "$${{ needs.simver.outputs.RELEASE_URL }}"
+					assets_path = "./build"
+				}
+			}
+	] }
+
+}
