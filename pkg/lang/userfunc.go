@@ -46,16 +46,16 @@ func decodeUserFunctions(tctx context.Context, body hcl.Body, blockType string, 
 	// first call to getBaseCtx will populate context, and then the same
 	// context will be used for all subsequent calls. It's assumed that
 	// all functions in a given body should see an identical context.
-	var baseCtx *hcl.EvalContext
-	getBaseCtx := func() *hcl.EvalContext {
-		if baseCtx == nil {
-			if contextFunc != nil {
-				baseCtx = contextFunc()
-			}
-		}
-		// baseCtx might still be nil here, and that's okay
-		return baseCtx
-	}
+	// var baseCtx *hcl.EvalContext
+	// getBaseCtx := func() *hcl.EvalContext {
+	// 	if baseCtx == nil {
+	// 		if contextFunc != nil {
+	// 			baseCtx = contextFunc()
+	// 		}
+	// 	}
+	// 	// baseCtx might still be nil here, and that's okay
+	// 	return baseCtx
+	// }
 
 	funcs = make(map[string]function.Function)
 Blocks:
@@ -123,8 +123,10 @@ Blocks:
 			}
 		}
 		impl := func(args []cty.Value) (cty.Value, error) {
-			ctx := getBaseCtx()
-			ctx = ctx.NewChild()
+			ctx := &hcl.EvalContext{
+				Variables: make(map[string]cty.Value),
+				Functions: map[string]function.Function{},
+			}
 			ctx.Variables = make(map[string]cty.Value)
 
 			// The cty function machinery guarantees that we have at least
