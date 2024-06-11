@@ -5,22 +5,12 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/ext/userfunc"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 )
 
 const UserFuncBlockType = "func"
-
-func ExtractUserFuncs(ctx context.Context, ibdy hcl.Body, parent *SudoContext) (map[string]function.Function, hcl.Diagnostics) {
-	userfuncs, _, diag := userfunc.DecodeUserFunctions(ibdy, UserFuncBlockType, func() *hcl.EvalContext { return parent.BuildStaticEvalContext() })
-	if diag.HasErrors() {
-		return nil, diag
-	}
-
-	return userfuncs, nil
-}
 
 func NewContextFromFiles(ctx context.Context, fle map[string][]byte, env map[string]string) (*hcl.File, *SudoContext, *BodyBuilder, hcl.Diagnostics, error) {
 
@@ -78,6 +68,7 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 		for k, v := range v.Functions {
 			childctx.Functions[k] = v
 		}
+
 	}
 
 	switch e := attr.Expr.(type) {
@@ -112,7 +103,7 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 			attrn := NewObjectItemAttribute(key.AsString(), v.KeyExpr.Range(), v.ValueExpr)
 			attrn.NameRange = v.ValueExpr.Range()
 
-			diag = EvaluateAttr(ctx, attrn, child)
+			diag = EvaluateAttr(ctx, attrn, child, extra...)
 			if diag.HasErrors() {
 				diags = append(diags, diag...)
 			}
@@ -137,6 +128,7 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 				},
 			}
 		}
+
 		child.isArray = true
 
 		diags := hcl.Diagnostics{}
@@ -144,7 +136,7 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 		for i, v := range e.Exprs {
 			attrn := NewArrayItemAttribute(i, v)
 			attrn.NameRange = v.Range()
-			diag := EvaluateAttr(ctx, attrn, child)
+			diag := EvaluateAttr(ctx, attrn, child, extra...)
 			diags = append(diags, diag...)
 		}
 
@@ -189,7 +181,7 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 		diags := hcl.Diagnostics{}
 
 		attrn := NewForCollectionAttribute(e.CollExpr)
-		diag := EvaluateAttr(ctx, attrn, child)
+		diag := EvaluateAttr(ctx, attrn, child, extra...)
 		diags = append(diags, diag...)
 
 		if len(diags) > 0 {
@@ -223,12 +215,12 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 			}
 		}
 
-		return EvaluateAttr(ctx, attr, parentctx)
+		return EvaluateAttr(ctx, attr, parentctx, extra...)
 
 	case *hclsyntax.FunctionCallExpr:
 
 		if len(e.Args) == 0 {
-			return EvaluateAttr(ctx, attr, parentctx)
+			return EvaluateAttr(ctx, attr, parentctx, extra...)
 		}
 
 		if _, ok := e.Args[0].(*PreCalcExpr); ok {
@@ -252,7 +244,7 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 
 		for i, v := range e.Args {
 			attrn := NewFuncArgAttribute(i, v)
-			diag := EvaluateAttr(ctx, attrn, child)
+			diag := EvaluateAttr(ctx, attrn, child, extra...)
 			diags = append(diags, diag...)
 		}
 
@@ -272,7 +264,7 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 			e.Args[k] = newargs[v]
 		}
 
-		return EvaluateAttr(ctx, attr, parentctx)
+		return EvaluateAttr(ctx, attr, parentctx, extra...)
 
 	default:
 
@@ -400,7 +392,7 @@ func NewUnknownBlockEvaluation(ctx context.Context, parentctx *SudoContext, bloc
 		}
 	}
 
-	userfuncs, _, diag := userfunc.DecodeUserFunctions(block.Body, "func", child.BuildStaticEvalContext)
+	userfuncs, _, diag := decodeUserFunctions(ctx, block.Body, UserFuncBlockType, child.BuildStaticEvalContext, child)
 	if diag.HasErrors() {
 		return diag
 	}
