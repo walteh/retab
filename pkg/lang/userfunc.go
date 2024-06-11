@@ -151,6 +151,8 @@ Blocks:
 				}
 			}
 
+			delete(parentctx.Map, resultExpr.Name)
+
 			attr := NewObjectItemAttribute("___check", resultExpr.Range, resultExpr.Expr.(hclsyntax.Expression))
 
 			diags = EvaluateAttr(tctx, attr, child, ctx)
