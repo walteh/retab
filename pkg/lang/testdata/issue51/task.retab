@@ -9,7 +9,7 @@ gen out {
 func runner {
 	params = [ref]
 	result = {
-		a = ref,
+		a = 1,
 		b = 2,
 		c = 3,
 		d = 4,
