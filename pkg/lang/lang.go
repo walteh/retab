@@ -109,6 +109,12 @@ func (me *FileBlockEvaluation) Encode() ([]byte, error) {
 	switch arr[len(arr)-1] {
 	case "jsonc", "code-workspace":
 
+		if me.Schema != "" {
+			// # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+			header += fmt.Sprintf("# yaml-language-server: $schema=%s\n\n", me.Schema)
+			// header +=
+		}
+
 		buf := bytes.NewBuffer(nil)
 		enc := json.NewEncoder(buf)
 		enc.SetIndent("", "\t")
@@ -120,8 +126,13 @@ func (me *FileBlockEvaluation) Encode() ([]byte, error) {
 
 		return []byte(strings.ReplaceAll(header, "#", "//") + buf.String()), nil
 	case "json":
+
 		return json.MarshalIndent(me.OrderedOutput, "", "\t")
 	case "yaml", "yml":
+		if me.Schema != "" {
+			// # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+			header += fmt.Sprintf("# yaml-language-server: $schema=%s\n", me.Schema)
+		}
 		buf := bytes.NewBuffer(nil)
 		enc := yaml.NewEncoder(buf)
 		// enc.SetIndent(4)
