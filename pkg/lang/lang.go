@@ -131,7 +131,7 @@ func (me *FileBlockEvaluation) Encode() ([]byte, error) {
 	case "yaml", "yml":
 		if me.Schema != "" {
 			// # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
-			header += fmt.Sprintf("# yaml-language-server: $schema=%s\n", me.Schema)
+			header += fmt.Sprintf("# yaml-language-server: $schema=%s\n\n", me.Schema)
 		}
 		buf := bytes.NewBuffer(nil)
 		enc := yaml.NewEncoder(buf)
