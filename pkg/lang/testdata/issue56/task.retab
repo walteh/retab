@@ -1,0 +1,36 @@
+
+
+gen out {
+    path = "out/file.yaml"
+    data = {dat = "${join("|", [for z in LocalFilesToWatch : format(z)])}$"}
+}
+
+GO_MODULE_PACKAGE = "github.com/walteh/retab"
+
+pkgs = [
+	{
+		package = "${GO_MODULE_PACKAGE}/pkg/adapter",
+		interfaces = ["Adapter"],
+	},
+	{
+		package = "k8s.io/client-go/kubernetes/typed/autoscaling/v2",
+		interfaces = ["AutoscalingV2Interface"],
+	},
+	{
+		package = "${GO_MODULE_PACKAGE}/pkg/awssso",
+		interfaces = ["AWSLoginAPI"],
+	},
+	{
+		package = "${GO_MODULE_PACKAGE}/pkg/k8s",
+		interfaces = ["API"],
+	},
+]
+
+LocalFilesToWatch = [
+	for pkg in pkgs : "./${trimprefix(pkg.package, "${GO_MODULE_PACKAGE}/")}/*.go" if strcontains(pkg.package, "${GO_MODULE_PACKAGE}")
+]
+
+func format {
+	params = [ref]
+	result = replace(ref, ".", "\\.")
+}

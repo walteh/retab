@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/rs/xid"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 )
@@ -216,7 +217,6 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 		}
 
 		return EvaluateAttr(ctx, attr, parentctx, extra...)
-
 	case *hclsyntax.FunctionCallExpr:
 
 		if len(e.Args) == 0 {
@@ -236,7 +236,7 @@ func EvaluateAttr(ctx context.Context, attr *hclsyntax.Attribute, parentctx *Sud
 		}
 		// val, _ = val.Unmark()
 
-		child := parentctx.NewChild(FuncKey+":"+e.StartRange().String(), e.StartRange())
+		child := parentctx.NewChild(FuncKey+":"+fmt.Sprintf("%s:%s", FuncKey, xid.New().String()), e.StartRange())
 
 		diags := hcl.Diagnostics{}
 
