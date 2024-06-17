@@ -149,6 +149,42 @@ func NewFunctionMap() map[string]function.Function {
 				return cty.StringVal(string(dec)), nil
 			},
 		}),
+		"strcontains": function.New(&function.Spec{
+			Description: `Returns true if the given string contains the given substring.`,
+			Params: []function.Parameter{
+				{
+					Name:             "str",
+					Type:             cty.String,
+					AllowUnknown:     false,
+					AllowDynamicType: false,
+					AllowNull:        false,
+				},
+				{
+					Name:             "substr",
+					Type:             cty.String,
+					AllowUnknown:     false,
+					AllowDynamicType: false,
+					AllowNull:        false,
+				},
+			},
+			Type: function.StaticReturnType(cty.Bool),
+			// RefineResult: refineNonNull,
+			Impl: func(args []cty.Value, retType cty.Type) (ret cty.Value, err error) {
+				if len(args) != 2 {
+					return cty.NilVal, errors.Errorf("expected 2 arguments, got %d", len(args))
+				}
+				if args[0].IsNull() || args[1].IsNull() {
+					return cty.False, nil
+				}
+				if args[0].Type() != cty.String {
+					return cty.NilVal, errors.Errorf("expected string, got %s", args[0].GoString())
+				}
+				if args[1].Type() != cty.String {
+					return cty.NilVal, errors.Errorf("expected string, got %s", args[1].GoString())
+				}
+				return cty.BoolVal(strings.Contains(args[0].AsString(), args[1].AsString())), nil
+			},
+		}),
 	}
 }
 
