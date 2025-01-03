@@ -18,6 +18,8 @@ tasks:
     package-extension:
         dir: code-extension
         cmds:
+          - rm -rf node_modules
+          - rm -rf out
           - bun install
           - bun run package
           - mv ./retab-*.vsix ~/Downloads
