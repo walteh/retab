@@ -1,5 +1,0 @@
-syntax = "proto3";
-
-package proto.retab.v1;
-
-service SampleService {}

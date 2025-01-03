@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/walteh/retab/gen/mockery"
-	"github.com/walteh/retab/pkg/format/cmdfmt"
+	"github.com/walteh/retab/v2/gen/mockery"
+	"github.com/walteh/retab/v2/pkg/format/cmdfmt"
 )
 
 func TestPreFormattedDartUnit(t *testing.T) {

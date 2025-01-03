@@ -6,7 +6,7 @@ import (
 	"reflect"
 
 	"github.com/rs/zerolog"
-	"github.com/walteh/terrors"
+	"gitlab.com/tozd/go/errors"
 )
 
 type Provider interface {
@@ -20,12 +20,12 @@ func Format(ctx context.Context, provider Provider, cfg ConfigurationProvider, f
 
 	efg, err := cfg.GetConfigurationForFileType(ctx, filename)
 	if err != nil {
-		return nil, terrors.Wrap(err, "failed to get editorconfig")
+		return nil, errors.Errorf("failed to get editorconfig: %w", err)
 	}
 
 	r, err := provider.Format(ctx, efg, fle)
 	if err != nil {
-		return nil, terrors.Wrap(err, "failed to format")
+		return nil, errors.Errorf("failed to format: %w", err)
 	}
 
 	return r, nil

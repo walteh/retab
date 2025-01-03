@@ -7,8 +7,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/walteh/retab/pkg/format"
-	"github.com/walteh/terrors"
+	"github.com/walteh/retab/v2/pkg/format"
+	"gitlab.com/tozd/go/errors"
 )
 
 type ExternalFormatterConfig struct {
@@ -47,11 +47,11 @@ func (me *externalStdinFormatter) Format(ctx context.Context, cfg format.Configu
 
 	output, err := applyConfiguration(ctx, me.internal, cfg, read)
 	if err != nil {
-		return nil, terrors.Wrap(err, "failed to apply configuration")
+		return nil, errors.Errorf("failed to apply configuration: %w", err)
 	}
 
 	if rerr != nil {
-		return nil, terrors.Wrap(rerr, "failed to format")
+		return nil, errors.Errorf("failed to format: %w", rerr)
 	}
 
 	return output, nil
@@ -105,7 +105,7 @@ func applyConfiguration(_ context.Context, ext ExternalFormatter, cfg format.Con
 		// Write the modified line to the output buffer.
 		_, err := output.WriteString(line + "\n")
 		if err != nil {
-			return nil, terrors.Wrap(err, "failed to write to output buffer")
+			return nil, errors.Errorf("failed to write to output buffer: %w", err)
 		}
 	}
 
@@ -119,7 +119,7 @@ func applyConfiguration(_ context.Context, ext ExternalFormatter, cfg format.Con
 		if outputStr != "" {
 			failString = failString + ": " + outputStr
 		}
-		return nil, terrors.Wrap(err, failString)
+		return nil, errors.Errorf("%s: %w", failString, err)
 	}
 
 	return &output, nil

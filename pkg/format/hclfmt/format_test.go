@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/walteh/retab/gen/mockery"
-	"github.com/walteh/retab/pkg/format/hclfmt"
+	"github.com/walteh/retab/v2/gen/mockery"
+	"github.com/walteh/retab/v2/pkg/format/hclfmt"
 )
 
 func TestFormat(t *testing.T) {

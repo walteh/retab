@@ -8,8 +8,8 @@ import (
 	"github.com/editorconfig/editorconfig-core-go/v2"
 	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
-	"github.com/walteh/retab/pkg/format"
-	"github.com/walteh/terrors"
+	"github.com/walteh/retab/v2/pkg/format"
+	"gitlab.com/tozd/go/errors"
 )
 
 type EditorConfigConfiguration struct {
@@ -38,7 +38,7 @@ func (me *EditorConfigConfigurationProvider) GetConfigurationForFileType(ctx con
 
 	id, err := strconv.Atoi(def.IndentSize)
 	if err != nil {
-		return nil, terrors.Wrap(err, "failed to parse indent size")
+		return nil, errors.Errorf("failed to parse indent size: %w", err)
 	}
 
 	return &EditorConfigConfiguration{
@@ -59,10 +59,10 @@ func NewEditorConfigConfigurationProvider(ctx context.Context, fls afero.Fs) (fo
 
 	x, err2, err := editorconfig.ParseGraceful(fle)
 	if err != nil {
-		return nil, terrors.Wrap(err, "failed to get editorconfig definition")
+		return nil, errors.Errorf("failed to get editorconfig definition: %w", err)
 	}
 	if err2 != nil {
-		return nil, terrors.Wrap(err2, "failed to parse editorconfig")
+		return nil, errors.Errorf("failed to parse editorconfig: %w", err2)
 	}
 
 	return &EditorConfigConfigurationProvider{

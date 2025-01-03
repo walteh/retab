@@ -23,9 +23,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/bufbuild/protocompile/ast"
-	"github.com/go-faster/errors"
-	"github.com/walteh/retab/pkg/format"
-	"github.com/walteh/terrors"
+	"github.com/walteh/retab/v2/pkg/format"
+	"gitlab.com/tozd/go/errors"
 	"go.uber.org/multierr"
 )
 
@@ -1306,7 +1305,7 @@ func (f *formatter) writeCompositeValueForArrayLiteral(
 	case *ast.MessageLiteralNode:
 		f.writeMessageLiteralForArray(node, lastElement)
 	default:
-		f.err = multierr.Append(f.err, terrors.Errorf("unexpected array value node %T", node))
+		f.err = multierr.Append(f.err, errors.Errorf("unexpected array value node %T", node))
 	}
 }
 
@@ -1696,7 +1695,7 @@ func (f *formatter) writeNode(node ast.Node) {
 	case *ast.EmptyDeclNode:
 		// Nothing to do here.
 	default:
-		f.err = multierr.Append(f.err, terrors.Errorf("unexpected node: %T", node))
+		f.err = multierr.Append(f.err, errors.Errorf("unexpected node: %T", node))
 	}
 }
 

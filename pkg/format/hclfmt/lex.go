@@ -4,7 +4,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	"github.com/walteh/retab/pkg/format"
+	"github.com/walteh/retab/v2/pkg/format"
 )
 
 // lexConfig uses the hclsyntax scanner to get a token stream and then

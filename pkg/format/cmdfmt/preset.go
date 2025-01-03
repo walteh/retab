@@ -1,7 +1,7 @@
 package cmdfmt
 
 import (
-	"github.com/walteh/retab/pkg/format"
+	"github.com/walteh/retab/v2/pkg/format"
 )
 
 func NewDartFormatter(cmds ...string) format.Provider {

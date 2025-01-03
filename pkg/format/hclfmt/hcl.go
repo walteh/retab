@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/walteh/retab/pkg/format"
+	"github.com/walteh/retab/v2/pkg/format"
 )
 
 type Formatter struct {

@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/walteh/retab/cmd/root"
-	"github.com/walteh/snake/scobra"
+	"github.com/spf13/cobra"
+	fmtcmd "github.com/walteh/retab/v2/cmd/retab/fmt"
 )
 
 func main() {
-
 	ctx := context.Background()
 
-	scob, cmd, err := root.NewCommand(ctx)
-	if err != nil {
+	cmd := &cobra.Command{
+		Use: "retab",
+	}
+
+	cmd.AddCommand(fmtcmd.NewFmtCommand())
+
+	if err := cmd.ExecuteContext(ctx); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	cmd.SilenceErrors = true
-
-	scobra.ExecuteHandlingError(ctx, scob)
 }

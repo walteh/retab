@@ -7,13 +7,11 @@ inpackage: false
 with-expecter: true
 testonly: false
 exported: true
+dir: gen/mockery
 outpkg: mockery
 filename: '{{.InterfaceName}}.{{.PackageName}}.mockery.go'
 mockname: Mock{{.InterfaceName}}_{{.PackageName}}
 packages:
-    github.com/walteh/retab/pkg/format:
+    github.com/walteh/retab/v2/pkg/format:
         interfaces:
             Configuration: {}
-    github.com/walteh/retab/pkg/lang:
-        interfaces:
-            Meta: {}

@@ -1,0 +1,9 @@
+always use gitlab.com/tozd/go/errors for golang errors
+always use errors.Errorf to wrap golangerrors, never use errors.Wrap
+
+always assume that broken imports are because the reference need to be adjusted, not because the thing being referenced doesn't exist
+always assume the existing code is correct unless you have a good reason to believe otherwise or you have been explicitly told otherwise
+never modify significant portions of code without asking
+always assume errors you introduce are a result of code you wrote, if you think otherwise, ask to make sure you can make changes elsewhere.
+run linting checks before you make changes to get a better sense of what errors you might be introducing
+never directly modify go.mod or go.sum files, always use go mod tidy and go mod init to update them (or other commands that are appropriate)

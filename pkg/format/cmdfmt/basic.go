@@ -6,9 +6,9 @@ import (
 	"os/exec"
 
 	"github.com/rs/zerolog"
+	"gitlab.com/tozd/go/errors"
 
-	"github.com/walteh/retab/pkg/format"
-	"github.com/walteh/terrors"
+	"github.com/walteh/retab/v2/pkg/format"
 )
 
 type basicExternalFormatter struct {
@@ -26,7 +26,7 @@ func NewExecFormatter(opts *BasicExternalFormatterOpts, cmds ...string) format.P
 	return ExternalFormatterToProvider(&basicExternalFormatter{opts.Indent, opts.Targets, func(r io.Reader, w io.Writer) func() error {
 		if len(cmds) < 1 {
 			return func() error {
-				return terrors.New("no command specified")
+				return errors.New("no command specified")
 			}
 		}
 		cmd := exec.Command(cmds[0], cmds[1:]...)
@@ -42,7 +42,7 @@ func NewNoopBasicExternalFormatProvider() format.Provider {
 		return func() error {
 			_, err := io.Copy(w, r)
 			if err != nil {
-				return terrors.Wrap(err, "failed to copy")
+				return errors.Errorf("failed to copy: %w", err)
 			}
 			return nil
 		}
@@ -60,12 +60,12 @@ func (me *basicExternalFormatter) Format(ctx context.Context, reader io.Reader) 
 		if err := cmd(); err != nil {
 			err := pipw.CloseWithError(err)
 			if err != nil {
-				return terrors.Wrap(err, "failed to close pipe")
+				return errors.Errorf("failed to close pipe: %w", err)
 			}
-			return terrors.Wrap(err, "failed to run command")
+			return errors.Errorf("failed to run command: %w", err)
 		}
 		if err := pipw.Close(); err != nil {
-			return terrors.Wrap(err, "failed to close pipe")
+			return errors.Errorf("failed to close pipe: %w", err)
 		}
 		return nil
 	}
