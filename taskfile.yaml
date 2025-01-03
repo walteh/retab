@@ -14,3 +14,11 @@ tasks:
 
     test:
         cmd: go test ./...
+
+    package-extension:
+        dir: code-extension
+        cmds:
+          - bun install
+          - bun run package
+          - mv ./retab-*.vsix ~/Downloads
+          - open https://marketplace.visualstudio.com/manage/publishers/walteh

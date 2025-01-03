@@ -1,0 +1,74 @@
+{
+    "name": "retab-vscode",
+    "displayName": "retab",
+    "description": "tabs-first formatter for Proto, HCL, Terraform, and Dart files",
+    "version": "0.0.2",
+    "publisher": "walteh",
+    "icon": "icon.png",
+    "engines": {
+        "vscode": "^1.74.0"
+    },
+    "categories": [
+        "Formatters"
+    ],
+    "activationEvents": [
+        "onLanguage:protobuf",
+        "onLanguage:hcl",
+        "onLanguage:terraform",
+        "onLanguage:dart"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "languages": [
+            {
+                "id": "protobuf",
+                "extensions": [
+                    ".proto"
+                ]
+            },
+            {
+                "id": "hcl",
+                "extensions": [
+                    ".hcl"
+                ]
+            },
+            {
+                "id": "terraform",
+                "extensions": [
+                    ".tf",
+                    ".tfvars"
+                ]
+            },
+            {
+                "id": "dart",
+                "extensions": [
+                    ".dart"
+                ]
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "bun run build",
+        "build": "bun build ./src/extension.ts --outdir ./out --target node --external vscode --format cjs",
+        "watch": "bun build ./src/extension.ts --outdir ./out --target node --watch --external vscode --format cjs",
+        "package": "bunx vsce package",
+        "publish": "bunx vsce publish"
+    },
+    "devDependencies": {
+        "@types/node": "^16.18.34",
+        "@types/vscode": "^1.74.0",
+        "@vscode/vsce": "latest",
+        "bun-types": "latest"
+    },
+    "trustedDependencies": [
+        "bun-types"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/walteh/retab"
+    },
+    "bugs": {
+        "url": "https://github.com/walteh/retab/issues"
+    },
+    "homepage": "https://github.com/walteh/retab"
+}

@@ -5,6 +5,9 @@ package fmt
 
 import (
 	"context"
+	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/spf13/afero"
@@ -20,6 +23,7 @@ import (
 type Handler struct {
 	filename  string
 	formatter string // auto, hcl, proto, dart, tf
+	ToStdout  bool
 }
 
 func NewFmtCommand() *cobra.Command {
@@ -31,7 +35,7 @@ func NewFmtCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&me.formatter, "formatter", "auto", "the formatter to use")
-
+	cmd.Flags().BoolVar(&me.ToStdout, "stdout", false, "write to stdout instead of file")
 	// the glob will will be argument one
 	cmd.Args = cobra.ExactArgs(1)
 
@@ -61,7 +65,8 @@ func (me *Handler) Run(ctx context.Context) error {
 		pfmters = append(pfmters, cmdfmt.NewTerraformFormatter("terraform"))
 		for _, pfmtr := range pfmters {
 			for _, target := range pfmtr.Targets() {
-				ok, err := doublestar.Match(target, me.filename)
+				basename := filepath.Base(me.filename)
+				ok, err := doublestar.Match(target, basename)
 				if err != nil {
 					return errors.Errorf("failed to match glob: %w", err)
 				}
@@ -84,7 +89,7 @@ func (me *Handler) Run(ctx context.Context) error {
 	}
 
 	if fmtr == nil {
-		return errors.New("no formatters specified")
+		return errors.Errorf("no formatters found for file '%s'", me.filename)
 	}
 
 	file, err := fs.Open(me.filename)
@@ -97,6 +102,11 @@ func (me *Handler) Run(ctx context.Context) error {
 	r, err := format.Format(ctx, fmtr, cfg, file.Name(), file)
 	if err != nil {
 		return errors.Errorf("failed to format file: %w", err)
+	}
+
+	if me.ToStdout {
+		io.Copy(os.Stdout, r)
+		return nil
 	}
 
 	err = afero.WriteReader(fs, me.filename, r)
