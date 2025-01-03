@@ -2,7 +2,7 @@
     "name": "retab-vscode",
     "displayName": "retab",
     "description": "tabs-first formatter for Proto, HCL, Terraform, and Dart files",
-    "version": "0.0.4",
+    "version": "0.0.8",
     "publisher": "walteh",
     "icon": "icon.png",
     "engines": {
@@ -12,7 +12,7 @@
         "Formatters"
     ],
     "activationEvents": [
-        "onLanguage:protobuf",
+        "onLanguage:proto",
         "onLanguage:hcl",
         "onLanguage:terraform",
         "onLanguage:dart"
@@ -25,37 +25,10 @@
                 "retab.executable": {
                     "type": "string",
                     "default": "retab",
-                    "description": "Path to the retab executable. Can be absolute or relative to workspace root (e.g., './bin/retab' or '/usr/local/bin/retab')."
+                    "description": "Path to the retab executable. Can be absolute or relative to workspace root (e.g., './bin/retab' or '/usr/local/bin/retab'). 'retab' will use the retab executable from PATH."
                 }
             }
-        },
-        "languages": [
-            {
-                "id": "protobuf",
-                "extensions": [
-                    ".proto"
-                ]
-            },
-            {
-                "id": "hcl",
-                "extensions": [
-                    ".hcl"
-                ]
-            },
-            {
-                "id": "terraform",
-                "extensions": [
-                    ".tf",
-                    ".tfvars"
-                ]
-            },
-            {
-                "id": "dart",
-                "extensions": [
-                    ".dart"
-                ]
-            }
-        ]
+        }
     },
     "scripts": {
         "vscode:prepublish": "bun run build",

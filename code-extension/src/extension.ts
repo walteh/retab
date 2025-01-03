@@ -5,9 +5,12 @@ import * as path from 'path';
 
 const execAsync = promisify(exec);
 
+// Create output channel
+const outputChannel = vscode.window.createOutputChannel("retab");
+
 function resolveRetabPath(configuredPath: string | undefined): string {
-	// If no path configured, use 'retab' from PATH
-	if (!configuredPath) {
+	// If no path configured or it's the default "retab", use 'retab' from PATH
+	if (!configuredPath || configuredPath === "" || configuredPath === "retab") {
 		return 'retab';
 	}
 
@@ -59,9 +62,11 @@ async function formatWithStdin(retabPath: string, content: string, filePath: str
 }
 
 export function activate(context: vscode.ExtensionContext) {
+	outputChannel.appendLine("Retab formatter activated");
+
 	// Register formatter for all supported languages
 	let disposable = vscode.languages.registerDocumentFormattingEditProvider(
-		['protobuf', 'hcl', 'terraform', 'dart'],
+		['proto', 'proto3', 'hcl', 'hcl2', 'terraform', 'tf', 'tfvars', 'dart'],
 		{
 			async provideDocumentFormattingEdits(document: vscode.TextDocument): Promise<vscode.TextEdit[]> {
 				try {
@@ -82,7 +87,8 @@ export function activate(context: vscode.ExtensionContext) {
 						formatted
 					)];
 				} catch (err) {
-					vscode.window.showErrorMessage(`Retab formatting failed: ${err}`);
+					// Log error to output channel instead of showing to user
+					outputChannel.appendLine(`Error formatting ${document.fileName}: ${err}`);
 					return [];
 				}
 			}
@@ -92,4 +98,6 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(disposable);
 }
 
-export function deactivate() {} 
+export function deactivate() {
+	outputChannel.dispose();
+} 
