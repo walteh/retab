@@ -2,7 +2,7 @@
     "name": "retab-vscode",
     "displayName": "retab",
     "description": "tabs-first formatter for Proto, HCL, Terraform, and Dart files",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "publisher": "walteh",
     "icon": "icon.png",
     "engines": {

@@ -1,11 +1,16 @@
 import * as vscode from 'vscode';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
 
 const execAsync = promisify(exec);
 
-function resolveRetabPath(configuredPath: string): string {
+function resolveRetabPath(configuredPath: string | undefined): string {
+	// If no path configured, use 'retab' from PATH
+	if (!configuredPath) {
+		return 'retab';
+	}
+
 	// If it's an absolute path, use it as is
 	if (path.isAbsolute(configuredPath)) {
 		return configuredPath;
@@ -14,11 +19,43 @@ function resolveRetabPath(configuredPath: string): string {
 	// Get the workspace folder
 	const workspaceFolders = vscode.workspace.workspaceFolders;
 	if (!workspaceFolders || workspaceFolders.length === 0) {
-		return configuredPath; // Fall back to PATH-based resolution
+		return configuredPath;
 	}
 
 	// Resolve relative to the first workspace folder
 	return path.resolve(workspaceFolders[0].uri.fsPath, configuredPath);
+}
+
+async function formatWithStdin(retabPath: string, content: string, filePath: string): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const child = spawn(retabPath, ['fmt', '--stdin', filePath]);
+		let stdout = '';
+		let stderr = '';
+
+		child.stdout.on('data', (data) => {
+			stdout += data;
+		});
+
+		child.stderr.on('data', (data) => {
+			stderr += data;
+		});
+
+		child.on('error', (err) => {
+			reject(new Error(`Failed to spawn retab: ${err.message}`));
+		});
+
+		child.on('close', (code) => {
+			if (code !== 0) {
+				reject(new Error(`retab failed with code ${code}: ${stderr}`));
+			} else {
+				resolve(stdout);
+			}
+		});
+
+		// Write the content to stdin and close it
+		child.stdin.write(content);
+		child.stdin.end();
+	});
 }
 
 export function activate(context: vscode.ExtensionContext) {
@@ -30,23 +67,19 @@ export function activate(context: vscode.ExtensionContext) {
 				try {
 					// Get the configured retab path
 					const config = vscode.workspace.getConfiguration('retab');
-					const configuredPath = config.get<string>('executable', 'retab');
+					const configuredPath = config.get<string>('executable');
 					const retabPath = resolveRetabPath(configuredPath);
 
-					// Check if retab exists at the configured path
-					try {
-						await execAsync(`${retabPath} --version`);
-					} catch (err) {
-						throw new Error(`retab not found at '${retabPath}' - please install retab or configure the correct path in settings`);
-					}
+					// Get the document content
+					const content = document.getText();
 
-					// Run retab formatter
-					const { stdout } = await execAsync(`${retabPath} fmt ${document.fileName} --stdout`);
+					// Format using stdin
+					const formatted = await formatWithStdin(retabPath, content, document.fileName);
 
 					// Return the edit
 					return [vscode.TextEdit.replace(
 						new vscode.Range(0, 0, document.lineCount, 0),
-						stdout
+						formatted
 					)];
 				} catch (err) {
 					vscode.window.showErrorMessage(`Retab formatting failed: ${err}`);

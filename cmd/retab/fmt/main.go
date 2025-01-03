@@ -24,6 +24,7 @@ type Handler struct {
 	filename  string
 	formatter string // auto, hcl, proto, dart, tf
 	ToStdout  bool
+	FromStdin bool
 }
 
 func NewFmtCommand() *cobra.Command {
@@ -36,6 +37,7 @@ func NewFmtCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&me.formatter, "formatter", "auto", "the formatter to use")
 	cmd.Flags().BoolVar(&me.ToStdout, "stdout", false, "write to stdout instead of file")
+	cmd.Flags().BoolVar(&me.FromStdin, "stdin", false, "read from stdin instead of file")
 	// the glob will will be argument one
 	cmd.Args = cobra.ExactArgs(1)
 
@@ -92,19 +94,24 @@ func (me *Handler) Run(ctx context.Context) error {
 		return errors.Errorf("no formatters found for file '%s'", me.filename)
 	}
 
-	file, err := fs.Open(me.filename)
-	if err != nil {
-		return errors.Errorf("failed to open file: %w", err)
+	var input io.Reader
+	if me.FromStdin {
+		input = os.Stdin
+	} else {
+		file, err := fs.Open(me.filename)
+		if err != nil {
+			return errors.Errorf("failed to open file: %w", err)
+		}
+		defer file.Close()
+		input = file
 	}
 
-	defer file.Close()
-
-	r, err := format.Format(ctx, fmtr, cfg, file.Name(), file)
+	r, err := format.Format(ctx, fmtr, cfg, me.filename, input)
 	if err != nil {
 		return errors.Errorf("failed to format file: %w", err)
 	}
 
-	if me.ToStdout {
+	if me.ToStdout || me.FromStdin {
 		io.Copy(os.Stdout, r)
 		return nil
 	}
