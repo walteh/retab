@@ -987,8 +987,34 @@ func (f *formatter) writeService(serviceNode *ast.ServiceNode) {
 	var elementWriterFunc func()
 	if len(serviceNode.Decls) > 0 {
 		elementWriterFunc = func() {
+			// Collect service options and RPCs
+			var options []*ast.OptionNode
+			var rpcs []*ast.RPCNode
 			for _, decl := range serviceNode.Decls {
-				f.writeNode(decl)
+				switch node := decl.(type) {
+				case *ast.OptionNode:
+					options = append(options, node)
+				case *ast.RPCNode:
+					rpcs = append(rpcs, node)
+				}
+			}
+
+			// Write service options if any
+			if len(options) > 0 {
+				f.writeServiceOptions(options)
+			}
+
+			// Write RPCs with newlines between them
+			if len(rpcs) > 0 {
+				if len(options) > 0 && !f.leadingCommentsContainBlankLine(rpcs[0]) {
+					f.P("")
+				}
+				for i, rpc := range rpcs {
+					if i > 0 {
+						f.P("")
+					}
+					f.writeRPC(rpc)
+				}
 			}
 		}
 	}
@@ -1015,8 +1041,16 @@ func (f *formatter) writeRPC(rpcNode *ast.RPCNode) {
 	var elementWriterFunc func()
 	if len(rpcNode.Decls) > 0 {
 		elementWriterFunc = func() {
+			// Collect RPC options
+			var options []*ast.OptionNode
 			for _, decl := range rpcNode.Decls {
-				f.writeNode(decl)
+				if opt, ok := decl.(*ast.OptionNode); ok {
+					options = append(options, opt)
+				}
+			}
+			if len(options) > 0 {
+				f.writeRPCOptions(options)
+
 			}
 		}
 	}
@@ -1029,11 +1063,6 @@ func (f *formatter) writeRPC(rpcNode *ast.RPCNode) {
 	f.Space()
 	f.writeInline(rpcNode.Output)
 	if rpcNode.OpenBrace == nil {
-		// This RPC doesn't have any elements, so we prefer the
-		// ';' form.
-		//
-		//  rpc Ping(PingRequest) returns (PingResponse);
-		//
 		f.writeLineEnd(rpcNode.Semicolon)
 		return
 	}
@@ -2435,4 +2464,72 @@ func (f *formatter) writeField(fieldNode *ast.FieldNode) {
 		f.writeNode(fieldNode.Options)
 	}
 	f.writeLineEnd(fieldNode.Semicolon)
+}
+
+// calculateOptionNameWidth calculates the maximum width of option names in a list of options
+func (f *formatter) calculateOptionNameWidth(options []*ast.OptionNode) int {
+	maxWidth := 0
+	for _, opt := range options {
+		width := len(stringForOptionName(opt.Name))
+		if width > maxWidth {
+			maxWidth = width
+		}
+	}
+	return maxWidth
+}
+
+// writeServiceOptions writes a list of service options with aligned equals signs
+func (f *formatter) writeServiceOptions(options []*ast.OptionNode) {
+	maxWidth := f.calculateOptionNameWidth(options)
+	// 	// Calculate max width for alignment
+	// 	maxWidth := 0
+	// 	for _, opt := range options {
+	// 		width := len(stringForOptionName(opt.Name))
+	// 		if width > maxWidth {
+	// 			maxWidth = width
+	// 		}
+	// 	}
+
+	// Write options with alignment
+	for i, opt := range options {
+		if i > 0 && f.leadingCommentsContainBlankLine(opt) {
+			f.P("")
+		}
+		f.writeStart(opt.Keyword)
+		f.Space()
+		f.writeInline(opt.Name)
+		// Add padding to align equals signs
+		currentWidth := len(stringForOptionName(opt.Name))
+		padding := strings.Repeat(" ", maxWidth-currentWidth+1)
+		f.WriteString(padding)
+		f.Space()
+		f.writeInline(opt.Equals)
+		f.Space()
+		f.writeInline(opt.Val)
+		f.writeLineEnd(opt.Semicolon)
+	}
+}
+
+// writeRPCOptions writes a list of RPC options with aligned equals signs
+func (f *formatter) writeRPCOptions(options []*ast.OptionNode) {
+	maxWidth := f.calculateOptionNameWidth(options)
+
+	// Write options with alignment
+	for i, opt := range options {
+		if i > 0 && f.leadingCommentsContainBlankLine(opt) {
+			f.P("")
+		}
+		f.writeStart(opt.Keyword)
+		f.Space()
+		f.writeInline(opt.Name)
+		// Add padding to align equals signs
+		currentWidth := len(stringForOptionName(opt.Name))
+		padding := strings.Repeat(" ", maxWidth-currentWidth+1)
+		f.WriteString(padding)
+		f.Space()
+		f.writeInline(opt.Equals)
+		f.Space()
+		f.writeInline(opt.Val)
+		f.writeLineEnd(opt.Semicolon)
+	}
 }

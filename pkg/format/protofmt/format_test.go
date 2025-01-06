@@ -140,6 +140,55 @@ message EnvironmentOptionsRequest {
 	}
 }`,
 		},
+		{
+			name:    "Service Options",
+			useTabs: true,
+			src: `service ScriptService {
+	option (tools.v1.goreleaser_template_lambda) = "./backend/cmd/lambdas/script.v1.ScriptService";
+	option (tools.v1.env) = "DYNAMODB_TABLE_NAME";
+	option (tools.v1.env) = "DYNAMODB_TABLE_REGION";
+	option (tools.v1.env) = "JWT_ISSUER";
+	option (tools.v1.env) = "JWT_AUDIENCE";
+	option (tools.v1.env) = "JWT_LEEWAY";
+
+	rpc UpdateScript(UpdateScriptRequest) returns (UpdateScriptResponse) {
+		option (tools.v1.aws_action) = "dynamodb:UpdateItem";
+		option (tools.v1.gg) = "dynamodb:PutItem";
+	}
+	rpc ListScripts(ListScriptsRequest) returns (ListScriptsResponse) {
+		option (tools.v1.aws_action) = "dynamodb:Query";
+		option (tools.v1.zz) = "dynamodb:Scan";
+	}
+	rpc ExecuteScript(ExecuteScriptRequest) returns (ExecuteScriptResponse) {
+		option (tools.v1.aws_action) = "dynamodb:GetItem";
+		option (tools.v1.xx) = "lambda:InvokeFunction";
+	}
+}
+`,
+			expected: `service ScriptService {
+	option (tools.v1.goreleaser_template_lambda) = "./backend/cmd/lambdas/script.v1.ScriptService";
+	option (tools.v1.env)                        = "DYNAMODB_TABLE_NAME";
+	option (tools.v1.env)                        = "DYNAMODB_TABLE_REGION";
+	option (tools.v1.env)                        = "JWT_ISSUER";
+	option (tools.v1.env)                        = "JWT_AUDIENCE";
+	option (tools.v1.env)                        = "JWT_LEEWAY";
+
+	rpc UpdateScript(UpdateScriptRequest) returns (UpdateScriptResponse) {
+		option (tools.v1.aws_action) = "dynamodb:UpdateItem";
+		option (tools.v1.gg)         = "dynamodb:PutItem";
+	}
+
+	rpc ListScripts(ListScriptsRequest) returns (ListScriptsResponse) {
+		option (tools.v1.aws_action) = "dynamodb:Query";
+		option (tools.v1.zz)         = "dynamodb:Scan";
+	}
+
+	rpc ExecuteScript(ExecuteScriptRequest) returns (ExecuteScriptResponse) {
+		option (tools.v1.aws_action) = "dynamodb:GetItem";
+		option (tools.v1.xx)         = "lambda:InvokeFunction";
+	}
+}`,
+		},
 	}
 
 	for _, tt := range tests {
