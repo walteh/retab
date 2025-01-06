@@ -189,6 +189,39 @@ message EnvironmentOptionsRequest {
 	}
 }`,
 		},
+
+		{
+			name:    "Compact Options",
+			useTabs: true,
+			src: `message ComplexOptions {
+	option (custom.option)          = true;
+	option (another.complex.option) = "value";
+	option allow_alias              = true;
+
+
+	string name = 1 [
+			(custom.field) = "value", // should be aligned
+			deprecated = true // should be aligned
+	];
+	int32  id = 2 [
+			(validate.rules).int32.gt = 0
+	];
+}
+`,
+			expected: `message ComplexOptions {
+	option (custom.option)          = true;
+	option (another.complex.option) = "value";
+	option allow_alias              = true;
+
+	string name = 1 [
+		(custom.field) = "value",  // should be aligned
+		deprecated     = true      // should be aligned
+	];
+	int32  id   = 2 [
+		(validate.rules).int32.gt = 0
+	];
+}`,
+		},
 	}
 
 	for _, tt := range tests {

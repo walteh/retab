@@ -1,6 +1,10 @@
 package format
 
-import "context"
+import (
+	"context"
+	"io"
+	"text/tabwriter"
+)
 
 type ConfigurationProvider interface {
 	GetConfigurationForFileType(ctx context.Context, filename string) (Configuration, error)
@@ -11,6 +15,10 @@ type Configuration interface {
 	IndentSize() int
 	TrimMultipleEmptyLines() bool
 	OneBracketPerLine() bool
+}
+
+func BuildTabWriter(cfg Configuration, writer io.Writer) *tabwriter.Writer {
+	return tabwriter.NewWriter(writer, 0, cfg.IndentSize(), 1, ' ', tabwriter.TabIndent|tabwriter.StripEscape|tabwriter.DiscardEmptyColumns)
 }
 
 type basicConfigurationProvider struct {

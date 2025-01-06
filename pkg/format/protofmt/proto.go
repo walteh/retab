@@ -1,13 +1,16 @@
 package protofmt
 
 import (
+	"bytes"
 	"context"
 	"io"
+	"strings"
 
 	"github.com/walteh/retab/v2/pkg/format"
 
 	"github.com/bufbuild/protocompile/parser"
 	"github.com/bufbuild/protocompile/reporter"
+	"gitlab.com/tozd/go/errors"
 )
 
 type Formatter struct {
@@ -24,28 +27,23 @@ func (me *Formatter) Targets() []string {
 }
 
 func (me *Formatter) Format(ctx context.Context, cfg format.Configuration, read io.Reader) (io.Reader, error) {
-
 	fileNode, err := parser.Parse("retab.protobuf-parser", read, reporter.NewHandler(nil))
 	if err != nil {
-		return nil, err
+		return nil, errors.Errorf("failed to parse protobuf: %w", err)
 	}
 
-	read, write := io.Pipe()
+	var buf bytes.Buffer
+	fmtr := newFormatter(&buf, fileNode, cfg)
 
-	fmtr := newFormatter(write, fileNode, cfg)
+	if err := fmtr.Run(); err != nil {
+		return nil, errors.Errorf("failed to format: %w", err)
+	}
 
-	go func() {
-		if err := fmtr.Run(); err != nil {
-			err := write.CloseWithError(err)
-			if err != nil {
-				panic(err)
-			}
-			return
-		}
-		if err := write.Close(); err != nil {
-			panic(err)
-		}
-	}()
+	// Do the replacements after formatting
+	result := buf.String()
+	for id, value := range fmtr.replacers {
+		result = strings.Replace(result, id, value, -1)
+	}
 
-	return read, nil
+	return strings.NewReader(result), nil
 }

@@ -15,6 +15,7 @@
 package protofmt
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"reflect"
@@ -25,6 +26,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/bufbuild/protocompile/ast"
+	"github.com/google/uuid"
 	"github.com/walteh/retab/v2/pkg/format"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/multierr"
@@ -70,6 +72,8 @@ type formatter struct {
 	// Records all errors that occur during the formatting process. Nearly any
 	// non-nil error represents a bug in the implementation.
 	err error
+
+	replacers map[string]string
 }
 
 // newFormatter returns a new formatter for the given file.
@@ -78,18 +82,19 @@ func newFormatter(
 	fileNode *ast.FileNode,
 	cfg format.Configuration,
 ) *formatter {
+
 	// Configure tabwriter with:
 	// - minwidth = 0 (no minimum width)
 	// - tabwidth = 4 (4-space tab width)
 	// - padding = 1 (one space of padding)
 	// - padchar = ' ' (pad with spaces)
 	// - flags = TabIndent | StripEscape | DiscardEmptyColumns (preserve indentation and handle escapes)
-	w := tabwriter.NewWriter(writer, 0, 4, 1, ' ', tabwriter.TabIndent|tabwriter.StripEscape|tabwriter.DiscardEmptyColumns)
 	return &formatter{
 		writer:    writer,
-		tabWriter: w,
+		tabWriter: format.BuildTabWriter(cfg, writer),
 		fileNode:  fileNode,
 		cfg:       cfg,
+		replacers: make(map[string]string),
 	}
 }
 
@@ -162,11 +167,13 @@ func (f *formatter) Indent(nextNode ast.Node) {
 			indent--
 		}
 	}
-	if f.cfg.UseTabs() {
-		f.WriteString(strings.Repeat("\t", indent))
-	} else {
-		f.WriteString(strings.Repeat(" ", indent*f.cfg.IndentSize()))
-	}
+	f.WriteString(strings.Repeat("\t", indent))
+
+	// if f.cfg.UseTabs() {
+	// } else {
+	// 	// todo: do we even need this with the tabwriter?
+	// 	f.WriteString(strings.Repeat(" ", indent*f.cfg.IndentSize()))
+	// }
 }
 
 // WriteString writes the given element to the generated output.
@@ -239,6 +246,10 @@ func (f *formatter) writeFile() {
 		f.P("")
 	}
 }
+
+// func (f *formatter) replace(id string, str string) {
+// 	f.replacers[id] = str
+// }
 
 // writeFileHeader writes the header of a .proto file. This includes the syntax,
 // package, imports, and options (in that order). The imports and options are
@@ -496,12 +507,17 @@ func (f *formatter) writeLastCompactOption(optionNode *ast.OptionNode) {
 //	deprecated =
 func (f *formatter) writeOptionPrefix(optionNode *ast.OptionNode) {
 	if optionNode.Keyword != nil {
+
 		// Compact options don't have the keyword.
 		f.writeStart(optionNode.Keyword)
 		f.Space()
 		f.writeNode(optionNode.Name)
 	} else {
+		// f.indent--
+		// pp.Printf("optionNode.Name %v\n", optionNode.Start())
+		// pp.Println("optionNode.Name", optionNode.Name)
 		f.writeStart(optionNode.Name)
+		// f.indent++
 	}
 	f.Space()
 	f.writeInline(optionNode.Equals)
@@ -583,9 +599,9 @@ func (f *formatter) writeMessage(messageNode *ast.MessageNode) {
 				}
 			}
 			f.writeOptions(options)
-			if len(nodes) > 0 && len(options) > 0 {
-				f.P("")
-			}
+			// if len(nodes) > 0 && len(options) > 0 {
+			// 	f.P("")
+			// }
 			for _, node := range nodes {
 				f.writeNode(node)
 			}
@@ -1269,57 +1285,58 @@ func (f *formatter) writeCompactOptions(compactOptionsNode *ast.CompactOptionsNo
 		f.inCompactOptions = false
 	}()
 	// no compact options
-	if false && len(compactOptionsNode.Options) == 1 &&
-		!f.hasInteriorComments(compactOptionsNode.OpenBracket, compactOptionsNode.Options[0].Name) {
-		// If there's only a single compact scalar option without comments, we can write it
-		// in-line. For example:
-		//
-		//  [deprecated = true]
-		//
-		// However, this does not include the case when the '[' has trailing comments,
-		// or the option name has leading comments. In those cases, we write the option
-		// across multiple lines. For example:
-		//
-		//  [
-		//    // This type is deprecated.
-		//    deprecated = true
-		//  ]
-		//
-		optionNode := compactOptionsNode.Options[0]
-		f.writeInline(compactOptionsNode.OpenBracket)
-		f.writeInline(optionNode.Name)
-		f.Space()
-		f.writeInline(optionNode.Equals)
-		if node, ok := optionNode.Val.(*ast.CompoundStringLiteralNode); ok {
-			// If there's only a single compact option, the value needs to
-			// write its comments (if any) in a way that preserves the closing ']'.
-			f.writeCompoundStringLiteralNoIndentEndInline(node)
-			f.writeInline(compactOptionsNode.CloseBracket)
-			return
-		}
-		f.Space()
-		f.writeInline(optionNode.Val)
-		f.writeInline(compactOptionsNode.CloseBracket)
-		return
-	}
-	var elementWriterFunc func()
-	if len(compactOptionsNode.Options) > 0 {
-		elementWriterFunc = func() {
-			for i, opt := range compactOptionsNode.Options {
-				if i == len(compactOptionsNode.Options)-1 {
-					// The last element won't have a trailing comma.
-					f.writeLastCompactOption(opt)
-					return
-				}
-				f.writeNode(opt)
-				f.writeLineEnd(compactOptionsNode.Commas[i])
-			}
-		}
-	}
+	// if false && len(compactOptionsNode.Options) == 1 &&
+	// 	!f.hasInteriorComments(compactOptionsNode.OpenBracket, compactOptionsNode.Options[0].Name) {
+	// 	// If there's only a single compact scalar option without comments, we can write it
+	// 	// in-line. For example:
+	// 	//
+	// 	//  [deprecated = true]
+	// 	//
+	// 	// However, this does not include the case when the '[' has trailing comments,
+	// 	// or the option name has leading comments. In those cases, we write the option
+	// 	// across multiple lines. For example:
+	// 	//
+	// 	//  [
+	// 	//    // This type is deprecated.
+	// 	//    deprecated = true
+	// 	//  ]
+	// 	//
+	// 	optionNode := compactOptionsNode.Options[0]
+	// 	f.writeInline(compactOptionsNode.OpenBracket)
+	// 	f.writeInline(optionNode.Name)
+	// 	f.Space()
+	// 	f.writeInline(optionNode.Equals)
+	// 	if node, ok := optionNode.Val.(*ast.CompoundStringLiteralNode); ok {
+	// 		// If there's only a single compact option, the value needs to
+	// 		// write its comments (if any) in a way that preserves the closing ']'.
+	// 		f.writeCompoundStringLiteralNoIndentEndInline(node)
+	// 		f.writeInline(compactOptionsNode.CloseBracket)
+	// 		return
+	// 	}
+	// 	f.Space()
+	// 	f.writeInline(optionNode.Val)
+	// 	f.writeInline(compactOptionsNode.CloseBracket)
+	// 	return
+	// }
+	// var elementWriterFunc func()
+	// if len(compactOptionsNode.Options) > 0 {
+	// 	elementWriterFunc = func() {
+	// 		for i, opt := range compactOptionsNode.Options {
+	// 			if i == len(compactOptionsNode.Options)-1 {
+	// 				// The last element won't have a trailing comma.
+	// 				f.writeLastCompactOption(opt)
+	// 				return
+	// 			}
+
+	// 			f.writeNode(opt)
+	// 			f.writeLineEnd(compactOptionsNode.Commas[i])
+	// 		}
+	// 	}
+	// }
 	f.writeCompositeValueBody(
 		compactOptionsNode.OpenBracket,
 		compactOptionsNode.CloseBracket,
-		elementWriterFunc,
+		f.writeCompactOptions2(compactOptionsNode),
 	)
 }
 
@@ -1926,12 +1943,14 @@ func (f *formatter) writeInline(node ast.Node) {
 	defer f.SetPreviousNode(node)
 	info := f.fileNode.NodeInfo(node)
 	if info.LeadingComments().Len() > 0 {
+
 		f.writeInlineComments(info.LeadingComments())
 		if info.LeadingWhitespace() != "" {
 			f.Space()
 		}
 	}
 	f.writeNode(node)
+
 	f.writeInlineComments(info.TrailingComments())
 }
 
@@ -2135,7 +2154,9 @@ func (f *formatter) writeMultilineCommentsMaybeCompact(comments ast.Comments, fo
 //	  optional string label = 20000;
 //	}
 func (f *formatter) writeInlineComments(comments ast.Comments) {
+
 	for i := 0; i < comments.Len(); i++ {
+
 		if i > 0 || comments.Index(i).LeadingWhitespace() != "" || f.lastWritten == ';' || f.lastWritten == '}' {
 			f.Space()
 		}
@@ -2174,7 +2195,7 @@ func (f *formatter) writeTrailingEndComments(comments ast.Comments) {
 	for i := 0; i < comments.Len(); i++ {
 		comment := comments.Index(i)
 		if i > 0 || comment.LeadingWhitespace() != "" {
-			f.Space()
+			f.WriteString("\t")
 		}
 		f.writeComment(comment.RawText())
 	}
@@ -2403,6 +2424,10 @@ func stringForOptionName(optionNameNode *ast.OptionNameNode) string {
 	return result
 }
 
+func stringForOptionValue(optionValue *ast.IdentNode) string {
+	return string(optionValue.AsIdentifier())
+}
+
 // stringForFieldReference returns the string representation of the given field reference.
 // This is used for sorting file-level options.
 func stringForFieldReference(fieldReference *ast.FieldReferenceNode) string {
@@ -2464,12 +2489,6 @@ func (f *formatter) writeField(fieldNode *ast.FieldNode) {
 		}
 	}
 
-	// Add extra space for int32 types
-	if strings.HasPrefix(f.fileNode.NodeInfo(fieldNode.FldType).RawText(), "int") {
-		f.Space()
-	}
-
-	// Add padding for alignment
 	f.WriteString("\t")
 	f.writeInline(fieldNode.Name)
 	f.WriteString("\t")
@@ -2478,7 +2497,15 @@ func (f *formatter) writeField(fieldNode *ast.FieldNode) {
 	f.writeInline(fieldNode.Tag)
 	if fieldNode.Options != nil {
 		f.Space()
+		id := uuid.New().String()
+		f.WriteString(id)
+		prevTabWritter := f.tabWriter
+		strbuffer := new(bytes.Buffer)
+		f.tabWriter = format.BuildTabWriter(f.cfg, strbuffer)
 		f.writeNode(fieldNode.Options)
+		f.tabWriter.Flush()
+		f.replacers[id] = strbuffer.String()
+		f.tabWriter = prevTabWritter
 	}
 	f.writeLineEnd(fieldNode.Semicolon)
 }
@@ -2495,26 +2522,64 @@ func (f *formatter) calculateOptionNameWidth(options []*ast.OptionNode) int {
 	return maxWidth
 }
 
+// calculateOptionCommentWidth calculates the maximum width of option comments in a list of options
+func (f *formatter) calculateOptionCommentWidth(options []*ast.OptionNode) int {
+	maxWidth := 0
+	for _, opt := range options {
+		width := len(stringForOptionName(opt.Name))
+		if width > maxWidth {
+			maxWidth = width
+		}
+	}
+	return maxWidth
+}
+
 // writeServiceOptions writes a list of service options with aligned equals signs
 func (f *formatter) writeOptions(options []*ast.OptionNode) {
-	maxWidth := f.calculateOptionNameWidth(options)
+	// maxWidth := f.calculateOptionNameWidth(options)
 
 	// Write options with alignment
 	for i, opt := range options {
 		if i > 0 && f.leadingCommentsContainBlankLine(opt) {
 			f.P("")
 		}
+
 		f.writeStart(opt.Keyword)
 		f.Space()
 		f.writeInline(opt.Name)
 		// Add padding to align equals signs
-		currentWidth := len(stringForOptionName(opt.Name))
-		padding := strings.Repeat(" ", maxWidth-currentWidth+1)
-		f.WriteString(padding)
-		f.Space()
+		// currentWidth := len(stringForOptionName(opt.Name))
+		// padding := strings.Repeat(" ", maxWidth-currentWidth+1)
+		f.WriteString("\t")
+		// f.Space()
 		f.writeInline(opt.Equals)
 		f.Space()
 		f.writeInline(opt.Val)
 		f.writeLineEnd(opt.Semicolon)
+	}
+}
+
+func (f *formatter) writeCompactOptions2(compactOptionsNode *ast.CompactOptionsNode) func() {
+	return func() {
+		// maxWidth := f.calculateOptionNameWidth(compactOptionsNode.Options)
+		for i, opt := range compactOptionsNode.Options {
+
+			f.writeStart(opt.Name)
+			// Add padding to align equals signs
+			// currentWidth := len(stringForOptionName(opt.Name))
+			// padding := strings.Repeat(" ", maxWidth-currentWidth+1)
+			// f.WriteString(padding)
+			f.WriteString("\t")
+			// f.Space()
+			f.writeInline(opt.Equals)
+			f.Space()
+
+			if i == len(compactOptionsNode.Options)-1 {
+				f.writeLineEnd(opt.Val)
+				return
+			}
+			f.writeInline(opt.Val)
+			f.writeLineEnd(compactOptionsNode.Commas[i])
+		}
 	}
 }

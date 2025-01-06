@@ -1,0 +1,35 @@
+message ComplexOptions {
+	option (custom.option)          = true;
+	option (another.complex.option) = "value";
+	option allow_alias              = true;
+
+	string name = 1 [
+		(custom.field) = "value",
+		deprecated     = true
+	];
+	int32  id   = 2 [
+		(validate.rules).int32.gt = 0
+	];
+
+	message MyOptions {
+		string file_only_option = 1 [
+			targets = TARGET_TYPE
+		];
+	}
+}
+
+message MyOptions {
+	string file_only_option = 1 [
+		targets         = TARGET_TYPE,      // should be aligned
+		targets_a_b_c_d = TARGET_TYPE_FILE  // should be aligned
+	];
+
+	repeated string message_and_enum_option = 2 [
+		targets = TARGET_TYPE_MESSAGE,
+		targets = TARGET_TYPE_ENUM
+	];
+
+	repeated string file_only_option_2 = 3;
+	string          sup                = 4;
+	int32           sup_2              = 5;
+}
