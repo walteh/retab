@@ -448,7 +448,7 @@ func (f *formatter) writeFileOption(optionNode *ast.OptionNode, forceCompact boo
 //	option go_package = "github.com/foo/bar";
 func (f *formatter) writeOption(optionNode *ast.OptionNode) {
 	f.writeOptionPrefix(optionNode)
-	if optionNode.Semicolon != nil {
+	if optionNode.Semicolon != nil { // if not a compact option
 		if node, ok := optionNode.Val.(*ast.CompoundStringLiteralNode); ok {
 			// Compound string literals are written across multiple lines
 			// immediately after the '=', so we don't need a trailing
@@ -481,7 +481,11 @@ func (f *formatter) writeOption(optionNode *ast.OptionNode) {
 //	]
 func (f *formatter) writeLastCompactOption(optionNode *ast.OptionNode) {
 	f.writeOptionPrefix(optionNode)
+	// f.writeInline(optionNode.Val)
 	f.writeLineEnd(optionNode.Val)
+	// f.Space()
+	// f.P("];")
+	// // f.writeLineEnd(ast.NewStringLiteralNode( )
 }
 
 // writeOptionValue writes the option prefix, which makes up all of the
@@ -569,8 +573,21 @@ func (f *formatter) writeMessage(messageNode *ast.MessageNode) {
 	var elementWriterFunc func()
 	if len(messageNode.Decls) != 0 {
 		elementWriterFunc = func() {
+			options := []*ast.OptionNode{}
+			nodes := []ast.Node{}
 			for _, decl := range messageNode.Decls {
-				f.writeNode(decl)
+				if option, ok := decl.(*ast.OptionNode); ok {
+					options = append(options, option)
+				} else {
+					nodes = append(nodes, decl)
+				}
+			}
+			f.writeOptions(options)
+			if len(nodes) > 0 && len(options) > 0 {
+				f.P("")
+			}
+			for _, node := range nodes {
+				f.writeNode(node)
 			}
 		}
 	}
@@ -1001,7 +1018,7 @@ func (f *formatter) writeService(serviceNode *ast.ServiceNode) {
 
 			// Write service options if any
 			if len(options) > 0 {
-				f.writeServiceOptions(options)
+				f.writeOptions(options)
 			}
 
 			// Write RPCs with newlines between them
@@ -1049,8 +1066,7 @@ func (f *formatter) writeRPC(rpcNode *ast.RPCNode) {
 				}
 			}
 			if len(options) > 0 {
-				f.writeRPCOptions(options)
-
+				f.writeOptions(options)
 			}
 		}
 	}
@@ -1252,7 +1268,8 @@ func (f *formatter) writeCompactOptions(compactOptionsNode *ast.CompactOptionsNo
 	defer func() {
 		f.inCompactOptions = false
 	}()
-	if len(compactOptionsNode.Options) == 1 &&
+	// no compact options
+	if false && len(compactOptionsNode.Options) == 1 &&
 		!f.hasInteriorComments(compactOptionsNode.OpenBracket, compactOptionsNode.Options[0].Name) {
 		// If there's only a single compact scalar option without comments, we can write it
 		// in-line. For example:
@@ -2479,39 +2496,7 @@ func (f *formatter) calculateOptionNameWidth(options []*ast.OptionNode) int {
 }
 
 // writeServiceOptions writes a list of service options with aligned equals signs
-func (f *formatter) writeServiceOptions(options []*ast.OptionNode) {
-	maxWidth := f.calculateOptionNameWidth(options)
-	// 	// Calculate max width for alignment
-	// 	maxWidth := 0
-	// 	for _, opt := range options {
-	// 		width := len(stringForOptionName(opt.Name))
-	// 		if width > maxWidth {
-	// 			maxWidth = width
-	// 		}
-	// 	}
-
-	// Write options with alignment
-	for i, opt := range options {
-		if i > 0 && f.leadingCommentsContainBlankLine(opt) {
-			f.P("")
-		}
-		f.writeStart(opt.Keyword)
-		f.Space()
-		f.writeInline(opt.Name)
-		// Add padding to align equals signs
-		currentWidth := len(stringForOptionName(opt.Name))
-		padding := strings.Repeat(" ", maxWidth-currentWidth+1)
-		f.WriteString(padding)
-		f.Space()
-		f.writeInline(opt.Equals)
-		f.Space()
-		f.writeInline(opt.Val)
-		f.writeLineEnd(opt.Semicolon)
-	}
-}
-
-// writeRPCOptions writes a list of RPC options with aligned equals signs
-func (f *formatter) writeRPCOptions(options []*ast.OptionNode) {
+func (f *formatter) writeOptions(options []*ast.OptionNode) {
 	maxWidth := f.calculateOptionNameWidth(options)
 
 	// Write options with alignment
