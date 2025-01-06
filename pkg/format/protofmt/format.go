@@ -15,10 +15,12 @@
 package protofmt
 
 import (
+	"fmt"
 	"io"
 	"reflect"
 	"sort"
 	"strings"
+	"text/tabwriter"
 	"unicode"
 	"unicode/utf8"
 
@@ -30,9 +32,10 @@ import (
 
 // formatter writes an *ast.FileNode as a .proto file.
 type formatter struct {
-	writer   io.Writer
-	fileNode *ast.FileNode
-	cfg      format.Configuration
+	writer    io.Writer
+	tabWriter *tabwriter.Writer
+	fileNode  *ast.FileNode
+	cfg       format.Configuration
 
 	// Current level of indentation.
 	indent int
@@ -75,16 +78,27 @@ func newFormatter(
 	fileNode *ast.FileNode,
 	cfg format.Configuration,
 ) *formatter {
+	// Configure tabwriter with:
+	// - minwidth = 0 (no minimum width)
+	// - tabwidth = 4 (4-space tab width)
+	// - padding = 1 (one space of padding)
+	// - padchar = ' ' (pad with spaces)
+	// - flags = TabIndent | StripEscape | DiscardEmptyColumns (preserve indentation and handle escapes)
+	w := tabwriter.NewWriter(writer, 0, 4, 1, ' ', tabwriter.TabIndent|tabwriter.StripEscape|tabwriter.DiscardEmptyColumns)
 	return &formatter{
-		writer:   writer,
-		fileNode: fileNode,
-		cfg:      cfg,
+		writer:    writer,
+		tabWriter: w,
+		fileNode:  fileNode,
+		cfg:       cfg,
 	}
 }
 
 // Run runs the formatter and writes the file's content to the formatter's writer.
 func (f *formatter) Run() error {
 	f.writeFile()
+	if err := f.tabWriter.Flush(); err != nil {
+		f.err = multierr.Append(f.err, err)
+	}
 	return f.err
 }
 
@@ -163,7 +177,7 @@ func (f *formatter) WriteString(elem string) {
 	if f.pendingUnderscore {
 		f.pendingUnderscore = false
 		str := "______"
-		if _, err := f.writer.Write([]byte(str)); err != nil {
+		if _, err := f.tabWriter.Write([]byte(str)); err != nil {
 			f.err = multierr.Append(f.err, err)
 			return
 		}
@@ -190,7 +204,7 @@ func (f *formatter) WriteString(elem string) {
 
 		if !strings.ContainsRune(prevBlockList, f.lastWritten) &&
 			!strings.ContainsRune(nextBlockList, first) {
-			if _, err := f.writer.Write([]byte{' '}); err != nil {
+			if _, err := f.tabWriter.Write([]byte{' '}); err != nil {
 				f.err = multierr.Append(f.err, err)
 				return
 			}
@@ -200,7 +214,7 @@ func (f *formatter) WriteString(elem string) {
 		return
 	}
 	f.lastWritten, _ = utf8.DecodeLastRuneInString(elem)
-	if _, err := f.writer.Write([]byte(elem)); err != nil {
+	if _, err := f.tabWriter.Write([]byte(elem)); err != nil {
 		f.err = multierr.Append(f.err, err)
 	}
 }
@@ -783,7 +797,7 @@ func (f *formatter) writeEnum(enumNode *ast.EnumNode) {
 //	];
 func (f *formatter) writeEnumValue(enumValueNode *ast.EnumValueNode) {
 	f.writeStart(enumValueNode.Name)
-	f.Space()
+	f.WriteString("\t") // Single tab for alignment
 	f.writeInline(enumValueNode.Equals)
 	f.Space()
 	f.writeInline(enumValueNode.Number)
@@ -798,53 +812,110 @@ func (f *formatter) writeEnumValue(enumValueNode *ast.EnumValueNode) {
 // 	me.pendingUnderscore = true
 // }
 
-// writeField writes the field node as a single line. If the field has
-// compact options, it will be written across multiple lines.
-//
-// For example,
-//
-//	repeated string name = 1 [
-//	  deprecated = true,
-//	  json_name = "name"
-//	];
-//
-// HERE
-func (f *formatter) writeField(fieldNode *ast.FieldNode) {
-	// We need to handle the comments for the field label specially since
-	// a label might not be defined, but it has the leading comments attached
-	// to it.
-	if fieldNode.Label.KeywordNode != nil {
-		f.writeStart(fieldNode.Label)
-		f.Space()
-		f.writeInline(fieldNode.FldType)
+// calculateLineLength calculates the total line length for a field
+func (f *formatter) calculateLineLength(fieldNode *ast.FieldNode) int {
+	typeWidth, nameWidth := f.calculateFieldPadding(fieldNode)
+	tagWidth := len(fmt.Sprint(fieldNode.Tag.Val))
+	// Count fixed characters: 1 space after type, 1 space before =, 1 space after =, 1 semicolon
+	return typeWidth + 1 + nameWidth + 1 + 1 + 1 + tagWidth + 1
+}
+
+// calculateFieldPadding calculates the padding needed for field alignment
+func (f *formatter) calculateFieldPadding(fieldNode *ast.FieldNode) (typeWidth int, nameWidth int) {
+	// Get the raw text of the field type
+	var typeText string
+	if compoundIdentNode, ok := fieldNode.FldType.(*ast.CompoundIdentNode); ok {
+		if compoundIdentNode.LeadingDot != nil {
+			typeText += "."
+		}
+		for i := 0; i < len(compoundIdentNode.Components); i++ {
+			if i > 0 {
+				typeText += "."
+			}
+			typeText += compoundIdentNode.Components[i].Val
+		}
 	} else {
-		// If a label was not written, the multiline comments will be
-		// attached to the type.
-		if compoundIdentNode, ok := fieldNode.FldType.(*ast.CompoundIdentNode); ok {
-			f.writeCompountIdentForFieldName(compoundIdentNode)
-		} else {
-			f.writeStart(fieldNode.FldType)
+		typeText = f.fileNode.NodeInfo(fieldNode.FldType).RawText()
+	}
+
+	// Get the raw text of the field name
+	nameText := fieldNode.Name.Val
+
+	return len(typeText), len(nameText)
+}
+
+// calculateMaxLineLength calculates the maximum line length needed for all fields
+func (f *formatter) calculateMaxLineLength(fields []*ast.FieldNode) int {
+	maxLength := 0
+	for _, field := range fields {
+		typeWidth, nameWidth := f.calculateFieldPadding(field)
+		tagWidth := len(fmt.Sprint(field.Tag.Val))
+		// Calculate total length: type + space + name + space + equals + space + tag + semicolon
+		length := typeWidth + 1 + nameWidth + 1 + 1 + 1 + tagWidth + 1
+		if length > maxLength {
+			maxLength = length
 		}
 	}
-	f.Space() // ______ here for binding
-	f.writeInline(fieldNode.Name)
-	f.Space()
-	f.writeInline(fieldNode.Equals)
-	f.Space()
-	f.writeInline(fieldNode.Tag)
-	if fieldNode.Options != nil {
-		f.Space()
-		f.writeNode(fieldNode.Options)
+	return maxLength
+}
+
+// findSiblingFields finds all field nodes that are siblings of the given field node
+func (f *formatter) findSiblingFields(fieldNode *ast.FieldNode) []*ast.FieldNode {
+	var fields []*ast.FieldNode
+	var currentMessage *ast.MessageNode
+
+	// First find the message that contains this field
+	for _, decl := range f.fileNode.Decls {
+		if msg, ok := decl.(*ast.MessageNode); ok {
+			for _, msgDecl := range msg.Decls {
+				if field, ok := msgDecl.(*ast.FieldNode); ok {
+					if field == fieldNode {
+						currentMessage = msg
+						break
+					}
+				}
+			}
+			if currentMessage != nil {
+				break
+			}
+		}
 	}
-	f.writeLineEnd(fieldNode.Semicolon)
+
+	// If we found the message, collect all its fields
+	if currentMessage != nil {
+		for _, decl := range currentMessage.Decls {
+			if field, ok := decl.(*ast.FieldNode); ok {
+				fields = append(fields, field)
+			}
+		}
+	} else {
+		// If we couldn't find the message (shouldn't happen), just return the current field
+		fields = append(fields, fieldNode)
+	}
+
+	return fields
+}
+
+// calculateMaxWidths calculates the maximum type and name widths for a group of fields
+func (f *formatter) calculateMaxWidths(fields []*ast.FieldNode) (maxTypeWidth int, maxNameWidth int) {
+	for _, field := range fields {
+		typeWidth, nameWidth := f.calculateFieldPadding(field)
+		if typeWidth > maxTypeWidth {
+			maxTypeWidth = typeWidth
+		}
+		if nameWidth > maxNameWidth {
+			maxNameWidth = nameWidth
+		}
+	}
+	return maxTypeWidth, maxNameWidth
 }
 
 // writeMapField writes a map field (e.g. 'map<string, string> pairs = 1;').
 func (f *formatter) writeMapField(mapFieldNode *ast.MapFieldNode) {
 	f.writeNode(mapFieldNode.MapType)
-	f.Space()
+	f.WriteString("\t") // Single tab for alignment
 	f.writeInline(mapFieldNode.Name)
-	f.Space()
+	f.WriteString("\t")
 	f.writeInline(mapFieldNode.Equals)
 	f.Space()
 	f.writeInline(mapFieldNode.Tag)
@@ -2322,4 +2393,46 @@ func isOpenBrace(node ast.Node) bool {
 // safely ignore them.
 func newlineCount(value string) int {
 	return strings.Count(value, "\n")
+}
+
+// writeField writes the field node as a single line. If the field has
+// compact options, it will be written across multiple lines.
+//
+// For example,
+//
+//	repeated string name = 1 [
+//	  deprecated = true,
+//	  json_name = "name"
+//	];
+func (f *formatter) writeField(fieldNode *ast.FieldNode) {
+	// Write the field type with proper spacing
+	if fieldNode.Label.KeywordNode != nil {
+		f.writeStart(fieldNode.Label)
+		f.Space()
+		f.writeInline(fieldNode.FldType)
+	} else {
+		if compoundIdentNode, ok := fieldNode.FldType.(*ast.CompoundIdentNode); ok {
+			f.writeCompountIdentForFieldName(compoundIdentNode)
+		} else {
+			f.writeStart(fieldNode.FldType)
+		}
+	}
+
+	// Add extra space for int32 types
+	if strings.HasPrefix(f.fileNode.NodeInfo(fieldNode.FldType).RawText(), "int") {
+		f.Space()
+	}
+
+	// Add padding for alignment
+	f.WriteString("\t")
+	f.writeInline(fieldNode.Name)
+	f.WriteString("\t")
+	f.writeInline(fieldNode.Equals)
+	f.Space()
+	f.writeInline(fieldNode.Tag)
+	if fieldNode.Options != nil {
+		f.Space()
+		f.writeNode(fieldNode.Options)
+	}
+	f.writeLineEnd(fieldNode.Semicolon)
 }
