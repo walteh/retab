@@ -7,30 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/walteh/retab/v2/gen/mockery"
 	"github.com/walteh/retab/v2/pkg/format"
 	"github.com/walteh/retab/v2/pkg/format/protofmt"
 )
-
-type mockConfig struct {
-	useSpaces  bool
-	indentSize int
-}
-
-func (c *mockConfig) UseTabs() bool {
-	return !c.useSpaces
-}
-
-func (c *mockConfig) IndentSize() int {
-	return c.indentSize
-}
-
-func (c *mockConfig) OneBracketPerLine() bool {
-	return true
-}
-
-func (c *mockConfig) TrimMultipleEmptyLines() bool {
-	return true
-}
 
 func formatProto(ctx context.Context, cfg format.Configuration, src []byte) (string, error) {
 	formatter := protofmt.NewFormatter()
@@ -166,10 +146,9 @@ message EnvironmentOptionsRequest {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			cfg := &mockConfig{
-				useSpaces:  !tt.useTabs,
-				indentSize: 1,
-			}
+			cfg := mockery.NewMockConfiguration_format(t)
+			cfg.EXPECT().UseTabs().Return(tt.useTabs).Maybe()
+			cfg.EXPECT().IndentSize().Return(1).Maybe()
 
 			// add a newline at the end of the src
 			if !strings.HasSuffix(tt.src, "\n") {
@@ -228,10 +207,9 @@ func TestBasicFieldAlignment(t *testing.T) {
 		"\tint32  medium          = 3;\n" +
 		"}\n"
 
-	cfg := &mockConfig{
-		useSpaces:  false,
-		indentSize: 8,
-	}
+	cfg := mockery.NewMockConfiguration_format(t)
+	cfg.EXPECT().UseTabs().Return(true).Maybe()
+	cfg.EXPECT().IndentSize().Return(1).Maybe()
 
 	formatted, err := formatProto(context.Background(), cfg, []byte(input))
 	if err != nil {
