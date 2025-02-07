@@ -1,6 +1,6 @@
 module github.com/walteh/retab/v2
 
-go 1.23.4
+go 1.24rc3
 
 require (
 	github.com/apparentlymart/go-textseg/v13 v13.0.0
@@ -10,6 +10,7 @@ require (
 	github.com/google/uuid v1.4.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/hcl/v2 v2.23.0
+	github.com/k0kubun/pp/v3 v3.4.1
 	github.com/rs/zerolog v1.33.0
 	github.com/spf13/afero v1.11.0
 	github.com/spf13/cobra v1.8.1

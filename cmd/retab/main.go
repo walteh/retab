@@ -28,8 +28,8 @@ func main() {
 
 	cmdVersion := &cobra.Command{
 		Use: "raw-version",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println(info.Main.Version)
+		Run: func(cmdz *cobra.Command, args []string) {
+			cmdz.Println(cmd.Version)
 		},
 		Hidden: true,
 	}
