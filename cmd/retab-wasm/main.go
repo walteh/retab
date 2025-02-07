@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"syscall/js"
 
 	fmtcmd "github.com/walteh/retab/v2/cmd/retab-wasm/fmt"
@@ -21,12 +20,17 @@ func main() {
 	retab := map[string]interface{}{
 		"fmt": wrapResult(ctx, fmtcmd.Fmt),
 	}
+
+	// Set the retab object first
 	js.Global().Set("retab", js.ValueOf(retab))
+
+	// Log initialization
+	js.Global().Get("console").Call("log", "[retab-golang-wasm] initialized")
 
 	// Set ready flag to indicate initialization is complete
 	js.Global().Set("retab_initialized", js.ValueOf(true))
 
-	fmt.Println("[retab-golang-wasm] initialized")
+	// Keep the program running
 	<-make(chan bool)
 }
 
@@ -34,6 +38,8 @@ func wrapResult[T any](ctx context.Context, fn func(ctx context.Context, this js
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		result, err := fn(ctx, this, args)
 		if err != nil {
+			// Log errors to console for debugging
+			js.Global().Get("console").Call("error", "[retab-golang-wasm]", err.Error())
 			return map[string]any{
 				"result": nil,
 				"error":  err.Error(),

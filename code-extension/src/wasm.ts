@@ -15,7 +15,11 @@ declare global {
 	}
 
 	interface Go {
-		importObject: any;
+		importObject:WebAssembly.Imports & {
+			gojs: {
+				"syscall/js.finalizeRef": (v_ref: any) => void;
+			};
+		};
 		run: (instance: any) => void;
 	}
 
@@ -57,10 +61,36 @@ export class WasmFormatter implements RetabFormatter {
 		try {
 
 			// Load and execute wasm_exec.js
-			const wasmExecPath = path.join(context.extensionPath, 'out', 'wasm_exec.js');
-			this.log(`Loading wasm_exec.js from ${wasmExecPath}`);
+			let wasmExecPath = path.join(context.extensionPath, 'out', 'wasm_exec.js');
+
+			const wasmExecPathTinygo = path.join(context.extensionPath, 'out', 'wasm_exec.tinygo.js');
+
+			let useTinygo = false;
+
+			// check if wasm_exec.golang.js exists
+			if (fs.existsSync(wasmExecPathTinygo)) {
+				wasmExecPath = wasmExecPathTinygo;
+				useTinygo = true;
+			}
+	
 			const wasmExecContent = await vscode.workspace.fs.readFile(vscode.Uri.file(wasmExecPath));
-			const wasmExecContentString = wasmExecContent.toString();
+			let wasmExecContentString = wasmExecContent.toString();
+
+			if (useTinygo) {
+				// prevents an error when .String() is called, but does not fully solve the memory leak issue
+				// - however, the memory leak is not that bad - https://github.com/tinygo-org/tinygo/issues/1140#issuecomment-1314608377
+				wasmExecContentString = wasmExecContentString.replace("\"syscall/js.finalizeRef\":", `"syscall/js.finalizeRef": (v_ref) => {
+				 	const id = mem().getUint32(unboxValue(v_ref), true);
+				 	this._goRefCounts[id]--;
+				 	if (this._goRefCounts[id] === 0) {
+				 		const v = this._values[id];
+				 		this._values[id] = null;
+				 		this._ids.delete(v);
+				 		this._idPool.push(id);
+				 	}
+				 },
+				 "syscall/js.finalizeRef-tinygo":`)
+			}
 			
 			// Create a new context for the WASM execution
 			this.log('Creating Go runtime...');
@@ -82,7 +112,8 @@ export class WasmFormatter implements RetabFormatter {
 			
 			const wasmModule = await WebAssembly.compile(wasmBuffer);
 			this.log('WASM module compiled');
-			
+
+
 			const instance = await WebAssembly.instantiate(wasmModule, this.go.importObject);
 			this.log('WASM module instantiated');
 			

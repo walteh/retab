@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/rs/zerolog"
-	"github.com/spf13/afero"
 	"github.com/walteh/retab/v2/pkg/format"
 )
 
@@ -106,33 +105,33 @@ func FormatBytes(cfg format.Configuration, src []byte) (io.Reader, error) {
 	return r, nil
 }
 
-// Process uses the hcl2 library to format the hcl file. This will attempt to parse the HCL file first to
-// ensure that there are no syntax errors, before attempting to format it.
-func Format(ctx context.Context, cfg format.Configuration, fs afero.Fs, fle string) error {
-	zerolog.Ctx(ctx).Debug().Any("config", cfg).Msgf("Formatting %s", fle)
+// // Process uses the hcl2 library to format the hcl file. This will attempt to parse the HCL file first to
+// // ensure that there are no syntax errors, before attempting to format it.
+// func Format(ctx context.Context, cfg format.Configuration,  fle string) error {
+// 	zerolog.Ctx(ctx).Debug().Any("config", cfg).Msgf("Formatting %s", fle)
 
-	contents, err := afero.ReadFile(fs, fle)
-	if err != nil {
-		zerolog.Ctx(ctx).Error().Err(err).Msgf("Error reading %s", fle)
-		return err
-	}
+// 	contents, err := afero.ReadFile(fs, fle)
+// 	if err != nil {
+// 		zerolog.Ctx(ctx).Error().Err(err).Msgf("Error reading %s", fle)
+// 		return err
+// 	}
 
-	err = checkErrors(ctx, contents, fle)
-	if err != nil {
-		zerolog.Ctx(ctx).Error().Err(err).Msgf("Error parsing %s", fle)
-		return err
-	}
+// 	err = checkErrors(ctx, contents, fle)
+// 	if err != nil {
+// 		zerolog.Ctx(ctx).Error().Err(err).Msgf("Error parsing %s", fle)
+// 		return err
+// 	}
 
-	newContents, err := FormatBytes(cfg, contents)
-	if err != nil {
-		zerolog.Ctx(ctx).Error().Err(err).Msgf("Error formatting %s", fle)
-		return err
-	}
+// 	newContents, err := FormatBytes(cfg, contents)
+// 	if err != nil {
+// 		zerolog.Ctx(ctx).Error().Err(err).Msgf("Error formatting %s", fle)
+// 		return err
+// 	}
 
-	zerolog.Ctx(ctx).Info().Msgf("%s was updated", fle)
+// 	zerolog.Ctx(ctx).Info().Msgf("%s was updated", fle)
 
-	return afero.WriteReader(fs, fle, newContents)
-}
+// 	return afero.WriteReader(fs, fle, newContents)
+// }
 
 // checkErrors takes in the contents of a hcl file and looks for syntaxterrors.
 func checkErrors(ctx context.Context, contents []byte, fle string) error {

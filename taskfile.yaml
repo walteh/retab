@@ -15,7 +15,7 @@ tasks:
     test:
         cmd: go test ./...
 
-    refresh-extension:
+    refresh-extension-go:
         dir: code-extension
         cmds:
           - rm -rf out
@@ -24,10 +24,19 @@ tasks:
           - cd ../cmd/retab-wasm && GOOS=js GOARCH=wasm go build -o ../../code-extension/out/retab.wasm
           - bun install
 
+    refresh-extension-tinygo:
+        dir: code-extension
+        cmds:
+          - rm -rf out
+          - mkdir -p out
+          - cp "$(tinygo env TINYGOROOT)/targets/wasm_exec.js" out/wasm_exec.tinygo.js
+          - cd ../cmd/retab-wasm && GOOS=js GOARCH=wasm tinygo build -o ../../code-extension/out/retab.wasm
+          - bun install
+
     package-extension:
         dir: code-extension
         cmds:
-          - task: refresh-extension
+          - task: refresh-extension-tinygo
           - bun run package
           - mv ./retab-*.vsix ~/Downloads
           - open https://marketplace.visualstudio.com/manage/publishers/walteh
@@ -35,5 +44,5 @@ tasks:
     rebuild-extension:
         dir: code-extension
         cmds:
-          - task: refresh-extension
+          - task: refresh-extension-tinygo
           - bun run build
