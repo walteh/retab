@@ -1,0 +1,3 @@
+thoughts: 
+- what if we were able to make an lsp out of this that just ran the formatter?
+- could we compile that lsp into webassembly to package along with the extension?

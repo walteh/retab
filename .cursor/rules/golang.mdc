@@ -1,0 +1,26 @@
+---
+description: golang
+globs: *.go
+---
+ # imports:
+always assume that broken imports are because the reference need to be adjusted, not because the thing being referenced doesn't exist
+never directly modify go.mod or go.sum files, always use go mod tidy and go mod init to update them (or other commands that are appropriate)
+
+# logging:
+always use zerolog for logging
+pass context.Context to zerolog.Ctx(ctx) to get a logger with context
+all functions that log should have a context.Context as the first argument
+context should be created as early as possible in the program and passed around to all functions that need it
+individual packages should not define their own logging logic (unless required, like a server needing to control standard out), instead they should use the logger passed to them
+
+# errors:
+always use gitlab.com/tozd/go/errors for golang errors
+always use errors.Errorf to wrap golangerrors, never use errors.Wrap
+the wrapped error naming philosophy should always make the error message say what was trying to be done, not what went wrong (i.e. errors.Errorf("reading file: %w", err))
+for new errors the name just needs to be the best name for that error
+
+# running go
+always use the ./go file defined in the root of this project as an alias for 'go'
+
+# finding type definitions
+use go doc to figure out what types youre working with look like 

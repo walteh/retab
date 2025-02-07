@@ -26,6 +26,16 @@ func main() {
 		cmd.Version = info.Main.Version
 	}
 
+	cmdVersion := &cobra.Command{
+		Use: "raw-version",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println(info.Main.Version)
+		},
+		Hidden: true,
+	}
+
+	cmd.AddCommand(cmdVersion)
+
 	cmd.InitDefaultVersionFlag()
 
 	// cmd.SilenceErrors = true

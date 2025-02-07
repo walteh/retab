@@ -1,0 +1,59 @@
+---
+description: rules for writing and executing tests in golang
+globs: *_test.go
+---
+
+Golang Testing, Mocks, and Debugging Guidelines
+
+Testing
+	•	Test Case Naming:
+	•	Use snake_case (e.g., test_case_name).
+	•	Avoid spaces and special characters in test names.
+	•	Assertions & Mocking:
+	•	Use testify/assert for assertions.
+	•	Use testify/require for error checks.
+	•	Use testify/mock for creating mocks.
+	•	Code Testability:
+	•	Write code that is deliberately easy to test.
+	•	Keep unit tests simple, clear, and highly exhaustive, focusing on breadth over complexity.
+	•	Testing Workflow:
+	•	Single-focus mode: Stick to one task at a time (e.g., testing, writing code, refactoring).
+	•	Always run lints and tests before switching between these modes.
+	•	Best Practices:
+	•	Be careful when modifying *_test.go files and regular Go files in the same composer run.
+	•	Always add messages to assertions, e.g.,
+
+require.NoError(t, err, "hover request should succeed")
+
+
+	•	Never rename test packages from "x_test" to "x" unless absolutely necessary.
+
+Mocks
+	•	Mock Generation:
+	•	Define interfaces and add them to .mockery.yaml.
+	•	Generate mocks using:
+
+./task mockery
+
+(Mocks will be created in ./gen/mockery).
+
+	•	Mocking Expectations:
+	•	Always use .EXPECT() to set up expectations for mocks.
+
+Debugging
+	•	Pre-Change Validation:
+	•	Run linting and tests before making changes to detect pre-existing errors.
+	•	Error Ownership:
+	•	Assume new errors are from your changes until proven otherwise.
+	•	If an issue seems external, confirm before modifying shared code.
+	•	Debugging Tools:
+	•	Use github.com/k0kubun/pp/v3 for structured variable printing:
+
+pp.Printf("Debugging value: %+v\n", myVar)
+
+
+	•	Isolating Issues:
+	•	Run specific tests to narrow down problems.
+	•	Use -v sparingly—ensure test failures are still logged.
+
+This version improves readability, ensures clarity for AI-assisted applications, and maintains the technical rigor of your original document.
