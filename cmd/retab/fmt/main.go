@@ -7,9 +7,7 @@ import (
 	"context"
 	"io"
 	"os"
-	"path/filepath"
 
-	"github.com/bmatcuk/doublestar/v4"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/walteh/retab/v2/pkg/format"
@@ -49,9 +47,39 @@ func NewFmtCommand() *cobra.Command {
 	return cmd
 }
 
-func (me *Handler) Run(ctx context.Context) error {
-	var fmtr format.Provider
+func (me *Handler) getFormatter(ctx context.Context) (format.Provider, error) {
+	if me.formatter == "auto" {
+		formatters := []format.Provider{
+			hclfmt.NewFormatter(),
+			protofmt.NewFormatter(),
+			cmdfmt.NewDartFormatter("dart"),
+			cmdfmt.NewTerraformFormatter("terraform"),
+		}
+		fmtr, err := format.AutoDetectFormatter(me.filename, formatters)
+		if err != nil {
+			return nil, errors.Errorf("auto-detecting formatter: %w", err)
+		}
+		if fmtr == nil {
+			return nil, errors.Errorf("no formatters found for file '%s'", me.filename)
+		}
+		return fmtr, nil
+	}
 
+	switch me.formatter {
+	case "hcl":
+		return hclfmt.NewFormatter(), nil
+	case "proto":
+		return protofmt.NewFormatter(), nil
+	case "dart":
+		return cmdfmt.NewDartFormatter("dart"), nil
+	case "tf":
+		return cmdfmt.NewTerraformFormatter("terraform"), nil
+	default:
+		return nil, errors.New("invalid formatter")
+	}
+}
+
+func (me *Handler) Run(ctx context.Context) error {
 	fs := afero.NewOsFs()
 
 	cfg, err := editorconfig.NewEditorConfigConfigurationProvider(ctx, fs)
@@ -59,39 +87,9 @@ func (me *Handler) Run(ctx context.Context) error {
 		return errors.Errorf("failed to create editorconfig configuration provider: %w", err)
 	}
 
-	if me.formatter == "auto" {
-		pfmters := []format.Provider{}
-		pfmters = append(pfmters, hclfmt.NewFormatter())
-		pfmters = append(pfmters, protofmt.NewFormatter())
-		pfmters = append(pfmters, cmdfmt.NewDartFormatter("dart"))
-		pfmters = append(pfmters, cmdfmt.NewTerraformFormatter("terraform"))
-		for _, pfmtr := range pfmters {
-			for _, target := range pfmtr.Targets() {
-				basename := filepath.Base(me.filename)
-				ok, err := doublestar.Match(target, basename)
-				if err != nil {
-					return errors.Errorf("failed to match glob: %w", err)
-				}
-				if ok {
-					fmtr = pfmtr
-					break
-				}
-			}
-		}
-	} else if me.formatter == "hcl" {
-		fmtr = hclfmt.NewFormatter()
-	} else if me.formatter == "proto" {
-		fmtr = protofmt.NewFormatter()
-	} else if me.formatter == "dart" {
-		fmtr = cmdfmt.NewDartFormatter("dart")
-	} else if me.formatter == "tf" {
-		fmtr = cmdfmt.NewTerraformFormatter("terraform")
-	} else {
-		return errors.New("invalid formatter")
-	}
-
-	if fmtr == nil {
-		return errors.Errorf("no formatters found for file '%s'", me.filename)
+	fmtr, err := me.getFormatter(ctx)
+	if err != nil {
+		return err
 	}
 
 	var input io.Reader
@@ -108,7 +106,7 @@ func (me *Handler) Run(ctx context.Context) error {
 
 	r, err := format.Format(ctx, fmtr, cfg, me.filename, input)
 	if err != nil {
-		return errors.Errorf("failed to format file: %w", err)
+		return err
 	}
 
 	if me.ToStdout || me.FromStdin {

@@ -1,3 +1,5 @@
+syntax = "proto3";
+
 message ComplexOptions {
 	option (custom.option)          = true;
 	option (another.complex.option) = "value";

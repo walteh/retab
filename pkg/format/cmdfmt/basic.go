@@ -6,9 +6,8 @@ import (
 	"os/exec"
 
 	"github.com/rs/zerolog"
-	"gitlab.com/tozd/go/errors"
-
 	"github.com/walteh/retab/v2/pkg/format"
+	"gitlab.com/tozd/go/errors"
 )
 
 type basicExternalFormatter struct {

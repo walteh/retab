@@ -3,19 +3,33 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 
 declare global {
-    interface Window {
-        Go: any;
-        retab_run: (formatter: string, filename: string, editorConfigContent: string, fileContent: string) => boolean;
-        retab_run_result_error: string;
-        retab_run_result_success: string;
-    }
-    var retab_run: (formatter: string, filename: string, editorConfigContent: string, fileContent: string) => boolean;
-    var retab_run_result_error: string;
-    var retab_run_result_success: string;
+
+	interface result {
+		result: string;
+		error: string | undefined;
+	}
+	interface retab {
+		fmt: (formatter: string, filename: string, fileContent: string, editorConfigContent: string) => result;
+	}
+
+
+    var retab_initialized: boolean;
+	var retab: retab;
 }
 
 let go: any = null;
 const outputChannel = vscode.window.createOutputChannel("retab-wasm");
+
+// Wait for WASM initialization
+async function waitForWasmInit(timeout: number = 5000): Promise<void> {
+    const start = Date.now();
+    while (!globalThis.retab_initialized) {
+        if (Date.now() - start > timeout) {
+            throw new Error('Timeout waiting for WASM initialization');
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+}
 
 export async function initWasm(context: vscode.ExtensionContext): Promise<void> {
     outputChannel.appendLine("Initializing WASM module...");
@@ -45,7 +59,11 @@ export async function initWasm(context: vscode.ExtensionContext): Promise<void> 
         outputChannel.appendLine("WASM module instantiated");
         
         go.run(instance);
-        outputChannel.appendLine("WASM module initialized and running");
+        outputChannel.appendLine("WASM module started");
+        
+        // Wait for initialization to complete
+        await waitForWasmInit();
+        outputChannel.appendLine("WASM module fully initialized");
     } catch (err) {
         outputChannel.appendLine(`Error initializing WASM: ${err}`);
         throw err;
@@ -55,38 +73,36 @@ export async function initWasm(context: vscode.ExtensionContext): Promise<void> 
 export async function formatWithWasm(content: string, filePath: string, formatType: string, editorConfig: string): Promise<string> {
     outputChannel.appendLine(`\nFormatting with WASM: ${filePath} (${formatType})`);
     outputChannel.appendLine(`Content length: ${content.length}, EditorConfig length: ${editorConfig.length}`);
-
-    if (!go || !(globalThis as any).retab_run) {
-        const error = 'WASM module not initialized or retab_run not available';
+	
+    // Ensure WASM is initialized
+    if (!globalThis.retab_initialized) {
+        const error = 'WASM module not fully initialized';
         outputChannel.appendLine(error);
         throw new Error(error);
     }
 
-    // Reset global variables
-    (globalThis as any).retab_run_result_error = undefined;
-    (globalThis as any).retab_run_result_success = undefined;
+    if (!go || !globalThis.retab?.fmt) {
+        const error = 'WASM module not properly initialized or retab.fmt not available';
+        outputChannel.appendLine(error);
+        throw new Error(error);
+    }
     
     try {
-        outputChannel.appendLine("Calling retab_run...");
-        const success = (globalThis as any).retab_run(formatType, filePath, editorConfig, content);
-        outputChannel.appendLine(`retab_run result: ${success}`);
-        
-        if (!success) {
-            const error = (globalThis as any).retab_run_result_error || 'WASM formatting failed';
-            outputChannel.appendLine(error);
-            throw new Error(error);
-        }
+        outputChannel.appendLine("Calling retab.fmt...");
+        const response = globalThis.retab.fmt(formatType, filePath, content, editorConfig );
+		outputChannel.appendLine(`retab.fmt response: ${response}`);
 
-        const result = (globalThis as any).retab_run_result_success;
-        if (!result) {
-            throw new Error('No result returned from WASM');
-        }
+		if (response.error) {
+			outputChannel.appendLine(response.error);
+			throw new Error(response.error);
+		}
+    
 
-        outputChannel.appendLine(`Formatting complete. Result length: ${result.length}`);
-        return result;
+        outputChannel.appendLine(`Formatting complete. Result length: ${(response.result as string).length}`);
+        return response.result as string;
     } catch (err) {
         const error = `WASM formatting error: ${err}`;
         outputChannel.appendLine(error);
         throw new Error(error);
     }
-} 
+}
