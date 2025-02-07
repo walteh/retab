@@ -36,7 +36,7 @@ tasks:
     package-extension:
         dir: code-extension
         cmds:
-          - task: refresh-extension-tinygo
+          - task: refresh-extension-go
           - bun run package
           - mv ./retab-*.vsix ~/Downloads
           - open https://marketplace.visualstudio.com/manage/publishers/walteh
@@ -44,5 +44,5 @@ tasks:
     rebuild-extension:
         dir: code-extension
         cmds:
-          - task: refresh-extension-tinygo
+          - task: refresh-extension-go
           - bun run build
