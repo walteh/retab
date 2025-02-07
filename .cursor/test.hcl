@@ -1,2 +1,3 @@
-hi {	you = "me"
+hi {
+	you = "me"
 }

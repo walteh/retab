@@ -5,14 +5,16 @@ import * as fs from 'fs';
 declare global {
     interface Window {
         Go: any;
+        retab_run: (formatter: string, filename: string, editorConfigContent: string, fileContent: string) => boolean;
         retab_run_result_error: string;
         retab_run_result_success: string;
     }
+    var retab_run: (formatter: string, filename: string, editorConfigContent: string, fileContent: string) => boolean;
     var retab_run_result_error: string;
     var retab_run_result_success: string;
 }
 
-let wasmInstance: WebAssembly.Instance | null = null;
+let go: any = null;
 const outputChannel = vscode.window.createOutputChannel("retab-wasm");
 
 export async function initWasm(context: vscode.ExtensionContext): Promise<void> {
@@ -25,7 +27,7 @@ export async function initWasm(context: vscode.ExtensionContext): Promise<void> 
         
         // Create a new context for the WASM execution
         outputChannel.appendLine("Creating Go runtime...");
-        const go = new (Function(`
+        go = new (Function(`
             ${wasmExecContent}
             return Go;
         `)())();
@@ -42,7 +44,6 @@ export async function initWasm(context: vscode.ExtensionContext): Promise<void> 
         const instance = await WebAssembly.instantiate(wasmModule, go.importObject);
         outputChannel.appendLine("WASM module instantiated");
         
-        wasmInstance = instance;
         go.run(instance);
         outputChannel.appendLine("WASM module initialized and running");
     } catch (err) {
@@ -55,8 +56,8 @@ export async function formatWithWasm(content: string, filePath: string, formatTy
     outputChannel.appendLine(`\nFormatting with WASM: ${filePath} (${formatType})`);
     outputChannel.appendLine(`Content length: ${content.length}, EditorConfig length: ${editorConfig.length}`);
 
-    if (!wasmInstance) {
-        const error = 'WASM module not initialized';
+    if (!go || !(globalThis as any).retab_run) {
+        const error = 'WASM module not initialized or retab_run not available';
         outputChannel.appendLine(error);
         throw new Error(error);
     }
@@ -64,14 +65,10 @@ export async function formatWithWasm(content: string, filePath: string, formatTy
     // Reset global variables
     (globalThis as any).retab_run_result_error = undefined;
     (globalThis as any).retab_run_result_success = undefined;
-
-    const retab_run = (wasmInstance.exports as any).retab_run as (formatter: string, filename: string, editorConfigContent: string, fileContent: string) => boolean;
-
-	outputChannel.appendLine(`WASM: Calling retab_run... ${typeof retab_run} ${retab_run == undefined}`);
     
     try {
         outputChannel.appendLine("Calling retab_run...");
-        const success = retab_run(formatType, filePath, editorConfig, content);
+        const success = (globalThis as any).retab_run(formatType, filePath, editorConfig, content);
         outputChannel.appendLine(`retab_run result: ${success}`);
         
         if (!success) {

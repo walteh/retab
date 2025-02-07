@@ -9,6 +9,25 @@ const execAsync = promisify(exec);
 // Create output channel
 const outputChannel = vscode.window.createOutputChannel("retab");
 
+// Map VS Code language IDs to retab format types
+function getFormatType(languageId: string, formatTfAsHcl: boolean): string {
+	const formatTypeMap: { [key: string]: string } = {
+		'proto': 'proto',
+		'proto3': 'proto',
+		'hcl': 'hcl',
+		'hcl2': 'hcl',
+		'terraform': formatTfAsHcl ? 'hcl' : 'tf',
+		'tf': formatTfAsHcl ? 'hcl' : 'tf',
+		'tfvars': formatTfAsHcl ? 'hcl' : 'tf',
+		'dart': 'dart',
+		'protobuf': 'proto'
+	};
+
+	const formatType = formatTypeMap[languageId] || languageId;
+	outputChannel.appendLine(`Mapped language ${languageId} to format type ${formatType}`);
+	return formatType;
+}
+
 async function checkRetabExists(path: string): Promise<boolean> {
 	try {
 		await execAsync(`${path} --version`);
@@ -70,23 +89,10 @@ function resolveRetabPath(configuredPath: string | undefined): Promise<{ path: s
 async function formatWithStdin(retabPath: string, useGoRun: boolean, content: string, filePath: string, languageId: string): Promise<string> {
 	const config = vscode.workspace.getConfiguration('retab');
 	const useGoTool = config.get<boolean>('run_as_go_tool');
-	const formatTfAsHcl = config.get<boolean>('format_tf_as_hcl');
+	const formatTfAsHcl = config.get<boolean>('format_tf_as_hcl') ?? false;
 	const extensionVersion = vscode.extensions.getExtension('walteh.retab-vscode')?.packageJSON.version || 'latest';
 
-	// Map VS Code language IDs to retab format types
-	const formatTypeMap: { [key: string]: string } = {
-		'proto': 'proto',
-		'proto3': 'proto',
-		'hcl': 'hcl',
-		'hcl2': 'hcl',
-		'terraform': formatTfAsHcl ? 'hcl' : 'tf',
-		'tf': formatTfAsHcl ? 'hcl' : 'tf',
-		'tfvars': formatTfAsHcl ? 'hcl' : 'tf',
-		'dart': 'dart',
-		'protobuf': 'proto'
-	};
-
-	const formatType = formatTypeMap[languageId] || languageId;
+	const formatType = getFormatType(languageId, formatTfAsHcl);
 
 	if (useGoTool) {
 		return new Promise((resolve, reject) => {
@@ -185,6 +191,7 @@ export function activate(context: vscode.ExtensionContext) {
 					outputChannel.appendLine(`Formatting ${document.fileName} with ${document.languageId}`);
 					const config = vscode.workspace.getConfiguration('retab');
 					const useWasm = config.get<boolean>('use_wasm');
+					const formatTfAsHcl = config.get<boolean>('format_tf_as_hcl') ?? false;
 
 					let formatted: string;
 					if (useWasm) {
@@ -203,10 +210,11 @@ export function activate(context: vscode.ExtensionContext) {
 
 						// Format using WASM
 						const content = document.getText();
+						const formatType = getFormatType(document.languageId, formatTfAsHcl);
 						formatted = await formatWithWasm(
 							content,
 							document.fileName,
-							document.languageId,
+							formatType,
 							editorConfigContent
 						);
 					} else {
