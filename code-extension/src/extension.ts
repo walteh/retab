@@ -66,14 +66,29 @@ function resolveRetabPath(configuredPath: string | undefined): Promise<{ path: s
 	});
 }
 
-async function formatWithStdin(retabPath: string, useGoRun: boolean, content: string, filePath: string): Promise<string> {
+async function formatWithStdin(retabPath: string, useGoRun: boolean, content: string, filePath: string, languageId: string): Promise<string> {
 	const config = vscode.workspace.getConfiguration('retab');
 	const useGoTool = config.get<boolean>('run_as_go_tool');
+	const formatTfAsHcl = config.get<boolean>('format_tf_as_hcl');
 	const extensionVersion = vscode.extensions.getExtension('walteh.retab-vscode')?.packageJSON.version || 'latest';
+
+	// Map VS Code language IDs to retab format types
+	const formatTypeMap: { [key: string]: string } = {
+		'proto': 'proto',
+		'proto3': 'proto',
+		'hcl': 'hcl',
+		'hcl2': 'hcl',
+		'terraform': formatTfAsHcl ? 'hcl' : 'tf',
+		'tf': formatTfAsHcl ? 'hcl' : 'tf',
+		'tfvars': formatTfAsHcl ? 'hcl' : 'tf',
+		'dart': 'dart'
+	};
+
+	const formatType = formatTypeMap[languageId] || languageId;
 
 	if (useGoTool) {
 		return new Promise((resolve, reject) => {
-			const args = ['tool', 'github.com/walteh/retab/v2/cmd/retab', 'fmt', '--stdin', filePath];
+			const args = ['tool', 'github.com/walteh/retab/v2/cmd/retab', 'fmt', '--stdin', '--format', formatType, filePath];
 			const child = spawn(retabPath, args);
 			let stdout = '';
 			let stderr = '';
@@ -115,8 +130,8 @@ async function formatWithStdin(retabPath: string, useGoRun: boolean, content: st
 
 	return new Promise((resolve, reject) => {
 		const args = useGoRun ? 
-			['run', `github.com/walteh/retab/v2/cmd/retab@${extensionVersion}`, 'fmt', '--stdin', filePath] :
-			['fmt', '--stdin', filePath];
+			['run', `github.com/walteh/retab/v2/cmd/retab@${extensionVersion}`, 'fmt', '--stdin', '--format', formatType, filePath] :
+			['fmt', '--stdin', '--format', formatType, filePath];
 
 		const child = spawn(retabPath, args);
 		let stdout = '';
@@ -165,7 +180,7 @@ export function activate(context: vscode.ExtensionContext) {
 					const content = document.getText();
 
 					// Format using stdin
-					const formatted = await formatWithStdin(retabPath, useGoRun, content, document.fileName);
+					const formatted = await formatWithStdin(retabPath, useGoRun, content, document.fileName, document.languageId);
 
 					// Return the edit
 					return [vscode.TextEdit.replace(

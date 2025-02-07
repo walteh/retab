@@ -31,6 +31,11 @@
 					"type": "boolean",
 					"default": false,
 					"description": "Run retab as a Go tool (requires Go 1.24 or higher). When enabled, retab will be executed as 'go tool github.com/walteh/retab/v2/cmd/retab'."
+				},
+				"retab.format_tf_as_hcl": {
+					"type": "boolean",
+					"default": false,
+					"description": "Format Terraform files (.tf, .tfvars) using the HCL formatter instead of the Terraform formatter."
 				}
 			}
 		}
