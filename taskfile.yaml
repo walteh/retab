@@ -15,15 +15,25 @@ tasks:
     test:
         cmd: go test ./...
 
-    rebuild-extension:
+    refresh-extension:
         dir: code-extension
         cmds:
-          - rm -rf node_modules
           - rm -rf out
           - mkdir -p out
           - cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" out/
           - cd ../cmd/retab-wasm && GOOS=js GOARCH=wasm go build -o ../../code-extension/out/retab.wasm
           - bun install
+
+    package-extension:
+        dir: code-extension
+        cmds:
+          - task: refresh-extension
           - bun run package
           - mv ./retab-*.vsix ~/Downloads
           - open https://marketplace.visualstudio.com/manage/publishers/walteh
+
+    rebuild-extension:
+        dir: code-extension
+        cmds:
+          - task: refresh-extension
+          - bun run build
