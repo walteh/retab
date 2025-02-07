@@ -12,6 +12,7 @@
 		"Formatters"
 	],
 	"activationEvents": [
+		"onLanguage:protobuf",
 		"onLanguage:proto",
 		"onLanguage:hcl",
 		"onLanguage:terraform",
@@ -36,6 +37,11 @@
 					"type": "boolean",
 					"default": false,
 					"description": "Format Terraform files (.tf, .tfvars) using the HCL formatter instead of the Terraform formatter."
+				},
+				"retab.use_wasm": {
+					"type": "boolean",
+					"default": true,
+					"description": "Use WebAssembly implementation instead of CLI. This can provide better performance but is currently experimental."
 				}
 			}
 		}

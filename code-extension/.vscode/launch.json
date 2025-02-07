@@ -1,18 +1,20 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Run Extension in Cursor",
-            "type": "extensionHost",
-            "request": "launch",
-            "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}",
-                "--user-data-dir=${workspaceFolder}/.cursor-dev"
-            ],
-            "outFiles": [
-                "${workspaceFolder}/out/**/*.js"
-            ],
-            "runtimeExecutable": "/Applications/Cursor.app/Contents/MacOS/Cursor"
-        }
-    ]
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "run-extension",
+			"type": "extensionHost",
+			"request": "launch",
+			"preLaunchTask": "rebuild-extension",
+			"args": [
+				"${workspaceFolder}/..",
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--user-data-dir=${workspaceFolder}/.cursor-dev"
+			],
+			"outFiles": [
+				"${workspaceFolder}/out/**/*.js"
+			],
+			"runtimeExecutable": "/Applications/Cursor.app/Contents/MacOS/Cursor"
+		}
+	]
 }

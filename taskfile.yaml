@@ -15,11 +15,14 @@ tasks:
     test:
         cmd: go test ./...
 
-    package-extension:
+    rebuild-extension:
         dir: code-extension
         cmds:
           - rm -rf node_modules
           - rm -rf out
+          - mkdir -p out
+          - cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" out/
+          - cd ../cmd/retab-wasm && GOOS=js GOARCH=wasm go build -o ../../code-extension/out/retab.wasm
           - bun install
           - bun run package
           - mv ./retab-*.vsix ~/Downloads

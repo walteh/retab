@@ -71,6 +71,20 @@ func NewEditorConfigConfigurationProvider(ctx context.Context, fls afero.Fs) (fo
 
 }
 
+func NewEditorConfigConfigurationProviderFromContent(ctx context.Context, content string) (format.ConfigurationProvider, error) {
+	x, err2, err := editorconfig.ParseGraceful(strings.NewReader(content))
+	if err != nil {
+		return nil, errors.Errorf("failed to get editorconfig definition: %w", err)
+	}
+	if err2 != nil {
+		return nil, errors.Errorf("failed to parse editorconfig: %w", err2)
+	}
+
+	return &EditorConfigConfigurationProvider{
+		definitions: x,
+	}, nil
+}
+
 var _ format.Configuration = &EditorConfigConfiguration{}
 
 func (x *EditorConfigConfiguration) IndentSize() int {

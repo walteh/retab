@@ -1,0 +1,21 @@
+{
+	"editor.formatOnSave": true,
+	"editor.formatOnSaveMode": "file",
+	"go.testFlags": [
+		"-count=1",
+		"-timeout=90s"
+	],
+	"gopls": {
+		"ui.semanticTokens": true
+	},
+	"files.associations": {
+		"*.retab": "hcl"
+	},
+	"material-icon-theme.folders.associations": {
+		"chain": "contract"
+	},
+	"retab.use_wasm": true,
+	"[protobuf]": {
+		"editor.defaultFormatter": "walteh.retab-vscode"
+	},
+}

@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "rebuild-extension",
+			"type": "shell",
+			"command": "task rebuild-extension",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"reveal": "silent",
+				"clear": true
+			},
+			"problemMatcher": "$tsc"
+		}
+	]
+}

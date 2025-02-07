@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
+import { initWasm, formatWithWasm } from './wasm';
 
 const execAsync = promisify(exec);
 
@@ -81,7 +82,8 @@ async function formatWithStdin(retabPath: string, useGoRun: boolean, content: st
 		'terraform': formatTfAsHcl ? 'hcl' : 'tf',
 		'tf': formatTfAsHcl ? 'hcl' : 'tf',
 		'tfvars': formatTfAsHcl ? 'hcl' : 'tf',
-		'dart': 'dart'
+		'dart': 'dart',
+		'protobuf': 'proto'
 	};
 
 	const formatType = formatTypeMap[languageId] || languageId;
@@ -165,30 +167,61 @@ async function formatWithStdin(retabPath: string, useGoRun: boolean, content: st
 export function activate(context: vscode.ExtensionContext) {
 	outputChannel.appendLine("Retab formatter activated");
 
+	outputChannel.appendLine(`activating wasm`);
+
+	// Initialize WASM module
+	initWasm(context).catch(err => {
+		outputChannel.appendLine(`Failed to initialize WASM module: ${err}`);
+	});
+
+	outputChannel.appendLine(`setting up formatter`);
+
 	// Register formatter for all supported languages
 	let disposable = vscode.languages.registerDocumentFormattingEditProvider(
-		['proto', 'proto3', 'hcl', 'hcl2', 'terraform', 'tf', 'tfvars', 'dart'],
+		['proto', 'proto3', 'hcl', 'hcl2', 'terraform', 'tf', 'tfvars', 'dart', 'protobuf'],
 		{
 			async provideDocumentFormattingEdits(document: vscode.TextDocument): Promise<vscode.TextEdit[]> {
 				try {
-					// Get the configured retab path
+					outputChannel.appendLine(`Formatting ${document.fileName} with ${document.languageId}`);
 					const config = vscode.workspace.getConfiguration('retab');
-					const configuredPath = config.get<string>('executable');
-					const { path: retabPath, useGoRun } = await resolveRetabPath(configuredPath);
+					const useWasm = config.get<boolean>('use_wasm');
 
-					// Get the document content
-					const content = document.getText();
+					let formatted: string;
+					if (useWasm) {
+						outputChannel.appendLine(`Formatting ${document.fileName} with WASM`);
+						// Get editor config content
+						const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+						const editorConfigPath = workspaceFolder ? path.join(workspaceFolder.uri.fsPath, '.editorconfig') : '';
+						let editorConfigContent = '';
+						try {
+							const editorConfigUri = vscode.Uri.file(editorConfigPath);
+							const editorConfigData = await vscode.workspace.fs.readFile(editorConfigUri);
+							editorConfigContent = new TextDecoder().decode(editorConfigData);
+						} catch (err) {
+							// If .editorconfig doesn't exist, use empty string
+						}
 
-					// Format using stdin
-					const formatted = await formatWithStdin(retabPath, useGoRun, content, document.fileName, document.languageId);
+						// Format using WASM
+						const content = document.getText();
+						formatted = await formatWithWasm(
+							content,
+							document.fileName,
+							document.languageId,
+							editorConfigContent
+						);
+					} else {
+						// Use existing CLI implementation
+						const configuredPath = config.get<string>('executable');
+						const { path: retabPath, useGoRun } = await resolveRetabPath(configuredPath);
+						const content = document.getText();
+						formatted = await formatWithStdin(retabPath, useGoRun, content, document.fileName, document.languageId);
+					}
 
-					// Return the edit
 					return [vscode.TextEdit.replace(
 						new vscode.Range(0, 0, document.lineCount, 0),
 						formatted
 					)];
 				} catch (err) {
-					// Log error to output channel instead of showing to user
 					outputChannel.appendLine(`Error formatting ${document.fileName}: ${err}`);
 					return [];
 				}
