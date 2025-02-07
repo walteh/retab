@@ -39,7 +39,7 @@
 		"vscode:prepublish": "bun run build",
 		"build": "bun build ./src/extension.ts --outdir ./out --target node --external vscode --format cjs",
 		"watch": "bun build ./src/extension.ts --outdir ./out --target node --watch --external vscode --format cjs",
-		"package": "bunx vsce pack --no-update-package-json --no-git-tag-version --no-dependencies $(git describe --tags)",
+		"package": "bunx vsce pack --no-update-package-json --no-git-tag-version --no-dependencies $(git describe --tags | sed 's|v||g')",
 		"publish": "bunx vsce publish"
 	},
 	"devDependencies": {
