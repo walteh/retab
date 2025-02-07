@@ -1,65 +1,59 @@
 /**
  * Retab VS Code Extension
- * 
+ *
  * This extension provides formatting capabilities for various file types using different formatting engines.
- * 
+ *
  * Engine Types:
  * - wasm (default): Uses WebAssembly for fastest performance, runs in the background
  * - go-tool: Uses 'go tool github.com/walteh/retab/v2/cmd/retab' (requires Go 1.24+)
  * - go-run: Uses 'go run github.com/walteh/retab/v2/cmd/retab@version'
  * - path: Uses 'retab' from system PATH
  * - local: Uses specified executable path from 'retab.executable'
- * 
+ *
  * Configuration:
  * - retab.engine: The formatting engine to use (default: "wasm")
  * - retab.executable: Path to retab executable when using "local" engine
  * - retab.disable_wasm_fallback: Disable fallback to WASM when other engines fail
  * - retab.format_tf_as_hcl: Format Terraform files using HCL formatter
- * 
- * Tasks:
- * 1. Initialize WASM engine on extension activation
- * 2. Handle formatting requests based on selected engine
- * 3. Fallback to WASM if other engines fail (unless disabled)
- * 4. Version checking for non-WASM engines
+ *
  */
 
-import * as vscode from 'vscode';
-import { WasmFormatter } from './wasm';
-import { GoRunFormatter, GoToolFormatter, LocalFormatter, PathFormatter } from './cli';
-
+import * as vscode from "vscode";
+import { WasmFormatter } from "./wasm";
+import { GoRunFormatter, GoToolFormatter, LocalFormatter, PathFormatter } from "./cli";
 
 // Create output channel
 const outputChannel = vscode.window.createOutputChannel("retab");
 
 // Engine type enum
 export enum RetabEngine {
-	WASM = 'wasm',
-	GO_TOOL = 'go-tool',
-	GO_RUN = 'go-run',
-	PATH = 'path',
-	LOCAL = 'local'
+	WASM = "wasm",
+	GO_TOOL = "go-tool",
+	GO_RUN = "go-run",
+	PATH = "path",
+	LOCAL = "local",
 }
 
 // Language IDs enum
 export enum VSCodeLanguageID {
-	PROTO = 'proto',
-	PROTO3 = 'proto3',
-	HCL = 'hcl',
-	HCL2 = 'hcl2',
-	TERRAFORM = 'terraform',
-	TF = 'tf',
-	TFVARS = 'tfvars',
-	DART = 'dart',
-	PROTOBUF = 'protobuf'
+	PROTO = "proto",
+	PROTO3 = "proto3",
+	HCL = "hcl",
+	HCL2 = "hcl2",
+	TERRAFORM = "terraform",
+	TF = "tf",
+	TFVARS = "tfvars",
+	DART = "dart",
+	PROTOBUF = "protobuf",
 }
 
 // Format types enum
 export enum RetabFormat {
-	PROTO = 'proto',
-	HCL = 'hcl',
-	DART = 'dart',
-	TF = 'tf',
-	AUTO = 'auto'
+	PROTO = "proto",
+	HCL = "hcl",
+	DART = "dart",
+	TF = "tf",
+	AUTO = "auto",
 }
 
 // Supported languages array
@@ -72,7 +66,7 @@ export const SUPPORTED_LANGUAGES: VSCodeLanguageID[] = [
 	VSCodeLanguageID.TF,
 	VSCodeLanguageID.TFVARS,
 	VSCodeLanguageID.DART,
-	VSCodeLanguageID.PROTOBUF
+	VSCodeLanguageID.PROTOBUF,
 ];
 
 // Interface for engine implementations
@@ -81,8 +75,6 @@ export interface RetabFormatter {
 	format(content: string, filePath: string, formatType: RetabFormat): Promise<string>;
 	getVersion(context: vscode.ExtensionContext): Promise<string>;
 }
-
-
 
 // Map VS Code language IDs to retab format types
 function getFormatType(languageId: string, formatTfAsHcl: boolean): RetabFormat {
@@ -96,7 +88,7 @@ function getFormatType(languageId: string, formatTfAsHcl: boolean): RetabFormat 
 		[VSCodeLanguageID.TF]: RetabFormat.TF,
 		[VSCodeLanguageID.TFVARS]: RetabFormat.TF,
 		[VSCodeLanguageID.DART]: RetabFormat.DART,
-		[VSCodeLanguageID.PROTOBUF]: RetabFormat.PROTO
+		[VSCodeLanguageID.PROTOBUF]: RetabFormat.PROTO,
 	};
 
 	// Get the base format type
@@ -110,8 +102,6 @@ function getFormatType(languageId: string, formatTfAsHcl: boolean): RetabFormat 
 	outputChannel.appendLine(`[main] mapped language ${languageId} to format type ${baseFormat}`);
 	return baseFormat;
 }
-
-
 
 // Current engine instance
 
@@ -134,13 +124,11 @@ function getFormatter(engine: RetabEngine): RetabFormatter {
 	}
 }
 
-
 export function activate(context: vscode.ExtensionContext) {
-
 	outputChannel.appendLine("[main] retab formatter activated");
 
 	// Initialize WASM engine by default
-	wasmFormatter.initialize(context).catch(err => {
+	wasmFormatter.initialize(context).catch((err) => {
 		outputChannel.appendLine(`[main] failed to initialize WASM engine: ${err}`);
 	});
 
@@ -149,73 +137,61 @@ export function activate(context: vscode.ExtensionContext) {
 	let currentFormatter: RetabFormatter = wasmFormatter;
 
 	// Register formatter for all supported languages
-	let disposable = vscode.languages.registerDocumentFormattingEditProvider(
-		SUPPORTED_LANGUAGES,
-		{
-			async provideDocumentFormattingEdits(document: vscode.TextDocument): Promise<vscode.TextEdit[]> {
+	let disposable = vscode.languages.registerDocumentFormattingEditProvider(SUPPORTED_LANGUAGES, {
+		async provideDocumentFormattingEdits(document: vscode.TextDocument): Promise<vscode.TextEdit[]> {
+			try {
+				const config = vscode.workspace.getConfiguration("retab");
+				const engine = config.get<RetabEngine>("engine") || RetabEngine.WASM;
+				const disableWasmFallback = config.get<boolean>("disable_wasm_fallback") || false;
+				const formatTfAsHcl = config.get<boolean>("format_tf_as_hcl") || false;
+
+				// Create formatter instance based on engine type
+				if (engine !== currentEngine) {
+					currentEngine = engine;
+					currentFormatter = getFormatter(engine);
+					if (currentFormatter !== wasmFormatter) {
+						await currentFormatter.initialize(context);
+					}
+				}
+
+				const formatType = getFormatType(document.languageId, formatTfAsHcl);
+
 				try {
-					const config = vscode.workspace.getConfiguration('retab');
-					const engine = config.get<RetabEngine>('engine') || RetabEngine.WASM;
-					const disableWasmFallback = config.get<boolean>('disable_wasm_fallback') || false;
-					const formatTfAsHcl = config.get<boolean>('format_tf_as_hcl') || false;
+					const formatted = await currentFormatter.format(document.getText(), document.fileName, formatType);
 
-					// Create formatter instance based on engine type
-					if (engine !== currentEngine) {
-						currentEngine = engine;
-						currentFormatter = getFormatter(engine);
-						if (currentFormatter !== wasmFormatter) {
-							await currentFormatter.initialize(context);
-						}
-					}
-
-					const formatType = getFormatType(document.languageId, formatTfAsHcl);
-
-					try {
-						const formatted = await currentFormatter.format(
-							document.getText(),
-							document.fileName,
-							formatType
-						);
-
-						return [vscode.TextEdit.replace(
-							new vscode.Range(0, 0, document.lineCount, 0),
-							formatted
-						)];
-					} catch (err) {
-						outputChannel.appendLine(`[${engine}] error formatting ${document.fileName}: ${err}`);
-						// Try WASM fallback if enabled
-						if (!disableWasmFallback && engine !== RetabEngine.WASM) {
-							outputChannel.appendLine(`[main] falling back to wasm: ${err}`);
-							try {		
-								const formatted = await wasmFormatter.format(
-									document.getText(),
-									document.fileName,
-									formatType
-								);
-							return [vscode.TextEdit.replace(
-									new vscode.Range(0, 0, document.lineCount, 0),
-									formatted
-								)];
-							} catch (err) {
-								outputChannel.appendLine(`[main] failed to format ${document.fileName} with wasm fallback: ${err}`);
-								return [];
-							}
-						}
-						outputChannel.appendLine(`[main] wasm fallback disabled, returning empty edits`);
-						return [];
-					}
+					return [vscode.TextEdit.replace(new vscode.Range(0, 0, document.lineCount, 0), formatted)];
 				} catch (err) {
-					outputChannel.appendLine(`[main] error formatting ${document.fileName}: ${err}`);
+					outputChannel.appendLine(`[${engine}] error formatting ${document.fileName}: ${err}`);
+					// Try WASM fallback if enabled
+					if (!disableWasmFallback && engine !== RetabEngine.WASM) {
+						outputChannel.appendLine(`[main] falling back to wasm: ${err}`);
+						try {
+							const formatted = await wasmFormatter.format(
+								document.getText(),
+								document.fileName,
+								formatType
+							);
+							return [vscode.TextEdit.replace(new vscode.Range(0, 0, document.lineCount, 0), formatted)];
+						} catch (err) {
+							outputChannel.appendLine(
+								`[main] failed to format ${document.fileName} with wasm fallback: ${err}`
+							);
+							return [];
+						}
+					}
+					outputChannel.appendLine(`[main] wasm fallback disabled, returning empty edits`);
 					return [];
 				}
+			} catch (err) {
+				outputChannel.appendLine(`[main] error formatting ${document.fileName}: ${err}`);
+				return [];
 			}
-		}
-	);
+		},
+	});
 
 	context.subscriptions.push(disposable);
 }
 
-
 export function deactivate() {
 	outputChannel.dispose();
-} 
+}
