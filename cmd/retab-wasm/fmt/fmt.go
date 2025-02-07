@@ -53,52 +53,38 @@ func getFormatter(formatType string, filename string) (format.Provider, error) {
 	}
 }
 
-func handleFmtResult(result string, err error) map[string]any {
-	if err != nil {
-		lastError = err
-		return map[string]any{
-			"result": "",
-			"error":  err.Error(),
-		}
-	}
-	lastResult = result
-	return map[string]any{
-		"result": result,
-		"error":  nil,
-	}
-}
-
-func Fmt(this js.Value, args []js.Value) (string, error) {
+func Fmt(ctx context.Context, this js.Value, args []js.Value) (string, error) {
 	if len(args) != 4 {
-		return "", errors.Errorf("expected 4 arguments: formatter, filename, content, editorconfigContent")
+		return "", errors.New("expected 4 arguments: formatter, filename, content, editorconfig-content")
 	}
-
-	ctx := context.Background()
 
 	formatter := args[0].String()
 	filename := args[1].String()
 	content := args[2].String()
 	editorconfigContent := args[3].String()
 
-	// Create a basic configuration that always uses tabs
-	cfg, err := editorconfig.NewEditorConfigConfigurationProviderFromContent(ctx, editorconfigContent)
+	// Setup editorconfig with either raw content or auto-resolution
+	cfgProvider, err := editorconfig.NewDynamicConfigurationProvider(ctx, editorconfigContent)
 	if err != nil {
-		return "", errors.Errorf("creating editorconfig from content: %w", err)
+		return "", errors.Errorf("creating configuration provider: %w", err)
 	}
 
+	// Get the appropriate formatter
 	fmtr, err := getFormatter(formatter, filename)
 	if err != nil {
 		return "", errors.Errorf("getting formatter: %w", err)
 	}
 
-	r, err := format.Format(ctx, fmtr, cfg, filename, strings.NewReader(content))
+	// Format the content
+	r, err := format.Format(ctx, fmtr, cfgProvider, filename, strings.NewReader(content))
 	if err != nil {
-		return "", errors.Errorf("formatting: %w", err)
+		return "", errors.Errorf("formatting content: %w", err)
 	}
 
+	// Read the formatted content
 	result, err := io.ReadAll(r)
 	if err != nil {
-		return "", errors.Errorf("reading result: %w", err)
+		return "", errors.Errorf("reading formatted content: %w", err)
 	}
 
 	return string(result), nil

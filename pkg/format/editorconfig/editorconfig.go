@@ -2,12 +2,11 @@ package editorconfig
 
 import (
 	"context"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/editorconfig/editorconfig-core-go/v2"
-	"github.com/rs/zerolog"
-	"github.com/spf13/afero"
 	"github.com/walteh/retab/v2/pkg/format"
 	"gitlab.com/tozd/go/errors"
 )
@@ -21,67 +20,50 @@ type EditorConfigConfigurationProvider struct {
 	definitions *editorconfig.Editorconfig
 }
 
-type EditorConfigConfigurationDefaults struct {
-	Defaults format.Configuration
+// ConfigOptions represents options for editorconfig resolution
+type ConfigOptions struct {
+	RawContent string // Raw editorconfig content, if provided will be used directly
+	TargetFile string // Path of the file being formatted
 }
 
-func (me *EditorConfigConfigurationDefaults) GetConfigurationForFileType(ctx context.Context, str string) (format.Configuration, error) {
-	return me.Defaults, nil
+func NewDynamicConfigurationProvider(ctx context.Context, rawContent string) (*EditorConfigConfigurationProvider, error) {
+	if rawContent != "" {
+		// If raw content is provided, parse it directly
+		x, err := editorconfig.Parse(strings.NewReader(rawContent))
+		if err != nil {
+			return nil, errors.Errorf("getting editorconfig definition: %w", err)
+		}
+		return &EditorConfigConfigurationProvider{definitions: x}, nil
+	}
+
+	return &EditorConfigConfigurationProvider{}, nil
 }
 
-func (me *EditorConfigConfigurationProvider) GetConfigurationForFileType(ctx context.Context, str string) (format.Configuration, error) {
-	def, err := me.definitions.GetDefinitionForFilename(str)
-	if err != nil {
+func (me *EditorConfigConfigurationProvider) GetConfigurationForFileType(ctx context.Context, targetFile string) (format.Configuration, error) {
+	var def *editorconfig.Definition
+	var err error
 
-		return nil, err
+	if me.definitions != nil {
+		def, err = me.definitions.GetDefinitionForFilename(filepath.Base(targetFile))
+		if err != nil {
+			return nil, errors.Errorf("getting editorconfig definition: %w", err)
+		}
+	} else {
+		// Otherwise, let the library handle auto-resolution
+		def, err = editorconfig.GetDefinitionForFilenameWithConfigname(targetFile, ".editorconfig")
+		if err != nil {
+			return nil, errors.Errorf("getting editorconfig definition: %w", err)
+		}
 	}
 
 	id, err := strconv.Atoi(def.IndentSize)
 	if err != nil {
-		return nil, errors.Errorf("failed to parse indent size: %w", err)
+		return nil, errors.Errorf("parsing indent size: %w", err)
 	}
 
 	return &EditorConfigConfiguration{
 		Definition:       def,
 		parsedIndentSize: int(id),
-	}, nil
-}
-
-func NewEditorConfigConfigurationProvider(ctx context.Context, fls afero.Fs) (format.ConfigurationProvider, error) {
-
-	fle, err := fls.Open(".editorconfig")
-	if err != nil {
-		zerolog.Ctx(ctx).Debug().Err(err).Msg("failed to open .editorconfig -- using defaults")
-		return &EditorConfigConfigurationDefaults{
-			Defaults: format.NewBasicConfigurationProvider(true, 4, true, false),
-		}, nil
-	}
-
-	x, err2, err := editorconfig.ParseGraceful(fle)
-	if err != nil {
-		return nil, errors.Errorf("failed to get editorconfig definition: %w", err)
-	}
-	if err2 != nil {
-		return nil, errors.Errorf("failed to parse editorconfig: %w", err2)
-	}
-
-	return &EditorConfigConfigurationProvider{
-		definitions: x,
-	}, nil
-
-}
-
-func NewEditorConfigConfigurationProviderFromContent(ctx context.Context, content string) (format.ConfigurationProvider, error) {
-	x, err2, err := editorconfig.ParseGraceful(strings.NewReader(content))
-	if err != nil {
-		return nil, errors.Errorf("failed to get editorconfig definition: %w", err)
-	}
-	if err2 != nil {
-		return nil, errors.Errorf("failed to parse editorconfig: %w", err2)
-	}
-
-	return &EditorConfigConfigurationProvider{
-		definitions: x,
 	}, nil
 }
 

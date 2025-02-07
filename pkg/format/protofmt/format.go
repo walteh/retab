@@ -167,13 +167,13 @@ func (f *formatter) Indent(nextNode ast.Node) {
 			indent--
 		}
 	}
-	f.WriteString(strings.Repeat("\t", indent))
 
-	// if f.cfg.UseTabs() {
-	// } else {
-	// 	// todo: do we even need this with the tabwriter?
-	// 	f.WriteString(strings.Repeat(" ", indent*f.cfg.IndentSize()))
-	// }
+	if f.cfg.UseTabs() {
+		f.WriteString(strings.Repeat("\t", indent))
+	} else {
+		// todo: do we even need this with the tabwriter?
+		f.WriteString(strings.Repeat(" ", indent*f.cfg.IndentSize()))
+	}
 }
 
 // WriteString writes the given element to the generated output.

@@ -11,3 +11,7 @@ indent_style = space
 
 [*.yml]
 indent_style = space
+
+[*.proto]
+indent_style = tab
+indent_size = 2

@@ -23,25 +23,37 @@
 		"configuration": {
 			"title": "retab",
 			"properties": {
+				"retab.engine": {
+					"type": "string",
+					"enum": [
+						"wasm",
+						"go-tool",
+						"go-run",
+						"path",
+						"local"
+					],
+					"default": "wasm",
+					"description": "The formatting engine to use. WASM is recommended for best performance. Options:\n- wasm: Uses WebAssembly for fastest performance\n- go-tool: Uses 'go tool github.com/walteh/retab/v2/cmd/retab' (requires Go 1.24+)\n- go-run: Uses 'go run github.com/walteh/retab/v2/cmd/retab@version'\n- path: Uses 'retab' from system PATH\n- local: Uses specified executable path"
+				},
 				"retab.executable": {
 					"type": "string",
-					"default": "retab",
-					"description": "Path to the retab executable. Can be absolute or relative to workspace root (e.g., './bin/retab' or '/usr/local/bin/retab'). 'retab' will use the retab executable from PATH."
+					"default": "",
+					"description": "Path to the retab executable. Only used when engine is set to 'local'. Can be absolute or relative to workspace root."
 				},
-				"retab.run_as_go_tool": {
+				"retab.disable_wasm_fallback": {
 					"type": "boolean",
 					"default": false,
-					"description": "Run retab as a Go tool (requires Go 1.24 or higher). When enabled, retab will be executed as 'go tool github.com/walteh/retab/v2/cmd/retab'."
+					"description": "Disable automatic fallback to WASM engine when other engines fail."
 				},
 				"retab.format_tf_as_hcl": {
 					"type": "boolean",
 					"default": false,
 					"description": "Format Terraform files (.tf, .tfvars) using the HCL formatter instead of the Terraform formatter."
 				},
-				"retab.use_wasm": {
-					"type": "boolean",
-					"default": true,
-					"description": "Use WebAssembly implementation instead of CLI. This can provide better performance but is currently experimental."
+				"retab.editorconfig.path": {
+					"type": "string",
+					"default": "",
+					"description": "Optional path to a specific .editorconfig file. If not provided, retab will search for .editorconfig files starting from the file's directory up to the workspace root."
 				}
 			}
 		}
@@ -58,6 +70,9 @@
 		"@types/vscode": "^1.74.0",
 		"@vscode/vsce": "latest",
 		"bun-types": "latest"
+	},
+	"dependencies": {
+		"editorconfig": "^2.0.0"
 	},
 	"trustedDependencies": [
 		"bun-types"
