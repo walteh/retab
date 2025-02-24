@@ -69,6 +69,7 @@ export const SUPPORTED_LANGUAGES: VSCodeLanguageID[] = [
 	VSCodeLanguageID.TFVARS,
 	VSCodeLanguageID.DART,
 	VSCodeLanguageID.PROTOBUF,
+	VSCodeLanguageID.SWIFT,
 ];
 
 // Interface for engine implementations
