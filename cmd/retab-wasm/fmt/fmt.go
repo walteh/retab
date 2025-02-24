@@ -28,6 +28,7 @@ func getFormatter(formatType string, filename string) (format.Provider, error) {
 			protofmt.NewFormatter(),
 			cmdfmt.NewDartFormatter("dart"),
 			cmdfmt.NewTerraformFormatter("terraform"),
+			cmdfmt.NewSwiftFormatter("swift"),
 		}
 		fmtr, err := format.AutoDetectFormatter(filename, formatters)
 		if err != nil {
@@ -48,6 +49,8 @@ func getFormatter(formatType string, filename string) (format.Provider, error) {
 		return cmdfmt.NewDartFormatter("dart"), nil
 	case "tf":
 		return cmdfmt.NewTerraformFormatter("terraform"), nil
+	case "swift":
+		return cmdfmt.NewSwiftFormatter("swift"), nil
 	default:
 		return nil, errors.Errorf("invalid formatter type: %q", formatType)
 	}

@@ -21,3 +21,12 @@ func NewTerraformFormatter(cmds ...string) format.Provider {
 		Targets: []string{"*.tf", "*.tfvars"},
 	}, cmds...)
 }
+
+func NewSwiftFormatter(cmds ...string) format.Provider {
+	cmds = append(cmds, "format")
+
+	return NewExecFormatter(&BasicExternalFormatterOpts{
+		Indent:  "  ",
+		Targets: []string{"*.swift"},
+	}, cmds...)
+}

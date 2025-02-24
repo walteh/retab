@@ -56,6 +56,7 @@ func (me *Handler) getFormatter(ctx context.Context) (format.Provider, error) {
 			protofmt.NewFormatter(),
 			cmdfmt.NewDartFormatter("dart"),
 			cmdfmt.NewTerraformFormatter("terraform"),
+			cmdfmt.NewSwiftFormatter("swift"),
 		}
 		fmtr, err := format.AutoDetectFormatter(me.filename, formatters)
 		if err != nil {
@@ -76,6 +77,8 @@ func (me *Handler) getFormatter(ctx context.Context) (format.Provider, error) {
 		return cmdfmt.NewDartFormatter("dart"), nil
 	case "tf":
 		return cmdfmt.NewTerraformFormatter("terraform"), nil
+	case "swift":
+		return cmdfmt.NewSwiftFormatter("swift"), nil
 	default:
 		return nil, errors.New("invalid formatter")
 	}

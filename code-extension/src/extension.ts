@@ -45,6 +45,7 @@ export enum VSCodeLanguageID {
 	TFVARS = "tfvars",
 	DART = "dart",
 	PROTOBUF = "protobuf",
+	SWIFT = "swift",
 }
 
 // Format types enum
@@ -53,6 +54,7 @@ export enum RetabFormat {
 	HCL = "hcl",
 	DART = "dart",
 	TF = "tf",
+	SWIFT = "swift",
 	AUTO = "auto",
 }
 
@@ -89,6 +91,7 @@ function getFormatType(languageId: string, formatTfAsHcl: boolean): RetabFormat 
 		[VSCodeLanguageID.TFVARS]: RetabFormat.TF,
 		[VSCodeLanguageID.DART]: RetabFormat.DART,
 		[VSCodeLanguageID.PROTOBUF]: RetabFormat.PROTO,
+		[VSCodeLanguageID.SWIFT]: RetabFormat.SWIFT,
 	};
 
 	// Get the base format type
