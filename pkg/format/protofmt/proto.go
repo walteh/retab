@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/walteh/retab/v2/pkg/format"
@@ -41,8 +42,10 @@ func (me *Formatter) Format(ctx context.Context, cfg format.Configuration, read 
 
 	// Do the replacements after formatting
 	result := buf.String()
-	for id, value := range fmtr.replacers {
-		result = strings.Replace(result, id, value, -1)
+	slices.Reverse(fmtr.replacers)
+	for _, replacement := range fmtr.replacers {
+		result = strings.Replace(result, replacement.id, replacement.new, -1)
+		// we could remove the trailing whitespace here if we want to
 	}
 
 	return strings.NewReader(result), nil

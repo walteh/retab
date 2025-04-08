@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -72,7 +73,13 @@ type formatter struct {
 	// non-nil error represents a bug in the implementation.
 	err error
 
-	replacers map[string]string
+	replacers []replacement
+}
+
+type replacement struct {
+	id  string
+	old string
+	new string
 }
 
 // newFormatter returns a new formatter for the given file.
@@ -93,7 +100,7 @@ func newFormatter(
 		tabWriter: format.BuildTabWriter(cfg, writer),
 		fileNode:  fileNode,
 		cfg:       cfg,
-		replacers: make(map[string]string),
+		replacers: make([]replacement, 0),
 	}
 }
 
@@ -475,8 +482,10 @@ func (f *formatter) writeOption(optionNode *ast.OptionNode) {
 			// Compound string literals are written across multiple lines
 			// immediately after the '=', so we don't need a trailing
 			// space in the option prefix.
-			f.writeCompoundStringLiteralIndentEndInline(node)
-			f.writeLineEnd(optionNode.Semicolon)
+			f.writeWithIsolatedTabWriter(func() {
+				f.writeCompoundStringLiteralIndentEndInline(node)
+				f.writeLineEnd(optionNode.Semicolon)
+			})
 			return
 		}
 		f.writeInline(optionNode.Val)
@@ -759,7 +768,9 @@ func (f *formatter) writeMessageField(messageFieldNode *ast.MessageFieldNode) {
 func (f *formatter) writeMessageFieldWithSeparator(messageFieldNode *ast.MessageFieldNode) {
 	f.writeMessageFieldPrefix(messageFieldNode)
 	if compoundStringLiteral, ok := messageFieldNode.Val.(*ast.CompoundStringLiteralNode); ok {
-		f.writeCompoundStringLiteralIndentEndInline(compoundStringLiteral)
+		f.writeWithIsolatedTabWriter(func() {
+			f.writeCompoundStringLiteralIndentEndInline(compoundStringLiteral)
+		})
 		return
 	}
 	f.writeInline(messageFieldNode.Val)
@@ -789,7 +800,7 @@ func (f *formatter) writeMessageFieldPrefix(messageFieldNode *ast.MessageFieldNo
 	if messageFieldNode.Sep != nil {
 		f.writeInline(messageFieldNode.Sep)
 	}
-	f.Space()
+	f.WriteString("\t")
 }
 
 // writeEnum writes the enum node.
@@ -838,7 +849,9 @@ func (f *formatter) writeEnumValue(enumValueNode *ast.EnumValueNode) {
 	f.writeInline(enumValueNode.Number)
 	if enumValueNode.Options != nil {
 		f.Space()
-		f.writeNode(enumValueNode.Options)
+		f.writeWithIsolatedTabWriter(func() {
+			f.writeNode(enumValueNode.Options)
+		})
 	}
 	f.writeLineEnd(enumValueNode.Semicolon)
 }
@@ -873,16 +886,11 @@ func (f *formatter) writeField(fieldNode *ast.FieldNode) {
 	f.Space()
 	f.writeInline(fieldNode.Tag)
 	if fieldNode.Options != nil {
-		f.Space()
-		id := uuid.New().String()
-		f.WriteString(id)
-		prevTabWritter := f.tabWriter
-		strbuffer := new(bytes.Buffer)
-		f.tabWriter = format.BuildTabWriter(f.cfg, strbuffer)
-		f.writeCompactOptions(fieldNode.Options)
-		f.tabWriter.Flush()
-		f.replacers[id] = strbuffer.String()
-		f.tabWriter = prevTabWritter
+
+		f.writeWithIsolatedTabWriter(func() {
+			f.Space()
+			f.writeCompactOptions(fieldNode.Options)
+		})
 	}
 	f.writeLineEnd(fieldNode.Semicolon)
 }
@@ -1050,15 +1058,20 @@ func (f *formatter) writeRPC(rpcNode *ast.RPCNode) {
 	var elementWriterFunc func()
 	if len(rpcNode.Decls) > 0 {
 		elementWriterFunc = func() {
-			// Collect RPC options
-			var options []*ast.OptionNode
+			options := []*ast.OptionNode{}
+			nodes := []ast.Node{}
 			for _, decl := range rpcNode.Decls {
 				if opt, ok := decl.(*ast.OptionNode); ok {
 					options = append(options, opt)
+				} else {
+					nodes = append(nodes, decl)
 				}
 			}
 			if len(options) > 0 {
 				f.writeOptions(options)
+			}
+			for _, node := range nodes {
+				f.writeNode(node)
 			}
 		}
 	}
@@ -2447,7 +2460,9 @@ func (f *formatter) writeOptions(options []*ast.OptionNode) {
 		f.Space()
 		// pp.Println(opt.Val)
 		// fmt.Printf("writing inline 2 %s - %T\n", opt.Val, opt.Val)
-		f.writeInline(opt.Val)
+		f.writeWithIsolatedTabWriter(func() {
+			f.writeInline(opt.Val)
+		})
 		f.writeLineEnd(opt.Semicolon)
 	}
 }
@@ -2460,14 +2475,40 @@ func (f *formatter) writeOptionsArray(compactOptionsNode *ast.CompactOptionsNode
 		f.WriteString("\t")
 		f.writeInline(opt.Equals)
 		f.Space()
-
-		if i == len(compactOptionsNode.Options)-1 {
-			f.writeLineEnd(opt.Val)
-			return
-		}
 		// pp.Println(opt.Val)
 		// fmt.Printf("writing inline %s - %T\n", opt.Val, opt.Val)
-		f.writeInline(opt.Val)
+		if i == len(compactOptionsNode.Options)-1 {
+			f.writeWithIsolatedTabWriter(func() {
+				f.writeLineEnd(opt.Val)
+			})
+			return
+		}
+		f.writeWithIsolatedTabWriter(func() {
+			f.writeInline(opt.Val)
+		})
 		f.writeLineEnd(compactOptionsNode.Commas[i])
 	}
+}
+
+func (f *formatter) writeWithIsolatedTabWriter(fn func()) {
+	id := uuid.New().String()
+	f.WriteString(id)
+	prevReplacers := f.replacers
+	f.replacers = make([]replacement, 0)
+	prevTabWritter := f.tabWriter
+	strbuffer := new(bytes.Buffer)
+	f.tabWriter = format.BuildTabWriter(f.cfg, strbuffer)
+	fn()
+	f.tabWriter.Flush()
+	out := strbuffer.String()
+	caller, l, z, _ := runtime.Caller(1)
+	fns := runtime.FuncForPC(caller)
+	fmt.Println("BEOFRE", caller, l, z, fns.Name(), out)
+	for _, v := range f.replacers {
+		out = strings.ReplaceAll(out, v.id, v.new)
+	}
+	prevReplacers = append(prevReplacers, replacement{id: id, new: out})
+	fmt.Println(out)
+	f.replacers = prevReplacers
+	f.tabWriter = prevTabWritter
 }

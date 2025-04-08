@@ -238,7 +238,7 @@ message Test {
 }`,
 		},
 		{
-			name:    "complex nested options",
+			name:    "complex_field_options",
 			useTabs: true,
 			src: `edition = "2023";
 package example;
@@ -249,6 +249,8 @@ message Test {
       id: "float.gt",
         expression:
           "!has(rules.lt) && !has(rules.lte) && (this.isNan() || this <= rules.gt)"
+		  				"? 'value must be greater than %s'.format([rules.gt]) : ''",
+		idz: "float.gtzzz"
       }
     ];
 }`,
@@ -258,13 +260,44 @@ package example;
 message Test {
 	float gt = 4 [
 		(priv.field).cel = {
-			id: 	
-				"float.gt",
-			expression:
+			id:         "float.gt",
+			expression: 
 				"!has(rules.lt) && !has(rules.lte) && (this.isNan() || this <= rules.gt)"
-				"? 'value must be greater than %s'.format([rules.gt]) : ''"
-			}
-		];
+				"? 'value must be greater than %s'.format([rules.gt]) : ''",
+			idz:        "float.gtzzz"
+		}
+	];
+}`,
+		},
+
+		{
+			name:    "simple_field_options_single",
+			useTabs: true,
+			src: `message Test {
+				string name = 1 [
+					(custom.field) = "value"
+				];
+			}`,
+			expected: `message Test {
+	string name = 1 [
+		(custom.field) = "value"
+	];
+}`,
+		},
+		{
+			name:    "simple_field_options_two",
+			useTabs: true,
+			src: `message Test {
+				string name = 1 [
+					(custom.field)     = "z",
+					(custom.fields) = "value2"
+				];
+			}`,
+			expected: `message Test {
+	string name = 1 [
+		(custom.field)  = "z",
+		(custom.fields) = "value2"
+	];
 }`,
 		},
 	}
