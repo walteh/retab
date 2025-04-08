@@ -1,3 +1,5 @@
+//go:build !js
+
 package fmt
 
 // `hclFmt` command recursively looks for hcl files in the directory tree starting at workingDir, and formats them

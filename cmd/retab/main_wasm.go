@@ -6,7 +6,7 @@ import (
 	"context"
 	"syscall/js"
 
-	fmtcmd "github.com/walteh/retab/v2/cmd/retab-wasm/fmt"
+	fmtcmd "github.com/walteh/retab/v2/cmd/retab/fmt"
 )
 
 // note about logging: the logging will go to the extenstion host process, so if we want to actually return logs to the extension,

@@ -8,9 +8,9 @@ tasks:
     generate:
         cmd: mockery
         generates:
-          - ./gen/mockery/*.go
+            - ./gen/mockery/*.go
         sources:
-          - ./**/*.go
+            - ./**/*.go
 
     test:
         cmd: go test ./...
@@ -18,31 +18,31 @@ tasks:
     refresh-extension-go:
         dir: code-extension
         cmds:
-          - rm -rf out
-          - mkdir -p out
-          - cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" out/
-          - cd ../cmd/retab-wasm && GOOS=js GOARCH=wasm go build -o ../../code-extension/out/retab.wasm
-          - bun install
+            - rm -rf out
+            - mkdir -p out
+            - cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" out/
+            - cd ../cmd/retab && GOOS=js GOARCH=wasm go build -o ../../code-extension/out/retab.wasm
+            - bun install
 
     refresh-extension-tinygo:
         dir: code-extension
         cmds:
-          - rm -rf out
-          - mkdir -p out
-          - cp "$(tinygo env TINYGOROOT)/targets/wasm_exec.js" out/wasm_exec.tinygo.js
-          - cd ../cmd/retab-wasm && GOOS=js GOARCH=wasm tinygo build -o ../../code-extension/out/retab.wasm
-          - bun install
+            - rm -rf out
+            - mkdir -p out
+            - cp "$(tinygo env TINYGOROOT)/targets/wasm_exec.js" out/wasm_exec.tinygo.js
+            - cd ../cmd/retab && GOOS=js GOARCH=wasm tinygo build -o ../../code-extension/out/retab.wasm
+            - bun install
 
     package-extension:
         dir: code-extension
         cmds:
-          - task: refresh-extension-go
-          - bun run package
-          - mv ./retab-*.vsix ~/Downloads
-          - open https://marketplace.visualstudio.com/manage/publishers/walteh
+            - task: refresh-extension-go
+            - bun run package
+            - mv ./retab-*.vsix ~/Downloads
+            - open https://marketplace.visualstudio.com/manage/publishers/walteh
 
     rebuild-extension:
         dir: code-extension
         cmds:
-          - task: refresh-extension-go
-          - bun run build
+            - task: refresh-extension-go
+            - bun run build
