@@ -6,7 +6,8 @@ import "github.com/google/go-cmp/cmp"
 //
 //go:opts
 type TestingOpts struct {
-	cmpOpts []cmp.Option
+	cmpOpts          []cmp.Option
+	logRawDiffOnFail bool
 }
 
 // WithUnexportedType adds an option to allow comparing unexported fields in a type
@@ -15,5 +16,11 @@ func WithUnexportedType[T any]() OptTestingOptsSetter {
 	return func(opts *TestingOpts) {
 		var v T
 		opts.cmpOpts = append(opts.cmpOpts, cmp.AllowUnexported(v))
+	}
+}
+
+func WithLogRawDiffOnFail() OptTestingOptsSetter {
+	return func(opts *TestingOpts) {
+		opts.logRawDiffOnFail = true
 	}
 }

@@ -21,6 +21,7 @@ type UnifiedDiff struct {
 // DiffLine represents a line in the unified diff with metadata
 type DiffLine struct {
 	Content string
+	Applied string
 	Type    DiffLineType
 	Changes []DiffChange // Character-level changes within the line
 }
@@ -282,13 +283,13 @@ func formatLine(line DiffLine) string {
 // formatLineWithPrefix formats a line with the given prefix and color
 func formatLineWithPrefix(prefix string, line DiffLine, lineColor *color.Color) string {
 	// Format the line differently based on whether we have character-level diffs
-	if len(line.Changes) == 1 {
-		// Simple line diff
-		return formatSimpleLine(prefix, line.Content, lineColor)
-	} else {
-		// Line with character-level changes
-		return formatLineChanges(line, lineColor)
-	}
+	// if len(line.Changes) == 1 {
+	// 	// Simple line diff
+	// 	return formatSimpleLine(prefix, line.Content, lineColor)
+	// } else {
+	// Line with character-level changes
+	return formatLineChanges(line, lineColor)
+	// }
 }
 
 // formatSimpleLine formats a line without character-level highlighting
@@ -301,31 +302,59 @@ func formatSimpleLine(prefix string, content string, lineColor *color.Color) str
 
 // formatLineChanges formats a line with character-level highlighting
 func formatLineChanges(line DiffLine, lineColor *color.Color) string {
-	prefix := ""
+	prefix := NewColoredString("")
+	shouldBold := false
 	switch line.Type {
 	case DiffLineAdded:
-		prefix = color.New(color.Bold, color.FgRed).Sprint("[got]   -")
+		shouldBold = true
+		r := crs("[", color.Bold)
+		r = append(r, crs("got", color.Bold, color.FgRed)...)
+		r = append(r, crs("]", color.Bold)...)
+		r = append(r, crs("    ")...)
+		prefix.MultiAppendToStart(r...)
 	case DiffLineRemoved:
-		prefix = color.New(color.Bold, color.FgBlue).Sprint("[want]  +")
+		shouldBold = true
+		r := crs("[", color.Bold)
+		r = append(r, crs("want", color.Bold, color.FgBlue)...)
+		r = append(r, crs("]", color.Bold)...)
+		r = append(r, crs("   ")...)
+		prefix.MultiAppendToStart(r...)
 	default:
-		prefix = strings.Repeat(" ", 9)
+		prefix.MultiAppendToStart(crs(strings.Repeat(" ", 9))...)
 	}
 
-	var result strings.Builder
-	result.WriteString(prefix)
-	result.WriteString(" | ")
-
+	working := NewColoredString("")
 	// Render character changes with appropriate colors
 	for _, change := range line.Changes {
 		switch change.Type {
 		case DiffChangeAdded:
-			result.WriteString(color.New(color.FgRed, color.Bold).Sprint(change.Text))
+			crz := crs(change.Text, color.FgHiGreen, color.Bold, color.Underline)
+			for _, cr := range crz {
+				cr.MarkIsSpecial()
+			}
+			working.MultiAppendToEnd(crz...)
 		case DiffChangeRemoved:
-			result.WriteString(color.New(color.FgBlue, color.Bold).Sprint(change.Text))
+			crz := crs(change.Text, color.FgHiRed, color.Bold, color.CrossedOut)
+			for _, cr := range crz {
+				cr.MarkIsSpecial()
+			}
+			working.MultiAppendToEnd(crz...)
 		case DiffChangeUnchanged:
-			result.WriteString(lineColor.Sprint(change.Text))
+			crz := crs(change.Text, color.Faint)
+			if shouldBold {
+				crz = crs(change.Text)
+			}
+			working.MultiAppendToEnd(crz...)
 		}
 	}
+
+	var result strings.Builder
+
+	working.Annotate(color.New(color.Faint))
+
+	result.WriteString(prefix.ColoredString())
+	// result.WriteString(" | ")
+	result.WriteString(working.ColoredString())
 
 	return result.String()
 }

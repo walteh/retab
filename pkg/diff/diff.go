@@ -12,6 +12,7 @@ package diff
 
 import (
 	"reflect"
+	"slices"
 
 	"github.com/fatih/color"
 	"github.com/google/go-cmp/cmp"
@@ -49,20 +50,70 @@ type DiffFormatter interface {
 //
 //	· represents a space (Middle Dot U+00B7)
 //	→ represents a tab (Rightwards Arrow U+2192)
+
 func formatStartingWhitespace(s string, colord *color.Color) string {
 	out := color.New(color.Bold).Sprint(" | ")
+
+	return out + applyWhitespaceColor(s, colord)
+}
+
+func applyWhitespaceColor(s string, colord *color.Color) string {
+	out := ""
 	for j, char := range s {
 		switch char {
 		case ' ':
-			out += color.New(color.Faint, color.FgHiGreen).Sprint("∙") // ⌷
+			out += color.New(color.Faint).Sprint("∙") // ⌷
 		case '\t':
-			out += color.New(color.Faint, color.FgHiGreen).Sprint("→   ") // → └──▹
+			out += color.New(color.Faint).Sprint("→   ") // → └──▹
 		default:
-			return out + colord.Sprint(s[j:])
+			wrk := s
+			trailing := getFormattedTrailingWhitespace(wrk[j:])
+			fomrmattedTrail := color.New(color.Faint).Sprint(string(trailing))
+			return out + formatInternalWhitespace(wrk[j:len(wrk)-len(trailing)], colord) + fomrmattedTrail
 		}
 	}
 	return out
 }
+
+func formatInternalWhitespace(s string, colord *color.Color) string {
+	out := ""
+	for _, char := range s {
+		switch char {
+		case ' ':
+			out += color.New(color.Faint).Sprint("∙") // ⌷
+		case '\t':
+			out += color.New(color.Faint).Sprint("→   ") // → └──▹
+		default:
+			// if colord == nil {
+			// 	out += string(char)
+			// } else {
+			out += colord.Sprint(string(char))
+			// }
+		}
+	}
+	return out
+}
+
+func getFormattedTrailingWhitespace(s string) []rune {
+	out := []rune{}
+	rstr := []rune(s)
+	slices.Reverse(rstr)
+	for _, char := range rstr {
+		switch char {
+		case ' ':
+			out = append(out, '∙')
+		case '\t':
+			out = append(out, '→')
+		// case '\n':
+		// 	out += color.New(color.Faint, color.FgHiGreen).Sprint("↵") // ↵
+		default:
+			return out
+		}
+	}
+	return out
+}
+
+// func colorizeWhiteSpace(s string, defaultColor *color.Color) string {
 
 // TypedDiff performs a diff operation between two values of the same type,
 // considering all fields (exported and unexported).

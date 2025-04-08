@@ -34,6 +34,7 @@ func RequireEqual[T any](t *testing.T, want, got T, opts ...OptTestingOptsSetter
 	t.Helper()
 	if !knownTypeEqual(t, want, got, opts...) {
 		require.Fail(t, "value mismatch")
+
 	}
 }
 
@@ -120,6 +121,7 @@ func unknownTypeEqual(t *testing.T, want, got reflect.Type, opts ...OptTestingOp
 			fmt.Sprintf("got type:  %s", color.YellowString(got.String())),
 			td)
 		t.Log("value comparison report:\n" + str)
+
 		return false
 	}
 	return true
@@ -137,6 +139,11 @@ func knownTypeEqual[T any](t *testing.T, want, got T, opts ...OptTestingOptsSett
 			"",
 			td)
 		t.Log("type comparison report:\n" + str)
+		ops := NewTestingOpts(opts...)
+		_, isString := any(want).(string)
+		if ops.logRawDiffOnFail && isString {
+			t.Log(ConvertToRawUnifiedDiffString(any(want).(string), any(got).(string)))
+		}
 		return false
 	}
 	return true
