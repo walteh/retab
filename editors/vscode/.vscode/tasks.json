@@ -2,9 +2,9 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "rebuild-extension",
+			"label": "vscode:rebuild",
 			"type": "shell",
-			"command": "task rebuild-extension",
+			"command": "task vscode:rebuild",
 			"group": {
 				"kind": "build",
 				"isDefault": true

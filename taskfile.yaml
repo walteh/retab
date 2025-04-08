@@ -19,7 +19,7 @@ env:
 tasks:
     go-mod-tidy:
         cmds:
-            - for: { var: GO_MODULES }
+            - for: {var: GO_MODULES}
               cmd: cd {{.ITEM}} && "{{.GO_COMMAND}}" mod tidy -e
 
     go-mod-upgrade:
@@ -46,7 +46,7 @@ tasks:
             - GOOS=js GOARCH=wasm "{{.GO_COMMAND}}" build -o {{.TMP_DIR}}/retab.wasm ./cmd/retab
             - bun install
             - for:
-                  var: WASM_OUT_DIRS
+                var: WASM_OUT_DIRS
               cmd: mkdir -p {{.ITEM}} && cp {{.TMP_DIR}}/* {{.ITEM}}
             - rm -rf {{.TMP_DIR}}
 
@@ -54,20 +54,20 @@ tasks:
         cmds:
             - task: build:wasm
               vars:
-                  GO_COMMAND: "{{.TINYGO_COMMAND}}"
-                  GO_WASM_EXEC:
-                      sh: "$(tinygo env TINYGOROOT)/targets/wasm_exec.js"
+                GO_COMMAND: "{{.TINYGO_COMMAND}}"
+                GO_WASM_EXEC:
+                    sh: "$(tinygo env TINYGOROOT)/targets/wasm_exec.js"
 
     vscode:package:
         dir: editors/vscode
         cmds:
             - task: build:wasm
             - |-
-                bun run package
+              bun run package
             - |-
-                mv ./retab-*.vsix ~/Downloads
+              mv ./retab-*.vsix ~/Downloads
             - |-
-                open https://marketplace.visualstudio.com/manage/publishers/walteh
+              open https://marketplace.visualstudio.com/manage/publishers/walteh
 
     vscode:rebuild:
         dir: editors/vscode
@@ -94,7 +94,7 @@ tasks:
         cmds:
             - cmd: mkdir -p {{.TMP_DIR}}
             - cmd: cp .mockery.yaml {{.TMP_DIR}}/.mockery.yaml
-            - for: { var: "MOCKERY_INTERFACE_DATA", split: "\n", as: ITEM }
+            - for: {var: "MOCKERY_INTERFACE_DATA", split: "\n", as: ITEM}
               cmd: |-
-                  yq -i ".packages.\"{{ .GO_ROOT_PKG }}/{{ splitList " " .ITEM | first }}\".interfaces.{{ splitList " " .ITEM | last }} = {}" {{.TMP_DIR}}/.mockery.yaml
+                yq -i ".packages.\"{{ .GO_ROOT_PKG }}/{{ splitList " " .ITEM | first }}\".interfaces.{{ splitList " " .ITEM | last }} = {}" {{.TMP_DIR}}/.mockery.yaml
             - cmd: "{{.GO_COMMAND}} tool github.com/vektra/mockery/v2 --config={{.TMP_DIR}}/.mockery.yaml"

@@ -5,8 +5,8 @@
 			"path": "."
 		},
 		{
-			"name": "code-extension [ts]",
-			"path": "code-extension"
+			"name": "vscode [ts]",
+			"path": "editors/vscode"
 		}
 		// {
 		// 	"name": "tools [go]",
@@ -45,7 +45,9 @@
 		// ESLint Configuration
 		//===========================================
 		"eslint.options": {
-			"flags": ["unstable_ts_config"]
+			"flags": [
+				"unstable_ts_config"
+			]
 		},
 		"eslint.useESLintClass": true,
 		//===========================================
@@ -142,7 +144,7 @@
 			"editor.defaultFormatter": "esbenp.prettier-vscode"
 		},
 		"[yaml]": {
-			"editor.defaultFormatter": "esbenp.prettier-vscode"
+			"editor.defaultFormatter": "walteh.retab-vscode"
 		},
 		"[dotenv]": {
 			"editor.defaultFormatter": "foxundermoon.shell-format"
@@ -174,12 +176,14 @@
 		"[typescriptreact]": {
 			"editor.defaultFormatter": "esbenp.prettier-vscode"
 		},
-
 		//===========================================
 		// SVG Settings
 		//===========================================
 		"svg.preview.background": "transparent",
-		"align-bicep.disallowed-language-ids": ["terraform", "go"],
+		"align-bicep.disallowed-language-ids": [
+			"terraform",
+			"go"
+		],
 		"dockerfile-tidy.formatOnSave": true,
 		"retab.use_wasm": false
 	}

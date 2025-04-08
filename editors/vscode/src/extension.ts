@@ -46,6 +46,8 @@ export enum VSCodeLanguageID {
 	DART = "dart",
 	PROTOBUF = "protobuf",
 	SWIFT = "swift",
+	YAML = "yaml",
+	YML = "yml",
 }
 
 // Format types enum
@@ -56,6 +58,7 @@ export enum RetabFormat {
 	TF = "tf",
 	SWIFT = "swift",
 	AUTO = "auto",
+	YAML = "yaml",
 }
 
 // Supported languages array
@@ -70,6 +73,8 @@ export const SUPPORTED_LANGUAGES: VSCodeLanguageID[] = [
 	VSCodeLanguageID.DART,
 	VSCodeLanguageID.PROTOBUF,
 	VSCodeLanguageID.SWIFT,
+	VSCodeLanguageID.YAML,
+	VSCodeLanguageID.YML,
 ];
 
 // Interface for engine implementations
@@ -93,6 +98,8 @@ function getFormatType(languageId: string, formatTfAsHcl: boolean): RetabFormat 
 		[VSCodeLanguageID.DART]: RetabFormat.DART,
 		[VSCodeLanguageID.PROTOBUF]: RetabFormat.PROTO,
 		[VSCodeLanguageID.SWIFT]: RetabFormat.SWIFT,
+		[VSCodeLanguageID.YAML]: RetabFormat.YAML,
+		[VSCodeLanguageID.YML]: RetabFormat.YAML,
 	};
 
 	// Get the base format type

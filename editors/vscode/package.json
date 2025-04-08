@@ -17,7 +17,9 @@
 		"onLanguage:hcl",
 		"onLanguage:terraform",
 		"onLanguage:dart",
-		"onLanguage:swift"
+		"onLanguage:swift",
+		"onLanguage:yaml",
+		"onLanguage:yml"
 	],
 	"main": "./out/extension.js",
 	"contributes": {

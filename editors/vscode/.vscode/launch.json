@@ -5,15 +5,13 @@
 			"name": "run-extension",
 			"type": "extensionHost",
 			"request": "launch",
-			"preLaunchTask": "rebuild-extension",
+			"preLaunchTask": "vscode:rebuild",
 			"args": [
-				"${workspaceFolder}/..",
+				"${workspaceFolder}/../..",
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--user-data-dir=${workspaceFolder}/.cursor-dev"
 			],
-			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
-			],
+			"outFiles": ["${workspaceFolder}/out/**/*.js"],
 			"runtimeExecutable": "/Applications/Cursor.app/Contents/MacOS/Cursor"
 		}
 	]
