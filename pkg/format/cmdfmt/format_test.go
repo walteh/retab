@@ -318,7 +318,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
 			cfg := formatmock.NewMockConfiguration(t)
 			cfg.EXPECT().UseTabs().Return(tt.useTabs)
-			cfg.EXPECT().IndentSize().Return(tt.indentSize)
+			cfg.EXPECT().IndentSize().Return(tt.indentSize).Maybe()
 			cfg.EXPECT().TrimMultipleEmptyLines().Return(tt.trimMultipleEmptyLines)
 
 			// Call the Format function with the provided configuration and source

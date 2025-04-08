@@ -125,7 +125,7 @@ variable "DESTDIR1" {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := formatmock.NewMockConfiguration(t)
 			cfg.EXPECT().UseTabs().Return(tt.useTabs)
-			cfg.EXPECT().IndentSize().Return(tt.indentSize)
+			cfg.EXPECT().IndentSize().Return(tt.indentSize).Maybe()
 			cfg.EXPECT().TrimMultipleEmptyLines().Return(tt.trimMultipleEmptyLines)
 			cfg.EXPECT().OneBracketPerLine().Return(tt.oneBracketPerLine)
 

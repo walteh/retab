@@ -121,7 +121,7 @@ struct ContentView: View {
 
 			cfg := formatmock.NewMockConfiguration(t)
 			cfg.EXPECT().UseTabs().Return(tt.useTabs)
-			cfg.EXPECT().IndentSize().Return(tt.indentSize)
+			cfg.EXPECT().IndentSize().Return(tt.indentSize).Maybe()
 			cfg.EXPECT().TrimMultipleEmptyLines().Return(tt.trimMultipleEmptyLines)
 
 			result, err := cmdfmt.NewSwiftFormatter(
