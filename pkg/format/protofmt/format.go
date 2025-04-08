@@ -51,8 +51,7 @@ type formatter struct {
 
 	// If true, a space will be written to the output unless the next character
 	// written is a newline (don't wait errant trailing spaces).
-	pendingSpace      bool
-	pendingUnderscore bool
+	pendingSpace bool
 	// If true, the formatter is in the middle of printing compact options.
 	inCompactOptions bool
 
@@ -181,14 +180,14 @@ func (f *formatter) Indent(nextNode ast.Node) {
 // This will not write indentation or newlines. Use P if you
 // want to emit identation or newlines.
 func (f *formatter) WriteString(elem string) {
-	if f.pendingUnderscore {
-		f.pendingUnderscore = false
-		str := "______"
-		if _, err := f.tabWriter.Write([]byte(str)); err != nil {
-			f.err = multierr.Append(f.err, err)
-			return
-		}
-	}
+	// if f.pendingUnderscore {
+	// 	f.pendingUnderscore = false
+	// 	str := "______"
+	// 	if _, err := f.tabWriter.Write([]byte(str)); err != nil {
+	// 		f.err = multierr.Append(f.err, err)
+	// 		return
+	// 	}
+	// }
 	if f.pendingSpace {
 		f.pendingSpace = false
 		first, _ := utf8.DecodeRuneInString(elem)
@@ -284,14 +283,18 @@ func (f *formatter) writeFileHeader() {
 			continue
 		}
 	}
-	if f.fileNode.Syntax == nil && packageNode == nil && importNodes == nil && optionNodes == nil {
+	if f.fileNode.Syntax == nil && f.fileNode.Edition == nil &&
+		packageNode == nil && importNodes == nil && optionNodes == nil {
 		// There aren't any header values, so we can return early.
 		return
 	}
-	if syntaxNode := f.fileNode.Syntax; syntaxNode != nil {
+	editionNode := f.fileNode.Edition
+	if editionNode != nil {
+		f.writeEdition(editionNode)
+	}
+	if syntaxNode := f.fileNode.Syntax; syntaxNode != nil && editionNode == nil {
 		f.writeSyntax(syntaxNode)
 	}
-
 	if packageNode != nil {
 		f.writePackage(packageNode)
 	}
@@ -383,17 +386,25 @@ func (f *formatter) writeFileTypes() {
 //	syntax = "proto3";
 func (f *formatter) writeSyntax(syntaxNode *ast.SyntaxNode) {
 	f.writeStart(syntaxNode.Keyword)
-
 	f.Space()
-
 	f.writeInline(syntaxNode.Equals)
-
 	f.Space()
-
 	f.writeInline(syntaxNode.Syntax)
-
 	f.writeLineEnd(syntaxNode.Semicolon)
+}
 
+// writeEdition writes the edition.
+//
+// For example,
+//
+//	edition = "2023";
+func (f *formatter) writeEdition(editionNode *ast.EditionNode) {
+	f.writeStart(editionNode.Keyword)
+	f.Space()
+	f.writeInline(editionNode.Equals)
+	f.Space()
+	f.writeInline(editionNode.Edition)
+	f.writeLineEnd(editionNode.Semicolon)
 }
 
 // writePackage writes the package.
@@ -492,11 +503,7 @@ func (f *formatter) writeOption(optionNode *ast.OptionNode) {
 //	]
 func (f *formatter) writeLastCompactOption(optionNode *ast.OptionNode) {
 	f.writeOptionPrefix(optionNode)
-	// f.writeInline(optionNode.Val)
 	f.writeLineEnd(optionNode.Val)
-	// f.Space()
-	// f.P("];")
-	// // f.writeLineEnd(ast.NewStringLiteralNode( )
 }
 
 // writeOptionValue writes the option prefix, which makes up all of the
@@ -507,17 +514,12 @@ func (f *formatter) writeLastCompactOption(optionNode *ast.OptionNode) {
 //	deprecated =
 func (f *formatter) writeOptionPrefix(optionNode *ast.OptionNode) {
 	if optionNode.Keyword != nil {
-
 		// Compact options don't have the keyword.
 		f.writeStart(optionNode.Keyword)
 		f.Space()
 		f.writeNode(optionNode.Name)
 	} else {
-		// f.indent--
-		// pp.Printf("optionNode.Name %v\n", optionNode.Start())
-		// pp.Println("optionNode.Name", optionNode.Name)
 		f.writeStart(optionNode.Name)
-		// f.indent++
 	}
 	f.Space()
 	f.writeInline(optionNode.Equals)
@@ -841,9 +843,49 @@ func (f *formatter) writeEnumValue(enumValueNode *ast.EnumValueNode) {
 	f.writeLineEnd(enumValueNode.Semicolon)
 }
 
-// func (me *formatter) ______() {
-// 	me.pendingUnderscore = true
-// }
+// writeField writes the field node as a single line. If the field has
+// compact options, it will be written across multiple lines.
+//
+// For example,
+//
+//	repeated string name = 1 [
+//	  deprecated = true,
+//	  json_name = "name"
+//	];
+func (f *formatter) writeField(fieldNode *ast.FieldNode) {
+	// Write the field type with proper spacing
+	if fieldNode.Label.KeywordNode != nil {
+		f.writeStart(fieldNode.Label)
+		f.Space()
+		f.writeInline(fieldNode.FldType)
+	} else {
+		if compoundIdentNode, ok := fieldNode.FldType.(*ast.CompoundIdentNode); ok {
+			f.writeCompountIdentForFieldName(compoundIdentNode)
+		} else {
+			f.writeStart(fieldNode.FldType)
+		}
+	}
+
+	f.WriteString("\t")
+	f.writeInline(fieldNode.Name)
+	f.WriteString("\t")
+	f.writeInline(fieldNode.Equals)
+	f.Space()
+	f.writeInline(fieldNode.Tag)
+	if fieldNode.Options != nil {
+		f.Space()
+		id := uuid.New().String()
+		f.WriteString(id)
+		prevTabWritter := f.tabWriter
+		strbuffer := new(bytes.Buffer)
+		f.tabWriter = format.BuildTabWriter(f.cfg, strbuffer)
+		f.writeCompactOptions(fieldNode.Options)
+		f.tabWriter.Flush()
+		f.replacers[id] = strbuffer.String()
+		f.tabWriter = prevTabWritter
+	}
+	f.writeLineEnd(fieldNode.Semicolon)
+}
 
 // calculateLineLength calculates the total line length for a field
 func (f *formatter) calculateLineLength(fieldNode *ast.FieldNode) int {
@@ -875,72 +917,6 @@ func (f *formatter) calculateFieldPadding(fieldNode *ast.FieldNode) (typeWidth i
 	nameText := fieldNode.Name.Val
 
 	return len(typeText), len(nameText)
-}
-
-// calculateMaxLineLength calculates the maximum line length needed for all fields
-func (f *formatter) calculateMaxLineLength(fields []*ast.FieldNode) int {
-	maxLength := 0
-	for _, field := range fields {
-		typeWidth, nameWidth := f.calculateFieldPadding(field)
-		tagWidth := len(fmt.Sprint(field.Tag.Val))
-		// Calculate total length: type + space + name + space + equals + space + tag + semicolon
-		length := typeWidth + 1 + nameWidth + 1 + 1 + 1 + tagWidth + 1
-		if length > maxLength {
-			maxLength = length
-		}
-	}
-	return maxLength
-}
-
-// findSiblingFields finds all field nodes that are siblings of the given field node
-func (f *formatter) findSiblingFields(fieldNode *ast.FieldNode) []*ast.FieldNode {
-	var fields []*ast.FieldNode
-	var currentMessage *ast.MessageNode
-
-	// First find the message that contains this field
-	for _, decl := range f.fileNode.Decls {
-		if msg, ok := decl.(*ast.MessageNode); ok {
-			for _, msgDecl := range msg.Decls {
-				if field, ok := msgDecl.(*ast.FieldNode); ok {
-					if field == fieldNode {
-						currentMessage = msg
-						break
-					}
-				}
-			}
-			if currentMessage != nil {
-				break
-			}
-		}
-	}
-
-	// If we found the message, collect all its fields
-	if currentMessage != nil {
-		for _, decl := range currentMessage.Decls {
-			if field, ok := decl.(*ast.FieldNode); ok {
-				fields = append(fields, field)
-			}
-		}
-	} else {
-		// If we couldn't find the message (shouldn't happen), just return the current field
-		fields = append(fields, fieldNode)
-	}
-
-	return fields
-}
-
-// calculateMaxWidths calculates the maximum type and name widths for a group of fields
-func (f *formatter) calculateMaxWidths(fields []*ast.FieldNode) (maxTypeWidth int, maxNameWidth int) {
-	for _, field := range fields {
-		typeWidth, nameWidth := f.calculateFieldPadding(field)
-		if typeWidth > maxTypeWidth {
-			maxTypeWidth = typeWidth
-		}
-		if nameWidth > maxNameWidth {
-			maxNameWidth = nameWidth
-		}
-	}
-	return maxTypeWidth, maxNameWidth
 }
 
 // writeMapField writes a map field (e.g. 'map<string, string> pairs = 1;').
@@ -1095,6 +1071,11 @@ func (f *formatter) writeRPC(rpcNode *ast.RPCNode) {
 	f.Space()
 	f.writeInline(rpcNode.Output)
 	if rpcNode.OpenBrace == nil {
+		// This RPC doesn't have any elements, so we prefer the
+		// ';' form.
+		//
+		//  rpc Ping(PingRequest) returns (PingResponse);
+		//
 		f.writeLineEnd(rpcNode.Semicolon)
 		return
 	}
@@ -1284,59 +1265,23 @@ func (f *formatter) writeCompactOptions(compactOptionsNode *ast.CompactOptionsNo
 	defer func() {
 		f.inCompactOptions = false
 	}()
-	// no compact options
-	// if false && len(compactOptionsNode.Options) == 1 &&
-	// 	!f.hasInteriorComments(compactOptionsNode.OpenBracket, compactOptionsNode.Options[0].Name) {
-	// 	// If there's only a single compact scalar option without comments, we can write it
-	// 	// in-line. For example:
-	// 	//
-	// 	//  [deprecated = true]
-	// 	//
-	// 	// However, this does not include the case when the '[' has trailing comments,
-	// 	// or the option name has leading comments. In those cases, we write the option
-	// 	// across multiple lines. For example:
-	// 	//
-	// 	//  [
-	// 	//    // This type is deprecated.
-	// 	//    deprecated = true
-	// 	//  ]
-	// 	//
-	// 	optionNode := compactOptionsNode.Options[0]
-	// 	f.writeInline(compactOptionsNode.OpenBracket)
-	// 	f.writeInline(optionNode.Name)
-	// 	f.Space()
-	// 	f.writeInline(optionNode.Equals)
-	// 	if node, ok := optionNode.Val.(*ast.CompoundStringLiteralNode); ok {
-	// 		// If there's only a single compact option, the value needs to
-	// 		// write its comments (if any) in a way that preserves the closing ']'.
-	// 		f.writeCompoundStringLiteralNoIndentEndInline(node)
-	// 		f.writeInline(compactOptionsNode.CloseBracket)
-	// 		return
-	// 	}
-	// 	f.Space()
-	// 	f.writeInline(optionNode.Val)
-	// 	f.writeInline(compactOptionsNode.CloseBracket)
-	// 	return
-	// }
-	// var elementWriterFunc func()
-	// if len(compactOptionsNode.Options) > 0 {
-	// 	elementWriterFunc = func() {
-	// 		for i, opt := range compactOptionsNode.Options {
-	// 			if i == len(compactOptionsNode.Options)-1 {
-	// 				// The last element won't have a trailing comma.
-	// 				f.writeLastCompactOption(opt)
-	// 				return
-	// 			}
 
-	// 			f.writeNode(opt)
-	// 			f.writeLineEnd(compactOptionsNode.Commas[i])
-	// 		}
-	// 	}
-	// }
+	var elementWriterFunc func()
+	if len(compactOptionsNode.Options) > 0 {
+		elementWriterFunc = func() {
+			f.writeOptionsArray(compactOptionsNode)
+		}
+	}
+
+	// f.writeInline(compactOptionsNode.OpenBracket)
+	// // new line
+	// f.P("")
+	// f.writeOptionsArray(compactOptionsNode)
+	// f.writeInline(compactOptionsNode.CloseBracket)
 	f.writeCompositeValueBody(
 		compactOptionsNode.OpenBracket,
 		compactOptionsNode.CloseBracket,
-		f.writeCompactOptions2(compactOptionsNode),
+		elementWriterFunc,
 	)
 }
 
@@ -1943,14 +1888,12 @@ func (f *formatter) writeInline(node ast.Node) {
 	defer f.SetPreviousNode(node)
 	info := f.fileNode.NodeInfo(node)
 	if info.LeadingComments().Len() > 0 {
-
 		f.writeInlineComments(info.LeadingComments())
 		if info.LeadingWhitespace() != "" {
 			f.Space()
 		}
 	}
 	f.writeNode(node)
-
 	f.writeInlineComments(info.TrailingComments())
 }
 
@@ -2087,12 +2030,7 @@ func (f *formatter) writeLineEnd(node ast.Node) {
 			f.Space()
 		}
 	}
-
-	// if node.(*ast.RuneNode).Rune == ';' {
-	// 	f.writer.Write([]byte("//ayo"))
-	// } else {
 	f.writeNode(node)
-	// }
 	f.Space()
 	f.writeTrailingEndComments(info.TrailingComments())
 }
@@ -2154,9 +2092,7 @@ func (f *formatter) writeMultilineCommentsMaybeCompact(comments ast.Comments, fo
 //	  optional string label = 20000;
 //	}
 func (f *formatter) writeInlineComments(comments ast.Comments) {
-
 	for i := 0; i < comments.Len(); i++ {
-
 		if i > 0 || comments.Index(i).LeadingWhitespace() != "" || f.lastWritten == ';' || f.lastWritten == '}' {
 			f.Space()
 		}
@@ -2466,50 +2402,6 @@ func newlineCount(value string) int {
 	return strings.Count(value, "\n")
 }
 
-// writeField writes the field node as a single line. If the field has
-// compact options, it will be written across multiple lines.
-//
-// For example,
-//
-//	repeated string name = 1 [
-//	  deprecated = true,
-//	  json_name = "name"
-//	];
-func (f *formatter) writeField(fieldNode *ast.FieldNode) {
-	// Write the field type with proper spacing
-	if fieldNode.Label.KeywordNode != nil {
-		f.writeStart(fieldNode.Label)
-		f.Space()
-		f.writeInline(fieldNode.FldType)
-	} else {
-		if compoundIdentNode, ok := fieldNode.FldType.(*ast.CompoundIdentNode); ok {
-			f.writeCompountIdentForFieldName(compoundIdentNode)
-		} else {
-			f.writeStart(fieldNode.FldType)
-		}
-	}
-
-	f.WriteString("\t")
-	f.writeInline(fieldNode.Name)
-	f.WriteString("\t")
-	f.writeInline(fieldNode.Equals)
-	f.Space()
-	f.writeInline(fieldNode.Tag)
-	if fieldNode.Options != nil {
-		f.Space()
-		id := uuid.New().String()
-		f.WriteString(id)
-		prevTabWritter := f.tabWriter
-		strbuffer := new(bytes.Buffer)
-		f.tabWriter = format.BuildTabWriter(f.cfg, strbuffer)
-		f.writeNode(fieldNode.Options)
-		f.tabWriter.Flush()
-		f.replacers[id] = strbuffer.String()
-		f.tabWriter = prevTabWritter
-	}
-	f.writeLineEnd(fieldNode.Semicolon)
-}
-
 // calculateOptionNameWidth calculates the maximum width of option names in a list of options
 func (f *formatter) calculateOptionNameWidth(options []*ast.OptionNode) int {
 	maxWidth := 0
@@ -2548,38 +2440,34 @@ func (f *formatter) writeOptions(options []*ast.OptionNode) {
 		f.Space()
 		f.writeInline(opt.Name)
 		// Add padding to align equals signs
-		// currentWidth := len(stringForOptionName(opt.Name))
-		// padding := strings.Repeat(" ", maxWidth-currentWidth+1)
+
 		f.WriteString("\t")
 		// f.Space()
 		f.writeInline(opt.Equals)
 		f.Space()
+		// pp.Println(opt.Val)
+		// fmt.Printf("writing inline 2 %s - %T\n", opt.Val, opt.Val)
 		f.writeInline(opt.Val)
 		f.writeLineEnd(opt.Semicolon)
 	}
 }
 
-func (f *formatter) writeCompactOptions2(compactOptionsNode *ast.CompactOptionsNode) func() {
-	return func() {
-		// maxWidth := f.calculateOptionNameWidth(compactOptionsNode.Options)
-		for i, opt := range compactOptionsNode.Options {
+func (f *formatter) writeOptionsArray(compactOptionsNode *ast.CompactOptionsNode) {
+	for i, opt := range compactOptionsNode.Options {
 
-			f.writeStart(opt.Name)
-			// Add padding to align equals signs
-			// currentWidth := len(stringForOptionName(opt.Name))
-			// padding := strings.Repeat(" ", maxWidth-currentWidth+1)
-			// f.WriteString(padding)
-			f.WriteString("\t")
-			// f.Space()
-			f.writeInline(opt.Equals)
-			f.Space()
+		f.writeStart(opt.Name)
+		// Add padding to align equals signs
+		f.WriteString("\t")
+		f.writeInline(opt.Equals)
+		f.Space()
 
-			if i == len(compactOptionsNode.Options)-1 {
-				f.writeLineEnd(opt.Val)
-				return
-			}
-			f.writeInline(opt.Val)
-			f.writeLineEnd(compactOptionsNode.Commas[i])
+		if i == len(compactOptionsNode.Options)-1 {
+			f.writeLineEnd(opt.Val)
+			return
 		}
+		// pp.Println(opt.Val)
+		// fmt.Printf("writing inline %s - %T\n", opt.Val, opt.Val)
+		f.writeInline(opt.Val)
+		f.writeLineEnd(compactOptionsNode.Commas[i])
 	}
 }

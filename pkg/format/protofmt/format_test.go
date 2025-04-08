@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/walteh/retab/v2/gen/mocks/pkg/formatmock"
+	"github.com/walteh/retab/v2/pkg/diff"
 	"github.com/walteh/retab/v2/pkg/format"
 	"github.com/walteh/retab/v2/pkg/format/protofmt"
 )
@@ -32,10 +33,6 @@ type formatTest struct {
 	useTabs  bool
 	src      string
 	expected string
-}
-
-func visualizeWhitespace(s string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(s, " ", "·"), "\t", "→")
 }
 
 func TestAlignmentCases(t *testing.T) {
@@ -222,8 +219,55 @@ message EnvironmentOptionsRequest {
 	];
 }`,
 		},
-	}
+		{
+			name:    "Edition Field Preservation",
+			useTabs: true,
+			src: `edition = "2023";
+package example;
 
+message Test {
+	string name = 1;
+	int32 id = 2;
+}`,
+			expected: `edition = "2023";
+package example;
+
+message Test {
+	string name = 1;
+	int32  id   = 2;
+}`,
+		},
+		{
+			name:    "complex nested options",
+			useTabs: true,
+			src: `edition = "2023";
+package example;
+
+message Test {
+  float gt = 4 [
+    (priv.field).cel = {
+      id: "float.gt",
+        expression:
+          "!has(rules.lt) && !has(rules.lte) && (this.isNan() || this <= rules.gt)"
+      }
+    ];
+}`,
+			expected: `edition = "2023";
+package example;
+
+message Test {
+	float gt = 4 [
+		(priv.field).cel = {
+			id: 	
+				"float.gt",
+			expression:
+				"!has(rules.lt) && !has(rules.lte) && (this.isNan() || this <= rules.gt)"
+				"? 'value must be greater than %s'.format([rules.gt]) : ''"
+			}
+		];
+}`,
+		},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -245,33 +289,8 @@ message EnvironmentOptionsRequest {
 				t.Fatalf("Format returned error: %v", err)
 			}
 
-			if got := formatted; got != tt.expected {
-				t.Errorf("Format returned incorrect result.\nExpected (with whitespace):\n%s\nGot (with whitespace):\n%s",
-					visualizeWhitespace(tt.expected),
-					visualizeWhitespace(got))
+			diff.Require(t).Want(tt.expected).Got(formatted).Equals()
 
-				// Show line by line comparison for easier debugging
-				expectedLines := strings.Split(tt.expected, "\n")
-				gotLines := strings.Split(got, "\n")
-
-				minLen := len(expectedLines)
-				if len(gotLines) < minLen {
-					minLen = len(gotLines)
-				}
-
-				for i := 0; i < minLen; i++ {
-					if expectedLines[i] != gotLines[i] {
-						t.Errorf("Line %d difference:\nExpected: %s\nGot:      %s",
-							i+1,
-							visualizeWhitespace(expectedLines[i]),
-							visualizeWhitespace(gotLines[i]))
-					}
-				}
-
-				if len(expectedLines) != len(gotLines) {
-					t.Errorf("Line count mismatch: expected %d, got %d", len(expectedLines), len(gotLines))
-				}
-			}
 		})
 	}
 }
@@ -298,38 +317,6 @@ func TestBasicFieldAlignment(t *testing.T) {
 		t.Fatalf("Format returned error: %v", err)
 	}
 
-	if got := formatted; got != expected {
-		t.Errorf("Format returned incorrect result.\nExpected (with whitespace):\n%s\nGot (with whitespace):\n%s",
-			visualizeWhitespace(expected),
-			visualizeWhitespace(got))
+	diff.Require(t).Want(expected).Got(formatted).Equals()
 
-		// Show line by line comparison
-		expectedLines := strings.Split(expected, "\n")
-		gotLines := strings.Split(got, "\n")
-
-		minLen := len(expectedLines)
-		if len(gotLines) < minLen {
-			minLen = len(gotLines)
-		}
-
-		for i := 0; i < minLen; i++ {
-			if expectedLines[i] != gotLines[i] {
-				t.Errorf("Line %d difference:\nExpected: %s\nGot:      %s",
-					i+1,
-					visualizeWhitespace(expectedLines[i]),
-					visualizeWhitespace(gotLines[i]))
-			}
-		}
-
-		t.Errorf("Expected line lengths: %v", []int{
-			len("\tstring short           = 1;"),
-			len("\tstring very_long_field = 2;"),
-			len("\tint32  medium          = 3;"),
-		})
-		t.Errorf("Got line lengths: %v", []int{
-			len(strings.Split(got, "\n")[1]),
-			len(strings.Split(got, "\n")[2]),
-			len(strings.Split(got, "\n")[3]),
-		})
-	}
 }
