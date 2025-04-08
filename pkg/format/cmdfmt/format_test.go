@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/walteh/retab/v2/gen/mockery"
+	"github.com/walteh/retab/v2/gen/mocks/pkg/formatmock"
 	"github.com/walteh/retab/v2/pkg/format/cmdfmt"
 )
 
@@ -316,7 +316,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
 			ctx := context.Background()
 
-			cfg := &mockery.MockConfiguration_format{}
+			cfg := formatmock.NewMockConfiguration(t)
 			cfg.EXPECT().UseTabs().Return(tt.useTabs)
 			cfg.EXPECT().IndentSize().Return(tt.indentSize)
 			cfg.EXPECT().TrimMultipleEmptyLines().Return(tt.trimMultipleEmptyLines)

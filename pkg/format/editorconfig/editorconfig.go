@@ -84,3 +84,11 @@ func (x *EditorConfigConfiguration) TrimMultipleEmptyLines() bool {
 func (x *EditorConfigConfiguration) OneBracketPerLine() bool {
 	return x.Definition.Raw["one_bracket_per_line"] == "true"
 }
+
+func (x *EditorConfigConfiguration) Raw() map[string]string {
+	raw := make(map[string]string)
+	for k, v := range x.Definition.Raw {
+		raw[k] = v
+	}
+	return raw
+}

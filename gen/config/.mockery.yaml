@@ -10,4 +10,6 @@ issue-845-fix: true
 filename: "{{.InterfaceName}}_mock.gen.go"
 mockname: Mock{{.InterfaceName}}
 packages: # generated
-
+  github.com/walteh/retab/v2/pkg/format:
+    interfaces:
+      Configuration: {}

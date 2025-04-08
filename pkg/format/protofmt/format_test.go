@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/walteh/retab/v2/gen/mockery"
+	"github.com/walteh/retab/v2/gen/mocks/pkg/formatmock"
 	"github.com/walteh/retab/v2/pkg/format"
 	"github.com/walteh/retab/v2/pkg/format/protofmt"
 )
@@ -228,7 +228,7 @@ message EnvironmentOptionsRequest {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			cfg := mockery.NewMockConfiguration_format(t)
+			cfg := formatmock.NewMockConfiguration(t)
 			cfg.EXPECT().UseTabs().Return(tt.useTabs).Maybe()
 			cfg.EXPECT().IndentSize().Return(1).Maybe()
 
@@ -289,7 +289,7 @@ func TestBasicFieldAlignment(t *testing.T) {
 		"\tint32  medium          = 3;\n" +
 		"}\n"
 
-	cfg := mockery.NewMockConfiguration_format(t)
+	cfg := formatmock.NewMockConfiguration(t)
 	cfg.EXPECT().UseTabs().Return(true).Maybe()
 	cfg.EXPECT().IndentSize().Return(1).Maybe()
 
