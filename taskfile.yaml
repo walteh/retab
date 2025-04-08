@@ -15,34 +15,34 @@ tasks:
     test:
         cmd: go test ./...
 
-    refresh-extension-go:
-        dir: code-extension
+    vscode:refresh-go:
+        dir: editors/vscode
         cmds:
             - rm -rf out
             - mkdir -p out
             - cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" out/
-            - cd ../cmd/retab && GOOS=js GOARCH=wasm go build -o ../../code-extension/out/retab.wasm
+            - cd ../cmd/retab && GOOS=js GOARCH=wasm go build -o ../../editors/vscode/out/retab.wasm
             - bun install
 
-    refresh-extension-tinygo:
-        dir: code-extension
+    vscode:refresh-tinygo:
+        dir: editors/vscode
         cmds:
             - rm -rf out
             - mkdir -p out
             - cp "$(tinygo env TINYGOROOT)/targets/wasm_exec.js" out/wasm_exec.tinygo.js
-            - cd ../cmd/retab && GOOS=js GOARCH=wasm tinygo build -o ../../code-extension/out/retab.wasm
+            - cd ../cmd/retab && GOOS=js GOARCH=wasm tinygo build -o ../../editors/vscode/out/retab.wasm
             - bun install
 
-    package-extension:
-        dir: code-extension
+    vscode:package:
+        dir: editors/vscode
         cmds:
-            - task: refresh-extension-go
+            - task: vscode:refresh-go
             - bun run package
             - mv ./retab-*.vsix ~/Downloads
             - open https://marketplace.visualstudio.com/manage/publishers/walteh
 
-    rebuild-extension:
-        dir: code-extension
+    vscode:rebuild:
+        dir: editors/vscode
         cmds:
-            - task: refresh-extension-go
+            - task: vscode:refresh-go
             - bun run build
