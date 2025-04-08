@@ -13,10 +13,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/walteh/retab/v2/pkg/format"
-	"github.com/walteh/retab/v2/pkg/format/cmdfmt"
 	"github.com/walteh/retab/v2/pkg/format/editorconfig"
-	"github.com/walteh/retab/v2/pkg/format/hclfmt"
-	"github.com/walteh/retab/v2/pkg/format/protofmt"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -51,41 +48,6 @@ func NewFmtCommand() *cobra.Command {
 	return cmd
 }
 
-func (me *Handler) getFormatter(ctx context.Context) (format.Provider, error) {
-	if me.formatter == "auto" {
-		formatters := []format.Provider{
-			hclfmt.NewFormatter(),
-			protofmt.NewFormatter(),
-			cmdfmt.NewDartFormatter("dart"),
-			cmdfmt.NewTerraformFormatter("terraform"),
-			cmdfmt.NewSwiftFormatter("swift"),
-		}
-		fmtr, err := format.AutoDetectFormatter(me.filename, formatters)
-		if err != nil {
-			return nil, errors.Errorf("auto-detecting formatter: %w", err)
-		}
-		if fmtr == nil {
-			return nil, errors.Errorf("no formatters found for file '%s'", me.filename)
-		}
-		return fmtr, nil
-	}
-
-	switch me.formatter {
-	case "hcl":
-		return hclfmt.NewFormatter(), nil
-	case "proto":
-		return protofmt.NewFormatter(), nil
-	case "dart":
-		return cmdfmt.NewDartFormatter("dart"), nil
-	case "tf":
-		return cmdfmt.NewTerraformFormatter("terraform"), nil
-	case "swift":
-		return cmdfmt.NewSwiftFormatter("swift"), nil
-	default:
-		return nil, errors.New("invalid formatter")
-	}
-}
-
 func (me *Handler) Run(ctx context.Context) error {
 	fs := afero.NewOsFs()
 
@@ -95,7 +57,7 @@ func (me *Handler) Run(ctx context.Context) error {
 		return errors.Errorf("creating configuration provider: %w", err)
 	}
 
-	fmtr, err := me.getFormatter(ctx)
+	fmtr, err := getFormatter(ctx, me.formatter, me.filename)
 	if err != nil {
 		return err
 	}

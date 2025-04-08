@@ -9,10 +9,7 @@ import (
 	"syscall/js"
 
 	"github.com/walteh/retab/v2/pkg/format"
-	"github.com/walteh/retab/v2/pkg/format/cmdfmt"
 	"github.com/walteh/retab/v2/pkg/format/editorconfig"
-	"github.com/walteh/retab/v2/pkg/format/hclfmt"
-	"github.com/walteh/retab/v2/pkg/format/protofmt"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -20,41 +17,6 @@ var (
 	lastResult string
 	lastError  error
 )
-
-func getFormatter(formatType string, filename string) (format.Provider, error) {
-	if formatType == "auto" {
-		formatters := []format.Provider{
-			hclfmt.NewFormatter(),
-			protofmt.NewFormatter(),
-			cmdfmt.NewDartFormatter("dart"),
-			cmdfmt.NewTerraformFormatter("terraform"),
-			cmdfmt.NewSwiftFormatter("swift"),
-		}
-		fmtr, err := format.AutoDetectFormatter(filename, formatters)
-		if err != nil {
-			return nil, errors.Errorf("auto-detecting formatter: %w", err)
-		}
-		if fmtr == nil {
-			return nil, errors.Errorf("no formatters found for file %q", filename)
-		}
-		return fmtr, nil
-	}
-
-	switch formatType {
-	case "hcl":
-		return hclfmt.NewFormatter(), nil
-	case "proto":
-		return protofmt.NewFormatter(), nil
-	case "dart":
-		return cmdfmt.NewDartFormatter("dart"), nil
-	case "tf":
-		return cmdfmt.NewTerraformFormatter("terraform"), nil
-	case "swift":
-		return cmdfmt.NewSwiftFormatter("swift"), nil
-	default:
-		return nil, errors.Errorf("invalid formatter type: %q", formatType)
-	}
-}
 
 func Fmt(ctx context.Context, this js.Value, args []js.Value) (string, error) {
 	if len(args) != 4 {
@@ -73,7 +35,7 @@ func Fmt(ctx context.Context, this js.Value, args []js.Value) (string, error) {
 	}
 
 	// Get the appropriate formatter
-	fmtr, err := getFormatter(formatter, filename)
+	fmtr, err := getFormatter(ctx, formatter, filename)
 	if err != nil {
 		return "", errors.Errorf("getting formatter: %w", err)
 	}

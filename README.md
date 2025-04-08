@@ -1,6 +1,6 @@
 # retab
 
-A powerful multi-language code formatter that emphasizes tabs-first formatting, with native support for Protocol Buffers and HCL files, plus additional support for external formatters like Terraform, Dart, and Swift.
+A powerful multi-language code formatter that emphasizes tabs-first formatting, with native support for Protocol Buffers, HCL, and YAML files, plus additional support for external formatters like Terraform, Dart, and Swift.
 
 ## Installation
 
@@ -14,6 +14,7 @@ go install github.com/walteh/retab/v2/cmd/retab@latest
 
     -   Protocol Buffers (.proto files)
     -   HashiCorp Configuration Language (HCL)
+    -   YAML (.yaml, .yml files)
 
 -   **External Formatters:**
 
@@ -34,6 +35,7 @@ retab fmt myfile.proto
 # Explicitly specify formatter
 retab fmt myfile.proto --formatter=proto
 retab fmt myfile.hcl --formatter=hcl
+retab fmt myfile.yaml --formatter=yaml
 retab fmt myfile.tf --formatter=tf
 retab fmt myfile.dart --formatter=dart
 retab fmt myfile.swift --formatter=swift
@@ -71,6 +73,34 @@ resource "aws_instance" "example" {
 }
 ```
 
+### YAML
+
+```yaml
+# Before formatting
+services:
+  web:
+    image:    nginx:latest
+    ports:  
+     - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    environment:
+          DEBUG: 'true'
+          API_KEY:     'secret'
+
+# After formatting (with default tab indentation)
+services:
+	web:
+		image: nginx:latest
+		ports:
+			- "80:80"
+		volumes:
+			- ./nginx.conf:/etc/nginx/nginx.conf:ro
+		environment:
+			DEBUG: 'true'
+			API_KEY: 'secret'
+```
+
 ### Swift
 
 ```swift
@@ -99,10 +129,14 @@ retab uses `.editorconfig` for configuration. While designed with tabs in mind, 
 # common settings supported
 indent_style = tab   # 'tab' or 'space'
 indent_size = 4     # Size of indentation
+max_line_length = 120          # Maximum line length for YAML files
 
 # custom settings supported
 trim_multiple_empty_lines = true  # Remove multiple blank lines
 one_bracket_per_line = true  # Force brackets onto new lines
+
+# yaml-specific settings
+pad_line_comments = 2        # Padding spaces before line comments
 ```
 
 If no `.editorconfig` is found, it defaults to:
@@ -135,5 +169,6 @@ This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENS
 
 ## Acknowledgments
 
--   Built with [protocompile](https://github.com/bufbuild/protocompile) for Protocol Buffer formatting
+-   Adapted from [protocompile](https://github.com/bufbuild/protocompile) for Protocol Buffer formatting
 -   Uses [editorconfig-core-go](https://github.com/editorconfig/editorconfig-core-go) for configuration
+-   Uses [yamlfmt](https://github.com/google/yamlfmt) for YAML formatting
