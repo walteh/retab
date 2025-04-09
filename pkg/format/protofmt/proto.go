@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"slices"
 	"strings"
 
 	"github.com/walteh/retab/v2/pkg/format"
@@ -40,54 +39,38 @@ func (me *Formatter) Format(ctx context.Context, cfg format.Configuration, read 
 		return nil, errors.Errorf("failed to format: %w", err)
 	}
 
-	// Do the replacements after formatting
 	result := buf.String()
-	slices.Reverse(fmtr.replacers)
+
 	for _, replacement := range fmtr.replacers {
 		result = strings.Replace(result, replacement.id, replacement.new, -1)
-		// we could remove the trailing whitespace here if we want to
+		// TODO(fix): we could remove the trailing whitespace here if we want to
+		// we can't do it in the formatter because it needs to be done after the replacements are injected
 	}
-	result = strings.ReplaceAll(result, "$indent$", "\t")
+	if cfg.UseTabs() {
+		result = strings.ReplaceAll(result, "$indent$", "\t")
+	} else {
+		result = strings.ReplaceAll(result, "$indent$", strings.Repeat(" ", cfg.IndentSize()))
+	}
 
 	return strings.NewReader(result), nil
 }
 
-// func (me *Formatter) FormatExperimental(ctx context.Context, cfg format.Configuration, read io.Reader) (io.Reader, error) {
-// 	readBytes, err := io.ReadAll(read)
-// 	if err != nil {
-// 		return nil, errors.Errorf("failed to read protobuf: %w", err)
-// 	}
+func (f *formatter) inspectTabWriter() string {
+	// Create a new buffer to capture output
+	var buf bytes.Buffer
 
-// 	reportf := report.NewFile("retab.protobuf-parser", string(readBytes))
+	// Create a new tabwriter with the same settings
+	inspector := format.BuildTabWriter(f.cfg, &buf)
 
-// 	reports := &report.Report{}
-// 	fileNode, ok := parser.Parse(reportf, reports)
-// 	if !ok {
-// 		reports.Canonicalize()
-// 		ren := report.Renderer{
-// 			Compact: true,
-// 		}
-// 		strw := &strings.Builder{}
-// 		errs, warns, err := ren.Render(reports, strw)
-// 		if err != nil {
-// 			return nil, errors.Errorf("failed to render protobuf report: %w", err)
-// 		}
+	// Get the current content by copying from the original writer's buffer
+	// This assumes format.BuildTabWriter uses the same settings
+	if original, ok := f.writer.(*bytes.Buffer); ok {
+		// Copy the current content to the inspector
+		inspector.Write(original.Bytes())
+	}
 
-// 		return nil, errors.Errorf("failed to parse protobuf errors[len=%d] warnings[len=%d]: %w", errs, warns, strw.String())
-// 	}
+	// Flush the inspector (not the original)
+	inspector.Flush()
 
-// 	var buf bytes.Buffer
-// 	fmtr := newFormatter(&buf, fileNode, cfg)
-
-// 	if err := fmtr.Run(); err != nil {
-// 		return nil, errors.Errorf("failed to format: %w", err)
-// 	}
-
-// 	// Do the replacements after formatting
-// 	result := buf.String()
-// 	for id, value := range fmtr.replacers {
-// 		result = strings.Replace(result, id, value, -1)
-// 	}
-
-// 	return strings.NewReader(result), nil
-// }
+	return buf.String()
+}

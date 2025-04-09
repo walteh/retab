@@ -177,36 +177,12 @@ func (f *formatter) Indent(nextNode ast.Node) {
 		}
 	}
 
-	if f.cfg.UseTabs() {
-		f.WriteString(strings.Repeat("$indent$", indent))
-	} else {
-		// todo: do we even need this with the tabwriter?
-		f.WriteString(strings.Repeat(" ", indent*f.cfg.IndentSize()))
-	}
+	f.WriteString(strings.Repeat("$indent$", indent))
+
 }
 
 func (f *formatter) ForceIndent() {
 	f.WriteString(strings.Repeat("$indent$", f.indent))
-}
-
-func (f *formatter) inspectTabWriter() string {
-	// Create a new buffer to capture output
-	var buf bytes.Buffer
-
-	// Create a new tabwriter with the same settings
-	inspector := format.BuildTabWriter(f.cfg, &buf)
-
-	// Get the current content by copying from the original writer's buffer
-	// This assumes format.BuildTabWriter uses the same settings
-	if original, ok := f.writer.(*bytes.Buffer); ok {
-		// Copy the current content to the inspector
-		inspector.Write(original.Bytes())
-	}
-
-	// Flush the inspector (not the original)
-	inspector.Flush()
-
-	return buf.String()
 }
 
 // WriteString writes the given element to the generated output.
@@ -2465,23 +2441,16 @@ func (f *formatter) calculateOptionCommentWidth(options []*ast.OptionNode) int {
 
 // writeServiceOptions writes a list of service options with aligned equals signs
 func (f *formatter) writeOptions(options []*ast.OptionNode) {
-	// maxWidth := f.calculateOptionNameWidth(options)
 
-	// Write options with alignment
 	for i, opt := range options {
 
 		if i > 0 && f.leadingCommentsContainBlankLine(opt) {
 			f.P("")
 		}
 
-		if i == 0 {
-			f.ForceIndent()
-		}
-
 		f.writeStart(opt.Keyword)
 		f.Space()
 		f.writeInline(opt.Name)
-		// Add padding to align equals signs
 		f.Tab()
 		f.writeInline(opt.Equals)
 		f.Space()
@@ -2491,8 +2460,6 @@ func (f *formatter) writeOptions(options []*ast.OptionNode) {
 		f.writeLineEnd(opt.Semicolon)
 
 	}
-
-	// })
 }
 
 func (f *formatter) writeOptionsArray(compactOptionsNode *ast.CompactOptionsNode) {
