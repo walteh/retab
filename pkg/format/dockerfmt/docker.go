@@ -42,11 +42,18 @@ func (f *Formatter) Format(ctx context.Context, cfg format.Configuration, read i
 	// Split content into lines, maintaining line endings
 	lines := strings.SplitAfter(contentStr, "\n")
 
+	indentSize := cfg.IndentSize()
+	if cfg.UseTabs() {
+		indentSize *= 4
+	}
+
 	// Create dockerfmt configuration
 	dockerConfig := &lib.Config{
-		IndentSize:      uint(cfg.IndentSize()),
-		TrailingNewline: getBoolOption(cfg.Raw(), "trailing_newline", true),
-		SpaceRedirects:  getBoolOption(cfg.Raw(), "space_redirects", false),
+		IndentSize: uint(indentSize),
+		// TrailingNewline: getBoolOption(cfg.Raw(), "trailing_newline", true),
+		// SpaceRedirects:  getBoolOption(cfg.Raw(), "space_redirects", false),
+		SpaceRedirects:  true,
+		TrailingNewline: true,
 	}
 
 	// Format the Dockerfile
