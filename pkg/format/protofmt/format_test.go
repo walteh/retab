@@ -198,7 +198,8 @@ message EnvironmentOptionsRequest {
 
 	string name = 1 [
 			(custom.field) = "value", // should be aligned
-			deprecated = true // should be aligned
+			deprecated = true, // should be aligned
+			zeprecated = false // should be zaligned
 	];
 	int32  id = 2 [
 			(validate.rules).int32.gt = 0
@@ -212,7 +213,8 @@ message EnvironmentOptionsRequest {
 
 	string name = 1 [
 		(custom.field) = "value",  // should be aligned
-		deprecated     = true      // should be aligned
+		deprecated     = true,     // should be aligned
+		zeprecated     = false     // should be zaligned
 	];
 	int32  id   = 2 [
 		(validate.rules).int32.gt = 0

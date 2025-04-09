@@ -47,6 +47,7 @@ func (me *Formatter) Format(ctx context.Context, cfg format.Configuration, read 
 		result = strings.Replace(result, replacement.id, replacement.new, -1)
 		// we could remove the trailing whitespace here if we want to
 	}
+	result = strings.ReplaceAll(result, "$indent$", "\t")
 
 	return strings.NewReader(result), nil
 }

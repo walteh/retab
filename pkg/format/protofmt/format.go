@@ -22,12 +22,12 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"text/tabwriter"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/bufbuild/protocompile/ast"
-	"github.com/google/uuid"
 	"github.com/walteh/retab/v2/pkg/format"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/multierr"
@@ -39,6 +39,8 @@ type formatter struct {
 	tabWriter *tabwriter.Writer
 	fileNode  *ast.FileNode
 	cfg       format.Configuration
+
+	fushers []func()
 
 	// Current level of indentation.
 	indent int
@@ -74,6 +76,8 @@ type formatter struct {
 	err error
 
 	replacers []replacement
+
+	counter atomic.Int64
 }
 
 type replacement struct {
@@ -175,11 +179,35 @@ func (f *formatter) Indent(nextNode ast.Node) {
 	}
 
 	if f.cfg.UseTabs() {
-		f.WriteString(strings.Repeat("\t", indent))
+		f.WriteString(strings.Repeat("$indent$", indent))
 	} else {
 		// todo: do we even need this with the tabwriter?
 		f.WriteString(strings.Repeat(" ", indent*f.cfg.IndentSize()))
 	}
+}
+
+func (f *formatter) ForceIndent() {
+	f.WriteString(strings.Repeat("$indent$", f.indent))
+}
+
+func (f *formatter) inspectTabWriter() string {
+	// Create a new buffer to capture output
+	var buf bytes.Buffer
+
+	// Create a new tabwriter with the same settings
+	inspector := format.BuildTabWriter(f.cfg, &buf)
+
+	// Get the current content by copying from the original writer's buffer
+	// This assumes format.BuildTabWriter uses the same settings
+	if original, ok := f.writer.(*bytes.Buffer); ok {
+		// Copy the current content to the inspector
+		inspector.Write(original.Bytes())
+	}
+
+	// Flush the inspector (not the original)
+	inspector.Flush()
+
+	return buf.String()
 }
 
 // WriteString writes the given element to the generated output.
@@ -187,6 +215,15 @@ func (f *formatter) Indent(nextNode ast.Node) {
 // This will not write indentation or newlines. Use P if you
 // want to emit identation or newlines.
 func (f *formatter) WriteString(elem string) {
+	defer func() {
+		ptr, fl, l, c := runtime.Caller(2)
+		funcName := runtime.FuncForPC(ptr).Name()
+		fmt.Println("func", funcName)
+		fmt.Println("file", fl, "line", l, "column", c)
+		fmt.Printf("string %q\n", elem)
+		fmt.Println(f.inspectTabWriter())
+		fmt.Println("---")
+	}()
 	// if f.pendingUnderscore {
 	// 	f.pendingUnderscore = false
 	// 	str := "______"
@@ -230,6 +267,14 @@ func (f *formatter) WriteString(elem string) {
 	if _, err := f.tabWriter.Write([]byte(elem)); err != nil {
 		f.err = multierr.Append(f.err, err)
 	}
+}
+
+func (f *formatter) Tab() {
+	if _, err := f.tabWriter.Write([]byte{'\t'}); err != nil {
+		f.err = multierr.Append(f.err, err)
+	}
+
+	// f.WriteString("\t")
 }
 
 // SetPreviousNode sets the previously written node. This should
@@ -800,7 +845,7 @@ func (f *formatter) writeMessageFieldPrefix(messageFieldNode *ast.MessageFieldNo
 	if messageFieldNode.Sep != nil {
 		f.writeInline(messageFieldNode.Sep)
 	}
-	f.WriteString("\t")
+	f.Tab()
 }
 
 // writeEnum writes the enum node.
@@ -843,7 +888,7 @@ func (f *formatter) writeEnum(enumNode *ast.EnumNode) {
 //	];
 func (f *formatter) writeEnumValue(enumValueNode *ast.EnumValueNode) {
 	f.writeStart(enumValueNode.Name)
-	f.WriteString("\t") // Single tab for alignment
+	f.Tab() // Single tab for alignment
 	f.writeInline(enumValueNode.Equals)
 	f.Space()
 	f.writeInline(enumValueNode.Number)
@@ -879,9 +924,9 @@ func (f *formatter) writeField(fieldNode *ast.FieldNode) {
 		}
 	}
 
-	f.WriteString("\t")
+	f.Tab()
 	f.writeInline(fieldNode.Name)
-	f.WriteString("\t")
+	f.Tab()
 	f.writeInline(fieldNode.Equals)
 	f.Space()
 	f.writeInline(fieldNode.Tag)
@@ -930,9 +975,9 @@ func (f *formatter) calculateFieldPadding(fieldNode *ast.FieldNode) (typeWidth i
 // writeMapField writes a map field (e.g. 'map<string, string> pairs = 1;').
 func (f *formatter) writeMapField(mapFieldNode *ast.MapFieldNode) {
 	f.writeNode(mapFieldNode.MapType)
-	f.WriteString("\t") // Single tab for alignment
+	f.Tab()
 	f.writeInline(mapFieldNode.Name)
-	f.WriteString("\t")
+	f.Tab()
 	f.writeInline(mapFieldNode.Equals)
 	f.Space()
 	f.writeInline(mapFieldNode.Tag)
@@ -1467,7 +1512,7 @@ func (f *formatter) writeOpenBracePrefix(openBrace ast.Node) {
 	if info.LeadingComments().Len() > 0 {
 		f.writeInlineComments(info.LeadingComments())
 		if info.LeadingWhitespace() != "" {
-			f.Space()
+			f.WriteString("\b")
 		}
 	}
 	f.writeNode(openBrace)
@@ -2040,13 +2085,15 @@ func (f *formatter) writeLineEnd(node ast.Node) {
 	if info.LeadingComments().Len() > 0 {
 		f.writeInlineComments(info.LeadingComments())
 		if info.LeadingWhitespace() != "" {
-			f.Space()
+			f.Tab()
 		}
 	}
 	f.writeNode(node)
 	f.Space()
 	f.writeTrailingEndComments(info.TrailingComments())
 }
+
+// func (f *formatter) writeLineEnd
 
 // writeMultilineComments writes the given comments as a newline-delimited block.
 // This is useful for both the beginning of a type (e.g. message, field, etc), as
@@ -2144,7 +2191,7 @@ func (f *formatter) writeTrailingEndComments(comments ast.Comments) {
 	for i := 0; i < comments.Len(); i++ {
 		comment := comments.Index(i)
 		if i > 0 || comment.LeadingWhitespace() != "" {
-			f.WriteString("\t")
+			f.Tab()
 		}
 		f.writeComment(comment.RawText())
 	}
@@ -2445,8 +2492,13 @@ func (f *formatter) writeOptions(options []*ast.OptionNode) {
 
 	// Write options with alignment
 	for i, opt := range options {
+
 		if i > 0 && f.leadingCommentsContainBlankLine(opt) {
 			f.P("")
+		}
+
+		if i == 0 {
+			f.ForceIndent()
 		}
 
 		f.writeStart(opt.Keyword)
@@ -2454,7 +2506,7 @@ func (f *formatter) writeOptions(options []*ast.OptionNode) {
 		f.writeInline(opt.Name)
 		// Add padding to align equals signs
 
-		f.WriteString("\t")
+		f.Tab()
 		// f.Space()
 		f.writeInline(opt.Equals)
 		f.Space()
@@ -2464,51 +2516,216 @@ func (f *formatter) writeOptions(options []*ast.OptionNode) {
 			f.writeInline(opt.Val)
 		})
 		f.writeLineEnd(opt.Semicolon)
+
 	}
+
+	// })
 }
 
 func (f *formatter) writeOptionsArray(compactOptionsNode *ast.CompactOptionsNode) {
-	for i, opt := range compactOptionsNode.Options {
+	// f.ForceIndent()
 
-		f.writeStart(opt.Name)
-		// Add padding to align equals signs
-		f.WriteString("\t")
-		f.writeInline(opt.Equals)
-		f.Space()
-		// pp.Println(opt.Val)
-		// fmt.Printf("writing inline %s - %T\n", opt.Val, opt.Val)
-		if i == len(compactOptionsNode.Options)-1 {
-			f.writeWithIsolatedTabWriter(func() {
+	f.writeWithIsolatedTabWriter(func() {
+		for i, opt := range compactOptionsNode.Options {
+			if i == 0 {
+				f.ForceIndent()
+			}
+			f.writeStart(opt.Name)
+			// Add padding to align equals signs
+			if len(compactOptionsNode.Options) > 1 {
+				f.Tab()
+			} else {
+				f.Space()
+			}
+
+			f.writeInline(opt.Equals)
+			f.Space()
+			// pp.Println(opt.Val)
+			// fmt.Printf("writing inline %s - %T\n", opt.Val, opt.Val)
+			if i == len(compactOptionsNode.Options)-1 {
+
 				f.writeLineEnd(opt.Val)
-			})
-			return
-		}
-		f.writeWithIsolatedTabWriter(func() {
+				// f.WriteString("\t\n")
+				// f.writeLineEnd(opt.Val)
+
+				// f.writeLineEnd(&ast.EmptyDeclNode{})
+				return
+			}
+			// f.writeWithIsolatedTabWriter(func() {
 			f.writeInline(opt.Val)
-		})
-		f.writeLineEnd(compactOptionsNode.Commas[i])
-	}
+			// })
+			f.writeLineEnd(compactOptionsNode.Commas[i])
+		}
+	})
+}
+
+func idString(counter int64) string {
+	return fmt.Sprintf("__________________%d__________________", counter)
 }
 
 func (f *formatter) writeWithIsolatedTabWriter(fn func()) {
-	id := uuid.New().String()
+	// id := uuid.New().String()
+	counter := f.counter.Add(1)
+	id := idString(counter)
+
 	f.WriteString(id)
 	prevReplacers := f.replacers
 	f.replacers = make([]replacement, 0)
 	prevTabWritter := f.tabWriter
 	strbuffer := new(bytes.Buffer)
 	f.tabWriter = format.BuildTabWriter(f.cfg, strbuffer)
+	if id == idString(3) {
+		fmt.Println("id", id)
+	}
 	fn()
 	f.tabWriter.Flush()
 	out := strbuffer.String()
 	caller, l, z, _ := runtime.Caller(1)
 	fns := runtime.FuncForPC(caller)
-	fmt.Println("BEOFRE", caller, l, z, fns.Name(), out)
+	fmt.Println("=================HERE[1]=================")
+	fmt.Println("func", fns.Name())
+	fmt.Println("file", l, "line", z)
+	fmt.Println()
+	fmt.Println("before:")
+	fmt.Println(out)
+	fmt.Println()
 	for _, v := range f.replacers {
+		fmt.Printf("---------replacer [%s] --------\n", v.id)
+		fmt.Println(v.new)
 		out = strings.ReplaceAll(out, v.id, v.new)
+		fmt.Println()
 	}
+	fmt.Println("after:")
 	prevReplacers = append(prevReplacers, replacement{id: id, new: out})
 	fmt.Println(out)
+	fmt.Println()
 	f.replacers = prevReplacers
 	f.tabWriter = prevTabWritter
+}
+
+// formatInIsolation creates an isolated formatting context to handle elements that
+// need specialized tab alignment. Instead of using string replacements, it directly
+// formats the content in an isolated buffer and writes the result back to the main output.
+func (f *formatter) formatInIsolation(fn func()) {
+	// Save the current state
+	prevWriter := f.writer
+	prevTabWriter := f.tabWriter
+	prevIndent := f.indent
+	prevLastWritten := f.lastWritten
+	prevPendingSpace := f.pendingSpace
+	prevInCompactOptions := f.inCompactOptions
+	prevPendingIndent := f.pendingIndent
+	prevInline := f.inline
+
+	// Create a new buffer for isolated formatting
+	buffer := new(bytes.Buffer)
+	f.writer = buffer
+	f.tabWriter = format.BuildTabWriter(f.cfg, buffer)
+
+	// Execute the formatting function
+	fn()
+
+	// Flush the tab writer to ensure all content is written to the buffer
+	if err := f.tabWriter.Flush(); err != nil {
+		f.err = multierr.Append(f.err, err)
+	}
+
+	// Write the formatted content directly to the original writer
+	if _, err := prevWriter.Write(buffer.Bytes()); err != nil {
+		f.err = multierr.Append(f.err, err)
+	}
+
+	// Restore the previous state
+	f.writer = prevWriter
+	f.tabWriter = prevTabWriter
+	f.indent = prevIndent
+	f.lastWritten = prevLastWritten
+	f.pendingSpace = prevPendingSpace
+	f.inCompactOptions = prevInCompactOptions
+	f.pendingIndent = prevPendingIndent
+	f.inline = prevInline
+}
+
+func (f *formatter) writeWithIsolatedTabWriterb(fn func()) {
+	prevTabWriter := f.tabWriter
+
+	f.tabWriter = format.BuildTabWriter(f.cfg, f.writer)
+	fn()
+	// f.tabWriter.Flush()
+	f.tabWriter = prevTabWriter
+}
+
+// alignedBlock executes the given function in a context where tab alignment is
+// controlled directly. This ensures that elements are properly aligned without
+// excess tabbing or complex string replacements.
+func (f *formatter) writeWithIsolatedTabWriter33(fn func()) {
+	// Save current state
+	prevPendingSpace := f.pendingSpace
+	prevLastWritten := f.lastWritten
+	prevIndent := f.indent
+	prevPendingIndent := f.pendingIndent
+	prevInline := f.inline
+
+	// We need to ensure proper spacing between field names and values
+	// but avoid excessive indentation in nested structures
+	f.pendingSpace = false
+
+	// For nested structures, we want to add just one level of indentation
+	// rather than inheriting potentially multiple levels
+	// originalIndent := f.indent
+	if f.indent > 1 && f.pendingIndent > 0 {
+		// When we're already indented and in a nested structure,
+		// use a fixed indentation level to avoid excessive nesting
+		f.indent = 2
+	} else if f.pendingIndent > 0 {
+		// Otherwise add exactly one level of indentation from current
+		f.indent = f.indent + 1
+	}
+
+	// Execute with controlled indentation
+	fn()
+
+	// Restore previous state
+	f.pendingSpace = prevPendingSpace
+	f.indent = prevIndent
+	f.pendingIndent = prevPendingIndent
+	f.inline = prevInline
+
+	// Only restore lastWritten if it wasn't changed
+	if f.lastWritten == prevLastWritten {
+		f.lastWritten = prevLastWritten
+	}
+}
+
+// alignedBlock executes the given function in a context where tab alignment is
+// controlled directly. This ensures that elements are properly aligned without
+// excess tabbing or complex string replacements.
+func (f *formatter) writeWithIsolatedTabWriter8(fn func()) {
+	// Save pending space state to restore it later
+	prevPendingSpace := f.pendingSpace
+	prevLastWritten := f.lastWritten
+	prevIndex := f.indent
+	prevPendingIndent := f.pendingIndent
+	prevInline := f.inline
+
+	// Reset pending space to avoid unexpected spacing
+	f.pendingSpace = false
+	f.indent = f.pendingIndent + 1
+	// f.pendingIndent = prevIndex - 1
+	f.inline = false
+	// f.lastWritten = '\n'
+
+	// Execute the function that needs controlled alignment
+	fn()
+
+	// Restore previous state
+	f.pendingSpace = prevPendingSpace
+	f.indent = prevIndex
+	f.inline = prevInline
+	f.pendingIndent = prevPendingIndent
+
+	// Only restore lastWritten if it wasn't changed
+	if f.lastWritten == prevLastWritten {
+		f.lastWritten = prevLastWritten
+	}
 }
