@@ -19,10 +19,29 @@
 		"onLanguage:dart",
 		"onLanguage:swift",
 		"onLanguage:yaml",
-		"onLanguage:yml"
+		"onLanguage:bash",
+		"onLanguage:zsh",
+		"onLanguage:shell"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"configurationDefaults": {
+			"[hcl]": {
+				"editor.defaultFormatter": "walteh.retab-vscode"
+			},
+			"[yaml]": {
+				"editor.defaultFormatter": "walteh.retab-vscode"
+			},
+			"[shellscript]": {
+				"editor.defaultFormatter": "walteh.retab-vscode"
+			},
+			"[proto]": {
+				"editor.defaultFormatter": "walteh.retab-vscode"
+			},
+			"[terraform]": {
+				"editor.defaultFormatter": "walteh.retab-vscode"
+			}
+		},
 		"configuration": {
 			"title": "retab",
 			"properties": {
