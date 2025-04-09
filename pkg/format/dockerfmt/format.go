@@ -1,3 +1,6 @@
+// this file is a modified copy of:
+// https://github.com/reteps/dockerfmt/blob/9be49cc611c55cdfa2203745ae0351c69e73faa5/lib/format.go
+
 package dockerfmt
 
 import (
@@ -8,6 +11,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/google/shlex"
@@ -218,9 +222,13 @@ func formatEnv(n *ExtendedNode, c *Config) string {
 	content := StripWhitespace(regexp.MustCompile(" ").Split(originalTrimmed, 2)[1], true)
 	// Indent all lines with indentSize spaces
 	lines := strings.Split(content, "\n")
+	lines = slices.DeleteFunc(lines, func(line string) bool {
+		return strings.TrimSpace(line) == ""
+	})
+	lines = append(lines, "")
 	for i, line := range lines {
 		if i == 0 { // Don't indent the first line
-			// make sure there is only one space between ENV and the first variable
+			// do nothing
 		} else {
 			lines[i] = "$indent$" + strings.TrimSpace(line)
 		}
@@ -250,6 +258,14 @@ func formatShell(content string, hereDoc bool, c *Config) string {
 		// log.Printf("Content0: %s\n", content)
 		re := regexp.MustCompile(`(\\\n\s+)((?:\s*#.*){1,})`)
 		content = re.ReplaceAllString(content, `'dummynode';$1$( $2`+"\n"+`)\`)
+
+		// remove empty lines
+		lines := strings.SplitAfter(content, "\n")
+		lines = slices.DeleteFunc(lines, func(line string) bool {
+			return strings.TrimSpace(line) == ""
+		})
+		content = strings.Join(lines, "")
+
 	}
 
 	// Now that we have a valid bash-style command, we can format it with shfmt
@@ -268,6 +284,16 @@ func formatShell(content string, hereDoc bool, c *Config) string {
 
 		// Add backslashes if needed
 		lines := strings.SplitAfter(content, "\n")
+		// for i, line := range lines {
+		// 	fmt.Printf("BEFORE %d: %q\n", i, line)
+		// }
+		// lines = slices.DeleteFunc(lines, func(line string) bool {
+		// 	return strings.TrimSpace(line) == ""
+		// })
+		// print them out
+		// for i, line := range lines {
+		// 	fmt.Printf("AFTER %d: %q\n", i, line)
+		// }
 		for i := 0; i < len(lines); i++ {
 			line := lines[i]
 			if len(line) > 0 && line[len(line)-2] != '\\' && line[len(line)-1] == '\n' {
@@ -481,7 +507,7 @@ func IndentFollowingLines(lines string, indentSize uint) string {
 
 func formatBash(s string, c *Config) string {
 	r := strings.NewReader(s)
-	f, err := syntax.NewParser(syntax.KeepComments(true)).Parse(r, "")
+	f, err := syntax.NewParser(syntax.KeepComments(true), syntax.Variant(syntax.LangPOSIX)).Parse(r, "")
 	if err != nil {
 		fmt.Printf("Error parsing: %s\n", s)
 		panic(err)
@@ -492,6 +518,7 @@ func formatBash(s string, c *Config) string {
 		syntax.SingleLine(false),
 		syntax.SpaceRedirects(c.SpaceRedirects),
 		syntax.Indent(0),
+		syntax.SwitchCaseIndent(true),
 		syntax.BinaryNextLine(true),
 	).Print(buf, f)
 	return buf.String()

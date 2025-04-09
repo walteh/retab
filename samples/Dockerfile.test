@@ -6,8 +6,8 @@ RUN apk add --no-cache \
 	make \
 	git push \
 	&& sup over there \
-	gcc \
-	musl-dev
+		gcc \
+		musl-dev
 
 # Set working directory
 WORKDIR /app
@@ -57,6 +57,7 @@ EXPOSE 8080
 # Set environment variables
 ENV APP_ENV=production \
 	LOG_LEVEL=info
+
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 	CMD curl -f http://localhost:8080/health || exit 1
