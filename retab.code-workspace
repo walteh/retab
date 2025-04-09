@@ -45,9 +45,7 @@
 		// ESLint Configuration
 		//===========================================
 		"eslint.options": {
-			"flags": [
-				"unstable_ts_config"
-			]
+			"flags": ["unstable_ts_config"]
 		},
 		"eslint.useESLintClass": true,
 		//===========================================
@@ -101,32 +99,7 @@
 		//===========================================
 		// Protobuf Settings
 		//===========================================
-		"[protobuf]": {
-			"editor.defaultFormatter": "walteh.retab-vscode"
-		},
-		//===========================================
-		// Terraform Settings
-		//===========================================
-		"terraform.experimentalFeatures.validateOnSave": true,
-		"[terraform]": {
-			"editor.defaultFormatter": "walteh.retab-vscode",
-			"editor.formatOnSave": false,
-			"editor.codeActionsOnSave": {
-				"source.formatAll.terraform": "always"
-			}
-		},
-		"[terraform-vars]": {
-			"editor.defaultFormatter": "walteh.retab-vscode",
-			"editor.formatOnSave": false,
-			"editor.codeActionsOnSave": {
-				"source.formatAll.terraform": "always"
-			}
-		},
-		"[hcl]": {
-			"editor.useTabStops": true,
-			"editor.tabSize": 4,
-			"editor.defaultFormatter": "walteh.retab-vscode"
-		},
+
 		//===========================================
 		// Material Icon Theme Customization
 		//===========================================
@@ -180,10 +153,7 @@
 		// SVG Settings
 		//===========================================
 		"svg.preview.background": "transparent",
-		"align-bicep.disallowed-language-ids": [
-			"terraform",
-			"go"
-		],
+		"align-bicep.disallowed-language-ids": ["terraform", "go"],
 		"dockerfile-tidy.formatOnSave": true,
 		"retab.use_wasm": false
 	}

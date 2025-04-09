@@ -54,6 +54,7 @@ export enum VSCodeLanguageID {
 	KSH = "ksh",
 	SH_OR_BASH = "sh_or_bash",
 	SHELL = "shell",
+	SHELL_SCRIPT = "shellscript",
 }
 
 // Format types enum
@@ -88,6 +89,7 @@ export const SUPPORTED_LANGUAGES: VSCodeLanguageID[] = [
 	VSCodeLanguageID.KSH,
 	VSCodeLanguageID.SH_OR_BASH,
 	VSCodeLanguageID.SHELL,
+	VSCodeLanguageID.SHELL_SCRIPT,
 ];
 
 // Interface for engine implementations
@@ -119,6 +121,7 @@ function getFormatType(languageId: string, formatTfAsHcl: boolean): RetabFormat 
 		[VSCodeLanguageID.KSH]: RetabFormat.SHELL,
 		[VSCodeLanguageID.SH_OR_BASH]: RetabFormat.SHELL,
 		[VSCodeLanguageID.SHELL]: RetabFormat.SHELL,
+		[VSCodeLanguageID.SHELL_SCRIPT]: RetabFormat.SHELL,
 	};
 
 	// Get the base format type

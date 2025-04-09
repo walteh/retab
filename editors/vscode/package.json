@@ -6,7 +6,7 @@
 	"publisher": "walteh",
 	"icon": "icon.png",
 	"engines": {
-		"vscode": "^1.74.0"
+		"vscode": "^1.91.0"
 	},
 	"categories": [
 		"Formatters"
@@ -21,7 +21,7 @@
 		"onLanguage:yaml",
 		"onLanguage:bash",
 		"onLanguage:zsh",
-		"onLanguage:shell"
+		"onLanguage:shellscript"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -39,8 +39,20 @@
 				"editor.defaultFormatter": "walteh.retab-vscode"
 			},
 			"[terraform]": {
-				"editor.defaultFormatter": "walteh.retab-vscode"
-			}
+				"editor.defaultFormatter": "walteh.retab-vscode",
+				"editor.formatOnSave": false,
+				"editor.codeActionsOnSave": {
+					"source.formatAll.terraform": "always"
+				}
+			},
+			"[terraform-vars]": {
+				"editor.defaultFormatter": "walteh.retab-vscode",
+				"editor.formatOnSave": false,
+				"editor.codeActionsOnSave": {
+					"source.formatAll.terraform": "always"
+				}
+			},
+			"yaml.format.enable": false
 		},
 		"configuration": {
 			"title": "retab",
