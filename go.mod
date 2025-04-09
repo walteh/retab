@@ -22,7 +22,7 @@ require (
 	github.com/spf13/afero v1.14.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
-	github.com/walteh/yaml v0.0.0-20240906221017-df4c3eb1fe66
+	github.com/walteh/yaml v0.0.0-20250409173318-a722555a2a54
 	gitlab.com/tozd/go/errors v0.10.0
 	go.uber.org/multierr v1.11.0
 	mvdan.cc/sh/v3 v3.11.0
