@@ -48,6 +48,13 @@ export enum VSCodeLanguageID {
 	SWIFT = "swift",
 	YAML = "yaml",
 	YML = "yml",
+	SH = "sh",
+	BASH = "bash",
+	ZSH = "zsh",
+	KSH = "ksh",
+	SH_OR_BASH = "sh_or_bash",
+	SHELL = "shell",
+	SHELL_SCRIPT = "shellscript",
 }
 
 // Format types enum
@@ -59,6 +66,7 @@ export enum RetabFormat {
 	SWIFT = "swift",
 	AUTO = "auto",
 	YAML = "yaml",
+	SHELL = "shell",
 }
 
 // Supported languages array
@@ -75,6 +83,13 @@ export const SUPPORTED_LANGUAGES: VSCodeLanguageID[] = [
 	VSCodeLanguageID.SWIFT,
 	VSCodeLanguageID.YAML,
 	VSCodeLanguageID.YML,
+	VSCodeLanguageID.SH,
+	VSCodeLanguageID.BASH,
+	VSCodeLanguageID.ZSH,
+	VSCodeLanguageID.KSH,
+	VSCodeLanguageID.SH_OR_BASH,
+	VSCodeLanguageID.SHELL,
+	VSCodeLanguageID.SHELL_SCRIPT,
 ];
 
 // Interface for engine implementations
@@ -100,6 +115,13 @@ function getFormatType(languageId: string, formatTfAsHcl: boolean): RetabFormat 
 		[VSCodeLanguageID.SWIFT]: RetabFormat.SWIFT,
 		[VSCodeLanguageID.YAML]: RetabFormat.YAML,
 		[VSCodeLanguageID.YML]: RetabFormat.YAML,
+		[VSCodeLanguageID.SH]: RetabFormat.SHELL,
+		[VSCodeLanguageID.BASH]: RetabFormat.SHELL,
+		[VSCodeLanguageID.ZSH]: RetabFormat.SHELL,
+		[VSCodeLanguageID.KSH]: RetabFormat.SHELL,
+		[VSCodeLanguageID.SH_OR_BASH]: RetabFormat.SHELL,
+		[VSCodeLanguageID.SHELL]: RetabFormat.SHELL,
+		[VSCodeLanguageID.SHELL_SCRIPT]: RetabFormat.SHELL,
 	};
 
 	// Get the base format type
