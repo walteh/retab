@@ -55,6 +55,7 @@ export enum VSCodeLanguageID {
 	SH_OR_BASH = "sh_or_bash",
 	SHELL = "shell",
 	SHELL_SCRIPT = "shellscript",
+	DOCKERFILE = "dockerfile",
 }
 
 // Format types enum
@@ -67,6 +68,7 @@ export enum RetabFormat {
 	AUTO = "auto",
 	YAML = "yaml",
 	SHELL = "shell",
+	DOCKERFILE = "dockerfile",
 }
 
 // Supported languages array
@@ -90,6 +92,7 @@ export const SUPPORTED_LANGUAGES: VSCodeLanguageID[] = [
 	VSCodeLanguageID.SH_OR_BASH,
 	VSCodeLanguageID.SHELL,
 	VSCodeLanguageID.SHELL_SCRIPT,
+	VSCodeLanguageID.DOCKERFILE,
 ];
 
 // Interface for engine implementations
@@ -122,6 +125,7 @@ function getFormatType(languageId: string, formatTfAsHcl: boolean): RetabFormat 
 		[VSCodeLanguageID.SH_OR_BASH]: RetabFormat.SHELL,
 		[VSCodeLanguageID.SHELL]: RetabFormat.SHELL,
 		[VSCodeLanguageID.SHELL_SCRIPT]: RetabFormat.SHELL,
+		[VSCodeLanguageID.DOCKERFILE]: RetabFormat.DOCKERFILE,
 	};
 
 	// Get the base format type

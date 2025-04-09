@@ -21,7 +21,8 @@
 		"onLanguage:yaml",
 		"onLanguage:bash",
 		"onLanguage:zsh",
-		"onLanguage:shellscript"
+		"onLanguage:shellscript",
+		"onLanguage:dockerfile"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -52,7 +53,13 @@
 					"source.formatAll.terraform": "always"
 				}
 			},
-			"yaml.format.enable": false
+			"yaml.format.enable": false,
+			"[dockerfile]": {
+				"editor.defaultFormatter": "walteh.retab-vscode"
+			},
+			"[docker]": {
+				"editor.defaultFormatter": "walteh.retab-vscode"
+			}
 		},
 		"configuration": {
 			"title": "retab",

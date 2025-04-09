@@ -5,6 +5,7 @@ import (
 
 	"github.com/walteh/retab/v2/pkg/format"
 	"github.com/walteh/retab/v2/pkg/format/cmdfmt"
+	"github.com/walteh/retab/v2/pkg/format/dockerfmt"
 	"github.com/walteh/retab/v2/pkg/format/hclfmt"
 	"github.com/walteh/retab/v2/pkg/format/protofmt"
 	"github.com/walteh/retab/v2/pkg/format/shfmt"
@@ -22,6 +23,7 @@ func getFormatter(ctx context.Context, formatter string, filename string) (forma
 			cmdfmt.NewSwiftFormatter("swift"),
 			yamlfmt.NewFormatter(),
 			shfmt.NewFormatter(),
+			dockerfmt.NewFormatter(),
 		}
 		fmtr, err := format.AutoDetectFormatter(filename, formatters)
 		if err != nil {
@@ -48,6 +50,8 @@ func getFormatter(ctx context.Context, formatter string, filename string) (forma
 		return yamlfmt.NewFormatter(), nil
 	case "sh", "bash", "zsh", "ksh", "shell":
 		return shfmt.NewFormatter(), nil
+	case "dockerfile", "docker":
+		return dockerfmt.NewFormatter(), nil
 	default:
 		return nil, errors.New("invalid formatter")
 	}

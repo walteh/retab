@@ -32,6 +32,7 @@ func (f *Formatter) Format(ctx context.Context, cfg format.Configuration, read i
 	// Determine the shell dialect based on configuration or file extension
 	// Default to bash if not specified
 	langVar := syntax.LangBash
+
 	if dialect, ok := cfg.Raw()["shell_dialect"]; ok {
 		if err := langVar.Set(dialect); err != nil {
 			return nil, errors.Errorf("invalid shell dialect %q: %w", dialect, err)
@@ -50,11 +51,11 @@ func (f *Formatter) Format(ctx context.Context, cfg format.Configuration, read i
 	// Create a new printer
 	printer := syntax.NewPrinter()
 
-	// Apply minify setting if present
-	minify := cfg.Raw()["minify"] == "true"
-	if minify {
-		syntax.Minify(true)(printer)
-	}
+	// // Apply minify setting if present
+	// minify := cfg.Raw()["minify"] == "true"
+	// if minify {
+	// 	syntax.Minify(true)(printer)
+	// }
 
 	// Apply configuration
 	var indent uint
@@ -62,34 +63,16 @@ func (f *Formatter) Format(ctx context.Context, cfg format.Configuration, read i
 		indent = uint(cfg.IndentSize())
 	}
 
-	// Configure printer options based on configuration
+	syntax.FunctionNextLine(false)(printer)
+	syntax.SwitchCaseIndent(true)(printer)
+	syntax.SpaceRedirects(true)(printer)
+	syntax.KeepPadding(true)(printer)
+	syntax.BinaryNextLine(true)(printer)
 	syntax.Indent(indent)(printer)
-
-	// Apply additional formatting options if specified
-	if getBoolOption(cfg.Raw(), "binary_next_line") {
-		syntax.BinaryNextLine(true)(printer)
-	}
-
-	if getBoolOption(cfg.Raw(), "switch_case_indent") {
-		syntax.SwitchCaseIndent(true)(printer)
-	}
-
-	if getBoolOption(cfg.Raw(), "space_redirects") {
-		syntax.SpaceRedirects(true)(printer)
-	}
-
-	if getBoolOption(cfg.Raw(), "keep_padding") {
-		syntax.KeepPadding(true)(printer)
-	}
-
-	if getBoolOption(cfg.Raw(), "function_next_line") {
-		syntax.FunctionNextLine(true)(printer)
-	}
-
-	// Apply simplification if configured
-	if getBoolOption(cfg.Raw(), "simplify") || minify {
-		syntax.Simplify(prog)
-	}
+	syntax.Minify(false)(printer)
+	syntax.SingleLine(false)(printer)
+	// syntax.Simplify(prog)
+	syntax.SpaceRedirects(true)(printer)
 
 	// Format the code
 	var buf bytes.Buffer
@@ -99,10 +82,4 @@ func (f *Formatter) Format(ctx context.Context, cfg format.Configuration, read i
 	}
 
 	return bytes.NewReader(buf.Bytes()), nil
-}
-
-// getBoolOption is a helper function to check if a config option is "true"
-func getBoolOption(options map[string]string, name string) bool {
-	val, ok := options[name]
-	return ok && val == "true"
 }
