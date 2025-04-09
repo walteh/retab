@@ -3,6 +3,7 @@ package protofmt_test
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"io"
 	"strings"
 	"testing"
@@ -354,4 +355,23 @@ func TestBasicFieldAlignment(t *testing.T) {
 
 	diff.Require(t).Want(expected).Got(formatted).Equals()
 
+}
+
+//go:embed testdata/big_complex_file_unformatted.proto
+var bigComplexFileUnformatted []byte
+
+//go:embed testdata/big_complex_file_expected.proto
+var bigComplexFileExpected []byte
+
+func TestBigComplexFile(t *testing.T) {
+	cfg := formatmock.NewMockConfiguration(t)
+	cfg.EXPECT().UseTabs().Return(true).Maybe()
+	cfg.EXPECT().IndentSize().Return(1).Maybe()
+
+	formatted, err := formatProto(t.Context(), cfg, bigComplexFileUnformatted)
+	if err != nil {
+		t.Fatalf("Format returned error: %v", err)
+	}
+
+	diff.Require(t).Want(string(bigComplexFileExpected)).Got(formatted).Equals()
 }

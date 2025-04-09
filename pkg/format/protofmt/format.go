@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"runtime"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -215,23 +214,7 @@ func (f *formatter) inspectTabWriter() string {
 // This will not write indentation or newlines. Use P if you
 // want to emit identation or newlines.
 func (f *formatter) WriteString(elem string) {
-	defer func() {
-		ptr, fl, l, c := runtime.Caller(2)
-		funcName := runtime.FuncForPC(ptr).Name()
-		fmt.Println("func", funcName)
-		fmt.Println("file", fl, "line", l, "column", c)
-		fmt.Printf("string %q\n", elem)
-		fmt.Println(f.inspectTabWriter())
-		fmt.Println("---")
-	}()
-	// if f.pendingUnderscore {
-	// 	f.pendingUnderscore = false
-	// 	str := "______"
-	// 	if _, err := f.tabWriter.Write([]byte(str)); err != nil {
-	// 		f.err = multierr.Append(f.err, err)
-	// 		return
-	// 	}
-	// }
+
 	if f.pendingSpace {
 		f.pendingSpace = false
 		first, _ := utf8.DecodeRuneInString(elem)
@@ -273,8 +256,6 @@ func (f *formatter) Tab() {
 	if _, err := f.tabWriter.Write([]byte{'\t'}); err != nil {
 		f.err = multierr.Append(f.err, err)
 	}
-
-	// f.WriteString("\t")
 }
 
 // SetPreviousNode sets the previously written node. This should
@@ -297,10 +278,6 @@ func (f *formatter) writeFile() {
 		f.P("")
 	}
 }
-
-// func (f *formatter) replace(id string, str string) {
-// 	f.replacers[id] = str
-// }
 
 // writeFileHeader writes the header of a .proto file. This includes the syntax,
 // package, imports, and options (in that order). The imports and options are
@@ -2574,158 +2551,15 @@ func (f *formatter) writeWithIsolatedTabWriter(fn func()) {
 	prevTabWritter := f.tabWriter
 	strbuffer := new(bytes.Buffer)
 	f.tabWriter = format.BuildTabWriter(f.cfg, strbuffer)
-	if id == idString(3) {
-		fmt.Println("id", id)
-	}
+
 	fn()
 	f.tabWriter.Flush()
 	out := strbuffer.String()
-	caller, l, z, _ := runtime.Caller(1)
-	fns := runtime.FuncForPC(caller)
-	fmt.Println("=================HERE[1]=================")
-	fmt.Println("func", fns.Name())
-	fmt.Println("file", l, "line", z)
-	fmt.Println()
-	fmt.Println("before:")
-	fmt.Println(out)
-	fmt.Println()
 	for _, v := range f.replacers {
-		fmt.Printf("---------replacer [%s] --------\n", v.id)
-		fmt.Println(v.new)
 		out = strings.ReplaceAll(out, v.id, v.new)
-		fmt.Println()
 	}
-	fmt.Println("after:")
 	prevReplacers = append(prevReplacers, replacement{id: id, new: out})
-	fmt.Println(out)
-	fmt.Println()
+
 	f.replacers = prevReplacers
 	f.tabWriter = prevTabWritter
-}
-
-// formatInIsolation creates an isolated formatting context to handle elements that
-// need specialized tab alignment. Instead of using string replacements, it directly
-// formats the content in an isolated buffer and writes the result back to the main output.
-func (f *formatter) formatInIsolation(fn func()) {
-	// Save the current state
-	prevWriter := f.writer
-	prevTabWriter := f.tabWriter
-	prevIndent := f.indent
-	prevLastWritten := f.lastWritten
-	prevPendingSpace := f.pendingSpace
-	prevInCompactOptions := f.inCompactOptions
-	prevPendingIndent := f.pendingIndent
-	prevInline := f.inline
-
-	// Create a new buffer for isolated formatting
-	buffer := new(bytes.Buffer)
-	f.writer = buffer
-	f.tabWriter = format.BuildTabWriter(f.cfg, buffer)
-
-	// Execute the formatting function
-	fn()
-
-	// Flush the tab writer to ensure all content is written to the buffer
-	if err := f.tabWriter.Flush(); err != nil {
-		f.err = multierr.Append(f.err, err)
-	}
-
-	// Write the formatted content directly to the original writer
-	if _, err := prevWriter.Write(buffer.Bytes()); err != nil {
-		f.err = multierr.Append(f.err, err)
-	}
-
-	// Restore the previous state
-	f.writer = prevWriter
-	f.tabWriter = prevTabWriter
-	f.indent = prevIndent
-	f.lastWritten = prevLastWritten
-	f.pendingSpace = prevPendingSpace
-	f.inCompactOptions = prevInCompactOptions
-	f.pendingIndent = prevPendingIndent
-	f.inline = prevInline
-}
-
-func (f *formatter) writeWithIsolatedTabWriterb(fn func()) {
-	prevTabWriter := f.tabWriter
-
-	f.tabWriter = format.BuildTabWriter(f.cfg, f.writer)
-	fn()
-	// f.tabWriter.Flush()
-	f.tabWriter = prevTabWriter
-}
-
-// alignedBlock executes the given function in a context where tab alignment is
-// controlled directly. This ensures that elements are properly aligned without
-// excess tabbing or complex string replacements.
-func (f *formatter) writeWithIsolatedTabWriter33(fn func()) {
-	// Save current state
-	prevPendingSpace := f.pendingSpace
-	prevLastWritten := f.lastWritten
-	prevIndent := f.indent
-	prevPendingIndent := f.pendingIndent
-	prevInline := f.inline
-
-	// We need to ensure proper spacing between field names and values
-	// but avoid excessive indentation in nested structures
-	f.pendingSpace = false
-
-	// For nested structures, we want to add just one level of indentation
-	// rather than inheriting potentially multiple levels
-	// originalIndent := f.indent
-	if f.indent > 1 && f.pendingIndent > 0 {
-		// When we're already indented and in a nested structure,
-		// use a fixed indentation level to avoid excessive nesting
-		f.indent = 2
-	} else if f.pendingIndent > 0 {
-		// Otherwise add exactly one level of indentation from current
-		f.indent = f.indent + 1
-	}
-
-	// Execute with controlled indentation
-	fn()
-
-	// Restore previous state
-	f.pendingSpace = prevPendingSpace
-	f.indent = prevIndent
-	f.pendingIndent = prevPendingIndent
-	f.inline = prevInline
-
-	// Only restore lastWritten if it wasn't changed
-	if f.lastWritten == prevLastWritten {
-		f.lastWritten = prevLastWritten
-	}
-}
-
-// alignedBlock executes the given function in a context where tab alignment is
-// controlled directly. This ensures that elements are properly aligned without
-// excess tabbing or complex string replacements.
-func (f *formatter) writeWithIsolatedTabWriter8(fn func()) {
-	// Save pending space state to restore it later
-	prevPendingSpace := f.pendingSpace
-	prevLastWritten := f.lastWritten
-	prevIndex := f.indent
-	prevPendingIndent := f.pendingIndent
-	prevInline := f.inline
-
-	// Reset pending space to avoid unexpected spacing
-	f.pendingSpace = false
-	f.indent = f.pendingIndent + 1
-	// f.pendingIndent = prevIndex - 1
-	f.inline = false
-	// f.lastWritten = '\n'
-
-	// Execute the function that needs controlled alignment
-	fn()
-
-	// Restore previous state
-	f.pendingSpace = prevPendingSpace
-	f.indent = prevIndex
-	f.inline = prevInline
-	f.pendingIndent = prevPendingIndent
-
-	// Only restore lastWritten if it wasn't changed
-	if f.lastWritten == prevLastWritten {
-		f.lastWritten = prevLastWritten
-	}
 }
