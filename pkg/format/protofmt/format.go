@@ -1489,7 +1489,7 @@ func (f *formatter) writeOpenBracePrefix(openBrace ast.Node) {
 	if info.LeadingComments().Len() > 0 {
 		f.writeInlineComments(info.LeadingComments())
 		if info.LeadingWhitespace() != "" {
-			f.WriteString("\b")
+			f.Tab()
 		}
 	}
 	f.writeNode(openBrace)
@@ -2482,13 +2482,9 @@ func (f *formatter) writeOptions(options []*ast.OptionNode) {
 		f.Space()
 		f.writeInline(opt.Name)
 		// Add padding to align equals signs
-
 		f.Tab()
-		// f.Space()
 		f.writeInline(opt.Equals)
 		f.Space()
-		// pp.Println(opt.Val)
-		// fmt.Printf("writing inline 2 %s - %T\n", opt.Val, opt.Val)
 		f.writeWithIsolatedTabWriter(func() {
 			f.writeInline(opt.Val)
 		})
@@ -2500,7 +2496,6 @@ func (f *formatter) writeOptions(options []*ast.OptionNode) {
 }
 
 func (f *formatter) writeOptionsArray(compactOptionsNode *ast.CompactOptionsNode) {
-	// f.ForceIndent()
 
 	f.writeWithIsolatedTabWriter(func() {
 		for i, opt := range compactOptionsNode.Options {
@@ -2508,8 +2503,11 @@ func (f *formatter) writeOptionsArray(compactOptionsNode *ast.CompactOptionsNode
 				f.ForceIndent()
 			}
 			f.writeStart(opt.Name)
-			// Add padding to align equals signs
+
 			if len(compactOptionsNode.Options) > 1 {
+				// TODO(fix): this always ends up aligning with four strings at a minimum
+				// not sure what to do about it
+				// this check for a space makes it look a little better when its just a single option
 				f.Tab()
 			} else {
 				f.Space()
@@ -2517,41 +2515,31 @@ func (f *formatter) writeOptionsArray(compactOptionsNode *ast.CompactOptionsNode
 
 			f.writeInline(opt.Equals)
 			f.Space()
-			// pp.Println(opt.Val)
-			// fmt.Printf("writing inline %s - %T\n", opt.Val, opt.Val)
 			if i == len(compactOptionsNode.Options)-1 {
-
 				f.writeLineEnd(opt.Val)
-				// f.WriteString("\t\n")
-				// f.writeLineEnd(opt.Val)
-
-				// f.writeLineEnd(&ast.EmptyDeclNode{})
 				return
 			}
-			// f.writeWithIsolatedTabWriter(func() {
 			f.writeInline(opt.Val)
-			// })
 			f.writeLineEnd(compactOptionsNode.Commas[i])
 		}
 	})
 }
 
 func idString(counter int64) string {
-	return fmt.Sprintf("__________________%d__________________", counter)
+	// TODO(fix): lol, this could be better
+	// was using uuids before, but needed them to be deterministic for debugging
+	return fmt.Sprintf("$$$$$$$$$_%d_$$$$$$$$$", counter)
 }
 
 func (f *formatter) writeWithIsolatedTabWriter(fn func()) {
-	// id := uuid.New().String()
 	counter := f.counter.Add(1)
 	id := idString(counter)
-
 	f.WriteString(id)
 	prevReplacers := f.replacers
 	f.replacers = make([]replacement, 0)
 	prevTabWritter := f.tabWriter
 	strbuffer := new(bytes.Buffer)
 	f.tabWriter = format.BuildTabWriter(f.cfg, strbuffer)
-
 	fn()
 	f.tabWriter.Flush()
 	out := strbuffer.String()
@@ -2559,7 +2547,6 @@ func (f *formatter) writeWithIsolatedTabWriter(fn func()) {
 		out = strings.ReplaceAll(out, v.id, v.new)
 	}
 	prevReplacers = append(prevReplacers, replacement{id: id, new: out})
-
 	f.replacers = prevReplacers
 	f.tabWriter = prevTabWritter
 }
