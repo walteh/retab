@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// this file was originally adapted from this commit and adapted more over time
+// https://github.com/bufbuild/buf/blob/a0e8544cbf1850b02cd6142c94d3bf19e1b12a91/private/buf/bufformat/formatter.go
+
 package protofmt
 
 import (
@@ -38,8 +41,6 @@ type formatter struct {
 	tabWriter *tabwriter.Writer
 	fileNode  *ast.FileNode
 	cfg       format.Configuration
-
-	fushers []func()
 
 	// Current level of indentation.
 	indent int
