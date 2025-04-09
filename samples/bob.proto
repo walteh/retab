@@ -1,4 +1,6 @@
-edition = "2023";
+syntax = "proto3";
+
+package example;
 
 message ComplexOptions {
 	option (custom.option)          = true;
@@ -34,4 +36,11 @@ message MyOptions {
 	repeated string file_only_option_2 = 3;
 	string          sup                = 4;
 	int32           sup_2              = 5;
+}
+
+message Test {
+	string name = 1 [
+		(custom.field)  = "value",
+		(custom.field2) = "value2"
+	];
 }

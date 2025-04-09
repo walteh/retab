@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// this file was originally adapted from this commit and adapted more over time
+// https://github.com/bufbuild/buf/blob/a0e8544cbf1850b02cd6142c94d3bf19e1b12a91/private/buf/bufformat/formatter.go
+
 package protofmt
 
 import (
@@ -21,12 +24,12 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"text/tabwriter"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/bufbuild/protocompile/ast"
-	"github.com/google/uuid"
 	"github.com/walteh/retab/v2/pkg/format"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/multierr"
@@ -72,7 +75,15 @@ type formatter struct {
 	// non-nil error represents a bug in the implementation.
 	err error
 
-	replacers map[string]string
+	replacers []replacement
+
+	counter atomic.Int64
+}
+
+type replacement struct {
+	id  string
+	old string
+	new string
 }
 
 // newFormatter returns a new formatter for the given file.
@@ -93,7 +104,7 @@ func newFormatter(
 		tabWriter: format.BuildTabWriter(cfg, writer),
 		fileNode:  fileNode,
 		cfg:       cfg,
-		replacers: make(map[string]string),
+		replacers: make([]replacement, 0),
 	}
 }
 
@@ -167,12 +178,12 @@ func (f *formatter) Indent(nextNode ast.Node) {
 		}
 	}
 
-	if f.cfg.UseTabs() {
-		f.WriteString(strings.Repeat("\t", indent))
-	} else {
-		// todo: do we even need this with the tabwriter?
-		f.WriteString(strings.Repeat(" ", indent*f.cfg.IndentSize()))
-	}
+	f.WriteString(strings.Repeat("$indent$", indent))
+
+}
+
+func (f *formatter) ForceIndent() {
+	f.WriteString(strings.Repeat("$indent$", f.indent))
 }
 
 // WriteString writes the given element to the generated output.
@@ -180,14 +191,7 @@ func (f *formatter) Indent(nextNode ast.Node) {
 // This will not write indentation or newlines. Use P if you
 // want to emit identation or newlines.
 func (f *formatter) WriteString(elem string) {
-	// if f.pendingUnderscore {
-	// 	f.pendingUnderscore = false
-	// 	str := "______"
-	// 	if _, err := f.tabWriter.Write([]byte(str)); err != nil {
-	// 		f.err = multierr.Append(f.err, err)
-	// 		return
-	// 	}
-	// }
+
 	if f.pendingSpace {
 		f.pendingSpace = false
 		first, _ := utf8.DecodeRuneInString(elem)
@@ -225,6 +229,12 @@ func (f *formatter) WriteString(elem string) {
 	}
 }
 
+func (f *formatter) Tab() {
+	if _, err := f.tabWriter.Write([]byte{'\t'}); err != nil {
+		f.err = multierr.Append(f.err, err)
+	}
+}
+
 // SetPreviousNode sets the previously written node. This should
 // be called in all of the comment writing functions.
 func (f *formatter) SetPreviousNode(node ast.Node) {
@@ -245,10 +255,6 @@ func (f *formatter) writeFile() {
 		f.P("")
 	}
 }
-
-// func (f *formatter) replace(id string, str string) {
-// 	f.replacers[id] = str
-// }
 
 // writeFileHeader writes the header of a .proto file. This includes the syntax,
 // package, imports, and options (in that order). The imports and options are
@@ -475,8 +481,10 @@ func (f *formatter) writeOption(optionNode *ast.OptionNode) {
 			// Compound string literals are written across multiple lines
 			// immediately after the '=', so we don't need a trailing
 			// space in the option prefix.
-			f.writeCompoundStringLiteralIndentEndInline(node)
-			f.writeLineEnd(optionNode.Semicolon)
+			f.writeWithIsolatedTabWriter(func() {
+				f.writeCompoundStringLiteralIndentEndInline(node)
+				f.writeLineEnd(optionNode.Semicolon)
+			})
 			return
 		}
 		f.writeInline(optionNode.Val)
@@ -759,7 +767,9 @@ func (f *formatter) writeMessageField(messageFieldNode *ast.MessageFieldNode) {
 func (f *formatter) writeMessageFieldWithSeparator(messageFieldNode *ast.MessageFieldNode) {
 	f.writeMessageFieldPrefix(messageFieldNode)
 	if compoundStringLiteral, ok := messageFieldNode.Val.(*ast.CompoundStringLiteralNode); ok {
-		f.writeCompoundStringLiteralIndentEndInline(compoundStringLiteral)
+		f.writeWithIsolatedTabWriter(func() {
+			f.writeCompoundStringLiteralIndentEndInline(compoundStringLiteral)
+		})
 		return
 	}
 	f.writeInline(messageFieldNode.Val)
@@ -789,7 +799,7 @@ func (f *formatter) writeMessageFieldPrefix(messageFieldNode *ast.MessageFieldNo
 	if messageFieldNode.Sep != nil {
 		f.writeInline(messageFieldNode.Sep)
 	}
-	f.Space()
+	f.Tab()
 }
 
 // writeEnum writes the enum node.
@@ -832,13 +842,15 @@ func (f *formatter) writeEnum(enumNode *ast.EnumNode) {
 //	];
 func (f *formatter) writeEnumValue(enumValueNode *ast.EnumValueNode) {
 	f.writeStart(enumValueNode.Name)
-	f.WriteString("\t") // Single tab for alignment
+	f.Tab() // Single tab for alignment
 	f.writeInline(enumValueNode.Equals)
 	f.Space()
 	f.writeInline(enumValueNode.Number)
 	if enumValueNode.Options != nil {
 		f.Space()
-		f.writeNode(enumValueNode.Options)
+		f.writeWithIsolatedTabWriter(func() {
+			f.writeNode(enumValueNode.Options)
+		})
 	}
 	f.writeLineEnd(enumValueNode.Semicolon)
 }
@@ -866,23 +878,18 @@ func (f *formatter) writeField(fieldNode *ast.FieldNode) {
 		}
 	}
 
-	f.WriteString("\t")
+	f.Tab()
 	f.writeInline(fieldNode.Name)
-	f.WriteString("\t")
+	f.Tab()
 	f.writeInline(fieldNode.Equals)
 	f.Space()
 	f.writeInline(fieldNode.Tag)
 	if fieldNode.Options != nil {
-		f.Space()
-		id := uuid.New().String()
-		f.WriteString(id)
-		prevTabWritter := f.tabWriter
-		strbuffer := new(bytes.Buffer)
-		f.tabWriter = format.BuildTabWriter(f.cfg, strbuffer)
-		f.writeCompactOptions(fieldNode.Options)
-		f.tabWriter.Flush()
-		f.replacers[id] = strbuffer.String()
-		f.tabWriter = prevTabWritter
+
+		f.writeWithIsolatedTabWriter(func() {
+			f.Space()
+			f.writeCompactOptions(fieldNode.Options)
+		})
 	}
 	f.writeLineEnd(fieldNode.Semicolon)
 }
@@ -922,9 +929,9 @@ func (f *formatter) calculateFieldPadding(fieldNode *ast.FieldNode) (typeWidth i
 // writeMapField writes a map field (e.g. 'map<string, string> pairs = 1;').
 func (f *formatter) writeMapField(mapFieldNode *ast.MapFieldNode) {
 	f.writeNode(mapFieldNode.MapType)
-	f.WriteString("\t") // Single tab for alignment
+	f.Tab()
 	f.writeInline(mapFieldNode.Name)
-	f.WriteString("\t")
+	f.Tab()
 	f.writeInline(mapFieldNode.Equals)
 	f.Space()
 	f.writeInline(mapFieldNode.Tag)
@@ -1050,15 +1057,20 @@ func (f *formatter) writeRPC(rpcNode *ast.RPCNode) {
 	var elementWriterFunc func()
 	if len(rpcNode.Decls) > 0 {
 		elementWriterFunc = func() {
-			// Collect RPC options
-			var options []*ast.OptionNode
+			options := []*ast.OptionNode{}
+			nodes := []ast.Node{}
 			for _, decl := range rpcNode.Decls {
 				if opt, ok := decl.(*ast.OptionNode); ok {
 					options = append(options, opt)
+				} else {
+					nodes = append(nodes, decl)
 				}
 			}
 			if len(options) > 0 {
 				f.writeOptions(options)
+			}
+			for _, node := range nodes {
+				f.writeNode(node)
 			}
 		}
 	}
@@ -1454,7 +1466,7 @@ func (f *formatter) writeOpenBracePrefix(openBrace ast.Node) {
 	if info.LeadingComments().Len() > 0 {
 		f.writeInlineComments(info.LeadingComments())
 		if info.LeadingWhitespace() != "" {
-			f.Space()
+			f.Tab()
 		}
 	}
 	f.writeNode(openBrace)
@@ -2027,13 +2039,15 @@ func (f *formatter) writeLineEnd(node ast.Node) {
 	if info.LeadingComments().Len() > 0 {
 		f.writeInlineComments(info.LeadingComments())
 		if info.LeadingWhitespace() != "" {
-			f.Space()
+			f.Tab()
 		}
 	}
 	f.writeNode(node)
 	f.Space()
 	f.writeTrailingEndComments(info.TrailingComments())
 }
+
+// func (f *formatter) writeLineEnd
 
 // writeMultilineComments writes the given comments as a newline-delimited block.
 // This is useful for both the beginning of a type (e.g. message, field, etc), as
@@ -2131,7 +2145,7 @@ func (f *formatter) writeTrailingEndComments(comments ast.Comments) {
 	for i := 0; i < comments.Len(); i++ {
 		comment := comments.Index(i)
 		if i > 0 || comment.LeadingWhitespace() != "" {
-			f.WriteString("\t")
+			f.Tab()
 		}
 		f.writeComment(comment.RawText())
 	}
@@ -2428,10 +2442,9 @@ func (f *formatter) calculateOptionCommentWidth(options []*ast.OptionNode) int {
 
 // writeServiceOptions writes a list of service options with aligned equals signs
 func (f *formatter) writeOptions(options []*ast.OptionNode) {
-	// maxWidth := f.calculateOptionNameWidth(options)
 
-	// Write options with alignment
 	for i, opt := range options {
+
 		if i > 0 && f.leadingCommentsContainBlankLine(opt) {
 			f.P("")
 		}
@@ -2439,35 +2452,69 @@ func (f *formatter) writeOptions(options []*ast.OptionNode) {
 		f.writeStart(opt.Keyword)
 		f.Space()
 		f.writeInline(opt.Name)
-		// Add padding to align equals signs
-
-		f.WriteString("\t")
-		// f.Space()
+		f.Tab()
 		f.writeInline(opt.Equals)
 		f.Space()
-		// pp.Println(opt.Val)
-		// fmt.Printf("writing inline 2 %s - %T\n", opt.Val, opt.Val)
-		f.writeInline(opt.Val)
+		f.writeWithIsolatedTabWriter(func() {
+			f.writeInline(opt.Val)
+		})
 		f.writeLineEnd(opt.Semicolon)
+
 	}
 }
 
 func (f *formatter) writeOptionsArray(compactOptionsNode *ast.CompactOptionsNode) {
-	for i, opt := range compactOptionsNode.Options {
 
-		f.writeStart(opt.Name)
-		// Add padding to align equals signs
-		f.WriteString("\t")
-		f.writeInline(opt.Equals)
-		f.Space()
+	f.writeWithIsolatedTabWriter(func() {
+		for i, opt := range compactOptionsNode.Options {
+			if i == 0 {
+				f.ForceIndent()
+			}
+			f.writeStart(opt.Name)
 
-		if i == len(compactOptionsNode.Options)-1 {
-			f.writeLineEnd(opt.Val)
-			return
+			if len(compactOptionsNode.Options) > 1 {
+				// TODO(fix): this always ends up aligning with four strings at a minimum
+				// not sure what to do about it
+				// this check for a space makes it look a little better when its just a single option
+				f.Tab()
+			} else {
+				f.Space()
+			}
+
+			f.writeInline(opt.Equals)
+			f.Space()
+			if i == len(compactOptionsNode.Options)-1 {
+				f.writeLineEnd(opt.Val)
+				return
+			}
+			f.writeInline(opt.Val)
+			f.writeLineEnd(compactOptionsNode.Commas[i])
 		}
-		// pp.Println(opt.Val)
-		// fmt.Printf("writing inline %s - %T\n", opt.Val, opt.Val)
-		f.writeInline(opt.Val)
-		f.writeLineEnd(compactOptionsNode.Commas[i])
+	})
+}
+
+func idString(counter int64) string {
+	// TODO(fix): lol, this could be better
+	// was using uuids before, but needed them to be deterministic for debugging
+	return fmt.Sprintf("$$$$$$$$$_%d_$$$$$$$$$", counter)
+}
+
+func (f *formatter) writeWithIsolatedTabWriter(fn func()) {
+	counter := f.counter.Add(1)
+	id := idString(counter)
+	f.WriteString(id)
+	prevReplacers := f.replacers
+	f.replacers = make([]replacement, 0)
+	prevTabWritter := f.tabWriter
+	strbuffer := new(bytes.Buffer)
+	f.tabWriter = format.BuildTabWriter(f.cfg, strbuffer)
+	fn()
+	f.tabWriter.Flush()
+	out := strbuffer.String()
+	for _, v := range f.replacers {
+		out = strings.ReplaceAll(out, v.id, v.new)
 	}
+	prevReplacers = append(prevReplacers, replacement{id: id, new: out})
+	f.replacers = prevReplacers
+	f.tabWriter = prevTabWritter
 }

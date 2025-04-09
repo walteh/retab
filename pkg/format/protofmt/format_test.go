@@ -3,6 +3,7 @@ package protofmt_test
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"io"
 	"strings"
 	"testing"
@@ -198,7 +199,8 @@ message EnvironmentOptionsRequest {
 
 	string name = 1 [
 			(custom.field) = "value", // should be aligned
-			deprecated = true // should be aligned
+			deprecated = true, // should be aligned
+			zeprecated = false // should be zaligned
 	];
 	int32  id = 2 [
 			(validate.rules).int32.gt = 0
@@ -212,7 +214,8 @@ message EnvironmentOptionsRequest {
 
 	string name = 1 [
 		(custom.field) = "value",  // should be aligned
-		deprecated     = true      // should be aligned
+		deprecated     = true,     // should be aligned
+		zeprecated     = false     // should be zaligned
 	];
 	int32  id   = 2 [
 		(validate.rules).int32.gt = 0
@@ -238,7 +241,7 @@ message Test {
 }`,
 		},
 		{
-			name:    "complex nested options",
+			name:    "complex_field_options",
 			useTabs: true,
 			src: `edition = "2023";
 package example;
@@ -249,6 +252,8 @@ message Test {
       id: "float.gt",
         expression:
           "!has(rules.lt) && !has(rules.lte) && (this.isNan() || this <= rules.gt)"
+		  				"? 'value must be greater than %s'.format([rules.gt]) : ''",
+		idz: "float.gtzzz"
       }
     ];
 }`,
@@ -258,13 +263,44 @@ package example;
 message Test {
 	float gt = 4 [
 		(priv.field).cel = {
-			id: 	
-				"float.gt",
-			expression:
+			id:         "float.gt",
+			expression: 
 				"!has(rules.lt) && !has(rules.lte) && (this.isNan() || this <= rules.gt)"
-				"? 'value must be greater than %s'.format([rules.gt]) : ''"
-			}
-		];
+				"? 'value must be greater than %s'.format([rules.gt]) : ''",
+			idz:        "float.gtzzz"
+		}
+	];
+}`,
+		},
+
+		{
+			name:    "simple_field_options_single",
+			useTabs: true,
+			src: `message Test {
+				string name = 1 [
+					(custom.field) = "value"
+				];
+			}`,
+			expected: `message Test {
+	string name = 1 [
+		(custom.field) = "value"
+	];
+}`,
+		},
+		{
+			name:    "simple_field_options_two",
+			useTabs: true,
+			src: `message Test {
+				string name = 1 [
+					(custom.field)     = "z",
+					(custom.fields) = "value2"
+				];
+			}`,
+			expected: `message Test {
+	string name = 1 [
+		(custom.field)  = "z",
+		(custom.fields) = "value2"
+	];
 }`,
 		},
 	}
@@ -319,4 +355,23 @@ func TestBasicFieldAlignment(t *testing.T) {
 
 	diff.Require(t).Want(expected).Got(formatted).Equals()
 
+}
+
+//go:embed testdata/big_complex_file_unformatted.proto
+var bigComplexFileUnformatted []byte
+
+//go:embed testdata/big_complex_file_expected.proto
+var bigComplexFileExpected []byte
+
+func TestBigComplexFile(t *testing.T) {
+	cfg := formatmock.NewMockConfiguration(t)
+	cfg.EXPECT().UseTabs().Return(true).Maybe()
+	cfg.EXPECT().IndentSize().Return(1).Maybe()
+
+	formatted, err := formatProto(t.Context(), cfg, bigComplexFileUnformatted)
+	if err != nil {
+		t.Fatalf("Format returned error: %v", err)
+	}
+
+	diff.Require(t).Want(string(bigComplexFileExpected)).Got(formatted).Equals()
 }
