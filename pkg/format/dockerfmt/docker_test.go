@@ -80,21 +80,21 @@ RUN echo hello > /tmp/file
 			name: "Complex multiline RUN with backslashes",
 			src: `FROM alpine:3.14
 RUN apk update && \
-    apk add --no-cache \
-        python3 \
-        py3-pip \
-        curl \
-        jq && \
-    pip3 install --upgrade pip
+ apk add --no-cache \
+  python3 \
+  py3-pip \
+  curl \
+  jq && \
+ pip3 install --upgrade pip
 `,
 			expected: `FROM alpine:3.14
 RUN apk update \
-    && apk add --no-cache \
-        python3 \
-        py3-pip \
-        curl \
-        jq \
-    && pip3 install --upgrade pip
+	&& apk add --no-cache \
+		python3 \
+		py3-pip \
+		curl \
+		jq \
+	&& pip3 install --upgrade pip
 `,
 		},
 		{
@@ -163,8 +163,8 @@ LABEL description="Example Docker image"
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip
+  python3 \
+	python3-pip
 
 # Setup app directory
 WORKDIR /app
@@ -182,8 +182,8 @@ LABEL description="Example Docker image"
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip
+	python3 \
+	python3-pip
 
 # Setup app directory
 WORKDIR /app
@@ -204,7 +204,7 @@ CMD ["nginx", "-g", "daemon off;"]
 			expected: `FROM alpine:latest
 RUN apk add --no-cache curl
 HEALTHCHECK --interval=30s --timeout=3s \
-    CMD curl -f http://localhost/ || exit 1
+	CMD curl -f http://localhost/ || exit 1
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon", "off;"]
 `,
@@ -319,7 +319,7 @@ WORKDIR $APP_HOME
 			ctx := context.Background()
 
 			cfg := formatmock.NewMockConfiguration(t)
-			cfg.EXPECT().UseTabs().Return(false).Maybe()
+			cfg.EXPECT().UseTabs().Return(true).Maybe()
 			cfg.EXPECT().IndentSize().Return(4).Maybe()
 			cfg.EXPECT().Raw().Return(tt.config).Maybe()
 
