@@ -1241,7 +1241,14 @@ func (f *formatter) writeReserved(reservedNode *ast.ReservedNode) {
 			f.writeInline(reservedNode.Commas[i-1])
 			f.Space()
 		}
-		f.writeInline(elements[i])
+		if strlit, ok := elements[i].(*ast.CompoundStringLiteralNode); ok {
+			// wihtout this the reserved string literals end with a new line and
+			// break the syntax by putting the semi colon on a new line for any 'reserved' strings
+			// tbh, not really sure why this is needed - assuming that upstream doesn't have this problem
+			f.writeCompoundStringLiteralIndentEndInline(strlit)
+		} else {
+			f.writeInline(elements[i])
+		}
 	}
 	f.writeLineEnd(reservedNode.Semicolon)
 }

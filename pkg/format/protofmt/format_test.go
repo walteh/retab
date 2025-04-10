@@ -303,6 +303,24 @@ message Test {
 	];
 }`,
 		},
+		{
+			name:    "simple_reserved_field",
+			useTabs: true,
+			src: `message Test {
+			string IGNORE_EMPTY = 1;
+			string IGNORE_DEFAULT = 2;
+	reserved
+		"IGNORE_EMPTY"
+		"IGNORE_DEFAULT";
+			}`,
+			expected: `message Test {
+	string IGNORE_EMPTY   = 1;
+	string IGNORE_DEFAULT = 2;
+	reserved
+		"IGNORE_EMPTY"
+		"IGNORE_DEFAULT";
+}`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -363,6 +381,12 @@ var bigComplexFileUnformatted []byte
 //go:embed testdata/big_complex_file_expected.proto
 var bigComplexFileExpected []byte
 
+//go:embed testdata/big_complex_file_unformatted_two.proto
+var bigComplexFileUnformattedTwo []byte
+
+//go:embed testdata/big_complex_file_expected_two.proto
+var bigComplexFileExpectedTwo []byte
+
 func TestBigComplexFile(t *testing.T) {
 	cfg := formatmock.NewMockConfiguration(t)
 	cfg.EXPECT().UseTabs().Return(true).Maybe()
@@ -374,4 +398,18 @@ func TestBigComplexFile(t *testing.T) {
 	}
 
 	diff.Require(t).Want(string(bigComplexFileExpected)).Got(formatted).Equals()
+}
+
+func TestBigComplexFileTwo(t *testing.T) {
+	cfg := formatmock.NewMockConfiguration(t)
+	cfg.EXPECT().UseTabs().Return(true).Maybe()
+	cfg.EXPECT().IndentSize().Return(1).Maybe()
+
+	formatted, err := formatProto(t.Context(), cfg, bigComplexFileUnformattedTwo)
+	if err != nil {
+		t.Fatalf("Format returned error: %v", err)
+	}
+
+	diff.Require(t).Want(string(bigComplexFileExpectedTwo)).Got(formatted).Equals()
+
 }
