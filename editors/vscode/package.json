@@ -41,16 +41,16 @@
 			},
 			"[terraform]": {
 				"editor.defaultFormatter": "walteh.retab-vscode",
-				"editor.formatOnSave": false,
+				"editor.formatOnSave": true,
 				"editor.codeActionsOnSave": {
-					"source.formatAll.terraform": "always"
+					"source.formatAll.terraform": "never"
 				}
 			},
 			"[terraform-vars]": {
 				"editor.defaultFormatter": "walteh.retab-vscode",
-				"editor.formatOnSave": false,
+				"editor.formatOnSave": true,
 				"editor.codeActionsOnSave": {
-					"source.formatAll.terraform": "always"
+					"source.formatAll.terraform": "never"
 				}
 			},
 			"yaml.format.enable": false,

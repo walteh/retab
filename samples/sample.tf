@@ -3,6 +3,6 @@ variable "example_list" {
 	default = [
 		"value1",
 		"value2",
-		"value3"
+		"value3",
 	]
 }
