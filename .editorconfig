@@ -2,16 +2,9 @@ root = true
 
 [*]
 tab_width = 4
-indent_size = 4
+indent_size = 2
 indent_style = tab
 max_line_length = 120
-
-
-[*.yaml]
-indent_style = space
-
-[*.yml]
-indent_style = space
 
 [*.proto]
 indent_style = tab

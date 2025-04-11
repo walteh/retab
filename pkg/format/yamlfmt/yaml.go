@@ -80,15 +80,19 @@ func getFormatter(cfg format.Configuration) (*basic.BasicFormatter, error) {
 	def.EOFNewline = true                     // Always ensure newline at EOF
 	def.LineEnding = yamlfmt.LineBreakStyleLF // Always use LF line breaks
 	def.ScanFoldedAsLiteral = false
-	def.IndentlessArrays = false
 	def.IndentRootArray = true
 
 	// Handle indentation style
 	if cfg.UseTabs() {
-		def.Indent = 4 * cfg.IndentSize() // When using tabs, we still need to set an indent size for internal spacing
+		// problem 843124 with yaml: tabs are not supported
+		def.Indent = 4
 	}
 
-	def.ArrayIndent = cfg.IndentSize()
+	def.ArrayIndent = def.Indent - 2
+
+	if def.ArrayIndent <= 0 {
+		def.IndentlessArrays = true
+	}
 
 	// Handle line breaks
 	def.RetainLineBreaks = false
