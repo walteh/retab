@@ -27,11 +27,11 @@ tasks:
         run: once
         cmds:
           - cmd: |-
-                "{{.GO_COMMAND}} tool go-mod-upgrade --force"
+                {{.GO_COMMAND}} tool go-mod-upgrade --force
 
     test:
         cmd: |-
-            "{{.GO_COMMAND}} test ./..."
+            {{.GO_COMMAND}} test ./...
 
     build:wasm:
         requires:
@@ -109,4 +109,4 @@ tasks:
             cmd: |-
                 yq -i ".packages.\"{{ .GO_ROOT_PKG }}/{{ splitList " " .ITEM | first }}\".interfaces.{{ splitList " " .ITEM | last }} = {}" {{.TMP_DIR}}/.mockery.yaml
           - cmd: |-
-                "{{.GO_COMMAND}} tool github.com/vektra/mockery/v2 --config={{.TMP_DIR}}/.mockery.yaml"
+                {{.GO_COMMAND}} tool github.com/vektra/mockery/v2 --config={{.TMP_DIR}}/.mockery.yaml
