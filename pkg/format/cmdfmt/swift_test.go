@@ -5,25 +5,24 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/walteh/retab/v2/gen/mocks/pkg/formatmock"
+	"github.com/walteh/retab/v2/pkg/diff"
 	"github.com/walteh/retab/v2/pkg/format/cmdfmt"
 )
 
 func TestSwiftIntegration(t *testing.T) {
 	tests := []struct {
-		name                   string
-		useTabs                bool
-		indentSize             int
-		trimMultipleEmptyLines bool
-		src                    []byte
-		expected               []byte
+		name       string
+		useTabs    bool
+		indentSize int
+		src        []byte
+		expected   []byte
 	}{
 		{
-			name:                   "basic formatting",
-			useTabs:                false,
-			indentSize:             4,
-			trimMultipleEmptyLines: true,
+			name:       "basic formatting",
+			useTabs:    false,
+			indentSize: 4,
 			src: []byte(`
 struct ContentView {
 var body: some View {
@@ -41,10 +40,9 @@ Text("Hello, world!")
 `),
 		},
 		{
-			name:                   "complex swift code",
-			useTabs:                false,
-			indentSize:             4,
-			trimMultipleEmptyLines: true,
+			name:       "complex swift code",
+			useTabs:    false,
+			indentSize: 4,
 			src: []byte(`
 import SwiftUI
 
@@ -122,7 +120,6 @@ struct ContentView: View {
 			cfg := formatmock.NewMockConfiguration(t)
 			cfg.EXPECT().UseTabs().Return(tt.useTabs)
 			cfg.EXPECT().IndentSize().Return(tt.indentSize).Maybe()
-			cfg.EXPECT().TrimMultipleEmptyLines().Return(tt.trimMultipleEmptyLines)
 
 			result, err := cmdfmt.NewSwiftFormatter(
 				// --interactive allows us to read from stdin
@@ -130,17 +127,8 @@ struct ContentView: View {
 				"docker", "run", "--interactive", "--quiet", "swift:latest", "swift-format",
 			).Format(ctx, cfg, bytes.NewReader(tt.src))
 
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-
-			buf := new(bytes.Buffer)
-			_, err = buf.ReadFrom(result)
-			if err != nil {
-				t.Fatalf("Unexpected error reading result: %v", err)
-			}
-
-			assert.Equal(t, string(tt.expected), buf.String(), "formatted source does not match expected output")
+			require.NoError(t, err)
+			diff.Require(t).Got(result).Want(tt.expected).Equals()
 		})
 	}
 }

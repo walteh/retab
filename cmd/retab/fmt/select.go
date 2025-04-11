@@ -46,20 +46,21 @@ func getFormatter(ctx context.Context, formatter string, filename string) (forma
 	switch formatter {
 	case "hcl", "hcl2", "terraform", "tf":
 		return hclfmt.NewFormatter(), nil
-	case "proto", "protobuf":
+	case "proto", "protobuf", "proto3":
 		return protofmt.NewFormatter(), nil
-	case "dart":
-		return cmdfmt.NewDartFormatter("dart"), nil
-	case "tf-cmd":
-		return cmdfmt.NewTerraformFormatter("terraform"), nil
-	case "swift":
-		return cmdfmt.NewSwiftFormatter("swift"), nil
 	case "yaml", "yml":
 		return yamlfmt.NewFormatter(), nil
 	case "sh", "bash", "zsh", "ksh", "shell":
 		return shfmt.NewFormatter(), nil
 	case "dockerfile", "docker":
 		return dockerfmt.NewFormatter(), nil
+	// external formatters
+	case "external-dart":
+		return cmdfmt.NewDartFormatter("dart"), nil
+	case "external-terraform":
+		return cmdfmt.NewTerraformFormatter("terraform"), nil
+	case "external-swift":
+		return cmdfmt.NewSwiftFormatter("swift"), nil
 	default:
 		return nil, errors.New("unknown formatter name: " + formatter)
 	}

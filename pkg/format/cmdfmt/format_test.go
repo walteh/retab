@@ -5,8 +5,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/walteh/retab/v2/gen/mocks/pkg/formatmock"
+	"github.com/walteh/retab/v2/pkg/diff"
 	"github.com/walteh/retab/v2/pkg/format/cmdfmt"
 )
 
@@ -319,25 +320,11 @@ class _MyHomePageState extends State<MyHomePage> {
 			cfg := formatmock.NewMockConfiguration(t)
 			cfg.EXPECT().UseTabs().Return(tt.useTabs)
 			cfg.EXPECT().IndentSize().Return(tt.indentSize).Maybe()
-			cfg.EXPECT().TrimMultipleEmptyLines().Return(tt.trimMultipleEmptyLines)
 
 			// Call the Format function with the provided configuration and source
 			result, err := cmdfmt.NewNoopExternalFormatProvider().Format(ctx, cfg, bytes.NewReader(tt.src))
-
-			// Check for errors
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-
-			// Read the result into a buffer
-			buf := new(bytes.Buffer)
-			_, err = buf.ReadFrom(result)
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-
-			// Compare the result with the expected outcome
-			assert.Equal(t, string(tt.expected), buf.String(), " source does not match expected output")
+			require.NoError(t, err)
+			diff.Require(t).Got(result).Want(tt.expected).Equals()
 		})
 	}
 }

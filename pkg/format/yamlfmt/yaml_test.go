@@ -37,8 +37,9 @@ cmds:
             sup: joe
 `
 
-	expected := `cmds:
-    - for:
+	expected := `
+cmds:
+  - for:
         var: WASM_OUT_DIRS
         cmd: echo "{{.ITEM}}"
         friend:

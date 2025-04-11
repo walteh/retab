@@ -47,6 +47,7 @@
 		"eslint.options": {
 			"flags": ["unstable_ts_config"]
 		},
+		"yaml.all"
 		"eslint.useESLintClass": true,
 		//===========================================
 		// Editor General Settings
