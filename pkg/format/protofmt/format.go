@@ -35,12 +35,15 @@ import (
 	"go.uber.org/multierr"
 )
 
+const (
+	indentPlaceholder = "$indent$"
+)
+
 // formatter writes an *ast.FileNode as a .proto file.
 type formatter struct {
 	writer    io.Writer
 	tabWriter *tabwriter.Writer
 	fileNode  *ast.FileNode
-	cfg       format.Configuration
 
 	// Current level of indentation.
 	indent int
@@ -90,7 +93,6 @@ type replacement struct {
 func newFormatter(
 	writer io.Writer,
 	fileNode *ast.FileNode,
-	cfg format.Configuration,
 ) *formatter {
 
 	// Configure tabwriter with:
@@ -101,9 +103,8 @@ func newFormatter(
 	// - flags = TabIndent | StripEscape | DiscardEmptyColumns (preserve indentation and handle escapes)
 	return &formatter{
 		writer:    writer,
-		tabWriter: format.BuildTabWriter(cfg, writer),
+		tabWriter: format.BuildTabWriter(writer),
 		fileNode:  fileNode,
-		cfg:       cfg,
 		replacers: make([]replacement, 0),
 	}
 }
@@ -178,12 +179,12 @@ func (f *formatter) Indent(nextNode ast.Node) {
 		}
 	}
 
-	f.WriteString(strings.Repeat("$indent$", indent))
+	f.WriteString(strings.Repeat(indentPlaceholder, indent))
 
 }
 
 func (f *formatter) ForceIndent() {
-	f.WriteString(strings.Repeat("$indent$", f.indent))
+	f.WriteString(strings.Repeat(indentPlaceholder, f.indent))
 }
 
 // WriteString writes the given element to the generated output.
@@ -2514,7 +2515,7 @@ func (f *formatter) writeWithIsolatedTabWriter(fn func()) {
 	f.replacers = make([]replacement, 0)
 	prevTabWritter := f.tabWriter
 	strbuffer := new(bytes.Buffer)
-	f.tabWriter = format.BuildTabWriter(f.cfg, strbuffer)
+	f.tabWriter = format.BuildTabWriter(strbuffer)
 	fn()
 	f.tabWriter.Flush()
 	out := strbuffer.String()

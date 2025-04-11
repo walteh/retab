@@ -3,6 +3,7 @@ package format
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 type ConfigurationProvider interface {
@@ -13,7 +14,6 @@ type ConfigurationProvider interface {
 type Configuration interface {
 	UseTabs() bool
 	IndentSize() int
-
 	Raw() map[string]string
 }
 
@@ -32,6 +32,13 @@ func (x *basicConfigurationProvider) UseTabs() bool {
 
 func (x *basicConfigurationProvider) IndentSize() int {
 	return x.indentSize
+}
+
+func (x *basicConfigurationProvider) IndentString() string {
+	if x.tabs {
+		return "\t"
+	}
+	return strings.Repeat(" ", x.indentSize)
 }
 
 // func (x *basicConfigurationProvider) TrimMultipleEmptyLines() bool {

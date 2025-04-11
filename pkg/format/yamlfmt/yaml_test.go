@@ -51,8 +51,6 @@ cmds:
 	cfg.EXPECT().Raw().Return(map[string]string{
 		"cmds": "cmds",
 	}).Maybe()
-	cfg.EXPECT().TrimMultipleEmptyLines().Return(true).Maybe()
-	cfg.EXPECT().OneBracketPerLine().Return(true).Maybe()
 
 	actual, err := formatYaml(t.Context(), cfg, []byte(start))
 	if err != nil {

@@ -4,6 +4,7 @@ package diff
 
 import (
 	"fmt"
+	"io"
 	"reflect"
 	"regexp"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/stretchr/testify/require"
+	"gitlab.com/tozd/go/errors"
 )
 
 // ValueComparison provides methods for comparing different types of values
@@ -274,8 +276,36 @@ func (r *Req) Opts(opts ...OptTestingOptsSetter) *Req {
 
 func (r *Req) Equals() {
 	r.t.Helper()
+
 	if !r.wantSet || !r.gotSet {
 		r.t.Fatalf("want and got must be set")
 	}
-	RequireEqual(r.t, r.want, r.got, r.opts...)
+
+	wantStr, err := convertToString(r.want)
+	if err != nil {
+		r.t.Fatalf("failed to convert want to string: %v", err)
+	}
+	gotStr, err := convertToString(r.got)
+	if err != nil {
+		r.t.Fatalf("failed to convert got to string: %v", err)
+	}
+
+	RequireEqual(r.t, wantStr, gotStr, r.opts...)
+}
+
+func convertToString(v any) (string, error) {
+	switch v := v.(type) {
+	case string:
+		return v, nil
+	case []byte:
+		return string(v), nil
+	case io.Reader:
+		bs, err := io.ReadAll(v)
+		if err != nil {
+			return "", err
+		}
+		return string(bs), nil
+	default:
+		return "", errors.Errorf("tried to convert unsupported type to string: %T", v)
+	}
 }

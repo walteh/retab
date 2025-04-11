@@ -18,13 +18,13 @@ func getFormatter(ctx context.Context, formatter string, filename string) (forma
 
 	if formatter == "auto" {
 		var autoDetectFormatterGlobs = map[string]string{
-			"*.{hcl,hcl2,terraform,tf}": "hcl",
-			"*.{proto,proto3}":          "proto",
-			"*.{dart}":                  "dart",
-			"*.{swift}":                 "swift",
-			"*.{yaml,yml}":              "yaml",
-			"*.{sh,bash,zsh,ksh,shell}": "sh",
-			"{Dockerfile,Dockerfile.*}": "dockerfile",
+			"*.{hcl,hcl2,terraform,tf,tfvars}": "hcl",
+			"*.{proto,proto3}":                 "proto",
+			"*.{dart}":                         "dart",
+			"*.{swift}":                        "swift",
+			"*.{yaml,yml}":                     "yaml",
+			"*.{sh,bash,zsh,ksh,shell}":        "sh",
+			"{Dockerfile,Dockerfile.*}":        "dockerfile",
 		}
 
 		for glob, fmt := range autoDetectFormatterGlobs {

@@ -33,7 +33,7 @@ func (me *Formatter) Format(ctx context.Context, cfg format.Configuration, read 
 	}
 
 	var buf bytes.Buffer
-	fmtr := newFormatter(&buf, fileNode, cfg)
+	fmtr := newFormatter(&buf, fileNode)
 
 	if err := fmtr.Run(); err != nil {
 		return nil, errors.Errorf("failed to format: %w", err)
@@ -47,9 +47,9 @@ func (me *Formatter) Format(ctx context.Context, cfg format.Configuration, read 
 		// we can't do it in the formatter because it needs to be done after the replacements are injected
 	}
 	if cfg.UseTabs() {
-		result = strings.ReplaceAll(result, "$indent$", "\t")
+		result = strings.ReplaceAll(result, indentPlaceholder, "\t")
 	} else {
-		result = strings.ReplaceAll(result, "$indent$", strings.Repeat(" ", cfg.IndentSize()))
+		result = strings.ReplaceAll(result, indentPlaceholder, strings.Repeat(" ", cfg.IndentSize()))
 	}
 
 	return strings.NewReader(result), nil
@@ -60,7 +60,7 @@ func (f *formatter) inspectTabWriter() string {
 	var buf bytes.Buffer
 
 	// Create a new tabwriter with the same settings
-	inspector := format.BuildTabWriter(f.cfg, &buf)
+	inspector := format.BuildTabWriter(&buf)
 
 	// Get the current content by copying from the original writer's buffer
 	// This assumes format.BuildTabWriter uses the same settings

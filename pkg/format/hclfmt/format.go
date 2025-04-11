@@ -32,9 +32,25 @@ func (ts Tokens) WriteTo(wr io.Writer, cfg format.Configuration) (int64, error) 
 	var n int64
 	var err error
 	nlcount := 0
+	// addNewLineToEnd := true
 	for _, token := range ts {
 		if err != nil {
 			return n, err
+		}
+
+		// leaving this in for debugging
+		// fmt.Printf("[token.Bytes:%q] [token.Type as rune:%q] [nlcount:%d]\n", token.Bytes, rune(token.Type), nlcount)
+
+		if token.Type == hclsyntax.TokenEOF {
+			if nlcount == 0 {
+				// Ensure we end with a newline if we didn't already
+				thisN, writeErr := wr.Write([]byte{'\n'})
+				n += int64(thisN)
+				if writeErr != nil {
+					err = writeErr
+				}
+			}
+			continue
 		}
 
 		// ==========================================

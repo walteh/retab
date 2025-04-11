@@ -62,51 +62,6 @@ func (_c *MockConfiguration_IndentSize_Call) RunAndReturn(run func() int) *MockC
 	return _c
 }
 
-// OneBracketPerLine provides a mock function with no fields
-func (_m *MockConfiguration) OneBracketPerLine() bool {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for OneBracketPerLine")
-	}
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func() bool); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	return r0
-}
-
-// MockConfiguration_OneBracketPerLine_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OneBracketPerLine'
-type MockConfiguration_OneBracketPerLine_Call struct {
-	*mock.Call
-}
-
-// OneBracketPerLine is a helper method to define mock.On call
-func (_e *MockConfiguration_Expecter) OneBracketPerLine() *MockConfiguration_OneBracketPerLine_Call {
-	return &MockConfiguration_OneBracketPerLine_Call{Call: _e.mock.On("OneBracketPerLine")}
-}
-
-func (_c *MockConfiguration_OneBracketPerLine_Call) Run(run func()) *MockConfiguration_OneBracketPerLine_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockConfiguration_OneBracketPerLine_Call) Return(_a0 bool) *MockConfiguration_OneBracketPerLine_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockConfiguration_OneBracketPerLine_Call) RunAndReturn(run func() bool) *MockConfiguration_OneBracketPerLine_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Raw provides a mock function with no fields
 func (_m *MockConfiguration) Raw() map[string]string {
 	ret := _m.Called()
@@ -150,51 +105,6 @@ func (_c *MockConfiguration_Raw_Call) Return(_a0 map[string]string) *MockConfigu
 }
 
 func (_c *MockConfiguration_Raw_Call) RunAndReturn(run func() map[string]string) *MockConfiguration_Raw_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// TrimMultipleEmptyLines provides a mock function with no fields
-func (_m *MockConfiguration) TrimMultipleEmptyLines() bool {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for TrimMultipleEmptyLines")
-	}
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func() bool); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	return r0
-}
-
-// MockConfiguration_TrimMultipleEmptyLines_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TrimMultipleEmptyLines'
-type MockConfiguration_TrimMultipleEmptyLines_Call struct {
-	*mock.Call
-}
-
-// TrimMultipleEmptyLines is a helper method to define mock.On call
-func (_e *MockConfiguration_Expecter) TrimMultipleEmptyLines() *MockConfiguration_TrimMultipleEmptyLines_Call {
-	return &MockConfiguration_TrimMultipleEmptyLines_Call{Call: _e.mock.On("TrimMultipleEmptyLines")}
-}
-
-func (_c *MockConfiguration_TrimMultipleEmptyLines_Call) Run(run func()) *MockConfiguration_TrimMultipleEmptyLines_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockConfiguration_TrimMultipleEmptyLines_Call) Return(_a0 bool) *MockConfiguration_TrimMultipleEmptyLines_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockConfiguration_TrimMultipleEmptyLines_Call) RunAndReturn(run func() bool) *MockConfiguration_TrimMultipleEmptyLines_Call {
 	_c.Call.Return(run)
 	return _c
 }

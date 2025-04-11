@@ -37,7 +37,6 @@ func NewFmtCommand() *cobra.Command {
 	cmd.Flags().StringVar(&me.formatter, "formatter", "auto", "the formatter to use")
 	cmd.Flags().BoolVar(&me.ToStdout, "stdout", false, "write to stdout instead of file")
 	cmd.Flags().BoolVar(&me.FromStdin, "stdin", false, "read from stdin instead of file")
-
 	cmd.Flags().StringVar(&me.editorconfigContent, "editorconfig-content", "", "editorconfig content (optional)")
 	cmd.Args = cobra.ExactArgs(1)
 
