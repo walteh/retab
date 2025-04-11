@@ -26,6 +26,19 @@ type ConfigOptions struct {
 	TargetFile string // Path of the file being formatted
 }
 
+func NewRawConfigurationProvider(ctx context.Context, rawContent string) (*EditorConfigConfigurationProvider, error) {
+	if rawContent == "" {
+		return nil, errors.New("raw content is required")
+	}
+
+	x, err := editorconfig.Parse(strings.NewReader(rawContent))
+	if err != nil {
+		return nil, errors.Errorf("getting editorconfig definition: %w", err)
+	}
+	return &EditorConfigConfigurationProvider{definitions: x}, nil
+
+}
+
 func NewDynamicConfigurationProvider(ctx context.Context, rawContent string) (*EditorConfigConfigurationProvider, error) {
 	if rawContent != "" {
 		// If raw content is provided, parse it directly

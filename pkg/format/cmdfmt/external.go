@@ -90,17 +90,19 @@ func applyConfiguration(_ context.Context, ext ExternalFormatter, cfg format.Con
 		// Apply indentation preference.
 		line = strings.Replace(line, ext.Indent(), indentation, -1)
 
-		// Trim multiple empty lines if configured.
-		if cfg.TrimMultipleEmptyLines() {
-			if strings.TrimSpace(line) == "" {
-				if previousLineWasEmpty {
-					continue
-				}
-				previousLineWasEmpty = true
-			} else {
-				previousLineWasEmpty = false
+		// ==========================================
+		// this trims multiple empty lines, but leaves single empty lines
+		// wrapping like this just to make it explicity clear what code
+		// 		is responsible for this in case we need to disable it
+		if strings.TrimSpace(line) == "" {
+			if previousLineWasEmpty {
+				continue
 			}
+			previousLineWasEmpty = true
+		} else {
+			previousLineWasEmpty = false
 		}
+		// ==========================================
 
 		// Write the modified line to the output buffer.
 		_, err := output.WriteString(line + "\n")

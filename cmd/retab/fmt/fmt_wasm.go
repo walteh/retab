@@ -8,6 +8,7 @@ import (
 	"strings"
 	"syscall/js"
 
+	"github.com/rs/zerolog"
 	"github.com/walteh/retab/v2/pkg/format"
 	"github.com/walteh/retab/v2/pkg/format/editorconfig"
 	"gitlab.com/tozd/go/errors"
@@ -23,15 +24,19 @@ func Fmt(ctx context.Context, this js.Value, args []js.Value) (string, error) {
 		return "", errors.New("expected 4 arguments: formatter, filename, content, editorconfig-content")
 	}
 
+	zerolog.Ctx(ctx).Info().Msg("fmt")
+
 	formatter := args[0].String()
 	filename := args[1].String()
 	content := args[2].String()
 	editorconfigContent := args[3].String()
-
+	var cfgProvider format.ConfigurationProvider
+	var err error
 	// Setup editorconfig with either raw content or auto-resolution
-	cfgProvider, err := editorconfig.NewDynamicConfigurationProvider(ctx, editorconfigContent)
+	cfgProvider, err = editorconfig.NewRawConfigurationProvider(ctx, editorconfigContent)
 	if err != nil {
-		return "", errors.Errorf("creating configuration provider: %w", err)
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to parse editorconfig content, using default configuration")
+		cfgProvider = format.NewDefaultConfigurationProvider()
 	}
 
 	// Get the appropriate formatter

@@ -3,9 +3,6 @@ package format
 import (
 	"context"
 	"fmt"
-	"io"
-	"strconv"
-	"text/tabwriter"
 )
 
 type ConfigurationProvider interface {
@@ -16,20 +13,17 @@ type ConfigurationProvider interface {
 type Configuration interface {
 	UseTabs() bool
 	IndentSize() int
-	TrimMultipleEmptyLines() bool
-	OneBracketPerLine() bool
+
 	Raw() map[string]string
 }
 
-func BuildTabWriter(cfg Configuration, writer io.Writer) *tabwriter.Writer {
-	return tabwriter.NewWriter(writer, 0, cfg.IndentSize(), 1, ' ', tabwriter.TabIndent|tabwriter.StripEscape|tabwriter.DiscardEmptyColumns)
+func (x *basicConfigurationProvider) GetConfigurationForFileType(ctx context.Context, filename string) (Configuration, error) {
+	return x, nil
 }
 
 type basicConfigurationProvider struct {
-	tabs                   bool
-	indentSize             int
-	trimMultipleEmptyLines bool
-	oneBracketPerLine      bool
+	tabs       bool
+	indentSize int
 }
 
 func (x *basicConfigurationProvider) UseTabs() bool {
@@ -37,17 +31,16 @@ func (x *basicConfigurationProvider) UseTabs() bool {
 }
 
 func (x *basicConfigurationProvider) IndentSize() int {
-
 	return x.indentSize
 }
 
-func (x *basicConfigurationProvider) TrimMultipleEmptyLines() bool {
-	return x.trimMultipleEmptyLines
-}
+// func (x *basicConfigurationProvider) TrimMultipleEmptyLines() bool {
+// 	return x.trimMultipleEmptyLines
+// }
 
-func (x *basicConfigurationProvider) OneBracketPerLine() bool {
-	return x.oneBracketPerLine
-}
+// func (x *basicConfigurationProvider) OneBracketPerLine() bool {
+// 	return x.oneBracketPerLine
+// }
 
 func (x *basicConfigurationProvider) Raw() map[string]string {
 
@@ -58,16 +51,21 @@ func (x *basicConfigurationProvider) Raw() map[string]string {
 		raw["indent_style"] = "space"
 	}
 	raw["indent_size"] = fmt.Sprintf("%d", x.indentSize)
-	raw["trim_multiple_empty_lines"] = strconv.FormatBool(x.trimMultipleEmptyLines)
-	raw["one_bracket_per_line"] = strconv.FormatBool(x.oneBracketPerLine)
+	// raw["trim_multiple_empty_lines"] = strconv.FormatBool(x.trimMultipleEmptyLines)
+	// raw["one_bracket_per_line"] = strconv.FormatBool(x.oneBracketPerLine)
 	return raw
 }
 
-func NewBasicConfigurationProvider(tabs bool, indentSize int, trimMultipleEmptyLines bool, onebracket bool) Configuration {
+func NewBasicConfigurationProvider(tabs bool, indentSize int) Configuration {
 	return &basicConfigurationProvider{
-		tabs:                   tabs,
-		indentSize:             indentSize,
-		trimMultipleEmptyLines: trimMultipleEmptyLines,
-		oneBracketPerLine:      onebracket,
+		tabs:       tabs,
+		indentSize: indentSize,
+	}
+}
+
+func NewDefaultConfigurationProvider() ConfigurationProvider {
+	return &basicConfigurationProvider{
+		tabs:       true,
+		indentSize: 4,
 	}
 }

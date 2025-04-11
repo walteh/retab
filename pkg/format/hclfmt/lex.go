@@ -4,7 +4,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	"github.com/walteh/retab/v2/pkg/format"
 )
 
 // lexConfig uses the hclsyntax scanner to get a token stream and then
@@ -12,9 +11,9 @@ import (
 //
 // Any errors produced during scanning are ignored, so the results of this
 // function should be used with care.
-func lexConfig(src []byte, cfg format.Configuration) Tokens {
+func lexConfig(src []byte) Tokens {
 	mainTokens, _ := hclsyntax.LexConfig(src, "", hcl.Pos{Byte: 0, Line: 1, Column: 1})
-	return writerTokens(mainTokens, cfg)
+	return writerTokens(mainTokens)
 }
 
 // writerTokens takes a sequence of tokens as produced by the main hclsyntax
@@ -24,8 +23,9 @@ func lexConfig(src []byte, cfg format.Configuration) Tokens {
 // The resulting list contains the same number of tokens and uses the same
 // indices as the input, allowing the two sets of tokens to be correlated
 // by index.
-func writerTokens(nativeTokens hclsyntax.Tokens, cfg format.Configuration) Tokens {
-	if cfg.OneBracketPerLine() {
+func writerTokens(nativeTokens hclsyntax.Tokens) Tokens {
+
+	ensureOneBracketPerLine := func() {
 		tnt := make([]hclsyntax.Token, 0)
 		myline := []hclsyntax.Token{}
 		prev := hclsyntax.Token{}
@@ -59,6 +59,12 @@ func writerTokens(nativeTokens hclsyntax.Tokens, cfg format.Configuration) Token
 
 		nativeTokens = tnt
 	}
+
+	// this puts a newline after EACH bracket
+	// wrapping in a function just to make it explicity clear what code
+	// 		is responsible for this in case we need to disable it
+	ensureOneBracketPerLine()
+
 	// Ultimately we want a slice of token _pointers_, but since we can
 	// predict how much memory we're going to devote to tokens we'll allocate
 	// it all as a single flat buffer and thus give the GC less work to do.

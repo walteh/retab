@@ -3,6 +3,7 @@ package fmt
 import (
 	"context"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/walteh/retab/v2/pkg/format"
 	"github.com/walteh/retab/v2/pkg/format/cmdfmt"
 	"github.com/walteh/retab/v2/pkg/format/dockerfmt"
@@ -14,25 +15,32 @@ import (
 )
 
 func getFormatter(ctx context.Context, formatter string, filename string) (format.Provider, error) {
+
 	if formatter == "auto" {
-		formatters := []format.Provider{
-			hclfmt.NewFormatter(),
-			protofmt.NewFormatter(),
-			cmdfmt.NewDartFormatter("dart"),
-			// cmdfmt.NewTerraformFormatter("terraform"),
-			cmdfmt.NewSwiftFormatter("swift"),
-			yamlfmt.NewFormatter(),
-			shfmt.NewFormatter(),
-			dockerfmt.NewFormatter(),
+		var autoDetectFormatterGlobs = map[string]string{
+			"*.{hcl,hcl2,terraform,tf}": "hcl",
+			"*.{proto,proto3}":          "proto",
+			"*.{dart}":                  "dart",
+			"*.{swift}":                 "swift",
+			"*.{yaml,yml}":              "yaml",
+			"*.{sh,bash,zsh,ksh,shell}": "sh",
+			"{Dockerfile,Dockerfile.*}": "dockerfile",
 		}
-		fmtr, err := format.AutoDetectFormatter(filename, formatters)
-		if err != nil {
-			return nil, errors.Errorf("auto-detecting formatter: %w", err)
+
+		for glob, fmt := range autoDetectFormatterGlobs {
+			matches, err := doublestar.PathMatch(glob, filename)
+			if err != nil {
+				return nil, errors.Errorf("globbing: %w", err)
+			}
+			if matches {
+				formatter = fmt
+				break
+			}
 		}
-		if fmtr == nil {
-			return nil, errors.Errorf("no formatters found for file '%s'", filename)
-		}
-		return fmtr, nil
+	}
+
+	if formatter == "auto" {
+		return nil, errors.New("no formatter found for file path: " + filename)
 	}
 
 	switch formatter {
@@ -53,6 +61,6 @@ func getFormatter(ctx context.Context, formatter string, filename string) (forma
 	case "dockerfile", "docker":
 		return dockerfmt.NewFormatter(), nil
 	default:
-		return nil, errors.New("invalid formatter")
+		return nil, errors.New("unknown formatter name: " + formatter)
 	}
 }

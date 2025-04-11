@@ -37,16 +37,19 @@ func (ts Tokens) WriteTo(wr io.Writer, cfg format.Configuration) (int64, error) 
 			return n, err
 		}
 
-		if cfg.TrimMultipleEmptyLines() {
-			if cfg.TrimMultipleEmptyLines() && token.Type == hclsyntax.TokenNewline {
-				nlcount++
-				if nlcount > 2 {
-					continue
-				}
-			} else {
-				nlcount = 0
+		// ==========================================
+		// this trims multiple empty lines, but leaves single empty lines
+		// wrapping like this just to make it explicity clear what code
+		// 		is responsible for this in case we need to disable it
+		if token.Type == hclsyntax.TokenNewline {
+			nlcount++
+			if nlcount > 2 {
+				continue
 			}
+		} else {
+			nlcount = 0
 		}
+		// ==========================================
 
 		// Write the leading tabs, if any
 		for tabsBefore := token.TabsBefore; tabsBefore > 0; tabsBefore -= len(tabs) {
@@ -89,7 +92,7 @@ func (ts Tokens) WriteTo(wr io.Writer, cfg format.Configuration) (int64, error) 
 }
 
 func FormatBytes(cfg format.Configuration, src []byte) (io.Reader, error) {
-	tokens := lexConfig(src, cfg)
+	tokens := lexConfig(src)
 	tokens.format()
 	r, w := io.Pipe()
 	go func() {
@@ -104,34 +107,6 @@ func FormatBytes(cfg format.Configuration, src []byte) (io.Reader, error) {
 	}()
 	return r, nil
 }
-
-// // Process uses the hcl2 library to format the hcl file. This will attempt to parse the HCL file first to
-// // ensure that there are no syntax errors, before attempting to format it.
-// func Format(ctx context.Context, cfg format.Configuration,  fle string) error {
-// 	zerolog.Ctx(ctx).Debug().Any("config", cfg).Msgf("Formatting %s", fle)
-
-// 	contents, err := afero.ReadFile(fs, fle)
-// 	if err != nil {
-// 		zerolog.Ctx(ctx).Error().Err(err).Msgf("Error reading %s", fle)
-// 		return err
-// 	}
-
-// 	err = checkErrors(ctx, contents, fle)
-// 	if err != nil {
-// 		zerolog.Ctx(ctx).Error().Err(err).Msgf("Error parsing %s", fle)
-// 		return err
-// 	}
-
-// 	newContents, err := FormatBytes(cfg, contents)
-// 	if err != nil {
-// 		zerolog.Ctx(ctx).Error().Err(err).Msgf("Error formatting %s", fle)
-// 		return err
-// 	}
-
-// 	zerolog.Ctx(ctx).Info().Msgf("%s was updated", fle)
-
-// 	return afero.WriteReader(fs, fle, newContents)
-// }
 
 // checkErrors takes in the contents of a hcl file and looks for syntaxterrors.
 func checkErrors(ctx context.Context, contents []byte, fle string) error {

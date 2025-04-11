@@ -43,10 +43,10 @@ tasks:
                 sh: mktemp -d
         cmds:
             - cp {{.GO_WASM_EXEC}} {{.TMP_DIR}}/
-            - GOOS=js GOARCH=wasm "{{.GO_COMMAND}}" build -o {{.TMP_DIR}}/retab.wasm ./cmd/retab
+            - CGO_ENABLED=0 GOOS=js GOARCH=wasm "{{.GO_COMMAND}}" build -ldflags="-s -w"  -trimpath -o {{.TMP_DIR}}/retab.wasm
+              ./cmd/retab
             - bun install
-            - for:
-                var: WASM_OUT_DIRS
+            - for: {var: WASM_OUT_DIRS}
               cmd: mkdir -p {{.ITEM}} && cp {{.TMP_DIR}}/* {{.ITEM}}
             - rm -rf {{.TMP_DIR}}
 

@@ -25,6 +25,28 @@ declare global {
 
 	var retab_initialized: boolean;
 	var retab: retab;
+	var wasm_log: (message: string) => void;
+}
+
+type Success<T> = {
+	data: T;
+	error: null;
+};
+
+type Failure<E> = {
+	data: null;
+	error: E;
+};
+
+type Result<T, E = Error> = Success<T> | Failure<E>;
+
+export async function tryCatch<T, E = Error>(promise: Promise<T>): Promise<Result<T, E>> {
+	try {
+		const data = await promise;
+		return { data, error: null };
+	} catch (error) {
+		return { data: null, error: error as E };
+	}
 }
 
 export class WasmFormatter implements RetabFormatter {
@@ -37,7 +59,7 @@ export class WasmFormatter implements RetabFormatter {
 	}
 
 	private log(message: string) {
-		this.outputChannel.appendLine(`[${RetabEngine.WASM}] ${message}`);
+		this.outputChannel.appendLine(`[engine:${RetabEngine.WASM}] ${message}`);
 	}
 
 	private async waitForInit(timeout: number = 5000): Promise<void> {
@@ -105,6 +127,10 @@ export class WasmFormatter implements RetabFormatter {
 				throw new Error("Failed to create Go runtime");
 			}
 
+			globalThis.wasm_log = (message: string) => {
+				this.outputChannel.appendLine(`[wasm:console.log] ${message}`);
+			};
+
 			// Load and instantiate the WASM module
 			const wasmPath = path.join(context.extensionPath, "out", "retab.wasm");
 			this.log(`Loading WASM module from ${wasmPath}`);
@@ -113,6 +139,7 @@ export class WasmFormatter implements RetabFormatter {
 			this.log(`WASM module loaded, size: ${wasmBuffer.length} bytes`);
 
 			const wasmModule = await WebAssembly.compile(wasmBuffer);
+
 			this.log("WASM module compiled");
 
 			const instance = await WebAssembly.instantiate(wasmModule, this.go.importObject);
@@ -149,18 +176,9 @@ export class WasmFormatter implements RetabFormatter {
 		}
 
 		try {
-			// Use editorconfig-core-js to parse the file
-			this.log(`Looking for editorconfig settings for ${filePath}`);
-			let files: Visited[] = [];
-			await editorconfig.parse(filePath, { files: files });
-			this.log(`Found editorconfig settings: ${JSON.stringify(files)}`);
-
-			let editorconfigContent = "";
-			if (files.length > 0) {
-				const content = await vscode.workspace.fs.readFile(vscode.Uri.file(files[0].fileName));
-				editorconfigContent = content.toString();
-			} else {
-				this.log("No editorconfig settings found");
+			const { data: editorconfigContent, error } = await tryCatch(this.parseEditorconfig(filePath));
+			if (error) {
+				throw error;
 			}
 
 			this.log("Calling retab.fmt...");
@@ -190,5 +208,28 @@ export class WasmFormatter implements RetabFormatter {
 		// WASM version is tied to extension version
 		const extension = vscode.extensions.getExtension("walteh.retab-vscode");
 		return extension?.packageJSON.version || "unknown";
+	}
+
+	private async parseEditorconfig(filePath: string): Promise<string> {
+		let files: Visited[] = [];
+		let editorconfigContent = "";
+		this.log(`Looking for editorconfig settings for ${filePath}`);
+
+		const result = await tryCatch(editorconfig.parse(filePath, { files: files }));
+		if (result.error) {
+			this.log(`Error parsing editorconfig: ${result.error}`);
+			return "";
+		}
+
+		this.log(`Found editorconfig settings: ${JSON.stringify(files)}`);
+
+		if (files.length > 0) {
+			const content = await vscode.workspace.fs.readFile(vscode.Uri.file(files[0].fileName));
+			editorconfigContent = content.toString();
+		} else {
+			this.log("No editorconfig settings found");
+		}
+
+		return editorconfigContent;
 	}
 }

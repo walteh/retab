@@ -91,17 +91,8 @@ func getFormatter(cfg format.Configuration) (*basic.BasicFormatter, error) {
 	def.ArrayIndent = cfg.IndentSize()
 
 	// Handle line breaks
-	if cfg.TrimMultipleEmptyLines() {
-		def.RetainLineBreaks = false
-	} else {
-		def.RetainLineBreaks = true
-		def.RetainLineBreaksSingle = true
-	}
-
-	// Handle bracket style
-	if cfg.OneBracketPerLine() {
-		// unknown
-	}
+	def.RetainLineBreaks = false
+	def.RetainLineBreaksSingle = true
 
 	f := basic.BasicFormatter{
 		Config:       def,

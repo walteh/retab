@@ -5,6 +5,7 @@ import (
 	"io"
 	"path/filepath"
 	"reflect"
+	"text/tabwriter"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rs/zerolog"
@@ -48,4 +49,8 @@ func AutoDetectFormatter(filename string, formatters []Provider) (Provider, erro
 	}
 
 	return nil, nil
+}
+
+func BuildTabWriter(cfg Configuration, writer io.Writer) *tabwriter.Writer {
+	return tabwriter.NewWriter(writer, 0, cfg.IndentSize(), 1, ' ', tabwriter.TabIndent|tabwriter.StripEscape|tabwriter.DiscardEmptyColumns)
 }

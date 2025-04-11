@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/rs/zerolog"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/walteh/retab/v2/pkg/format"
@@ -50,11 +51,13 @@ func NewFmtCommand() *cobra.Command {
 
 func (me *Handler) Run(ctx context.Context) error {
 	fs := afero.NewOsFs()
-
+	var err error
+	var cfgProvider format.ConfigurationProvider
 	// Setup editorconfig with either raw content or auto-resolution
-	cfgProvider, err := editorconfig.NewDynamicConfigurationProvider(ctx, me.editorconfigContent)
+	cfgProvider, err = editorconfig.NewRawConfigurationProvider(ctx, me.editorconfigContent)
 	if err != nil {
-		return errors.Errorf("creating configuration provider: %w", err)
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to parse editorconfig content, using default configuration")
+		cfgProvider = format.NewDefaultConfigurationProvider()
 	}
 
 	fmtr, err := getFormatter(ctx, me.formatter, me.filename)

@@ -25,7 +25,7 @@ func (c *configWithOptions) Raw() map[string]string {
 
 // Helper for creating a configuration with specific options
 func createTestConfig(useTabs bool, indent int, options map[string]string) format.Configuration {
-	cfg := format.NewBasicConfigurationProvider(useTabs, indent, false, false)
+	cfg := format.NewBasicConfigurationProvider(useTabs, indent)
 	return &configWithOptions{
 		Configuration: cfg,
 		options:       options,
@@ -237,7 +237,7 @@ done
 			formatter := NewFormatter()
 
 			// Create basic configuration
-			cfg := format.NewBasicConfigurationProvider(tc.useTabs, tc.indent, false, false)
+			cfg := format.NewBasicConfigurationProvider(tc.useTabs, tc.indent)
 
 			// Format the file
 			ctx := context.Background()
