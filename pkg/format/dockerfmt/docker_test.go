@@ -276,6 +276,38 @@ EOT
 `,
 		},
 		{
+			name: "COPY with heredoc syntax",
+			src: `FROM alpine:latest
+COPY <<EOF /destination/
+  content line 1
+  content line 2
+  content line 3
+EOF
+`,
+			expected: `FROM alpine:latest
+COPY <<EOF /destination/
+content line 1
+content line 2
+content line 3
+EOF
+`,
+		},
+		{
+			name: "RUN with heredoc syntax and arguments",
+			src: `FROM alpine:latest
+RUN --mount=type=secret,id=mysecret <<EOT
+  echo "Reading secret"
+  cat /run/secrets/mysecret
+EOT
+`,
+			expected: `FROM alpine:latest
+RUN --mount=type=secret,id=mysecret <<EOT
+echo "Reading secret"
+cat /run/secrets/mysecret
+EOT
+`,
+		},
+		{
 			name: "OnBuild instructions",
 			src: `FROM alpine:latest
 ONBUILD RUN echo "This runs when the image is used as a base"

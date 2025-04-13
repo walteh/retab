@@ -410,6 +410,59 @@ func formatCmd(n *ExtendedNode, c *Config) string {
 }
 
 func formatSpaceSeparated(n *ExtendedNode, c *Config) string {
+	// Check for heredocs first
+	if len(n.Node.Heredocs) > 0 {
+		if len(n.Node.Heredocs) > 1 {
+			// Not implemented yet
+			panic("Multiple Heredocs not implemented yet")
+		}
+
+		// Get the original command text
+		originalText := n.OriginalMultiline
+		if originalText == "" {
+			originalText = n.Node.Original
+		}
+
+		// Extract the destination parameter from the heredoc part
+		// For COPY with heredoc, the format is typically: COPY <<EOF /destination/
+		var destination string
+
+		// First line contains the command, heredoc marker, and possibly the destination
+		lines := strings.SplitN(originalText, "\n", 2)
+		firstLine := lines[0]
+
+		// Extract parts of the first line
+		// Look for heredoc marker
+		if strings.Contains(firstLine, "<<") {
+			parts := strings.SplitN(firstLine, "<<", 2)
+
+			// Check for args after the heredoc marker (e.g., EOF /destination/)
+			if len(parts) > 1 {
+				markerAndDest := strings.TrimSpace(parts[1])
+				markerParts := strings.Fields(markerAndDest)
+
+				// If we have more than just the marker (like EOF /destination/)
+				if len(markerParts) > 1 {
+					destination = strings.Join(markerParts[1:], " ")
+				}
+			}
+		}
+
+		// Format the heredoc content
+		content := n.Node.Heredocs[0].Content
+		formattedContent := formatShell(content, true, c)
+
+		// Construct the final command with proper spacing
+		result := strings.ToUpper(n.Value) + " <<" + n.Node.Heredocs[0].Name
+		if destination != "" {
+			result += " " + destination
+		}
+		result += "\n" + formattedContent + n.Node.Heredocs[0].Name + "\n"
+
+		return result
+	}
+
+	// Original behavior for non-heredoc commands
 	cmd := strings.Join(getCmd(n.Next), " ")
 	if len(n.Node.Flags) > 0 {
 		cmd = strings.Join(n.Node.Flags, " ") + " " + cmd
