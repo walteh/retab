@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"strings"
 
 	"github.com/walteh/retab/v2/pkg/format"
 
@@ -61,24 +62,40 @@ func (f *Formatter) Format(ctx context.Context, cfg format.Configuration, read i
 	var indent uint
 	if !cfg.UseTabs() {
 		indent = uint(cfg.IndentSize())
+	} else {
+		indent = 4
+		// we could set this to 0, but we need to hack it with the brute force
+		// indentation below
 	}
 
 	syntax.FunctionNextLine(false)(printer)
 	syntax.SwitchCaseIndent(true)(printer)
 	syntax.SpaceRedirects(true)(printer)
-	syntax.KeepPadding(true)(printer)
+	// syntax.KeepPadding(false)(printer)
 	syntax.BinaryNextLine(true)(printer)
 	syntax.Indent(indent)(printer)
 	syntax.Minify(false)(printer)
 	syntax.SingleLine(false)(printer)
 	// syntax.Simplify(prog)
-	syntax.SpaceRedirects(true)(printer)
 
 	// Format the code
 	var buf bytes.Buffer
+	// wrt := format.BuildTabWriter(&buf)
 	err = printer.Print(&buf, prog)
 	if err != nil {
 		return nil, errors.Errorf("failed to format shell script: %w", err)
+	}
+
+	if cfg.UseTabs() {
+		//replace all leading 4 spaces with tabs
+		// the way the tab writer is configured inside syntax.NewPrinter() makes
+		// comment alignment way off unless we hack it like this
+		br, err := format.BruteForceIndentation(ctx, strings.Repeat(" ", 4), cfg, &buf)
+		if err != nil {
+			return nil, errors.Errorf("failed to apply configuration: %w", err)
+		}
+
+		return br, nil
 	}
 
 	return bytes.NewReader(buf.Bytes()), nil

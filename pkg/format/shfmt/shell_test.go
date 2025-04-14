@@ -172,6 +172,23 @@ fi
 			indent:  4,
 		},
 		{
+			name: "nested_structures_with_comments",
+			source: `if [ $a -eq 1 ]; then # comment
+for i in 1 2 3; do # comment
+echo $i # comment
+done # comment
+fi # comment
+`,
+			expected: `if [ $a -eq 1 ]; then  # comment
+	for i in 1 2 3; do # comment
+		echo $i        # comment
+	done               # comment
+fi                     # comment
+`,
+			useTabs: true,
+			indent:  4,
+		},
+		{
 			name: "heredoc_formatting",
 			source: `cat <<   EOF
 This is a heredoc
