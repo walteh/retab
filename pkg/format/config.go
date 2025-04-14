@@ -3,7 +3,6 @@ package format
 import (
 	"context"
 	"fmt"
-	"strings"
 )
 
 type ConfigurationProvider interface {
@@ -18,12 +17,17 @@ type Configuration interface {
 }
 
 func (x *basicConfigurationProvider) GetConfigurationForFileType(ctx context.Context, filename string) (Configuration, error) {
-	return x, nil
+	return &basicConfigurationProvider{
+		tabs:       x.tabs,
+		indentSize: x.indentSize,
+		filename:   filename,
+	}, nil
 }
 
 type basicConfigurationProvider struct {
 	tabs       bool
 	indentSize int
+	filename   string
 }
 
 func (x *basicConfigurationProvider) UseTabs() bool {
@@ -34,21 +38,6 @@ func (x *basicConfigurationProvider) IndentSize() int {
 	return x.indentSize
 }
 
-func (x *basicConfigurationProvider) IndentString() string {
-	if x.tabs {
-		return "\t"
-	}
-	return strings.Repeat(" ", x.indentSize)
-}
-
-// func (x *basicConfigurationProvider) TrimMultipleEmptyLines() bool {
-// 	return x.trimMultipleEmptyLines
-// }
-
-// func (x *basicConfigurationProvider) OneBracketPerLine() bool {
-// 	return x.oneBracketPerLine
-// }
-
 func (x *basicConfigurationProvider) Raw() map[string]string {
 
 	raw := make(map[string]string)
@@ -58,6 +47,9 @@ func (x *basicConfigurationProvider) Raw() map[string]string {
 		raw["indent_style"] = "space"
 	}
 	raw["indent_size"] = fmt.Sprintf("%d", x.indentSize)
+	if x.filename != "" {
+		raw["filename"] = x.filename
+	}
 	// raw["trim_multiple_empty_lines"] = strconv.FormatBool(x.trimMultipleEmptyLines)
 	// raw["one_bracket_per_line"] = strconv.FormatBool(x.oneBracketPerLine)
 	return raw

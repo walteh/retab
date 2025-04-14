@@ -3,7 +3,6 @@ package cmdfmt
 import (
 	"context"
 	"io"
-	"os/exec"
 
 	"github.com/rs/zerolog"
 	"github.com/walteh/retab/v2/pkg/format"
@@ -11,33 +10,18 @@ import (
 )
 
 type basicExternalFormatter struct {
-	indent  string
-	targets []string
-	f       func(io.Reader, io.Writer) func() error
+	indent    string
+	tempFiles map[string]string
+	f         func(io.Reader, io.Writer) func() error
 }
 
 type BasicExternalFormatterOpts struct {
-	Indent  string
-	Targets []string
-}
-
-func NewExecFormatter(opts *BasicExternalFormatterOpts, cmds ...string) format.Provider {
-	return ExternalFormatterToProvider(&basicExternalFormatter{opts.Indent, opts.Targets, func(r io.Reader, w io.Writer) func() error {
-		if len(cmds) < 1 {
-			return func() error {
-				return errors.New("no command specified")
-			}
-		}
-		cmd := exec.Command(cmds[0], cmds[1:]...)
-		cmd.Stdin = r
-		cmd.Stdout = w
-		cmd.Stderr = w
-		return cmd.Run
-	}})
+	Indent    string
+	TempFiles map[string]string
 }
 
 func NewNoopBasicExternalFormatProvider() format.Provider {
-	return ExternalFormatterToProvider(&basicExternalFormatter{"  ", []string{"*"}, func(r io.Reader, w io.Writer) func() error {
+	return ExternalFormatterToProvider(&basicExternalFormatter{"  ", map[string]string{}, func(r io.Reader, w io.Writer) func() error {
 		return func() error {
 			_, err := io.Copy(w, r)
 			if err != nil {
@@ -75,6 +59,7 @@ func (me *basicExternalFormatter) Indent() string {
 	return me.indent
 }
 
-func (me *basicExternalFormatter) Targets() []string {
-	return me.targets
+// TempFiles implements format.ExternalFormatter.
+func (me *basicExternalFormatter) TempFiles() map[string]string {
+	return me.tempFiles
 }

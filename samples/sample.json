@@ -1,37 +1,3 @@
-package cmdfmt
-
-import (
-	"context"
-	"fmt"
-	"strings"
-
-	"github.com/walteh/retab/v2/pkg/format"
-)
-
-func NewDartFormatter(ctx context.Context, cmds ...string) format.Provider {
-	cmds = append(cmds, "format", "--output", "show", "--summary", "none", "--fix")
-
-	return NewExecFormatter(ctx, &BasicExternalFormatterOpts{
-		Indent: "  ",
-		// Targets: []string{"*.dart"},
-	}, cmds...)
-}
-
-func NewTerraformFormatter(ctx context.Context, cmds ...string) format.Provider {
-	cmds = append(cmds, "fmt", "-write=false", "-list=false")
-
-	return NewExecFormatter(ctx, &BasicExternalFormatterOpts{
-		Indent: "  ",
-
-		// Targets: []string{"*.tf", "*.tfvars"},
-	}, cmds...)
-}
-
-// we could maybe read this in too, but we really need the indentation
-// to be 2 spaces in the config passed to the command no matter what
-// 2 spaces is arbitrary, but it's what we are passing in the Indent
-// field of the BasicExternalFormatterOpts for swift
-var swiftConfig = /* json */ `
 {
 	"version": 1,
 	"lineLength": 140,
@@ -86,19 +52,4 @@ var swiftConfig = /* json */ `
 		"UseWhereClausesInForLoops": false,
 		"ValidateDocumentationComments": false
 	}
-}
-`
-
-func NewSwiftFormatter(ctx context.Context, cmds ...string) format.Provider {
-	scfg := strings.ReplaceAll(swiftConfig, "\n", "")
-	scfg = strings.ReplaceAll(scfg, "\t", "")
-	scfg = strings.TrimSpace(scfg)
-	cmds = append(cmds, "format", fmt.Sprintf("--configuration='%s'", scfg), "-")
-
-	return NewExecFormatter(ctx, &BasicExternalFormatterOpts{
-		Indent: "  ",
-		// TempFiles: map[string]string{
-		// 	"swift-config.json": swiftConfig,
-		// },
-	}, cmds...)
 }

@@ -122,9 +122,10 @@ struct ContentView: View {
 			cfg.EXPECT().IndentSize().Return(tt.indentSize).Maybe()
 
 			result, err := cmdfmt.NewSwiftFormatter(
+				ctx,
 				// --interactive allows us to read from stdin
 				// --quiet suppresses the pull information in case the image is not available locally
-				"docker", "run", "--interactive", "--quiet", "swift:latest", "swift-format",
+				"docker", "run", "--name", newDisposableContainer(t), "--interactive", "--quiet", "swift:latest", "swift-format",
 			).Format(ctx, cfg, bytes.NewReader(tt.src))
 
 			require.NoError(t, err)

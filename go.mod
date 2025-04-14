@@ -34,6 +34,8 @@ require (
 	github.com/braydonk/yaml v0.9.0 // indirect
 	github.com/containerd/typeurl/v2 v2.2.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/go-enry/go-enry/v2 v2.9.2 // indirect
+	github.com/go-enry/go-oniguruma v1.2.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

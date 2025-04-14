@@ -59,6 +59,9 @@
 			},
 			"[docker]": {
 				"editor.defaultFormatter": "walteh.retab-vscode"
+			},
+			"[swift]": {
+				"editor.defaultFormatter": "walteh.retab-vscode"
 			}
 		},
 		"configuration": {

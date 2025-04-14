@@ -47,7 +47,7 @@
 		"eslint.options": {
 			"flags": ["unstable_ts_config"]
 		},
-		"yaml.all"
+		// "yaml.all"
 		"eslint.useESLintClass": true,
 		//===========================================
 		// Editor General Settings
@@ -97,10 +97,10 @@
 		// YAML Settings
 		//===========================================
 		"yaml.format.enable": true,
+
 		//===========================================
 		// Protobuf Settings
 		//===========================================
-
 		//===========================================
 		// Material Icon Theme Customization
 		//===========================================

@@ -1,5 +1,5 @@
 cmds:
 - for:
-	var: WASM_OUT_DIRS
-	cmd: echo "{{.ITEM}}"
+    var: WASM_OUT_DIRS
+    cmd: echo "{{.ITEM}}"
 

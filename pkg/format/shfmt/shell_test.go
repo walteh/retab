@@ -204,7 +204,7 @@ EOF
 		},
 		{
 			name: "complex_script_with_multiple_elements",
-			source: `#!/bin/bash
+			source: `#!/bin/zsh
 # Script header
 
 VAR="value"
@@ -223,7 +223,7 @@ fi
 for i in {1..3}; do
   echo $i
 done`,
-			expected: `#!/bin/bash
+			expected: `#!/bin/zsh
 # Script header
 
 VAR="value"

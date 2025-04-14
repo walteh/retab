@@ -4,7 +4,8 @@ import * as fs from "fs";
 import { RetabEngine, RetabFormat, RetabFormatter } from "./extension";
 import * as editorconfig from "editorconfig";
 import { Visited } from "editorconfig";
-
+import { exec, execSync } from "child_process";
+import { tmpdir } from "os";
 declare global {
 	interface result {
 		result: string;
@@ -26,6 +27,8 @@ declare global {
 	var retab_initialized: boolean;
 	var retab: retab;
 	var wasm_log: (message: string) => void;
+
+	var retab_exec: (cmd: string, data: string, tempFiles: string) => string;
 }
 
 type Success<T> = {
@@ -129,6 +132,48 @@ export class WasmFormatter implements RetabFormatter {
 
 			globalThis.wasm_log = (message: string) => {
 				this.outputChannel.appendLine(`[wasm:console.log] ${message}`);
+			};
+
+			globalThis.retab_exec = (cmd: string, data: string, tempFiles: string): string => {
+				const tempFilesJson = JSON.parse(tempFiles);
+				const tempFilesMap = new Map(Object.entries(tempFilesJson));
+
+				const tmpDir = fs.mkdtempSync(path.join(tmpdir(), "retab-"));
+
+				this.log(`Created temp directory: ${tmpDir}`);
+
+				try {
+					// Create the temporary directory
+
+					for (const [key, value] of tempFilesMap.entries()) {
+						const filePath = path.join(tmpDir, key);
+						fs.writeFileSync(filePath, value as string);
+						this.log(`Created temp file: ${filePath}`);
+					}
+
+					this.log(`Executing command: ${cmd}`);
+
+					// Execute the modified command
+					const result = execSync(cmd, {
+						input: data,
+						cwd: tmpDir,
+					});
+
+					this.log(`Command executed, result: ${result.toString()}`);
+					return result.toString();
+				} catch (error) {
+					this.log(`Error executing command: ${error}`);
+					throw error;
+				} finally {
+					// Clean up temporary files
+					try {
+						fs.rmSync(tmpDir, { recursive: true });
+
+						this.log(`Cleaned up temp directory: ${tmpDir}`);
+					} catch (cleanupError) {
+						this.log(`Warning: Failed to clean up temp directory: ${cleanupError}`);
+					}
+				}
 			};
 
 			// Load and instantiate the WASM module

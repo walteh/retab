@@ -389,14 +389,6 @@ RUN apt-get update && \
 	require.Contains(t, formatted, "wget", "Should contain wget")
 }
 
-func TestFormatterTargets(t *testing.T) {
-	formatter := dockerfmt.NewFormatter()
-	targets := formatter.Targets()
-
-	expected := []string{"Dockerfile", "Dockerfile.*", "*.dockerfile"}
-	require.Equal(t, expected, targets, "Targets should match expected patterns")
-}
-
 func TestErrorHandling(t *testing.T) {
 	// Test with non-empty but minimal valid input
 	ctx := context.Background()

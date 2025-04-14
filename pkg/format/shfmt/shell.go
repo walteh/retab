@@ -1,6 +1,7 @@
 package shfmt
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"io"
@@ -28,35 +29,84 @@ func (f *Formatter) Targets() []string {
 	return []string{"*.sh", "*.bash", "*.ksh", "*.zsh", "*.bats"}
 }
 
+// func GetShebangFromBytes(bs []byte) (string, error) {
+// 	return fileutil.Shebang(bs), nil
+// }
+
+// func GetShebangFromReader(read io.Reader) (string, io.Reader, error) {
+
+// 	var buf bytes.Buffer
+// 	tee := io.TeeReader(read, &buf)
+// 	bs, err := io.ReadAll(tee)
+// 	if err != nil {
+// 		return "", &buf, errors.Errorf("failed to read shell script: %w", err)
+// 	}
+
+// 	read = &buf
+
+// 	langs := enry.GetLanguagesByShebang("", bs, nil)
+// 	if len(langs) == 0 {
+// 		return "", &buf, errors.Errorf("failed to get language")
+// 	}
+
+// 	lang := langs[0]
+
+// 	shebasng := fileutil.Shebang(bs)
+
+// 	return lang, shebasng, read, nil
+// }
+
 // Format parses and formats shell code.
 func (f *Formatter) Format(ctx context.Context, cfg format.Configuration, read io.Reader) (io.Reader, error) {
-	// Determine the shell dialect based on configuration or file extension
-	// Default to bash if not specified
-	langVar := syntax.LangBash
+
+	langVar := syntax.LangAuto
 
 	if dialect, ok := cfg.Raw()["shell_dialect"]; ok {
 		if err := langVar.Set(dialect); err != nil {
 			return nil, errors.Errorf("invalid shell dialect %q: %w", dialect, err)
 		}
+	} else {
+		readz := bufio.NewReader(read)
+		cont, _ := readz.Peek(250)
+		read = readz
+
+		lang := format.Shebang(cont)
+
+		switch lang {
+		case "bash", "zsh", "ksh":
+			// Bash-compatible shells with extended features
+			langVar = syntax.LangBash
+			break
+		case "posix", "sh", "dash", "yash", "ash", "busybox":
+			// POSIX-compliant shells (standard/basic shell)
+			langVar = syntax.LangPOSIX
+			break
+		case "mksh", "pdksh":
+			// MirBSD Korn shell
+			langVar = syntax.LangMirBSDKorn
+			break
+		case "bats":
+			// Bash Automated Testing System
+			langVar = syntax.LangBats
+			break
+		default:
+			// Skip unknown shell types
+			langVar = syntax.LangBash
+		}
+
 	}
 
 	// Create a parser that keeps comments
 	parser := syntax.NewParser(syntax.KeepComments(true), syntax.Variant(langVar))
 
 	// Parse the source code
-	prog, err := parser.Parse(read, "")
+	prog, err := parser.Parse(read, cfg.Raw()["filename"])
 	if err != nil {
 		return nil, errors.Errorf("failed to parse shell script: %w", err)
 	}
 
 	// Create a new printer
 	printer := syntax.NewPrinter()
-
-	// // Apply minify setting if present
-	// minify := cfg.Raw()["minify"] == "true"
-	// if minify {
-	// 	syntax.Minify(true)(printer)
-	// }
 
 	// Apply configuration
 	var indent uint

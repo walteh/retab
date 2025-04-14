@@ -39,6 +39,8 @@ func Fmt(ctx context.Context, this js.Value, args []js.Value) (string, error) {
 		cfgProvider = format.NewDefaultConfigurationProvider()
 	}
 
+	re := strings.NewReader(content)
+
 	// Get the appropriate formatter
 	fmtr, err := getFormatter(ctx, formatter, filename)
 	if err != nil {
@@ -46,7 +48,7 @@ func Fmt(ctx context.Context, this js.Value, args []js.Value) (string, error) {
 	}
 
 	// Format the content
-	r, err := format.Format(ctx, fmtr, cfgProvider, filename, strings.NewReader(content))
+	r, err := format.Format(ctx, fmtr, cfgProvider, filename, re)
 	if err != nil {
 		return "", errors.Errorf("formatting content: %w", err)
 	}

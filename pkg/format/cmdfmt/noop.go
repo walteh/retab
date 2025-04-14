@@ -25,6 +25,6 @@ func (me *NoopExternalFormatter) Indent() string {
 	return "  "
 }
 
-func (me *NoopExternalFormatter) Targets() []string {
-	return []string{"*"}
+func (me *NoopExternalFormatter) TempFiles() map[string]string {
+	return map[string]string{}
 }

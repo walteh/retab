@@ -194,7 +194,11 @@ export function activate(context: vscode.ExtensionContext) {
 				const formatType = getFormatType(document.languageId, formatTfAsHcl);
 
 				try {
-					const formatted = await currentFormatter.format(document.getText(), document.fileName, formatType);
+					const formatted = await currentFormatter.format(
+						document.getText(),
+						document.fileName,
+						RetabFormat.AUTO
+					);
 
 					return [vscode.TextEdit.replace(new vscode.Range(0, 0, document.lineCount, 0), formatted)];
 				} catch (err) {

@@ -5,6 +5,7 @@ package dockerfmt
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,8 +18,9 @@ import (
 	"github.com/google/shlex"
 	"github.com/moby/buildkit/frontend/dockerfile/command"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
+	"github.com/walteh/retab/v2/pkg/format"
+	"github.com/walteh/retab/v2/pkg/format/shfmt"
 	"gitlab.com/tozd/go/errors"
-	"mvdan.cc/sh/v3/syntax"
 )
 
 type ExtendedNode struct {
@@ -36,11 +38,24 @@ type ParseState struct {
 	Config           *Config
 }
 
+func NewConfig(ctx context.Context, cfg format.Configuration) *Config {
+	return &Config{
+		ctx: ctx,
+		cfg: cfg,
+	}
+}
+
 type Config struct {
-	IndentSize      uint
 	TrailingNewline bool
 	SpaceRedirects  bool
+	Indent          string
+
+	ctx        context.Context
+	cfg        format.Configuration
+	indentSize uint
 }
+
+const indentPlaceholder = "$indent$"
 
 func FormatNode(ast *ExtendedNode, c *Config) (string, bool) {
 	nodeName := strings.ToLower(ast.Node.Value)
@@ -128,6 +143,8 @@ func FormatOnBuild(n *ExtendedNode, c *Config) string {
 
 func FormatFileLines(fileLines io.Reader, c *Config) ([]byte, error) {
 
+	c.indentSize = 1
+
 	content, err := io.ReadAll(fileLines)
 	if err != nil {
 		return nil, errors.Errorf("error reading file: %v", err)
@@ -160,7 +177,10 @@ func FormatFileLines(fileLines io.Reader, c *Config) ([]byte, error) {
 	if c.TrailingNewline {
 		parseState.Output += "\n"
 	}
-	return []byte(parseState.Output), nil
+
+	formattedContent := []byte(strings.ReplaceAll(parseState.Output, indentPlaceholder, c.Indent))
+
+	return formattedContent, nil
 }
 
 func BuildExtendedNode(n *parser.Node, fileLines []string) *ExtendedNode {
@@ -230,15 +250,15 @@ func formatEnv(n *ExtendedNode, c *Config) string {
 		if i == 0 { // Don't indent the first line
 			// do nothing
 		} else {
-			lines[i] = "$indent$" + strings.TrimSpace(line)
+			lines[i] = indentPlaceholder + strings.TrimSpace(line)
 		}
 	}
 	content = strings.TrimSpace(strings.Join(lines, "\n"))
-	content = strings.TrimSuffix(content, "$indent$")
+	content = strings.TrimSuffix(content, indentPlaceholder)
 	return strings.ToUpper(n.Value) + " " + content
 }
 
-func formatShell(content string, hereDoc bool, c *Config) string {
+func formatShell(ctx context.Context, cfg format.Configuration, content string, hereDoc bool) string {
 	// Semicolons require special handling so we don't break the command
 	// TODO: support semicolons in commands
 
@@ -270,7 +290,7 @@ func formatShell(content string, hereDoc bool, c *Config) string {
 
 	// Now that we have a valid bash-style command, we can format it with shfmt
 	// log.Printf("Content1: %s\n", content)
-	content = formatBash(content, c)
+	content = formatBash(ctx, cfg, content)
 	// log.Printf("Content2: %s\n", content)
 
 	if !hereDoc {
@@ -280,7 +300,7 @@ func formatShell(content string, hereDoc bool, c *Config) string {
 		content = strings.ReplaceAll(content, "'dummynode'", "")
 		content = regexp.MustCompile(`(\s*#.*)`).ReplaceAllString(content, "$1")
 		// log.Printf("Content4: %s\n", content)
-		content = regexp.MustCompile("(?m)^ *(#.*)").ReplaceAllString(content, strings.Repeat("$indent$", int(c.IndentSize))+"$1")
+		content = regexp.MustCompile("(?m)^ *(#.*)").ReplaceAllString(content, indentPlaceholder+"$1")
 
 		// Add backslashes if needed
 		lines := strings.SplitAfter(content, "\n")
@@ -345,7 +365,7 @@ func formatRun(n *ExtendedNode, c *Config) string {
 		outStr := strings.ReplaceAll(string(out), "\",\"", "\", \"")
 		content = outStr + "\n"
 	} else {
-		content = formatShell(content, hereDoc, c)
+		content = formatShell(c.ctx, c.cfg, content, hereDoc)
 		if hereDoc {
 			content = "<<" + n.Node.Heredocs[0].Name + "\n" + content + n.Node.Heredocs[0].Name + "\n"
 		}
@@ -363,7 +383,7 @@ func formatBasic(n *ExtendedNode, c *Config) string {
 	originalTrimmed := strings.TrimLeft(n.OriginalMultiline, " \t")
 
 	parts := regexp.MustCompile(" ").Split(originalTrimmed, 2)
-	return IndentFollowingLines(strings.ToUpper(n.Value)+" "+parts[1], c.IndentSize)
+	return IndentFollowingLines(strings.ToUpper(n.Value)+" "+parts[1], c.indentSize)
 }
 
 // Marshal is a UTF-8 friendly marshaler.  Go's json.Marshal is not UTF-8
@@ -450,7 +470,7 @@ func formatSpaceSeparated(n *ExtendedNode, c *Config) string {
 
 		// Format the heredoc content
 		content := n.Node.Heredocs[0].Content
-		formattedContent := formatShell(content, true, c)
+		formattedContent := formatShell(c.ctx, c.cfg, content, true)
 
 		// Construct the final command with proper spacing
 		result := strings.ToUpper(n.Value) + " <<" + n.Node.Heredocs[0].Name
@@ -548,7 +568,7 @@ func IndentFollowingLines(lines string, indentSize uint) string {
 		if allLines[i] != "" { // Skip empty lines
 			// Remove existing indentation and add new indentation
 			trimmedLine := strings.TrimLeft(allLines[i], " \t")
-			allLines[i] = strings.Repeat("$indent$", int(indentSize)) + trimmedLine
+			allLines[i] = indentPlaceholder + trimmedLine
 		}
 
 		// Add to result (with newline except for the last line)
@@ -558,23 +578,34 @@ func IndentFollowingLines(lines string, indentSize uint) string {
 	return result
 }
 
-func formatBash(s string, c *Config) string {
-	r := strings.NewReader(s)
-	f, err := syntax.NewParser(syntax.KeepComments(true), syntax.Variant(syntax.LangPOSIX)).Parse(r, "")
+func formatBash(ctx context.Context, cfg format.Configuration, s string) string {
+	// r := strings.NewReader(s)
+	// f, err := syntax.NewParser(syntax.KeepComments(true), syntax.Variant(syntax.LangPOSIX)).Parse(r, "")
+	// if err != nil {
+	// 	fmt.Printf("Error parsing: %s\n", s)
+	// 	panic(err)
+	// }
+	// buf := new(bytes.Buffer)
+	// syntax.NewPrinter(
+	// 	syntax.Minify(false),
+	// 	syntax.SingleLine(false),
+	// 	syntax.SpaceRedirects(c.SpaceRedirects),
+	// 	syntax.Indent(0),
+	// 	syntax.SwitchCaseIndent(true),
+	// 	syntax.BinaryNextLine(true),
+	// ).Print(buf, f)
+
+	out, err := shfmt.NewFormatter().Format(ctx, cfg, strings.NewReader(s))
 	if err != nil {
-		fmt.Printf("Error parsing: %s\n", s)
-		panic(err)
+		return ""
 	}
-	buf := new(bytes.Buffer)
-	syntax.NewPrinter(
-		syntax.Minify(false),
-		syntax.SingleLine(false),
-		syntax.SpaceRedirects(c.SpaceRedirects),
-		syntax.Indent(0),
-		syntax.SwitchCaseIndent(true),
-		syntax.BinaryNextLine(true),
-	).Print(buf, f)
-	return buf.String()
+
+	content, err := io.ReadAll(out)
+	if err != nil {
+		return ""
+	}
+
+	return string(content)
 }
 
 /*

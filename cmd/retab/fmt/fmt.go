@@ -11,7 +11,6 @@ import (
 	"os"
 
 	"github.com/rs/zerolog"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/walteh/retab/v2/pkg/format"
 	"github.com/walteh/retab/v2/pkg/format/editorconfig"
@@ -49,7 +48,6 @@ func NewFmtCommand() *cobra.Command {
 }
 
 func (me *Handler) Run(ctx context.Context) error {
-	fs := afero.NewOsFs()
 	var err error
 	var cfgProvider format.ConfigurationProvider
 	// Setup editorconfig with either raw content or auto-resolution
@@ -59,21 +57,21 @@ func (me *Handler) Run(ctx context.Context) error {
 		cfgProvider = format.NewDefaultConfigurationProvider()
 	}
 
-	fmtr, err := getFormatter(ctx, me.formatter, me.filename)
-	if err != nil {
-		return err
-	}
-
 	var input io.Reader
 	if me.FromStdin {
 		input = os.Stdin
 	} else {
-		file, err := fs.Open(me.filename)
+		file, err := os.Open(me.filename)
 		if err != nil {
 			return errors.Errorf("opening file: %w", err)
 		}
 		defer file.Close()
 		input = file
+	}
+
+	fmtr, err := getFormatter(ctx, me.formatter, me.filename)
+	if err != nil {
+		return err
 	}
 
 	r, err := format.Format(ctx, fmtr, cfgProvider, me.filename, input)
@@ -86,7 +84,12 @@ func (me *Handler) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = afero.WriteReader(fs, me.filename, r)
+	rBytes, err := io.ReadAll(r)
+	if err != nil {
+		return errors.Errorf("reading formatted content: %w", err)
+	}
+
+	err = os.WriteFile(me.filename, rBytes, 0644)
 	if err != nil {
 		return errors.Errorf("writing formatted file: %w", err)
 	}

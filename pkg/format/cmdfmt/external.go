@@ -16,15 +16,11 @@ type ExternalFormatterConfig struct {
 type ExternalFormatter interface {
 	Format(ctx context.Context, reader io.Reader) (io.Reader, func() error)
 	Indent() string
-	Targets() []string
+	TempFiles() map[string]string
 }
 
 type externalStdinFormatter struct {
 	internal ExternalFormatter
-}
-
-func (me *externalStdinFormatter) Targets() []string {
-	return me.internal.Targets()
 }
 
 func ExternalFormatterToProvider(ext ExternalFormatter) format.Provider {
