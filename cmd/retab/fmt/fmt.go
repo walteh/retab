@@ -48,6 +48,9 @@ func NewFmtCommand() *cobra.Command {
 }
 
 func (me *Handler) Run(ctx context.Context) error {
+
+	defer trackStats(ctx)()
+
 	var err error
 	var cfgProvider format.ConfigurationProvider
 	// Setup editorconfig with either raw content or auto-resolution
@@ -57,7 +60,7 @@ func (me *Handler) Run(ctx context.Context) error {
 		cfgProvider = format.NewDefaultConfigurationProvider()
 	}
 
-	var input io.Reader
+	var input io.ReadSeeker
 	if me.FromStdin {
 		input = os.Stdin
 	} else {
@@ -69,7 +72,7 @@ func (me *Handler) Run(ctx context.Context) error {
 		input = file
 	}
 
-	fmtr, err := getFormatter(ctx, me.formatter, me.filename)
+	fmtr, err := getFormatter(ctx, me.formatter, me.filename, input)
 	if err != nil {
 		return err
 	}

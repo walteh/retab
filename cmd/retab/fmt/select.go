@@ -2,10 +2,16 @@ package fmt
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/go-enry/go-enry/v2"
+	"github.com/rs/zerolog"
 	"github.com/walteh/retab/v2/pkg/format"
 	"github.com/walteh/retab/v2/pkg/format/cmdfmt"
 	"github.com/walteh/retab/v2/pkg/format/dockerfmt"
@@ -16,66 +22,55 @@ import (
 	"gitlab.com/tozd/go/errors"
 )
 
-func getFormatter(ctx context.Context, formatter string, filename string) (format.Provider, error) {
+func trackStats(ctx context.Context) func() {
 
-	if formatter == "auto" || formatter == "" {
+	memoryStart := runtime.MemStats{}
+	runtime.ReadMemStats(&memoryStart)
 
-		// // Wrap in a buffered reader
-		// br := bufio.NewReader(reader)
+	// Track goroutine count
+	goroutinesStart := runtime.NumGoroutine()
 
-		// // Peek at the first 250 bytes without advancing the reader
-		// peeked, _ := br.Peek(250)
+	// Track GC stats
+	gcStart := memoryStart.NumGC
 
-		// langs := enry.GetLanguages(filename, peeked)
-		// if len(langs) == 0 {
-		// 	return nil, errors.Errorf("failed to get language")
-		// }
+	start := time.Now()
 
-		// zerolog.Ctx(ctx).Info().Strs("languages", langs).Msg("detected languages")
+	return func() {
+		duration := time.Since(start)
 
-		// for _, lang := range langs {
-		// 	fmtr, ok := getFormatterByLanguage(lang)
-		// 	if !ok {
-		// 		continue
-		// 	}
+		memoryEnd := runtime.MemStats{}
+		runtime.ReadMemStats(&memoryEnd)
 
-		// 	zerolog.Ctx(ctx).Info().Msgf("using formatter for language [%s]", lang)
-		// 	return fmtr, nil
-		// }
+		// Get final goroutine count
+		goroutinesEnd := runtime.NumGoroutine()
 
-		var backupAutoDetectFormatterGlobs = map[string]string{
-			"*.{hcl,hcl2,terraform,tf,tfvars}": "hcl",
-			"*.{proto,proto3}":                 "proto",
-			"*.dart":                           "dart",
-			"*.swift":                          "swift",
-			"*.{yaml,yml}":                     "yaml",
-			"*.{sh,bash,zsh,ksh,shell}":        "sh",
-			"{Dockerfile,Dockerfile.*}":        "dockerfile",
-		}
+		// Calculate additional metrics
+		memoryUsage := memoryEnd.TotalAlloc - memoryStart.TotalAlloc
+		gcRuns := memoryEnd.NumGC - gcStart
 
-		for glob, fmt := range backupAutoDetectFormatterGlobs {
-			matches, err := doublestar.PathMatch(glob, filepath.Base(filename))
-			if err != nil {
-				return nil, errors.Errorf("globbing: %w", err)
-			}
-			if matches {
-				fmtr, ok := getFormatterByLanguage(ctx, fmt)
-				if !ok {
-					// should never happen
-					panic("unknown formatter: " + fmt)
-				}
-				return fmtr, nil
-			}
-		}
-
-		return nil, errors.New("no formatter found for file at path: " + filename)
+		zerolog.Ctx(ctx).Info().
+			Str("duration", duration.String()).
+			Uint64("memory_usage_bytes", memoryUsage).
+			Str("memory_usage_human", humanizeBytes(memoryUsage)).
+			Int("goroutines", goroutinesEnd-goroutinesStart).
+			Uint32("gc_runs", gcRuns).
+			Float64("gc_pause_total_ms", float64(memoryEnd.PauseTotalNs-memoryStart.PauseTotalNs)/1000000).
+			Msg("fmt completed")
 	}
+}
 
-	fmtr, ok := getFormatterByLanguage(ctx, formatter)
-	if !ok {
-		return nil, errors.New("unknown formatter name: " + formatter)
+// Helper function to make byte sizes human-readable
+func humanizeBytes(bytes uint64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
 	}
-	return fmtr, nil
+	div, exp := uint64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
 
 func getFormatterByLanguage(ctx context.Context, lang string) (format.Provider, bool) {
@@ -96,8 +91,94 @@ func getFormatterByLanguage(ctx context.Context, lang string) (format.Provider, 
 	case "external-terraform":
 		return cmdfmt.NewTerraformFormatter(ctx, "terraform"), true
 	case "swift":
-		return cmdfmt.NewSwiftFormatter(ctx, "/usr/bin/swift"), true
+		return cmdfmt.NewSwiftFormatter(ctx, "swift"), true
 	default:
 		return nil, false
 	}
+}
+
+func autoDetectFast(ctx context.Context, filename string) (format.Provider, bool) {
+	var backupAutoDetectFormatterGlobs = map[string]string{
+		"*.{hcl,hcl2,terraform,tf,tfvars}": "hcl",
+		"*.{proto,proto3}":                 "proto",
+		"*.dart":                           "dart",
+		"*.swift":                          "swift",
+		"*.{yaml,yml}":                     "yaml",
+		"*.{sh,bash,zsh,ksh,shell}":        "sh",
+		// ".{bash,zsh}{rc,_history}":         "sh", // commenting for now just to make sure the fallback works
+		"{Dockerfile,Dockerfile.*}": "dockerfile",
+	}
+
+	for glob, fmt := range backupAutoDetectFormatterGlobs {
+		matches, err := doublestar.PathMatch(glob, filepath.Base(filename))
+		if err != nil {
+			// should never happen
+			panic("globbing: " + err.Error())
+		}
+		if matches {
+			fmtr, ok := getFormatterByLanguage(ctx, fmt)
+			if !ok {
+				zerolog.Ctx(ctx).Warn().Str("filename", filename).Str("glob", glob).Msg("unknown formatter - should never happen")
+				return nil, false
+			}
+			zerolog.Ctx(ctx).Info().Str("filename", filename).Str("formatter", fmt).Msg("detected formatter (fast)")
+			return fmtr, true
+		}
+	}
+
+	return nil, false
+}
+
+func autoDetectFallback(ctx context.Context, filename string, br io.ReadSeeker) (format.Provider, bool) {
+
+	// Peek at the first 250 bytes without advancing the reader
+	peeked := make([]byte, 250)
+	_, _ = br.Read(peeked)
+	defer br.Seek(0, io.SeekStart)
+
+	langs := enry.GetLanguages(filename, peeked)
+	if len(langs) == 0 {
+		return nil, false
+	}
+
+	zerolog.Ctx(ctx).Debug().Strs("languages", langs).Msg("found languages")
+
+	for _, lang := range langs {
+		fmtr, ok := getFormatterByLanguage(ctx, lang)
+		if !ok {
+			continue
+		}
+
+		zerolog.Ctx(ctx).Info().Str("filename", filename).Str("language_detected", lang).Msg("detected formatter (fallback)")
+
+		return fmtr, true
+	}
+
+	zerolog.Ctx(ctx).Warn().Str("filename", filename).Strs("languages_detected", langs).Msg("fallback:no formatter found for detected languages")
+
+	return nil, false
+}
+
+func getFormatter(ctx context.Context, formatter string, filename string, br io.ReadSeeker) (format.Provider, error) {
+
+	if formatter == "auto" || formatter == "" {
+
+		fmtr, ok := autoDetectFast(ctx, filename)
+		if ok {
+			return fmtr, nil
+		}
+
+		fmtr, ok = autoDetectFallback(ctx, filename, br)
+		if ok {
+			return fmtr, nil
+		}
+
+		return nil, errors.New("unable to auto-detect formatter for file at path: " + filename)
+	}
+
+	fmtr, ok := getFormatterByLanguage(ctx, formatter)
+	if !ok {
+		return nil, errors.Errorf("unknown formatter name [%s] - trying to format file at path: %s", formatter, filename)
+	}
+	return fmtr, nil
 }

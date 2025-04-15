@@ -24,12 +24,13 @@ func Fmt(ctx context.Context, this js.Value, args []js.Value) (string, error) {
 		return "", errors.New("expected 4 arguments: formatter, filename, content, editorconfig-content")
 	}
 
-	zerolog.Ctx(ctx).Info().Msg("fmt")
+	defer trackStats(ctx)()
 
 	formatter := args[0].String()
 	filename := args[1].String()
 	content := args[2].String()
 	editorconfigContent := args[3].String()
+
 	var cfgProvider format.ConfigurationProvider
 	var err error
 	// Setup editorconfig with either raw content or auto-resolution
@@ -39,16 +40,16 @@ func Fmt(ctx context.Context, this js.Value, args []js.Value) (string, error) {
 		cfgProvider = format.NewDefaultConfigurationProvider()
 	}
 
-	re := strings.NewReader(content)
+	br := strings.NewReader(content)
 
 	// Get the appropriate formatter
-	fmtr, err := getFormatter(ctx, formatter, filename)
+	fmtr, err := getFormatter(ctx, formatter, filename, br)
 	if err != nil {
 		return "", errors.Errorf("getting formatter: %w", err)
 	}
 
 	// Format the content
-	r, err := format.Format(ctx, fmtr, cfgProvider, filename, re)
+	r, err := format.Format(ctx, fmtr, cfgProvider, filename, br)
 	if err != nil {
 		return "", errors.Errorf("formatting content: %w", err)
 	}

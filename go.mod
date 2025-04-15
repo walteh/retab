@@ -8,6 +8,7 @@ require (
 	github.com/bufbuild/protocompile v0.14.2-0.20250407233408-f0b329b35310
 	github.com/editorconfig/editorconfig-core-go/v2 v2.6.3
 	github.com/fatih/color v1.18.0
+	github.com/go-enry/go-enry/v2 v2.9.2
 	github.com/google/go-cmp v0.7.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/google/yamlfmt v0.16.0
@@ -34,7 +35,6 @@ require (
 	github.com/braydonk/yaml v0.9.0 // indirect
 	github.com/containerd/typeurl/v2 v2.2.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/go-enry/go-enry/v2 v2.9.2 // indirect
 	github.com/go-enry/go-oniguruma v1.2.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
