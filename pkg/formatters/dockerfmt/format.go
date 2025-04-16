@@ -19,7 +19,7 @@ import (
 	"github.com/moby/buildkit/frontend/dockerfile/command"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/walteh/retab/v2/pkg/format"
-	"github.com/walteh/retab/v2/pkg/format/shfmt"
+	"github.com/walteh/retab/v2/pkg/formatters/shfmt"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -579,21 +579,6 @@ func IndentFollowingLines(lines string, indentSize uint) string {
 }
 
 func formatBash(ctx context.Context, cfg format.Configuration, s string) string {
-	// r := strings.NewReader(s)
-	// f, err := syntax.NewParser(syntax.KeepComments(true), syntax.Variant(syntax.LangPOSIX)).Parse(r, "")
-	// if err != nil {
-	// 	fmt.Printf("Error parsing: %s\n", s)
-	// 	panic(err)
-	// }
-	// buf := new(bytes.Buffer)
-	// syntax.NewPrinter(
-	// 	syntax.Minify(false),
-	// 	syntax.SingleLine(false),
-	// 	syntax.SpaceRedirects(c.SpaceRedirects),
-	// 	syntax.Indent(0),
-	// 	syntax.SwitchCaseIndent(true),
-	// 	syntax.BinaryNextLine(true),
-	// ).Print(buf, f)
 
 	out, err := shfmt.NewFormatter().Format(ctx, cfg, strings.NewReader(s))
 	if err != nil {

@@ -1,26 +1,25 @@
 package cmdfmt
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
 	"github.com/walteh/retab/v2/pkg/format"
 )
 
-func NewDartFormatter(ctx context.Context, cmds ...string) format.Provider {
+func NewDartFormatter(cmds ...string) format.Provider {
 	cmds = append(cmds, "format", "--output", "show", "--summary", "none", "--fix")
 
-	return NewExecFormatter(ctx, &BasicExternalFormatterOpts{
+	return NewExecFormatter(&BasicExternalFormatterOpts{
 		Indent: "  ",
 		// Targets: []string{"*.dart"},
 	}, cmds...)
 }
 
-func NewTerraformFormatter(ctx context.Context, cmds ...string) format.Provider {
+func NewTerraformFormatter(cmds ...string) format.Provider {
 	cmds = append(cmds, "fmt", "-write=false", "-list=false")
 
-	return NewExecFormatter(ctx, &BasicExternalFormatterOpts{
+	return NewExecFormatter(&BasicExternalFormatterOpts{
 		Indent: "  ",
 
 		// Targets: []string{"*.tf", "*.tfvars"},
@@ -89,13 +88,13 @@ var swiftConfig = /* json */ `
 }
 `
 
-func NewSwiftFormatter(ctx context.Context, cmds ...string) format.Provider {
+func NewSwiftFormatter(cmds ...string) format.Provider {
 	scfg := strings.ReplaceAll(swiftConfig, "\n", "")
 	scfg = strings.ReplaceAll(scfg, "\t", "")
 	scfg = strings.TrimSpace(scfg)
 	cmds = append(cmds, "format", fmt.Sprintf("--configuration='%s'", scfg), "-")
 
-	return NewExecFormatter(ctx, &BasicExternalFormatterOpts{
+	return NewExecFormatter(&BasicExternalFormatterOpts{
 		Indent: "  ",
 		// TempFiles: map[string]string{
 		// 	"swift-config.json": swiftConfig,

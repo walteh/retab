@@ -3,15 +3,30 @@ package cmdfmt_test
 import (
 	"bytes"
 	"context"
+	"io"
+	"os/exec"
+	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 	"github.com/walteh/retab/v2/gen/mocks/pkg/formatmock"
-	"github.com/walteh/retab/v2/pkg/diff"
-	"github.com/walteh/retab/v2/pkg/format/cmdfmt"
+	"github.com/walteh/retab/v2/pkg/formatters/cmdfmt"
 )
 
-func TestPreFormattedDartUnit(t *testing.T) {
+func newDisposableContainer(t *testing.T) string {
+	t.Helper()
+
+	containerName := "retab_" + strings.ReplaceAll(t.Name(), "/", "_")
+
+	t.Cleanup(func() {
+		// remove the container
+		exec.Command("docker", "rm", "-f", containerName).Run()
+	})
+
+	return containerName
+}
+
+func TestDartIntegration(t *testing.T) {
 	tests := []struct {
 		name                   string
 		useTabs                bool
@@ -25,10 +40,11 @@ func TestPreFormattedDartUnit(t *testing.T) {
 			useTabs:                true,
 			trimMultipleEmptyLines: true,
 			indentSize:             1,
-			src: []byte(`void main() {
+			src: []byte(`
+void main() {
   if (true) {
-    runApp(const MyApp());
-  }
+   runApp(const MyApp());
+ }
 }
 `),
 			expected: []byte(`void main() {
@@ -43,7 +59,8 @@ func TestPreFormattedDartUnit(t *testing.T) {
 			useTabs:                false,
 			indentSize:             4,
 			trimMultipleEmptyLines: true,
-			src: []byte(`void main() {
+			src: []byte(`
+void main() {
   runApp(const MyApp());
 }
 `),
@@ -53,11 +70,12 @@ func TestPreFormattedDartUnit(t *testing.T) {
 `),
 		},
 		{
-			name:                   "tabs big",
+			name:                   "tabs large",
 			useTabs:                true,
 			indentSize:             1,
 			trimMultipleEmptyLines: true,
-			src: []byte(`import 'package:flutter/material.dart';
+			src: []byte(`
+import 'package:flutter/material.dart';
 
 void main() {
 	runApp(const MyApp());
@@ -313,6 +331,7 @@ class _MyHomePageState extends State<MyHomePage> {
 	}
 
 	for _, tt := range tests {
+		// for _, typed := range []string{"stdin", "file"} {
 		t.Run(tt.name, func(t *testing.T) {
 
 			ctx := context.Background()
@@ -321,10 +340,80 @@ class _MyHomePageState extends State<MyHomePage> {
 			cfg.EXPECT().UseTabs().Return(tt.useTabs)
 			cfg.EXPECT().IndentSize().Return(tt.indentSize).Maybe()
 
-			// Call the Format function with the provided configuration and source
-			result, err := cmdfmt.NewNoopExternalFormatProvider().Format(ctx, cfg, bytes.NewReader(tt.src))
-			require.NoError(t, err)
-			diff.Require(t).Got(result).Want(tt.expected).Equals()
+			var result io.Reader
+			var err error
+
+			// if typed == "stdin" {
+
+			result, err = cmdfmt.NewDartFormatter(
+				// --intreactive allows us to read from stdin
+				// --quiet suppresses the pull information in case the image is not available locally
+				"docker", "run", "--name", newDisposableContainer(t), "--interactive", "--quiet", "dart:stable", "dart",
+			).Format(ctx, cfg, bytes.NewReader(tt.src))
+
+			// }
+
+			// else if typed == "file" {
+
+			// 	// make a new temporary file with the source
+			// 	fle, err := os.CreateTemp("", "retab-test-*.dart")
+			// 	if err != nil {
+			// 		t.Fatalf("Unexpected error: %v", err)
+			// 	}
+
+			// 	t.Cleanup(func() {
+			// 		// remove the temporary file
+			// 		err := os.Remove(fle.Name())
+			// 		if err != nil {
+			// 			t.Fatalf("Unexpected error: %v", err)
+			// 		}
+			// 	})
+
+			// 	// write the source to the file
+			// 	_, err = fle.Write(tt.src)
+			// 	if err != nil {
+			// 		t.Fatalf("Unexpected error: %v", err)
+			// 	}
+
+			// 	// close the file
+			// 	err = fle.Close()
+			// 	if err != nil {
+			// 		t.Fatalf("Unexpected error: %v", err)
+			// 	}
+
+			// 	// check that the file exists
+			// 	_, err = os.Stat(fle.Name())
+			// 	if err != nil {
+			// 		t.Fatalf("Unexpected error: %v", err)
+			// 	}
+
+			// 	result, err = externalwrite.NewDartFileFormatter(
+			// 		fle.Name(),
+			// 		// --quiet suppresses the pull information in case the image is not available locally
+			// 		"docker", "run", "--quiet", "-v", fle.Name()+":"+fle.Name(), "dart:stable", "dart",
+			// 	).Format(ctx, cfg, nil)
+
+			// } else {
+			// 	t.Fatalf("Unexpected type: %v", typed)
+			// }
+
+			// Check for errors
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			// Read the result into a buffer
+			buf := new(bytes.Buffer)
+			_, err = buf.ReadFrom(result)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			//
+
+			// Compare the result with the expected outcome
+			assert.Equal(t, string(tt.expected), buf.String(), " source does not match expected output")
 		})
+		// }
 	}
 }

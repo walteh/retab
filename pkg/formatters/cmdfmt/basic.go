@@ -12,7 +12,7 @@ import (
 type basicExternalFormatter struct {
 	indent    string
 	tempFiles map[string]string
-	f         func(io.Reader, io.Writer) func() error
+	f         func(io.Reader, io.Writer) func(ctx context.Context) error
 }
 
 type BasicExternalFormatterOpts struct {
@@ -21,8 +21,8 @@ type BasicExternalFormatterOpts struct {
 }
 
 func NewNoopBasicExternalFormatProvider() format.Provider {
-	return ExternalFormatterToProvider(&basicExternalFormatter{"  ", map[string]string{}, func(r io.Reader, w io.Writer) func() error {
-		return func() error {
+	return ExternalFormatterToProvider(&basicExternalFormatter{"  ", map[string]string{}, func(r io.Reader, w io.Writer) func(ctx context.Context) error {
+		return func(ctx context.Context) error {
 			_, err := io.Copy(w, r)
 			if err != nil {
 				return errors.Errorf("failed to copy: %w", err)
@@ -40,7 +40,7 @@ func (me *basicExternalFormatter) Format(ctx context.Context, reader io.Reader) 
 	pipr, pipw := io.Pipe()
 	cmd := me.f(reader, pipw)
 	return pipr, func() error {
-		if err := cmd(); err != nil {
+		if err := cmd(ctx); err != nil {
 			err := pipw.CloseWithError(err)
 			if err != nil {
 				return errors.Errorf("failed to close pipe: %w", err)

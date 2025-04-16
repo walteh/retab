@@ -9,8 +9,9 @@ import (
 	"syscall/js"
 
 	"github.com/rs/zerolog"
+	"github.com/walteh/retab/v2/pkg/editorconfig"
 	"github.com/walteh/retab/v2/pkg/format"
-	"github.com/walteh/retab/v2/pkg/format/editorconfig"
+	"github.com/walteh/retab/v2/pkg/formatters"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -18,6 +19,12 @@ var (
 	lastResult string
 	lastError  error
 )
+
+var cfg *formatters.AutoFormatProvider
+
+func init() {
+	cfg = NewAutoFormatConfig()
+}
 
 func Fmt(ctx context.Context, this js.Value, args []js.Value) (string, error) {
 	if len(args) != 4 {
@@ -46,7 +53,7 @@ func Fmt(ctx context.Context, this js.Value, args []js.Value) (string, error) {
 	br := strings.NewReader(content)
 
 	// Get the appropriate formatter
-	fmtr, err := getFormatter(ctx, formatter, filename, br)
+	fmtr, err := cfg.GetFormatter(ctx, formatter, filename, br)
 	if err != nil {
 		return "", errors.Errorf("getting formatter: %w", err)
 	}

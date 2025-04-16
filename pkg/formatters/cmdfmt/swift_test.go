@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/walteh/retab/v2/gen/mocks/pkg/formatmock"
 	"github.com/walteh/retab/v2/pkg/diff"
-	"github.com/walteh/retab/v2/pkg/format/cmdfmt"
+	"github.com/walteh/retab/v2/pkg/formatters/cmdfmt"
 )
 
 func TestSwiftIntegration(t *testing.T) {
@@ -122,7 +122,6 @@ struct ContentView: View {
 			cfg.EXPECT().IndentSize().Return(tt.indentSize).Maybe()
 
 			result, err := cmdfmt.NewSwiftFormatter(
-				ctx,
 				// --interactive allows us to read from stdin
 				// --quiet suppresses the pull information in case the image is not available locally
 				"docker", "run", "--name", newDisposableContainer(t), "--interactive", "--quiet", "swift:latest", "swift-format",

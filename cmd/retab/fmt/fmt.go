@@ -14,8 +14,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/samber/oops"
 	"github.com/spf13/cobra"
+	"github.com/walteh/retab/v2/pkg/editorconfig"
 	"github.com/walteh/retab/v2/pkg/format"
-	"github.com/walteh/retab/v2/pkg/format/editorconfig"
+	"github.com/walteh/retab/v2/pkg/formatters"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -25,6 +26,8 @@ type Handler struct {
 	ToStdout            bool
 	FromStdin           bool
 	editorconfigContent string
+
+	cfg *formatters.AutoFormatProvider
 }
 
 func NewFmtCommand() *cobra.Command {
@@ -45,6 +48,8 @@ func NewFmtCommand() *cobra.Command {
 		me.filename = args[0]
 		return me.Run(cmd.Context())
 	}
+
+	me.cfg = NewAutoFormatConfig()
 
 	return cmd
 }
@@ -77,7 +82,7 @@ func (me *Handler) Run(ctx context.Context) error {
 		input = file
 	}
 
-	fmtr, err := getFormatter(ctx, me.formatter, me.filename, input)
+	fmtr, err := me.cfg.GetFormatter(ctx, me.formatter, me.filename, input)
 	if err != nil {
 		return err
 	}
