@@ -24,12 +24,15 @@ func Fmt(ctx context.Context, this js.Value, args []js.Value) (string, error) {
 		return "", errors.New("expected 4 arguments: formatter, filename, content, editorconfig-content")
 	}
 
-	defer trackStats(ctx)()
+	ctx, exit := trackStats(ctx)
+	defer func() { exit(ctx) }()
 
 	formatter := args[0].String()
 	filename := args[1].String()
 	content := args[2].String()
 	editorconfigContent := args[3].String()
+
+	ctx = applyValueToContext(ctx, "filename", filename)
 
 	var cfgProvider format.ConfigurationProvider
 	var err error

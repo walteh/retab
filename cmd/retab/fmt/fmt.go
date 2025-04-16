@@ -9,8 +9,10 @@ import (
 	"context"
 	"io"
 	"os"
+	"reflect"
 
 	"github.com/rs/zerolog"
+	"github.com/samber/oops"
 	"github.com/spf13/cobra"
 	"github.com/walteh/retab/v2/pkg/format"
 	"github.com/walteh/retab/v2/pkg/format/editorconfig"
@@ -49,7 +51,10 @@ func NewFmtCommand() *cobra.Command {
 
 func (me *Handler) Run(ctx context.Context) error {
 
-	defer trackStats(ctx)()
+	ctx, exit := trackStats(ctx)
+	defer func() { exit(ctx) }()
+
+	ctx = applyValueToContext(ctx, "filename", me.filename)
 
 	var err error
 	var cfgProvider format.ConfigurationProvider
@@ -77,9 +82,11 @@ func (me *Handler) Run(ctx context.Context) error {
 		return err
 	}
 
+	ctx = applyValueToContext(ctx, "formatter", reflect.TypeOf(fmtr).String())
+
 	r, err := format.Format(ctx, fmtr, cfgProvider, me.filename, input)
 	if err != nil {
-		return errors.Errorf("formatting content: %w", err)
+		return oops.Errorf("formatting content: %w", err)
 	}
 
 	if me.ToStdout || me.FromStdin {

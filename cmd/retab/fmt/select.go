@@ -2,16 +2,14 @@ package fmt
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/go-enry/go-enry/v2"
 	"github.com/rs/zerolog"
+	"github.com/samber/oops"
 	"github.com/walteh/retab/v2/pkg/format"
 	"github.com/walteh/retab/v2/pkg/format/cmdfmt"
 	"github.com/walteh/retab/v2/pkg/format/dockerfmt"
@@ -19,59 +17,7 @@ import (
 	"github.com/walteh/retab/v2/pkg/format/protofmt"
 	"github.com/walteh/retab/v2/pkg/format/shfmt"
 	"github.com/walteh/retab/v2/pkg/format/yamlfmt"
-	"gitlab.com/tozd/go/errors"
 )
-
-func trackStats(ctx context.Context) func() {
-
-	memoryStart := runtime.MemStats{}
-	runtime.ReadMemStats(&memoryStart)
-
-	// Track goroutine count
-	goroutinesStart := runtime.NumGoroutine()
-
-	// Track GC stats
-	gcStart := memoryStart.NumGC
-
-	start := time.Now()
-
-	return func() {
-		duration := time.Since(start)
-
-		memoryEnd := runtime.MemStats{}
-		runtime.ReadMemStats(&memoryEnd)
-
-		// Get final goroutine count
-		goroutinesEnd := runtime.NumGoroutine()
-
-		// Calculate additional metrics
-		memoryUsage := memoryEnd.TotalAlloc - memoryStart.TotalAlloc
-		gcRuns := memoryEnd.NumGC - gcStart
-
-		zerolog.Ctx(ctx).Info().
-			Str("duration", duration.String()).
-			Uint64("memory_usage_bytes", memoryUsage).
-			Str("memory_usage_human", humanizeBytes(memoryUsage)).
-			Int("goroutines", goroutinesEnd-goroutinesStart).
-			Uint32("gc_runs", gcRuns).
-			Float64("gc_pause_total_ms", float64(memoryEnd.PauseTotalNs-memoryStart.PauseTotalNs)/1000000).
-			Msg("fmt completed")
-	}
-}
-
-// Helper function to make byte sizes human-readable
-func humanizeBytes(bytes uint64) string {
-	const unit = 1024
-	if bytes < unit {
-		return fmt.Sprintf("%d B", bytes)
-	}
-	div, exp := uint64(unit), 0
-	for n := bytes / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
-}
 
 func getFormatterByLanguage(ctx context.Context, lang string) (format.Provider, bool) {
 	switch strings.ToLower(lang) {
@@ -118,10 +64,10 @@ func autoDetectFast(ctx context.Context, filename string) (format.Provider, bool
 		if matches {
 			fmtr, ok := getFormatterByLanguage(ctx, fmt)
 			if !ok {
-				zerolog.Ctx(ctx).Warn().Str("filename", filename).Str("glob", glob).Msg("unknown formatter - should never happen")
+				zerolog.Ctx(ctx).Warn().Str("glob", glob).Msg("unknown formatter - should never happen")
 				return nil, false
 			}
-			zerolog.Ctx(ctx).Info().Str("filename", filename).Str("formatter", fmt).Msg("detected formatter (fast)")
+			zerolog.Ctx(ctx).Info().Str("glob", glob).Type("detected_formatter", fmtr).Msg("detected formatter (fast)")
 			return fmtr, true
 		}
 	}
@@ -149,12 +95,12 @@ func autoDetectFallback(ctx context.Context, filename string, br io.ReadSeeker) 
 			continue
 		}
 
-		zerolog.Ctx(ctx).Info().Str("filename", filename).Str("language_detected", lang).Msg("detected formatter (fallback)")
+		zerolog.Ctx(ctx).Info().Str("language_detected", lang).Msg("detected formatter (fallback)")
 
 		return fmtr, true
 	}
 
-	zerolog.Ctx(ctx).Warn().Str("filename", filename).Strs("languages_detected", langs).Msg("fallback:no formatter found for detected languages")
+	zerolog.Ctx(ctx).Warn().Strs("languages_detected", langs).Msg("fallback:no formatter found for detected languages")
 
 	return nil, false
 }
@@ -173,12 +119,12 @@ func getFormatter(ctx context.Context, formatter string, filename string, br io.
 			return fmtr, nil
 		}
 
-		return nil, errors.New("unable to auto-detect formatter for file at path: " + filename)
+		return nil, oops.WithContext(ctx).Errorf("unable to auto-detect formatter")
 	}
 
 	fmtr, ok := getFormatterByLanguage(ctx, formatter)
 	if !ok {
-		return nil, errors.Errorf("unknown formatter name [%s] - trying to format file at path: %s", formatter, filename)
+		return nil, oops.WithContext(ctx).With("formatter_arg", formatter).Errorf("unknown formatter name", filename)
 	}
 	return fmtr, nil
 }
