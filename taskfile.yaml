@@ -12,22 +12,37 @@ vars:
       - editors/vscode/out
 
 env:
-    GOPROXY: https://proxy.golang.org
+    COMPOSE_BAKE: true
+    GOPROXY: 'https://proxy.golang.org'
     GOSUMDB: sum.golang.org
     GOPRIVATE: github.com/walteh
+    DOCKER_BUILDKIT: 1
 
 tasks:
-    go-mod-tidy:
+    go:tidy:
+        run: once
+        aliases: [go-mod-tidy]
         cmds:
           - for: {var: GO_MODULES}
-            cmd: |-
-                cd {{.ITEM}} && "{{.GO_COMMAND}}" mod tidy -e
+            cmd: cd {{.ITEM}} && go mod tidy -e
 
-    go-mod-upgrade:
+    go:upgrade:
+        aliases: [go-mod-upgrade]
         run: once
         cmds:
-          - cmd: |-
-                {{.GO_COMMAND}} tool go-mod-upgrade --force
+          - |-
+            {{.GO_COMMAND}} tool go-mod-upgrade --force
+          - task: go-mod-tidy
+
+    go:update:
+        aliases: [go-mod-update]
+        requires: {vars: [CLI_ARGS]}
+        run: once
+        cmds:
+          - task: go:tidy
+          - for: {var: GO_MODULES}
+            cmd: cd {{.ITEM}} && go get -u {{.CLI_ARGS}}
+          - task: go:tidy
 
     test:
         cmd: |-
