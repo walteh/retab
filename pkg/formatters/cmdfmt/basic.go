@@ -15,13 +15,22 @@ type basicExternalFormatter struct {
 	f         func(io.Reader, io.Writer) func(ctx context.Context) error
 }
 
+//go:opts
 type BasicExternalFormatterOpts struct {
-	Indent    string
-	TempFiles map[string]string
+	indent    string
+	tempFiles map[string]string
+
+	useDocker bool
+
+	dockerImageName string
+	dockerImageTag  string
+	dockerCommand   []string
+	fmtCommand      []string
+	executable      string
 }
 
 func NewNoopBasicExternalFormatProvider() format.Provider {
-	return ExternalFormatterToProvider(&basicExternalFormatter{"  ", map[string]string{}, func(r io.Reader, w io.Writer) func(ctx context.Context) error {
+	return WrapExternalFormatterWithStdio(&basicExternalFormatter{"  ", map[string]string{}, func(r io.Reader, w io.Writer) func(ctx context.Context) error {
 		return func(ctx context.Context) error {
 			_, err := io.Copy(w, r)
 			if err != nil {

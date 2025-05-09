@@ -8,57 +8,45 @@ import (
 	"gitlab.com/tozd/go/errors"
 )
 
-type ExternalFormatterConfig struct {
-	Indentation string
-	Targets     []string
-}
-
 type ExternalFormatter interface {
 	Format(ctx context.Context, reader io.Reader) (io.Reader, func() error)
 	Indent() string
 	TempFiles() map[string]string
 }
 
-type externalStdinFormatter struct {
-	internal ExternalFormatter
-}
+func NewFormatter(cmds []string, optz ...OptBasicExternalFormatterOptsSetter) format.Provider {
+	opts := NewBasicExternalFormatterOpts(optz...)
 
-func ExternalFormatterToProvider(ext ExternalFormatter) format.Provider {
-	return &externalStdinFormatter{ext}
-}
-
-func (me *externalStdinFormatter) Format(ctx context.Context, cfg format.Configuration, input io.Reader) (io.Reader, error) {
-
-	read, f := me.internal.Format(ctx, input)
-
-	var rerr error
-	go func() {
-		if err := f(); err != nil {
-			rerr = err
-		}
-	}()
-
-	output, err := format.BruteForceIndentation(ctx, me.internal.Indent(), cfg, read)
-	if err != nil {
-		return nil, errors.Errorf("failed to apply configuration: %w", err)
+	if opts.executable == "" {
+		panic("executable is empty")
 	}
 
-	if rerr != nil {
-		return nil, errors.Errorf("failed to format: %w", rerr)
+	if opts.useDocker {
+		return NewDockerCmdFormatter(cmds, optz...)
 	}
 
-	return output, nil
+	cmds = append([]string{opts.executable}, cmds...)
+
+	return NewCmdFormatter(cmds, optz...)
 }
 
-// type externalFileFormatter struct {
-// 	internal ExternalFileFormatter
-// 	fmter    ExternalFormatter
-// }
+func NewCmdFormatter(cmds []string, optz ...OptBasicExternalFormatterOptsSetter) format.Provider {
+	opts := NewBasicExternalFormatterOpts(optz...)
 
-// func (me *externalFileFormatter) Targets() []string {
-// 	return me.internal.Targets()
-// }
+	basic := &basicExternalFormatter{
+		indent:    opts.indent,
+		tempFiles: opts.tempFiles,
+		f: func(r io.Reader, w io.Writer) func(ctx context.Context) error {
+			if len(cmds) < 1 {
+				return func(ctx context.Context) error {
+					return errors.New("no command specified")
+				}
+			}
 
-// func ExternalFileFormatterToProvider(ext ExternalFormatter) format.Provider {
-// 	return &externalStdinFormatter{ext}
-// }
+			return func(ctx context.Context) error {
+				return runFmtCmd(ctx, cmds, w, r, &opts)
+			}
+		}}
+
+	return WrapExternalFormatterWithStdio(basic)
+}

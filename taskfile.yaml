@@ -84,6 +84,7 @@ tasks:
                 bun run build
 
     mockery:
+        run: once
         desc: generates mocks for interfaces with '//go:mock' comment
         vars:
             TMP_DIR: ./gen/config
@@ -110,3 +111,27 @@ tasks:
                 yq -i ".packages.\"{{ .GO_ROOT_PKG }}/{{ splitList " " .ITEM | first }}\".interfaces.{{ splitList " " .ITEM | last }} = {}" {{.TMP_DIR}}/.mockery.yaml
           - cmd: |-
                 {{.GO_COMMAND}} tool github.com/vektra/mockery/v2 --config={{.TMP_DIR}}/.mockery.yaml
+
+    options:
+        run: once
+        desc: generates options for structs with '//go:opts' comment
+        vars:
+            OPTION_GEN_DATA:
+                sh: |-
+                    grep -rl "//go:opts" --include="*.go" . | xargs -I{} bash -c 'd=$(dirname {}); d=${d#./}; awk -v d="$d {}" '\''/\/\/go:opts/ {getline; if($1=="type") print d, $2}'\'' {}'
+            OPTION_GEN_SOURCE_FILES:
+                sh: |-
+                    grep -rl "//go:opts" --include="*.go" .
+        generates:
+          - "**/*_opts.gen.go"
+        sources:
+          - '{{.OPTION_GEN_SOURCE_FILES | join ","}}'
+        cmds:
+          - for: {var: OPTION_GEN_DATA, split: "\n"}
+            cmd: |-
+                set -e
+                {{.GO_COMMAND}} tool github.com/kazhuravlev/options-gen/cmd/options-gen \
+                  -out-filename={{splitList " " .ITEM | first}}/{{ splitList " " .ITEM | last | lower | trimSuffix "opts" }}_opts.gen.go \
+                  -filename={{ splitList " " .ITEM | rest | first }} \
+                  -from-struct={{ splitList " " .ITEM | last }} \
+                  -pkg={{ splitList " " .ITEM | first | splitList "/" | last }}

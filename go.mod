@@ -1,6 +1,6 @@
 module github.com/walteh/retab/v2
 
-go 1.24.2
+go 1.24.3
 
 require (
 	github.com/apparentlymart/go-textseg/v13 v13.0.0
@@ -17,6 +17,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/moby/buildkit v0.20.2
 	github.com/pmezard/go-difflib v1.0.0
+	github.com/rs/xid v1.6.0
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/oops v1.17.0
 	github.com/sergi/go-diff v1.3.1

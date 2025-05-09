@@ -1,14 +1,16 @@
-package cmdfmt_test
+package swiftfmt_test
 
 import (
 	"bytes"
 	"context"
 	"testing"
 
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 	"github.com/walteh/retab/v2/gen/mocks/pkg/formatmock"
 	"github.com/walteh/retab/v2/pkg/diff"
 	"github.com/walteh/retab/v2/pkg/formatters/cmdfmt"
+	"github.com/walteh/retab/v2/pkg/formatters/swiftfmt"
 )
 
 func TestSwiftIntegration(t *testing.T) {
@@ -121,11 +123,9 @@ struct ContentView: View {
 			cfg.EXPECT().UseTabs().Return(tt.useTabs)
 			cfg.EXPECT().IndentSize().Return(tt.indentSize).Maybe()
 
-			result, err := cmdfmt.NewSwiftFormatter(
-				// --interactive allows us to read from stdin
-				// --quiet suppresses the pull information in case the image is not available locally
-				"docker", "run", "--name", newDisposableContainer(t), "--interactive", "--quiet", "swift:latest", "swift-format",
-			).Format(ctx, cfg, bytes.NewReader(tt.src))
+			ctx = zerolog.New(zerolog.NewTestWriter(t)).WithContext(ctx)
+
+			result, err := swiftfmt.NewSwiftCmdFormatter(cmdfmt.WithUseDocker(true)).Format(ctx, cfg, bytes.NewReader(tt.src))
 
 			require.NoError(t, err)
 			diff.Require(t).Got(result).Want(tt.expected).Equals()

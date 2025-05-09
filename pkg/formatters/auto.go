@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"path/filepath"
+	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/go-enry/go-enry/v2"
@@ -21,30 +22,6 @@ type AutoFormatProvider struct {
 	DartFmt      format.Provider
 	TerraformFmt format.Provider
 	SwiftFmt     format.Provider
-}
-
-func (me *AutoFormatProvider) GetFormatter(ctx context.Context, formatter string, filename string, content io.ReadSeeker) (format.Provider, error) {
-
-	if formatter == "auto" || formatter == "" {
-
-		fmtr, ok := me.DetectFormatterFromFilenameGlobs(ctx, filename)
-		if ok {
-			return fmtr, nil
-		}
-
-		fmtr, ok = me.DetectFormatterFromContent(ctx, filename, content)
-		if ok {
-			return fmtr, nil
-		}
-
-		return nil, oops.WithContext(ctx).Errorf("unable to auto-detect formatter")
-	}
-
-	fmtr, ok := me.GetFormatterByLangID(ctx, formatter)
-	if !ok {
-		return nil, oops.WithContext(ctx).With("formatter_arg", formatter).Errorf("unknown formatter name", filename)
-	}
-	return fmtr, nil
 }
 
 type LanguageConfig struct {
@@ -86,7 +63,7 @@ var (
 	})
 	terraformConfig = RegisterLanguageConfig(&LanguageConfig{
 		LangIds:       []string{"external-terraform"},
-		FilenameGlobs: []string{"*.tf", "*.tfvars"},
+		FilenameGlobs: []string{},
 		ProviderFunc:  func(me *AutoFormatProvider) format.Provider { return me.TerraformFmt },
 	})
 	swiftConfig = RegisterLanguageConfig(&LanguageConfig{
@@ -96,6 +73,30 @@ var (
 	})
 )
 
+func (me *AutoFormatProvider) GetFormatter(ctx context.Context, formatter string, filename string, content io.ReadSeeker) (format.Provider, error) {
+
+	if formatter == "auto" || formatter == "" {
+
+		fmtr, ok := me.DetectFormatterFromFilenameGlobs(ctx, filename)
+		if ok {
+			return fmtr, nil
+		}
+
+		fmtr, ok = me.DetectFormatterFromContent(ctx, filename, content)
+		if ok {
+			return fmtr, nil
+		}
+
+		return nil, oops.WithContext(ctx).Errorf("unable to auto-detect formatter")
+	}
+
+	fmtr, ok := me.GetFormatterByLangID(ctx, formatter)
+	if !ok {
+		return nil, oops.WithContext(ctx).With("formatter_arg", formatter).Errorf("unknown formatter name")
+	}
+	return fmtr, nil
+}
+
 var languageConfigs = []*LanguageConfig{}
 
 func RegisterLanguageConfig(config *LanguageConfig) *LanguageConfig {
@@ -104,7 +105,7 @@ func RegisterLanguageConfig(config *LanguageConfig) *LanguageConfig {
 }
 
 func (me *AutoFormatProvider) GetFormatterByLangID(ctx context.Context, lang string) (format.Provider, bool) {
-
+	lang = strings.ToLower(lang)
 	for _, config := range languageConfigs {
 		for _, langId := range config.LangIds {
 			if langId == lang {

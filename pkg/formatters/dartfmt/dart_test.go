@@ -1,30 +1,16 @@
-package cmdfmt_test
+package dartfmt_test
 
 import (
 	"bytes"
 	"context"
 	"io"
-	"os/exec"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/walteh/retab/v2/gen/mocks/pkg/formatmock"
 	"github.com/walteh/retab/v2/pkg/formatters/cmdfmt"
+	"github.com/walteh/retab/v2/pkg/formatters/dartfmt"
 )
-
-func newDisposableContainer(t *testing.T) string {
-	t.Helper()
-
-	containerName := "retab_" + strings.ReplaceAll(t.Name(), "/", "_")
-
-	t.Cleanup(func() {
-		// remove the container
-		exec.Command("docker", "rm", "-f", containerName).Run()
-	})
-
-	return containerName
-}
 
 func TestDartIntegration(t *testing.T) {
 	tests := []struct {
@@ -345,11 +331,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
 			// if typed == "stdin" {
 
-			result, err = cmdfmt.NewDartFormatter(
-				// --intreactive allows us to read from stdin
-				// --quiet suppresses the pull information in case the image is not available locally
-				"docker", "run", "--name", newDisposableContainer(t), "--interactive", "--quiet", "dart:stable", "dart",
-			).Format(ctx, cfg, bytes.NewReader(tt.src))
+			result, err = dartfmt.NewDartCmdFormatter(cmdfmt.WithUseDocker(true)).Format(ctx, cfg, bytes.NewReader(tt.src))
 
 			// }
 
