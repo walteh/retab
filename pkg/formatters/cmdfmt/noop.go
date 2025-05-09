@@ -13,7 +13,7 @@ type NoopExternalFormatter struct {
 var _ ExternalFormatter = (*NoopExternalFormatter)(nil)
 
 func NewNoopExternalFormatProvider() format.Provider {
-	return ExternalFormatterToProvider(&NoopExternalFormatter{})
+	return WrapExternalFormatterWithStdio(&NoopExternalFormatter{})
 }
 func (me *NoopExternalFormatter) Format(_ context.Context, input io.Reader) (io.Reader, func() error) {
 	return input, func() error {

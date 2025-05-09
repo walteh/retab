@@ -11,7 +11,7 @@ import (
 	"github.com/walteh/retab/v2/gen/mocks/pkg/formatmock"
 	"github.com/walteh/retab/v2/pkg/diff"
 	"github.com/walteh/retab/v2/pkg/format"
-	"github.com/walteh/retab/v2/pkg/format/dockerfmt"
+	"github.com/walteh/retab/v2/pkg/formatters/dockerfmt"
 )
 
 func formatDocker(ctx context.Context, cfg format.Configuration, src []byte) (string, error) {

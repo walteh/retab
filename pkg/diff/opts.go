@@ -18,9 +18,3 @@ func WithUnexportedType[T any]() OptTestingOptsSetter {
 		opts.cmpOpts = append(opts.cmpOpts, cmp.AllowUnexported(v))
 	}
 }
-
-func WithLogRawDiffOnFail() OptTestingOptsSetter {
-	return func(opts *TestingOpts) {
-		opts.logRawDiffOnFail = true
-	}
-}

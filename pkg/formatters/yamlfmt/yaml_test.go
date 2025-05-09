@@ -9,7 +9,7 @@ import (
 	"github.com/walteh/retab/v2/gen/mocks/pkg/formatmock"
 	"github.com/walteh/retab/v2/pkg/diff"
 	"github.com/walteh/retab/v2/pkg/format"
-	"github.com/walteh/retab/v2/pkg/format/yamlfmt"
+	"github.com/walteh/retab/v2/pkg/formatters/yamlfmt"
 )
 
 func formatYaml(ctx context.Context, cfg format.Configuration, src []byte) (string, error) {

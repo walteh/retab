@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/walteh/retab/v2/gen/mocks/pkg/formatmock"
 	"github.com/walteh/retab/v2/pkg/diff"
-	"github.com/walteh/retab/v2/pkg/format/hclfmt"
+	"github.com/walteh/retab/v2/pkg/formatters/hclfmt"
 )
 
 func TestFormat(t *testing.T) {

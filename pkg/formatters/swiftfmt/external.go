@@ -1,37 +1,44 @@
-package cmdfmt
+package swiftfmt
 
 import (
-	"context"
 	"fmt"
-	"strings"
+	"regexp"
 
 	"github.com/walteh/retab/v2/pkg/format"
+	"github.com/walteh/retab/v2/pkg/formatters/cmdfmt"
 )
 
-func NewDartFormatter(ctx context.Context, cmds ...string) format.Provider {
-	cmds = append(cmds, "format", "--output", "show", "--summary", "none", "--fix")
+var wsrg = regexp.MustCompile(`\s+`)
 
-	return NewExecFormatter(ctx, &BasicExternalFormatterOpts{
-		Indent: "  ",
-		// Targets: []string{"*.dart"},
-	}, cmds...)
+func removeAllWhitespaceChars(s string) string {
+	return wsrg.ReplaceAllString(s, "")
 }
 
-func NewTerraformFormatter(ctx context.Context, cmds ...string) format.Provider {
-	cmds = append(cmds, "fmt", "-write=false", "-list=false")
+func rawSwiftCmd() []string {
+	scfg := removeAllWhitespaceChars(externalSwiftFormatConfig)
 
-	return NewExecFormatter(ctx, &BasicExternalFormatterOpts{
-		Indent: "  ",
+	cmds := []string{"-", fmt.Sprintf("--configuration=%s", scfg)}
+	return cmds
+}
 
-		// Targets: []string{"*.tf", "*.tfvars"},
-	}, cmds...)
+func NewSwiftCmdFormatter(opts ...cmdfmt.OptBasicExternalFormatterOptsSetter) format.Provider {
+	cmds := rawSwiftCmd()
+
+	startopts := []cmdfmt.OptBasicExternalFormatterOptsSetter{
+		cmdfmt.WithIndent("  "),
+		cmdfmt.WithExecutable("swift-format"),
+		cmdfmt.WithDockerImageName("swift"),
+		cmdfmt.WithDockerImageTag("6.1"),
+	}
+
+	return cmdfmt.NewFormatter(cmds, append(startopts, opts...)...)
 }
 
 // we could maybe read this in too, but we really need the indentation
 // to be 2 spaces in the config passed to the command no matter what
 // 2 spaces is arbitrary, but it's what we are passing in the Indent
 // field of the BasicExternalFormatterOpts for swift
-var swiftConfig = /* json */ `
+var externalSwiftFormatConfig = /* json */ `
 {
 	"version": 1,
 	"lineLength": 140,
@@ -88,17 +95,3 @@ var swiftConfig = /* json */ `
 	}
 }
 `
-
-func NewSwiftFormatter(ctx context.Context, cmds ...string) format.Provider {
-	scfg := strings.ReplaceAll(swiftConfig, "\n", "")
-	scfg = strings.ReplaceAll(scfg, "\t", "")
-	scfg = strings.TrimSpace(scfg)
-	cmds = append(cmds, "format", fmt.Sprintf("--configuration='%s'", scfg), "-")
-
-	return NewExecFormatter(ctx, &BasicExternalFormatterOpts{
-		Indent: "  ",
-		// TempFiles: map[string]string{
-		// 	"swift-config.json": swiftConfig,
-		// },
-	}, cmds...)
-}
