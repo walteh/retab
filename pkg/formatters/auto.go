@@ -22,6 +22,7 @@ type AutoFormatProvider struct {
 	DartFmt      format.Provider
 	TerraformFmt format.Provider
 	SwiftFmt     format.Provider
+	GoFmt        format.Provider
 }
 
 type LanguageConfig struct {
@@ -70,6 +71,11 @@ var (
 		LangIds:       []string{"swift"},
 		FilenameGlobs: []string{"*.swift"},
 		ProviderFunc:  func(me *AutoFormatProvider) format.Provider { return me.SwiftFmt },
+	})
+	goConfig = RegisterLanguageConfig(&LanguageConfig{
+		LangIds:       []string{"go", "golang"},
+		FilenameGlobs: []string{"*.go"},
+		ProviderFunc:  func(me *AutoFormatProvider) format.Provider { return me.GoFmt },
 	})
 )
 

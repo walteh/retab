@@ -6,6 +6,7 @@ import (
 	"github.com/walteh/retab/v2/pkg/formatters/cmdfmt"
 	"github.com/walteh/retab/v2/pkg/formatters/dartfmt"
 	"github.com/walteh/retab/v2/pkg/formatters/dockerfmt"
+	"github.com/walteh/retab/v2/pkg/formatters/gofmt"
 	"github.com/walteh/retab/v2/pkg/formatters/hclfmt"
 	"github.com/walteh/retab/v2/pkg/formatters/protofmt"
 	"github.com/walteh/retab/v2/pkg/formatters/shfmt"
@@ -27,6 +28,7 @@ func NewAutoFormatConfig() *formatters.AutoFormatProvider {
 		DartFmt:      format.NewLazyFormatProvider(func() format.Provider { return dartfmt.NewDartCmdFormatter(cmdfmt.WithUseDocker(true)) }),
 		TerraformFmt: format.NewLazyFormatProvider(func() format.Provider { return terraformfmt.NewTerraformCmdFormatter(cmdfmt.WithUseDocker(true)) }),
 		SwiftFmt:     format.NewLazyFormatProvider(func() format.Provider { return swiftfmt.NewSwiftCmdFormatter(cmdfmt.WithUseDocker(true)) }),
+		GoFmt:        format.NewLazyFormatProvider(func() format.Provider { return gofmt.NewFormatter() }),
 	}
 
 	return cfg

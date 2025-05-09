@@ -2,6 +2,8 @@ module github.com/walteh/retab/v2
 
 go 1.24.3
 
+replace github.com/incu6us/goimports-reviser/v3 => github.com/walteh/goimports-reviser/v3 v3.0.0-20250509141807-f32659790d37
+
 require (
 	github.com/apparentlymart/go-textseg/v13 v13.0.0
 	github.com/bmatcuk/doublestar/v4 v4.8.1
@@ -14,6 +16,7 @@ require (
 	github.com/google/yamlfmt v0.16.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/hcl/v2 v2.23.0
+	github.com/incu6us/goimports-reviser/v3 v3.9.1
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/moby/buildkit v0.20.2
 	github.com/pmezard/go-difflib v1.0.0
@@ -55,11 +58,12 @@ require (
 	github.com/zclconf/go-cty v1.13.0 // indirect
 	go.opentelemetry.io/otel v1.31.0 // indirect
 	go.opentelemetry.io/otel/trace v1.31.0 // indirect
+	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
 	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
-	golang.org/x/tools v0.27.0 // indirect
+	golang.org/x/tools v0.30.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

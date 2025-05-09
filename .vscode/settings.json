@@ -1,13 +1,8 @@
 {
 	"editor.formatOnSave": true,
 	"editor.formatOnSaveMode": "file",
-	"go.testFlags": [
-		"-count=1",
-		"-timeout=90s"
-	],
-	"gopls": {
-		"ui.semanticTokens": true
-	},
+	"go.testFlags": ["-count=1", "-timeout=90s"],
+
 	"files.associations": {
 		"*.retab": "hcl"
 	},
