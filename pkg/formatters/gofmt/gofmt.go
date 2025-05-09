@@ -53,9 +53,13 @@ func (me *Formatter) Format(ctx context.Context, cfg format.Configuration, read 
 		reviser.WithImportsOrder([]reviser.ImportsOrder{
 			reviser.BlankedImportsOrder,
 			reviser.StdImportsOrder,
+			reviser.NamedStdImportsOrder,
 			reviser.GeneralImportsOrder,
+			reviser.NamedGeneralImportsOrder,
 			reviser.CompanyImportsOrder,
+			reviser.NamedCompanyImportsOrder,
 			reviser.ProjectImportsOrder,
+			reviser.NamedProjectImportsOrder,
 			reviser.DottedImportsOrder,
 		}),
 		reviser.WithSeparatedNamedImports,
