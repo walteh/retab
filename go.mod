@@ -2,8 +2,6 @@ module github.com/walteh/retab/v2
 
 go 1.24.3
 
-replace github.com/incu6us/goimports-reviser/v3 => github.com/walteh/goimports-reviser/v3 v3.0.0-20250509141807-f32659790d37
-
 require (
 	github.com/apparentlymart/go-textseg/v13 v13.0.0
 	github.com/bmatcuk/doublestar/v4 v4.8.1
@@ -16,7 +14,6 @@ require (
 	github.com/google/yamlfmt v0.16.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/hcl/v2 v2.23.0
-	github.com/incu6us/goimports-reviser/v3 v3.9.1
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/moby/buildkit v0.20.2
 	github.com/pmezard/go-difflib v1.0.0
@@ -28,6 +25,7 @@ require (
 	github.com/spf13/afero v1.14.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
+	github.com/walteh/goimports-reviser/v3 v3.9.2
 	github.com/walteh/yaml v0.0.0-20250409173318-a722555a2a54
 	gitlab.com/tozd/go/errors v0.10.0
 	go.uber.org/multierr v1.11.0

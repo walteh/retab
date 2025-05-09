@@ -662,8 +662,8 @@ github.com/vmihailenco/tagparser v0.1.1 h1:quXMXlA39OCbd2wAdTsGDlK9RkOk6Wuw+x37w
 github.com/vmihailenco/tagparser v0.1.1/go.mod h1:OeAg3pn3UbLjkWt+rN9oFYB6u/cQgqMEUPoW2WPyhdI=
 github.com/vmihailenco/tagparser/v2 v2.0.0 h1:y09buUbR+b5aycVFQs/g70pqKVZNBmxwAhO7/IwNM9g=
 github.com/vmihailenco/tagparser/v2 v2.0.0/go.mod h1:Wri+At7QHww0WTrCBeu4J6bNtoV6mEfg5OIWRZA9qds=
-github.com/walteh/goimports-reviser/v3 v3.0.0-20250509141807-f32659790d37 h1:4AN1qljQ1HbUh2A1rfLitBx3nR4tTxTeBEtVLjRBhFs=
-github.com/walteh/goimports-reviser/v3 v3.0.0-20250509141807-f32659790d37/go.mod h1:5ORZPzRojNeWys/8rPHJovL44cV0bovZK0S3THxVIV4=
+github.com/walteh/goimports-reviser/v3 v3.9.2 h1:0RHMlxN1TshcuvQrR5BDp/2hFie6st5fCCq/ppYKghE=
+github.com/walteh/goimports-reviser/v3 v3.9.2/go.mod h1:cnJLNHe3IddVORi9xNkobT/z0ghBovh6qf9Fb0937ZA=
 github.com/yuin/goldmark v1.4.13 h1:fVcFKWvrslecOb/tg+Cc05dkeYx540o0FuFt3nUVDoE=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 go.etcd.io/bbolt v1.3.11 h1:yGEzV1wPz2yVCLsD8ZAiGHhHVlczyC9d1rP43/VCRJ0=

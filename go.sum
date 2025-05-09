@@ -118,8 +118,8 @@ github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
-github.com/walteh/goimports-reviser/v3 v3.0.0-20250509141807-f32659790d37 h1:4AN1qljQ1HbUh2A1rfLitBx3nR4tTxTeBEtVLjRBhFs=
-github.com/walteh/goimports-reviser/v3 v3.0.0-20250509141807-f32659790d37/go.mod h1:5ORZPzRojNeWys/8rPHJovL44cV0bovZK0S3THxVIV4=
+github.com/walteh/goimports-reviser/v3 v3.9.2 h1:0RHMlxN1TshcuvQrR5BDp/2hFie6st5fCCq/ppYKghE=
+github.com/walteh/goimports-reviser/v3 v3.9.2/go.mod h1:cnJLNHe3IddVORi9xNkobT/z0ghBovh6qf9Fb0937ZA=
 github.com/walteh/yaml v0.0.0-20250409173318-a722555a2a54 h1:hppd8dyDSq5NnFtgXBE/LnayHstxq3/l/bLg5zVc8ko=
 github.com/walteh/yaml v0.0.0-20250409173318-a722555a2a54/go.mod h1:dlgT2We1Es7OmKdDycMbx9NDrvw4WexgyJbNZ9pI2ro=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

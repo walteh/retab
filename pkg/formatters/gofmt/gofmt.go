@@ -7,7 +7,7 @@ import (
 
 	goformat "go/format"
 
-	"github.com/incu6us/goimports-reviser/v3/reviser"
+	"github.com/walteh/goimports-reviser/v3/reviser"
 	"github.com/walteh/retab/v2/pkg/format"
 	"gitlab.com/tozd/go/errors"
 
@@ -51,16 +51,18 @@ func (me *Formatter) Format(ctx context.Context, cfg format.Configuration, read 
 	opts := []reviser.SourceFileOption{
 		reviser.WithReader(bytes.NewReader(formattedOutput)),
 		reviser.WithImportsOrder([]reviser.ImportsOrder{
+			reviser.DottedImportsOrder,
 			reviser.BlankedImportsOrder,
 			reviser.StdImportsOrder,
 			reviser.NamedStdImportsOrder,
+			reviser.XImportsOrder,
+			reviser.NamedXImportsOrder,
 			reviser.GeneralImportsOrder,
 			reviser.NamedGeneralImportsOrder,
 			reviser.CompanyImportsOrder,
 			reviser.NamedCompanyImportsOrder,
 			reviser.ProjectImportsOrder,
 			reviser.NamedProjectImportsOrder,
-			reviser.DottedImportsOrder,
 		}),
 		reviser.WithSeparatedNamedImports,
 	}

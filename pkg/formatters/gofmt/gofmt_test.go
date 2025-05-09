@@ -68,9 +68,9 @@ import (
 	"fmt"
 	myAlias "fun/util" // comment def
 	"github.com/gin-gonic/gin"
-	
-	
+
 	. "github.com/onsi/gomega" // dot import
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -85,15 +85,17 @@ func main() {
 	expected := `package main
 
 import (
+	. "github.com/onsi/gomega" // dot import
+
 	"fmt"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/gin-gonic/gin"
 
 	myAlias "more-fun/util" // comment def
 
 	"github.com/walteh/retab/v2/pkg/format" // comment abc
-
-	. "github.com/onsi/gomega" // dot import
 )
 
 func main() {

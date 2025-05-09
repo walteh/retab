@@ -10,6 +10,8 @@ tool github.com/oligot/go-mod-upgrade
 
 tool github.com/kazhuravlev/options-gen/cmd/options-gen
 
+tool github.com/walteh/goimports-reviser/v3
+
 require (
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/AlecAivazis/survey/v2 v2.3.2 // indirect
@@ -77,10 +79,12 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/urfave/cli/v2 v2.3.0 // indirect
 	github.com/vektra/mockery/v2 v2.53.3 // indirect
+	github.com/walteh/goimports-reviser/v3 v3.9.2 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.37.0 // indirect
+	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
 	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/sync v0.13.0 // indirect
