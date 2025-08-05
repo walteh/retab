@@ -69,6 +69,10 @@ func (me *EditorConfigConfigurationProvider) GetConfigurationForFileType(ctx con
 		}
 	}
 
+	if def.IndentSize == "" {
+		def.IndentSize = "4"
+	}
+
 	id, err := strconv.Atoi(def.IndentSize)
 	if err != nil {
 		return nil, errors.Errorf("parsing indent size: %w", err)
